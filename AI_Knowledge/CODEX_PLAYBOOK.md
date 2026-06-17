@@ -14,12 +14,15 @@ Expected direction:
 
 - Ask is mobile-first and product-first.
 - Native mobile clients may become primary; browser prototypes are tools, not product architecture.
+- Android, iOS, and web clients should share a backend communication layer where possible.
 - Keep API DTOs separate from UI view models.
 - Do not invent backend data in the UI.
 - Frontend owns normal UI localization; backend returns stable machine-readable statuses and error codes.
 - Preserve shared product meaning across frontend and backend.
 
 Before editing, search for existing local patterns and map dependent components, routes, state, API adapters, tests, styles, and copy.
+
+Keep the client/API layer independent from visual design. Platform-specific UI may differ, but duplicated heavy business logic across Android, iOS, and web is a design smell.
 
 ## Customer Request UX
 
@@ -44,6 +47,8 @@ Frontend should not implement catalog import, normalization, duplicate handling,
 
 Manual request routing must still work before catalog is mature unless product direction explicitly changes.
 
+Product catalog UI should account for Excel and CSV import flows because many sellers already keep catalog data in those formats.
+
 ## Services UX
 
 Use this route for service discovery UI, schedules shown in UI, appointment requests, free-window display, specialists, branches, bookings, or provider availability.
@@ -58,6 +63,8 @@ Services are not products with a different label. Before coding, analyze:
 - what must not be hardcoded for one city or provider type.
 
 If availability is not backed by a reliable source, model it as confirmation-needed instead of a guaranteed slot.
+
+Service-provider administration is expected to fit a web cabinet better than a mobile-only flow when it involves offerings, schedules, free windows, discounts, conditions, specialists, and branches.
 
 ## Integration Display
 

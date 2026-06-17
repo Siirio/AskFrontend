@@ -56,6 +56,8 @@ Frontend architecture should stay focused on client experience, API contracts, v
 
 Frontend should:
 
+- keep the backend communication layer isolated from visual design;
+- keep Android, iOS, and web clients aligned through a shared client/API abstraction where possible;
 - keep API DTOs separate from UI view models;
 - localize visible UI text;
 - treat backend status and error codes as stable machine-readable input;
@@ -73,6 +75,12 @@ Frontend should not call private provider APIs directly. External systems such a
 The future product is mobile-first. Native mobile apps may become the primary clients. Browser tools and prototypes can exist, but they should not define backend architecture.
 
 Frontend and backend can be separate repositories owned by different developers. The shared contract is product meaning plus stable APIs, not one old prototype implementation.
+
+Android, iOS, and any future website should use one AskBackend. They may differ in UI and platform behavior, but they should not duplicate heavy request, catalog, service, and availability logic separately. The shared client/API layer is the boundary between platform-specific design and backend communication.
+
+The mobile app has two sides: customer and seller/supplier. The website is planned mainly as a service-provider cabinet, because managing offerings, schedules, free windows, discounts, conditions, specialists, and branches is more comfortable on a larger workspace than inside a mobile app.
+
+Product catalog work still matters for sellers. The frontend may expose Excel and CSV upload/import UX when backend contracts exist, because stores often already keep product data in those formats.
 
 ## Scaling Direction
 

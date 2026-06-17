@@ -24,6 +24,7 @@ These rules guide AI agents and developers working on Ask frontend.
 
 - Ask is mobile-first and product-first.
 - Frontend may be web, native, or prototype, but it must stay aligned with shared product logic.
+- Android, iOS, and web should use one AskBackend through a shared design-independent client/API abstraction where possible.
 - API DTOs and UI view models can be different shapes, but contract drift must be explicit.
 - Frontend owns normal UI localization.
 - Backend returns stable machine-readable statuses and error codes.
@@ -35,12 +36,14 @@ These rules guide AI agents and developers working on Ask frontend.
 - Categories scope/filter search; they must not replace Smart Search with a rigid product picker.
 - Early MVP must not imply Ask already knows supplier catalogs.
 - Catalog-backed suggestions must be visually honest about confidence and source.
+- Product catalog upload/import UX should account for Excel and CSV because sellers often already maintain product data in those formats.
 - Manual request routing must remain usable before catalog data is mature.
 
 ## Services UX Rules
 
 - Services are not products with a different label.
 - Service UX must consider schedules, windows, duration, specialist/provider, branch, confirmation, cancellation, and availability source.
+- Service-provider management is expected to fit a web cabinet better than a mobile-only flow when it involves large service datasets, schedules, discounts, and conditions.
 - Do not show guaranteed free slots unless backend/provider data supports them.
 - If availability is uncertain, design the flow as confirmation-needed.
 

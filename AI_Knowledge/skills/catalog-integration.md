@@ -5,6 +5,7 @@ Use for catalog-backed frontend UX: Smart Search suggestions, category filters, 
 Frontend should not own catalog import, normalization, duplicate handling, or source-of-truth logic. Analyze what the UI can safely show:
 
 - whether the result is manual, catalog-backed, or integration-backed;
+- whether the UI needs an Excel or CSV upload/import flow backed by API contracts;
 - which attributes came from backend;
 - whether availability is fresh or confirmation-needed;
 - how categories scope Smart Search;

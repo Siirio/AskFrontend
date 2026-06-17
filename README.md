@@ -27,6 +27,33 @@ The frontend should support these product layers:
 7. Seller/supplier onboarding screens when frontend owns them.
 8. API adapters that keep backend DTOs separate from UI view models.
 
+## Target Client Architecture
+
+Android, iOS, and any future website should use the same AskBackend. The frontend side may have different UI per platform, but the part that communicates with the backend should be isolated from visual design.
+
+The target idea is:
+
+```text
+Android UI
+iOS UI
+Web UI
+  -> shared client/API abstraction
+  -> AskBackend API
+```
+
+This keeps heavy request, catalog, service, and availability logic out of separate UI implementations. Platform-specific screens can differ, but they should not each grow their own duplicate business layer.
+
+## Website Direction
+
+The mobile application has two sides:
+
+- customer;
+- seller/supplier.
+
+The website is planned primarily for establishments that provide services. Managing service offerings, schedules, free windows, discounts, conditions, specialists, and branches can be too heavy inside a mobile app. A web cabinet gives service providers a more comfortable workspace for larger service data.
+
+For product sellers, catalog data should support Excel and CSV workflows because many stores already keep product lists in those formats and should not recreate catalogs manually inside Ask.
+
 ## What Frontend Must Not Own
 
 - Backend persistence, migrations, repository layers, or service layering.

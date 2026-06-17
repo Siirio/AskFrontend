@@ -1,5 +1,15 @@
 # Frontend AI Knowledge Changelog
 
+## 2026-06-17 - Goal Actualization
+
+Updated the frontend product architecture idea:
+
+- Android, iOS, and web should use one AskBackend.
+- Backend communication should live behind a shared design-independent client/API abstraction where possible.
+- Platform UI can differ, but heavy request, catalog, service, and availability logic should not be duplicated separately in each UI.
+- Product catalog UX should account for Excel and CSV import flows backed by backend contracts.
+- Service-provider administration is expected to fit a web cabinet better than mobile-only screens for larger service data, schedules, discounts, conditions, specialists, and branches.
+
 ## 2026-06-17 - Frontend Scope Cleanup
 
 Reduced the copied foundation to frontend-relevant AI knowledge.

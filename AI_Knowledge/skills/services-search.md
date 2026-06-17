@@ -4,6 +4,8 @@ Use for service discovery UX, schedules shown in UI, appointment requests, windo
 
 Services are not products with a different label.
 
+Service-provider administration is expected to fit a web cabinet better than a mobile-only flow when it involves larger service data, schedules, free windows, discounts, conditions, specialists, and branches.
+
 Analyze:
 
 - whether the UI is requesting a service or displaying a confirmed slot;
