@@ -5,6 +5,8 @@ Use for Ask frontend, mobile UX, API contracts, customer search, supplier replie
 Rules:
 
 - Ask is mobile-first and product-first.
+- Use Feature-Sliced Design for frontend architecture.
+- Keep product-flow code close to its feature: UI, state, API adapter, validation, tests, and local helpers should not be scattered without a reason.
 - Browser prototypes are tools, not backend architecture.
 - Android, iOS, and web should share a backend communication layer where possible.
 - Keep API DTOs separate from UI view models.

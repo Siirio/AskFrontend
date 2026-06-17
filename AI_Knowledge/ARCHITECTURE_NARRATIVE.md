@@ -54,8 +54,12 @@ Services cannot be modeled as products with a different label. Before coding ser
 
 Frontend architecture should stay focused on client experience, API contracts, view models, state transitions, and mobile usability.
 
+Ask Frontend should use Feature-Sliced Design. This keeps feature work scalable: a feature's UI, state, API adapter, validation, tests, and local helpers stay near the product flow instead of being spread across broad global folders. Prefer feature-local composition over large catch-all folders such as one huge `components`, `services`, or `utils`.
+
 Frontend should:
 
+- organize code through FSD layers such as `app`, `pages`, `widgets`, `features`, `entities`, and `shared`;
+- keep user actions in `features`, domain-facing frontend models in `entities`, reusable primitives in `shared`, and route composition in `pages`;
 - keep the backend communication layer isolated from visual design;
 - keep Android, iOS, and web clients aligned through a shared client/API abstraction where possible;
 - keep API DTOs separate from UI view models;

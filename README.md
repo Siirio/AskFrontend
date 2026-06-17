@@ -43,6 +43,21 @@ Web UI
 
 This keeps heavy request, catalog, service, and availability logic out of separate UI implementations. Platform-specific screens can differ, but they should not each grow their own duplicate business layer.
 
+## Feature-Sliced Design
+
+Ask Frontend should use Feature-Sliced Design as the main architecture style. The goal is scalability and local reasoning: when a developer works on Smart Search, supplier inbox, response feed, service cabinet, catalog import UI, or chat, the related UI, state, API adapter, validation, tests, and helpers should stay close to that feature instead of being scattered across unrelated folders.
+
+Expected layers:
+
+- `app`: application bootstrap, providers, routing shell, global styles.
+- `pages`: route-level screen composition.
+- `widgets`: larger UI blocks composed from features and entities.
+- `features`: user actions and product flows such as creating a request, filtering responses, sending a supplier reply, uploading a catalog file, or editing a service schedule.
+- `entities`: frontend domain models such as request, supplier, response, catalog item, service, and schedule.
+- `shared`: UI primitives, utilities, API transport base, config, and platform adapters.
+
+The backend communication layer must stay design-independent. Platform UI can differ, but Android, iOS, and web should not duplicate heavy business logic.
+
 ## Website Direction
 
 The mobile application has two sides:

@@ -23,6 +23,9 @@ These rules guide AI agents and developers working on Ask frontend.
 ## Frontend Direction
 
 - Ask is mobile-first and product-first.
+- Use Feature-Sliced Design as the main frontend architecture.
+- Keep feature-related UI, state, API adapters, validation, tests, and helpers close to the feature instead of spreading one product flow across unrelated global folders.
+- Prefer FSD layers such as `app`, `pages`, `widgets`, `features`, `entities`, and `shared`.
 - Frontend may be web, native, or prototype, but it must stay aligned with shared product logic.
 - Android, iOS, and web should use one AskBackend through a shared design-independent client/API abstraction where possible.
 - API DTOs and UI view models can be different shapes, but contract drift must be explicit.

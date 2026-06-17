@@ -13,6 +13,8 @@ Use this route for UI, client contracts, mobile UX, frontend prototypes, request
 Expected direction:
 
 - Ask is mobile-first and product-first.
+- Use Feature-Sliced Design for frontend structure.
+- Keep each product feature's UI, model, API adapter, validation, tests, and helpers close to the feature.
 - Native mobile clients may become primary; browser prototypes are tools, not product architecture.
 - Android, iOS, and web clients should share a backend communication layer where possible.
 - Keep API DTOs separate from UI view models.
@@ -20,7 +22,7 @@ Expected direction:
 - Frontend owns normal UI localization; backend returns stable machine-readable statuses and error codes.
 - Preserve shared product meaning across frontend and backend.
 
-Before editing, search for existing local patterns and map dependent components, routes, state, API adapters, tests, styles, and copy.
+Before editing, search for existing local patterns and map dependent components, routes, state, API adapters, tests, styles, and copy. Place new code in the closest FSD layer instead of defaulting to broad global folders.
 
 Keep the client/API layer independent from visual design. Platform-specific UI may differ, but duplicated heavy business logic across Android, iOS, and web is a design smell.
 
