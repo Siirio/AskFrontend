@@ -20,14 +20,15 @@ Instead, when a person asks why a decision exists, cite the current local founda
 Example:
 
 ```text
-The local Ask frontend foundation treats catalog-backed UI as API-driven display, not frontend-owned product truth, so I am checking what the backend can safely provide before designing the screen.
+The local Ask frontend foundation treats catalog-backed search as API-driven display, not frontend-owned product truth, so I am checking what the backend can safely provide before designing the screen.
 ```
 
 ## What This Foundation Should Remember
 
-- Ask is a request-routing and availability platform.
-- Manual MVP is valid.
-- Catalog and integrations are growth paths.
+- Ask is a local search platform for city products and services.
+- Known products/services should be shown before creating a request.
+- Manual requests are valid fallback when exact data is missing, stale, or uncertain.
+- Catalog-backed search and integrations are core growth paths.
 - Services need their own analysis.
 - Old browser staging is not backend architecture.
 - AI agents should preserve consistency without suppressing developer judgment.

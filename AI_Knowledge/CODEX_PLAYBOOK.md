@@ -8,11 +8,12 @@ Read `README.md`, `AI_Knowledge/AGENTS.md`, and the relevant section of this pla
 
 ## Frontend And Mobile Work
 
-Use this route for UI, client contracts, mobile UX, frontend prototypes, request flows, supplier flows, or frontend/backend API alignment.
+Use this route for UI, client contracts, mobile UX, frontend prototypes, search flows, request fallback, supplier flows, or frontend/backend API alignment.
 
 Expected direction:
 
 - Ask is mobile-first and product-first.
+- Customer discovery is search-first; request creation is fallback when backend data is insufficient.
 - Use Feature-Sliced Design for frontend structure.
 - Keep each product feature's UI, model, API adapter, validation, tests, and helpers close to the feature.
 - Native mobile clients may become primary; browser prototypes are tools, not product architecture.
@@ -26,13 +27,14 @@ Before editing, search for existing local patterns and map dependent components,
 
 Keep the client/API layer independent from visual design. Platform-specific UI may differ, but duplicated heavy business logic across Android, iOS, and web is a design smell.
 
-## Customer Request UX
+## Customer Search UX
 
 - Smart Search is the main discovery path.
 - Category is a scope/filter, not a replacement product picker.
-- Preserve the user's typed request intent.
-- Loading during request sending ends when dispatch is confirmed.
-- After dispatch, show a calm waiting state for replies.
+- Show known products/services/businesses before request creation when backend data exists.
+- Preserve the user's typed search intent when moving from search to fallback request.
+- Loading during fallback request sending ends when dispatch is confirmed.
+- After fallback dispatch, show a calm waiting state for replies.
 
 ## Supplier UX
 
@@ -47,7 +49,7 @@ Use this route for catalog-backed UI, product suggestions, category filters, att
 
 Frontend should not implement catalog import, normalization, duplicate handling, or source-of-truth logic. It may expose upload/import UX only when backend/API contracts exist.
 
-Manual request routing must still work before catalog is mature unless product direction explicitly changes.
+Catalog-backed search is a core product path. Manual request routing remains the fallback for missing, stale, or uncertain data.
 
 Product catalog UI should account for Excel and CSV import flows because many sellers already keep catalog data in those formats.
 
@@ -83,6 +85,7 @@ Rules:
 Before code, produce a short analysis when the task affects:
 
 - catalog;
+- search results;
 - services;
 - schedules;
 - integrations;

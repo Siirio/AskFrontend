@@ -1,10 +1,10 @@
 # Ask Frontend
 
-Ask Frontend is the client-side foundation for Ask, a request-routing, availability, catalog, and service discovery product.
+Ask Frontend is the client-side foundation for Ask, a local search product for products and services across city businesses.
 
-The frontend should help customers describe what they need, route that intent through the backend, and compare supplier replies clearly. It should not own backend business truth, provider integrations, catalog ingestion, or availability facts.
+The frontend should help customers search for what they need, see matching products/services first, understand which business can help when data exists, and fall back to a supplier request only when exact data is missing or uncertain. It should not own backend business truth, provider integrations, catalog ingestion, search indexing, or availability facts.
 
-The first useful version is simple: a customer describes a product or service need, Ask routes it to relevant suppliers, and suppliers answer manually with availability, price, address, contact options, or clarification. The frontend presents that flow with mobile-first UX and stable API contracts.
+The main user flow is search-first. If a product or service is already in Ask data, the customer finds it immediately. If Ask does not have enough data, the frontend can guide the customer into a confirmation request to suitable sellers or service providers.
 
 ## The Problem
 
@@ -18,14 +18,16 @@ The frontend must connect those two sides without pretending that perfect backen
 
 The frontend should support these product layers:
 
-1. Mobile-first customer request creation.
-2. Smart Search as the main discovery path.
+1. Mobile-first Smart Search as the main discovery path.
+2. Search results for known products, services, and businesses.
 3. Product/service choice when services are introduced.
-4. Supplier reply comparison.
-5. Request-scoped and supplier-scoped chat/contact actions.
-6. Clear waiting states after dispatch.
-7. Seller/supplier onboarding screens when frontend owns them.
-8. API adapters that keep backend DTOs separate from UI view models.
+4. Clear availability/confidence states based on backend data.
+5. Confirmation request creation when exact data is missing or stale.
+6. Supplier reply comparison after fallback requests.
+7. Request-scoped and supplier-scoped chat/contact actions.
+8. Clear waiting states after dispatch.
+9. Seller/supplier onboarding screens when frontend owns them.
+10. API adapters that keep backend DTOs separate from UI view models.
 
 ## Target Client Architecture
 
@@ -41,18 +43,18 @@ Web UI
   -> AskBackend API
 ```
 
-This keeps heavy request, catalog, service, and availability logic out of separate UI implementations. Platform-specific screens can differ, but they should not each grow their own duplicate business layer.
+This keeps heavy search, request fallback, catalog, service, and availability logic out of separate UI implementations. Platform-specific screens can differ, but they should not each grow their own duplicate business layer.
 
 ## Feature-Sliced Design
 
-Ask Frontend should use Feature-Sliced Design as the main architecture style. The goal is scalability and local reasoning: when a developer works on Smart Search, supplier inbox, response feed, service cabinet, catalog import UI, or chat, the related UI, state, API adapter, validation, tests, and helpers should stay close to that feature instead of being scattered across unrelated folders.
+Ask Frontend should use Feature-Sliced Design as the main architecture style. The goal is scalability and local reasoning: when a developer works on Smart Search, search results, request fallback, supplier inbox, response feed, service cabinet, catalog import UI, or chat, the related UI, state, API adapter, validation, tests, and helpers should stay close to that feature instead of being scattered across unrelated folders.
 
 Expected layers:
 
 - `app`: application bootstrap, providers, routing shell, global styles.
 - `pages`: route-level screen composition.
 - `widgets`: larger UI blocks composed from features and entities.
-- `features`: user actions and product flows such as creating a request, filtering responses, sending a supplier reply, uploading a catalog file, or editing a service schedule.
+- `features`: user actions and product flows such as searching, creating a fallback request, filtering responses, sending a supplier reply, uploading a catalog file, or editing a service schedule.
 - `entities`: frontend domain models such as request, supplier, response, catalog item, service, and schedule.
 - `shared`: UI primitives, utilities, API transport base, config, and platform adapters.
 
@@ -69,10 +71,13 @@ The website is planned primarily for establishments that provide services. Manag
 
 For product sellers, catalog data should support Excel and CSV workflows because many stores already keep product lists in those formats and should not recreate catalogs manually inside Ask.
 
+Search-first UX requires the frontend to prioritize known products/services before request creation. Request screens remain important, but they are fallback or confirmation flows, not the only customer entry point.
+
 ## What Frontend Must Not Own
 
 - Backend persistence, migrations, repository layers, or service layering.
 - Catalog import and normalization logic.
+- Search indexing or result ranking truth.
 - Provider integrations such as POS, CRM, inventory, fiscal, Telegram, WhatsApp, or scheduling APIs.
 - Automatic availability truth.
 - Payment processing assumptions for the early MVP.

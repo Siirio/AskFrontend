@@ -12,6 +12,6 @@ Frontend should not own catalog import, normalization, duplicate handling, or so
 - how supplier correction/import UI is represented if backend supports it;
 - what must stay hidden until backend provides a stable contract.
 
-Likely sources include Excel, MoySklad, POS, e-commerce exports, CRM, and manual entry.
+Likely sources include Excel, CSV, MoySklad, POS, e-commerce exports, CRM, and manual entry.
 
-Manual request routing must work before catalog is mature unless product direction explicitly changes.
+Catalog-backed search is now a core product path. Manual request routing remains the fallback for missing, stale, or uncertain data.

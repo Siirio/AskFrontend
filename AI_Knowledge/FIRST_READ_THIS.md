@@ -20,7 +20,7 @@ This is the first document to read when opening Ask with Codex or onboarding a d
 - Do not overwrite existing `AGENTS.md`, skill docs, or workflow files without reading them.
 - Do not copy local Codex configs, auth files, tokens, sqlite state, generated caches, plugin caches, runtime paths, or machine-specific setup into the repo.
 - Do not make old browser-staging behavior a product or frontend requirement.
-- Preserve the product direction: request routing now, catalog and integration depth over time, services later.
+- Preserve the product direction: local search first, known products/services before request creation, request fallback when exact data is missing, and catalog/service depth over time.
 - Use system analysis before coding catalog UX, service UX, schedules displayed in UI, integration-backed display, client state ownership, scaling assumptions, or API contract changes.
 
 ## If The Chat Is Interrupted

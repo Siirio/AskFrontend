@@ -1,6 +1,6 @@
 # Services Search Skill
 
-Use for service discovery UX, schedules shown in UI, appointment requests, windows, specialists, branches, booking screens, and provider availability display.
+Use for service discovery UX, service search, schedules shown in UI, appointment requests, windows, specialists, branches, booking screens, and provider availability display.
 
 Services are not products with a different label.
 
@@ -16,4 +16,4 @@ Analyze:
 - uncertainty and confirmation-needed states;
 - what must not be hardcoded for one city/provider type.
 
-If availability is not backed by a reliable source, model it as confirmation-needed rather than guaranteed.
+If availability is not backed by a reliable source, model it as confirmation-needed or fallback request rather than guaranteed.

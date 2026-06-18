@@ -1,20 +1,21 @@
 # Frontend Architecture Narrative
 
-Ask began as a practical request-routing idea: a customer asks for a product, Ask sends the request to relevant stores, and stores reply manually. That remains a valid MVP because it proves whether customers and suppliers get value before expensive integrations exist.
+Ask began as a practical request-routing idea, but the current product strategy is search-first. Ask is a local search platform where a customer first sees found products or services across city businesses.
 
-The deeper product insight is that request broadcasting alone is not enough. If Ask never learns how to work with supplier data, it stays a messenger-like tool. The stronger product is an availability platform: a system that can route manually at first, then gradually understand catalogs, branches, attributes, availability, services, schedules, and integrations.
+The deeper product insight is that request broadcasting alone is not enough. If Ask never learns how to work with supplier data, it stays a messenger-like tool. The stronger product is a local search and availability platform: a system that presents known products, services, businesses, branches, attributes, schedules, and availability confidence, then falls back to manual requests when data is missing or uncertain.
 
-## From Manual Routing To Availability Platform
+## From Request Routing To Search-First Platform
 
-The early flow is:
+The target flow is:
 
 ```text
-Customer request -> relevant suppliers -> manual supplier replies -> customer compares replies
+Customer search -> product/service/business results -> clear source and availability confidence
+  -> fallback request to suitable suppliers when exact data is missing
 ```
 
-That flow is useful because it reduces customer effort and gives suppliers demand. But it does not scale by itself. Suppliers should not manually answer every obvious availability question forever if they already have data somewhere else.
+Manual request routing remains useful because it handles missing catalogs, stale availability, uncertain services, and supplier confirmation. But it is no longer the only core flow. Suppliers should not manually answer every obvious availability question forever if they already have data somewhere else.
 
-For frontend, the next technical goal is not to own supplier data ingestion. It is to present Smart Search, supplier replies, catalog-backed hints, and uncertainty states honestly while backend/data systems mature.
+For frontend, the next technical goal is not to own supplier data ingestion. It is to present Smart Search, search results, catalog-backed hints, supplier replies, and uncertainty states honestly while backend/data systems mature.
 
 ## Catalog Is A System, Not A Table
 
@@ -22,11 +23,11 @@ Many suppliers may have data in Excel, MoySklad, POS systems, e-commerce exports
 
 Frontend may show catalog-backed search, category filters, import screens, mapping screens, or data-quality states only when backend/API contracts support them. It must not implement source-of-truth, normalization, duplicate detection, or availability calculation in UI state.
 
-Manual request routing must still work before catalog is mature. Catalog should improve routing and availability confidence over time, not block supplier onboarding.
+Catalog-backed search is a core product path. Manual request routing must still work for missing, stale, or uncertain data, but catalog-backed results should appear first when backend data exists.
 
 ## Smart Search
 
-Smart Search is the primary customer discovery path. It should not collapse into a rigid product picker. A customer may describe a need imprecisely. The system should gradually learn to connect the request with categories, products, attributes, aliases, supplier catalogs, and fallback manual outreach.
+Smart Search is the primary customer discovery path. It should not collapse into a rigid product picker. A customer may describe a need imprecisely. The system should connect the search intent with categories, products, services, attributes, aliases, supplier catalogs, and fallback manual outreach.
 
 When catalog confidence is low, Ask should route the request for confirmation rather than invent availability.
 
@@ -80,7 +81,7 @@ The future product is mobile-first. Native mobile apps may become the primary cl
 
 Frontend and backend can be separate repositories owned by different developers. The shared contract is product meaning plus stable APIs, not one old prototype implementation.
 
-Android, iOS, and any future website should use one AskBackend. They may differ in UI and platform behavior, but they should not duplicate heavy request, catalog, service, and availability logic separately. The shared client/API layer is the boundary between platform-specific design and backend communication.
+Android, iOS, and any future website should use one AskBackend. They may differ in UI and platform behavior, but they should not duplicate heavy search, request fallback, catalog, service, and availability logic separately. The shared client/API layer is the boundary between platform-specific design and backend communication.
 
 The mobile app has two sides: customer and seller/supplier. The website is planned mainly as a service-provider cabinet, because managing offerings, schedules, free windows, discounts, conditions, specialists, and branches is more comfortable on a larger workspace than inside a mobile app.
 
@@ -105,6 +106,6 @@ The architecture should be practical, not enterprise theater. But it must avoid 
 
 Ask must not invent facts.
 
-Manual replies can contain status, price, comment, branch address, contact actions, and explicit supplier notes. Exact stock quantity, delivery SLA, courier availability, automatic availability, service slots, and booking promises require supplier input or real integration data.
+Search results can show known products, services, businesses, prices, branches, and availability confidence only when the backend has a trustworthy source. Manual replies can contain status, price, comment, branch address, contact actions, and explicit supplier notes. Exact stock quantity, delivery SLA, courier availability, automatic availability, service slots, and booking promises require supplier input or real integration data.
 
 If the source is weak, Ask should say confirmation is needed.

@@ -1,5 +1,15 @@
 # Frontend AI Knowledge Changelog
 
+## 2026-06-18 - Search-First Strategy Actualization
+
+Updated the frontend strategy:
+
+- Ask Frontend now treats customer discovery as local search first.
+- The UI should show known products/services/businesses before request creation when backend data exists.
+- If exact data is missing, stale, or uncertain, the UI can guide the customer into a fallback request.
+- Catalog-backed search, result confidence, service discovery, and API-backed Excel/CSV import UX are core product directions.
+- Frontend still must not own backend source-of-truth, search indexing, ranking truth, catalog normalization, or availability facts.
+
 ## 2026-06-17 - Goal Actualization
 
 Updated the frontend product architecture idea:

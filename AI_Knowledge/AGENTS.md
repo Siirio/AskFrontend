@@ -4,11 +4,13 @@ These rules guide AI agents and developers working on Ask frontend.
 
 ## Core Product Rules
 
-- Ask is a request-routing and availability platform.
+- Ask is a local search platform for products and services across city businesses.
 - Ask is not only a Telegram or WhatsApp broadcasting tool.
 - Ask is not sport-nutrition-only.
-- The MVP can be manual: one customer request is routed to relevant suppliers, and suppliers respond manually.
-- Long-term product UX must support catalog-backed search, integrations when backend exposes them, automatic availability when justified, and service discovery.
+- The customer should first see found products/services when backend data supports it.
+- If a product or service is already in Ask data, the customer should immediately understand which business provides it or where it is available.
+- If exact data is missing, stale, or uncertain, the UI can guide the customer into a fallback request to suitable sellers or service providers.
+- Product UX must support catalog-backed search, search results, integrations when backend exposes them, automatic availability when justified, service discovery, and request fallback.
 - Do not invent inventory, logistics, schedule, delivery, or availability facts without explicit supplier input or real integration data.
 
 ## Development Rules
@@ -32,15 +34,16 @@ These rules guide AI agents and developers working on Ask frontend.
 - Frontend owns normal UI localization.
 - Backend returns stable machine-readable statuses and error codes.
 - Frontend must not own backend persistence, migrations, service layers, provider integrations, catalog ingestion, or automatic availability truth.
+- Frontend must not own search indexing or ranking truth.
 
 ## Catalog UX Rules
 
 - Smart Search is the main customer discovery path.
 - Categories scope/filter search; they must not replace Smart Search with a rigid product picker.
-- Early MVP must not imply Ask already knows supplier catalogs.
+- Search results should appear before request creation when backend data exists.
 - Catalog-backed suggestions must be visually honest about confidence and source.
 - Product catalog upload/import UX should account for Excel and CSV because sellers often already maintain product data in those formats.
-- Manual request routing must remain usable before catalog data is mature.
+- Manual request routing remains a fallback for missing, stale, or uncertain catalog/service data.
 
 ## Services UX Rules
 
@@ -71,6 +74,7 @@ These rules guide AI agents and developers working on Ask frontend.
 Politely flag risk before editing if a request would:
 
 - turn Ask into only a broadcast app;
+- turn search into a secondary feature behind request broadcasting;
 - hardcode one local market;
 - make old browser staging a product requirement;
 - invent unavailable data truth;
