@@ -1,4 +1,12 @@
-# Frontend AI Knowledge Changelog
+﻿# Ask Frontend AI Knowledge Changelog
+
+## 2026-06-19 - Documentation Structure Cleanup
+
+Moved first-session guidance into `AI_Knowledge/first_steps`, moved product UX architecture into `AI_Knowledge/product_ux`, copied the full UX/UI flow into `AI_Knowledge/product_ux/UX_UI_FULL_FLOW.md`, and added `AI_Knowledge/client_contracts/FRONTEND_BACKEND_CONTRACT.md` for frontend-facing backend contract expectations.
+
+Added root `AGENTS.md` as the short agent entrypoint and task router. Kept frontend rules intentionally lightweight because this repository does not yet define a real frontend stack or code structure.
+
+Moved Codex plugin and MCP expectations into `codex/CODEX_INFRASTRUCTURE.md` and removed old project-local skill, audit, origin, deprecated web-staging, and playbook docs that were not useful for new frontend programmers.
 
 ## 2026-06-18 - Search-First Strategy Actualization
 
@@ -16,49 +24,7 @@ Updated the frontend product architecture idea:
 
 - Android, iOS, and web should use one AskBackend.
 - Backend communication should live behind a shared design-independent client/API abstraction where possible.
-- Feature-Sliced Design is the required frontend architecture style.
+- Feature-Sliced Design is the intended frontend architecture style when real app code exists.
 - Platform UI can differ, but heavy request, catalog, service, and availability logic should not be duplicated separately in each UI.
 - Product catalog UX should account for Excel and CSV import flows backed by backend contracts.
 - Service-provider administration is expected to fit a web cabinet better than mobile-only screens for larger service data, schedules, discounts, conditions, specialists, and branches.
-
-## 2026-06-17 - Frontend Scope Cleanup
-
-Reduced the copied foundation to frontend-relevant AI knowledge.
-
-### Kept
-
-- `ARCHITECTURE_NARRATIVE.md`
-- `FIRST_READ_THIS.md`
-- `IMPLEMENTATION_PIPELINE.md`
-- `AGENTS.md`
-- `SELF_AWARE_ORIGIN.md`
-- `FOUNDATION_AUDIT.md`
-- `DEPRECATED_WEB_STAGING_NOTES.md`
-- `CHANGELOG_FOUNDATION.md`
-- `skills/README.md`
-- `skills/frontend-ask.md`
-- `skills/architecture-system-analysis.md`
-- `skills/ai-workflow-consistency.md`
-- `skills/catalog-integration.md`
-- `skills/services-search.md`
-
-### Removed
-
-- Backend Spring skill.
-- MCP/dashboard skill.
-- MCP and plugin setup docs.
-- Archive folder README.
-- AI_Knowledge-local `.gitignore`.
-
-### Adjusted
-
-- Reframed backend/catalog/services content as frontend UX and API-contract awareness.
-- Removed backend implementation ownership from frontend docs.
-- Kept product vision, data truth, Smart Search, supplier inbox, response feed, services UX, and AI workflow consistency.
-
-### Excluded
-
-- Local Codex configs and secrets.
-- Generated runtime state.
-- Machine-specific setup.
-- Backend persistence, migrations, service layering, repositories, provider adapters, and deployment infrastructure as frontend instructions.
