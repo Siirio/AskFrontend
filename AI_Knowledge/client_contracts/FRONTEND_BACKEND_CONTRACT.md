@@ -6,7 +6,7 @@ This document captures the frontend-facing contract expectations for Ask. Backen
 
 - Customer search is the primary entry point.
 - Category selection scopes Smart Search and must not replace it.
-- The frontend should show known products, services, and businesses before fallback request creation when backend data supports it.
+- The frontend should show known products and services before fallback request creation when backend data supports it; businesses appear as providers/context for those results.
 - The frontend should guide users into fallback requests when exact data is missing, stale, low-confidence, or confirmation-needed.
 - The customer raw query must be preserved across search, fallback request creation, status, and response views.
 

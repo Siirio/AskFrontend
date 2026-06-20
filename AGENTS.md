@@ -38,7 +38,7 @@ For later sessions, read only the documents relevant to the task, plus any file 
 - Smart Search is the primary customer discovery path.
 - Category selection scopes Smart Search; it must not become the primary product picker.
 - Customers must not be forced to manually choose one concrete SKU from a marketplace-style list in the primary flow.
-- Known products, services, and businesses should appear before fallback request creation when backend data supports it.
+- Known products and services should appear before fallback request creation when backend data supports it; businesses appear as providers/context for those results.
 - Fallback requests exist when data is missing, stale, low-confidence, or confirmation-needed.
 - Supplier users need an inbox/work queue, not a single request detail as the whole supplier experience.
 - Customer response feeds must support many replies through compact rows, filters, and expandable detail.

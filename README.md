@@ -9,7 +9,7 @@ The frontend should help customers search for what they need, see matching produ
 The frontend should support these product layers:
 
 1. Mobile-first Smart Search as the main discovery path.
-2. Search results for known products, services, and businesses.
+2. Search results for known products and services, with businesses shown as providers/context for those results.
 3. Product/service choice when services are introduced.
 4. Clear availability and confidence states based on backend data.
 5. Confirmation request creation when exact data is missing or stale.
