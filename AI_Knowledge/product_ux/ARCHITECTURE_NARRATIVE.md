@@ -2,14 +2,14 @@
 
 Ask began as a practical request-routing idea, but the current product strategy is search-first. Ask is a local search platform where a customer first sees found products or services across city businesses.
 
-The deeper product insight is that request broadcasting alone is not enough. If Ask never learns how to work with supplier data, it stays a messenger-like tool. The stronger product is a local search and availability platform: a system that presents known products, services, businesses, branches, attributes, schedules, and availability confidence, then falls back to manual requests when data is missing or uncertain.
+The deeper product insight is that request broadcasting alone is not enough. If Ask never learns how to work with supplier data, it stays a messenger-like tool. The stronger product is a local search and availability platform: a system that presents known products, services, provider businesses, branches, attributes, schedules, and availability confidence, then falls back to manual requests when data is missing or uncertain.
 
 ## From Request Routing To Search-First Platform
 
 The target flow is:
 
 ```text
-Customer search -> product/service/business results -> clear source and availability confidence
+Customer search -> product/service results -> provider business context -> clear source and availability confidence
   -> fallback request to suitable suppliers when exact data is missing
 ```
 
@@ -106,6 +106,6 @@ The architecture should be practical, not enterprise theater. But it must avoid 
 
 Ask must not invent facts.
 
-Search results can show known products, services, businesses, prices, branches, and availability confidence only when the backend has a trustworthy source. Manual replies can contain status, price, comment, branch address, contact actions, and explicit supplier notes. Exact stock quantity, delivery SLA, courier availability, automatic availability, service slots, and booking promises require supplier input or real integration data.
+Search results can show known products, services, provider businesses, prices, branches, and availability confidence only when the backend has a trustworthy source. Manual replies can contain status, price, comment, branch address, contact actions, and explicit supplier notes. Exact stock quantity, delivery SLA, courier availability, automatic availability, service slots, and booking promises require supplier input or real integration data.
 
 If the source is weak, Ask should say confirmation is needed.
