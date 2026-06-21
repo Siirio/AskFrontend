@@ -1,5 +1,17 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-06-21 - Auth and Staff Management Model Update
+
+Updated `EXPECTED_UX_UI_FLOW.md` and `FRONTEND_BACKEND_CONTRACT.md` to align with the refined backend auth and staff management model:
+
+- Replaced mock-based auth flow with three distinct entry points: customer self-registration, business owner self-registration, and staff activation (via unified login).
+- Added unified login (`/auth/login`) for all roles with `activationRequired` flag and password change flow.
+- Added staff management section (Business Cabinet section 24): staff creation by owner, staff card views before/after activation, temporary password visibility rules, password reset, staff status lifecycle.
+- Added invite code management as secondary path.
+- Updated supplier response statuses: product (HAS_ITEM, NO_ITEM, NEED_CLARIFICATION, HAS_ANALOG) and service (CAN_PROVIDE, CANNOT_PROVIDE, NEED_CLARIFICATION, SUGGEST_OTHER_TIME).
+- Added authority strings, error response format, and staff status/role tables to frontend-backend contract.
+- Updated non-negotiable rules (42 total): staff never self-register, activation session TTL 5 min, temp password hidden after activation.
+
 ## 2026-06-19 - Documentation Structure Cleanup
 
 Moved first-session guidance into `AI_Knowledge/first_steps`, moved product UX architecture into `AI_Knowledge/product_ux`, copied the full UX/UI flow into `AI_Knowledge/product_ux/UX_UI_FULL_FLOW.md`, and added `AI_Knowledge/client_contracts/FRONTEND_BACKEND_CONTRACT.md` for frontend-facing backend contract expectations.
