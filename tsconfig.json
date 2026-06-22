@@ -3,8 +3,9 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
-      "@/app/*": ["src/app/*"],
+      "@/core/*": ["src/core/*"],
       "@/pages/*": ["src/pages/*"],
       "@/widgets/*": ["src/widgets/*"],
       "@/features/*": ["src/features/*"],
