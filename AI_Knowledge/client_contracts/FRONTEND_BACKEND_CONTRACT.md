@@ -7,8 +7,25 @@ This document captures the frontend-facing contract expectations for Ask. Backen
 - Customer search is the primary entry point.
 - Category selection scopes Smart Search and must not replace it.
 - The frontend should show known products and services before fallback request creation when backend data supports it; businesses appear as providers/context for those results.
-- The frontend should guide users into fallback requests when exact data is missing, stale, low-confidence, or confirmation-needed.
+- Product/service search may automatically create an auto supplier check/request after submit when suitable business/branch candidates exist.
+- The frontend must not require the customer to manually press `Create request` as the main fallback path.
+- Businesses appear as provider/context inside search sessions, not as a standalone business search scope.
 - The customer raw query must be preserved across search, fallback request creation, status, and response views.
+- One submitted search session has one locked scope: `PRODUCT` or `SERVICE`. Changing scope after submit creates a new search session.
+
+## Search Session Result Tabs
+
+After a customer submits a search, the result screen is organized around the current search session.
+
+Product search tabs:
+
+- `FOUND`: catalog/search results, including exact products, similar products, and known analogs.
+- `SUPPLIER_CHECK`: suitable businesses/branches automatically selected by Ask for this raw query, dispatch status, and supplier responses.
+- `CHATS`: appears only when at least one real conversation exists for this search session.
+
+Service search uses the same model, but the second tab is service-provider oriented.
+
+The `CHATS` tab must not appear merely because an automatic supplier check was sent. Auto-generated supplier check is visible to the business as an incoming activity, but it is not visible to the customer as an outgoing chat message and must not create customer unread chat notifications.
 
 ## Entry Points
 
@@ -18,13 +35,13 @@ There are three distinct entry paths into the system. They are not three equal "
 |------|-----|-----|----------|
 | Customer registration | End-user searching | Self-registers | `POST /auth/customer/register` |
 | Business owner registration | Person creating a business | Self-registers | `POST /auth/business/register` |
-| Staff activation | Manager or operator | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
+| Staff activation | Staff | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
 
-Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth/manager/register`. Staff accounts are created by owners/managers inside the business cabinet.
+Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth/manager/register`. Staff accounts are created by owners inside the business cabinet.
 
 ## Unified Login
 
-`POST /api/v1/auth/login` accepts `{ email, password }` and works for ALL roles: customer, business owner, manager, operator.
+`POST /api/v1/auth/login` accepts `{ email, password }` and works for ALL roles: customer, business owner, business staff.
 
 Response `AuthSessionResponse` includes `activationRequired: boolean`. When `true`, the frontend must navigate to the password change screen (`POST /api/v1/auth/change-temporary-password`). The activation session TTL is 5 minutes.
 
@@ -73,10 +90,14 @@ The old statuses `AVAILABLE`, `UNAVAILABLE`, `NEEDS_CONFIRMATION`, and `ALTERNAT
 
 ## Staff Roles
 
-- `MANAGER`: full branch management access (staff, products, services).
-- `OPERATOR`: limited branch access.
+Business-facing roles are only:
 
-Staff endpoints (`/api/v1/businesses/{bId}/branches/{brId}/staff`, `/api/v1/businesses/{bId}/branches/{brId}/invites`) require `OWNER` or `MANAGER` authority.
+- `OWNER`: business-level owner. Can create branches, manage branch list, create/remove Staff accounts for branches, and enter any owned branch workspace.
+- `STAFF`: branch-level worker. Can use assigned branch workspace screens such as dashboard/activity, products, services, and other documented working sections. Cannot create branches or manage accounts.
+
+There is no `MANAGER` role and no `OPERATOR` role.
+
+Staff management endpoints require `OWNER` authority. Staff cannot create, update, disable, reset, or invite other Staff accounts.
 
 ## Authority Strings (in auth_session.authority)
 
@@ -84,8 +105,18 @@ Staff endpoints (`/api/v1/businesses/{bId}/branches/{brId}/staff`, `/api/v1/busi
 |------|-----------|
 | Customer | `ROLE_CUSTOMER` |
 | Business owner | `ROLE_BUSINESS_OWNER` |
-| Business manager | `ROLE_BUSINESS_MANAGER` |
-| Business operator | `ROLE_BUSINESS_OPERATOR` |
+| Business staff | `ROLE_BUSINESS_STAFF` |
+
+## Owner And Staff Routing
+
+After authentication:
+
+- `ROLE_BUSINESS_OWNER` opens the owner branch-management interface.
+- Owner can create branches, select a branch, and then enters the same working interface as Staff for that branch.
+- `ROLE_BUSINESS_STAFF` opens the assigned branch working interface directly.
+- Staff does not see branch creation, branch deletion, staff management, or business-level ownership screens.
+
+Frontend must not branch UI logic by `MANAGER` or `OPERATOR`.
 
 ## Error Response Format
 
@@ -120,7 +151,8 @@ API responses should support:
 - supplier reply attempts and limit state;
 - per-request and per-supplier chat messages;
 - notification counts and read states;
-- staff list with roles, statuses, and temporary password visibility;
+- staff list with Staff account statuses and temporary password visibility;
+- owner branch list and selected-branch context;
 - invite code list with usage counts and revocation state.
 
 ## UI Truth Rules
@@ -138,6 +170,9 @@ API responses should support:
 - Ask chat is scoped to one request and one supplier.
 - Customer chat must have a back path to the supplier response feed.
 - Supplier chat opens as its own sub-view.
+- Auto supplier check is not a customer-visible chat message.
+- A customer-visible chat is created or surfaced only after a real business message, a business clarification action, or a customer-initiated chat action.
+- Business Activity may show the auto-generated supplier check as one incoming item/message that requires response.
 - WhatsApp, Telegram, map links, and Ask chat are separate per-response actions.
 - Map action should not appear when branch address is unknown.
 - Browser prototypes may use web URLs; native clients may use deep links.
