@@ -1,3 +1,5 @@
+import '../../global.css';
+
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { RouterProvider, useNavigation } from '@/shared/lib/navigation';

@@ -1,5 +1,59 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-06-22 - Product Excel Import Implementation
+
+Full Product Excel Import flow implemented from scratch: upload, column mapping, preview, and approval. This is the first working feature of the Ask Frontend application.
+
+### Tech Stack Foundation
+
+- **zustand** added for state management (Product slice + Import slice).
+- React Context navigation with RouterProvider and useNavigation hook.
+- Shared UI components: Button (primary/secondary/danger variants), Modal, Toast, EmptyState.
+- Price and date formatting utilities in shared/lib/format.ts.
+
+### Product Import Flow
+
+- **ImportUploadStep**: File upload with hidden HTML input for web, demo dataset button, privacy warning, collapsible recommended column format guide.
+- **MappingStep**: Column-to-field mapping table with dropdown target field selector (NAME, CATEGORY_LABEL, DESCRIPTION, SKU, PRICE, TAGS, IGNORE, APPEND_TO_DESCRIPTION, CHARACTERISTIC).
+- **PreviewStep**: Preview table before approval with VALID/INVALID/WARNING statuses, error and warning lists, ignored/append/characteristic column summaries.
+- **ImportStepper**: Three-step indicator: Upload → Mapping → Preview.
+
+### Smart Column Name Recognition
+
+- 30+ column name variations across 6 target fields (NAME, CATEGORY_LABEL, DESCRIPTION, SKU, PRICE, TAGS).
+- Best-match algorithm: prefers longer pattern matches (e.g., "код товара" matches SKU over NAME because "код товара" is longer than "товар").
+- Supports Russian and English column names.
+- Unmatched columns default to IGNORE.
+
+### Real Excel File Upload
+
+- `xlsx` (SheetJS) library for browser-side Excel parsing.
+- Hidden `<input type="file">` for web; parsing happens in-memory via `file.arrayBuffer()`.
+- Supports `.xlsx` and `.xls` formats.
+
+### Privacy Warning And Import Guide
+
+- Privacy warning: users are reminded to only include customer-facing data, not internal business data (stock, suppliers, margins, purchase prices).
+- Collapsible recommended format guide: shows ideal column names with examples in Russian and English.
+
+### Product Dashboard
+
+- **BusinessProductsPage**: Product table with search across name, category, description, SKU, tags, and characteristics.
+- **ProductTable/ProductRow**: Product listing with enable/disable toggle, edit modal, delete action.
+- **ProductEditModal**: Edit product form with all fields.
+- Search excludes ignored columns — values not imported are not searchable.
+
+### NativeWind CSS Fix For Web
+
+- `nativewind/babel` must be a preset (not plugin) in babel.config.js.
+- `nativewind/preset` required in tailwind.config.js.
+- `global.css` with Tailwind directives must be imported in the app entry point (src/core/index.tsx) for NativeWind to inject CSS on web.
+- Added `src/types/css.d.ts` for TypeScript CSS module declaration.
+
+### Files Created (25 new files)
+
+src/app/store.ts, src/shared/ui/{Button,Modal,Toast,EmptyState}.tsx, src/shared/lib/{navigation,format}.tsx, src/entities/product/model/types.ts, src/entities/product/ui/{ProductTable,ProductRow,ProductEditModal}.tsx, src/features/product-import/model/{types,defaults,mappers}.ts, src/features/product-import/api/mock-api.ts, src/features/product-import/ui/{ImportStepper,ImportUploadStep,MappingStep,MappingFieldDropdown,PreviewStep,ProductSearchInput}.tsx, src/pages/{BusinessProductsPage,ProductImportPage}.tsx, src/types/css.d.ts
+
 ## 2026-06-22 - Role Simplification: Owner/Staff Only
 
 Removed MANAGER and OPERATOR roles from all frontend documentation. Business roles are now only OWNER and STAFF.

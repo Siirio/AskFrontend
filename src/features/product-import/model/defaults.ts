@@ -1,8 +1,83 @@
-import type { ImportMapping } from './types';
+import type { ImportMapping, TargetField } from './types';
 
 export const BRANCH_NAME = 'Mega Silk Way';
 export const BRANCH_ID = 'branch-1';
 export const BUSINESS_ID = 'biz-sports-1';
+
+const COLUMN_MATCHERS: { field: TargetField; patterns: string[] }[] = [
+  {
+    field: 'NAME',
+    patterns: [
+      'название', 'наименование', 'название товара', 'наименование товара',
+      'продукт', 'имя товара',
+      'name', 'product', 'title', 'product name', 'наименование продукта',
+    ],
+  },
+  {
+    field: 'CATEGORY_LABEL',
+    patterns: [
+      'категория', 'категория товара', 'группа', 'группа товара',
+      'тип товара', 'раздел', 'вид товара',
+      'category', 'group', 'type',
+    ],
+  },
+  {
+    field: 'DESCRIPTION',
+    patterns: [
+      'описание', 'описание товара', 'краткое описание',
+      'description', 'info',
+    ],
+  },
+  {
+    field: 'SKU',
+    patterns: [
+      'артикул', 'код товара', 'код', 'шк', 'штрихкод',
+      'sku', 'article', 'barcode', 'vendor code', 'арт',
+      'артикул/код', 'артикул код',
+    ],
+  },
+  {
+    field: 'PRICE',
+    patterns: [
+      'цена', 'цена продажи', 'розничная цена', 'розница',
+      'стоимость', 'прайс',
+      'price', 'cost', 'retail price',
+    ],
+  },
+  {
+    field: 'TAGS',
+    patterns: [
+      'теги', 'тэги', 'метки', 'ключевые слова',
+      'tags', 'labels', 'keywords', 'тэг',
+    ],
+  },
+];
+
+const normalize = (s: string): string =>
+  s.trim().toLowerCase().replace(/\s+/g, ' ');
+
+const matchField = (column: string): TargetField | null => {
+  const col = normalize(column);
+  let bestMatch: { field: TargetField; length: number } | null = null;
+
+  for (const matcher of COLUMN_MATCHERS) {
+    for (const pattern of matcher.patterns) {
+      if (col === pattern || col.includes(pattern) || pattern.includes(col)) {
+        if (!bestMatch || pattern.length > bestMatch.length) {
+          bestMatch = { field: matcher.field, length: pattern.length };
+        }
+      }
+    }
+  }
+
+  return bestMatch?.field ?? null;
+};
+
+export const getDefaultMappings = (columns: string[]): ImportMapping[] =>
+  columns.map((col) => ({
+    sourceColumn: col,
+    targetField: matchField(col) ?? 'IGNORE',
+  }));
 
 export const DEMO_COLUMNS = [
   'Название',
@@ -55,26 +130,6 @@ export const DEMO_SAMPLE_ROWS: Record<string, string>[] = [
     'Остаток': '25',
   },
 ];
-
-export const getDefaultMappings = (columns: string[]): ImportMapping[] =>
-  columns.map((col) => {
-    switch (col) {
-      case 'Название':
-        return { sourceColumn: col, targetField: 'NAME' };
-      case 'Категория':
-        return { sourceColumn: col, targetField: 'CATEGORY_LABEL' };
-      case 'Описание':
-        return { sourceColumn: col, targetField: 'DESCRIPTION' };
-      case 'Артикул':
-        return { sourceColumn: col, targetField: 'SKU' };
-      case 'Цена':
-        return { sourceColumn: col, targetField: 'PRICE' };
-      case 'Теги':
-        return { sourceColumn: col, targetField: 'TAGS' };
-      default:
-        return { sourceColumn: col, targetField: 'IGNORE' };
-    }
-  });
 
 const chars: Record<string, string> = {};
 

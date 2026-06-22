@@ -165,6 +165,80 @@ API responses should support:
 - Temporary password is shown to owner ONLY in create/response/reset-password API responses and only while staff status is `PENDING_ACTIVATION` or `PASSWORD_RESET_REQUIRED`. After activation, `tempPassword` is `null`.
 - Staff use the unified `/auth/login` — there is no separate staff login endpoint.
 
+## Product Excel Import
+
+Excel-импорт товаров: бекенд владеет парсингом Excel, auto-mapping, нормализацией, валидацией и созданием товаров. Фронтенд реализует UX Wizard (Upload → Mapping → Preview → Approve) и отправляет файл / mapping на бекенд. Фронтенд НЕ парсит Excel, НЕ выполняет auto-mapping, НЕ нормализует строки — это зона ответственности бекенда.
+
+### Production Backend (Implemented)
+
+Бекенд реализован на `feature/T7-test-excel-import`. Полная спецификация: `AskBackend/AI_Knowledge/backend_tasks/06_product_excel_import_endpoints.md`.
+
+### Import Flow
+
+1. **Upload** — фронтенд отправляет `.xlsx` файл (multipart/form-data). Бекенд парсит Excel, генерирует auto-mappings, сохраняет сырые строки, возвращает `UploadResponse` с `importId`, колонками, sample rows (до 3), suggested target fields с confidence, статус `MAPPING_REQUIRED`.
+2. **Mapping** — фронтенд отправляет `MappingRequest` (массив sourceColumn → targetField + characteristicName). Бекенд заменяет mapping'и, нормализует все строки, вычисляет статусы VALID/WARNING/INVALID, возвращает `PreviewResponse` со статусом `PREVIEW_READY`.
+3. **Preview** — GET для повторного получения preview без изменения mapping.
+4. **Approve** — бекенд создает `Product` + `ProductOffer` для текущего филиала для каждой валидной строки, обновляет `SearchDocument`, возвращает `ApproveResponse` со статусом `IMPORTED`.
+5. **Cancel** — бекенд помечает импорт как `CANCELLED`.
+
+### Endpoints
+
+Base: `/api/v1/business-admin/branches/{branchId}/product-imports`
+
+| Step | Method | URL | Request | Response |
+|------|--------|-----|---------|----------|
+| Upload | `POST` | `/product-imports` | MultipartFile `file` | `UploadResponse` |
+| Map | `POST` | `/product-imports/{importId}/mapping` | `MappingRequest` JSON | `PreviewResponse` |
+| Preview | `GET` | `/product-imports/{importId}/preview` | — | `PreviewResponse` |
+| Approve | `POST` | `/product-imports/{importId}/approve` | — | `ApproveResponse` |
+| Cancel | `POST` | `/product-imports/{importId}/cancel` | — | `CancelResponse` |
+
+### Key DTOs
+
+**UploadResponse**: `importId` (UUID), `originalFileName`, `status`, `totalRows`, `columns` (ColumnInfo[] with sourceColumn, suggestedTargetField, confidence), `sampleRows` (Map<String,String>[]).
+
+**MappingRequest**: `mappings` (MappingEntry[] with sourceColumn, targetField, characteristicName).
+
+**PreviewResponse**: `importId`, `status`, `totalRows`, `validRows`, `invalidRows`, `warningRows`, `mappings` (ColumnMappingInfo[]), `rows` (RowPreview[] with rowId, rowNumber, status, normalizedData, errors, warnings).
+
+**ApproveResponse**: `importId`, `status`, `productsCreated`, `offersCreated`, `rowsSkipped`.
+
+**CancelResponse**: `importId`, `status`.
+
+### Target Fields
+
+| Field | Назначение |
+|-------|-----------|
+| `NAME` | Название товара (обязательно) |
+| `CATEGORY_LABEL` | Категория (свободный текст) |
+| `DESCRIPTION` | Описание |
+| `SKU` | Артикул / код товара |
+| `PRICE` | Цена |
+| `TAGS` | Теги (через запятую) |
+| `IGNORE` | Пропустить колонку |
+| `APPEND_TO_DESCRIPTION` | Добавить значение в описание |
+| `CHARACTERISTIC` | Создать характеристику товара |
+
+### Import Statuses (CatalogImportStatus)
+
+`UPLOADED` → `MAPPING_REQUIRED` (после upload) → `PREVIEW_READY` (после mapping) → `IMPORTED` (после approve) или `CANCELLED` (после cancel).
+
+### Row Statuses (RawRowStatus)
+
+| Status | Meaning |
+|--------|---------|
+| `VALID` | Товар готов к импорту |
+| `INVALID` | Товар не будет импортирован (нет названия) |
+| `WARNING` | Товар будет импортирован с предупреждениями (нечисловая цена) |
+
+### Access
+
+Доступ: Owner бизнеса и Staff филиала (`isOwnerOrStaffOfBranch`).
+
+### Frontend Prototype Branch
+
+Ветка `feature/product-excel-import` в AskFrontend содержит UX-прототип с клиентским парсингом (через `xlsx`) и mock API. Этот код — reference для UX, но НЕ production логика. Production фронтенд должен вызывать реальные бекенд-endpoint'ы и не дублировать парсинг/mapping/нормализацию.
+
 ## Chat And Contact Actions
 
 - Ask chat is scoped to one request and one supplier.

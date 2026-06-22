@@ -36,10 +36,13 @@ export const ProductImportPage = ({ branchId, branchName }: Props) => {
 
   const [loadingState, setLoadingState] = useState(false);
 
-  const handleUseDemo = useCallback(async () => {
-    setLoadingState(true);
-    try {
-      const result = await mockParseExcel(DEMO_COLUMNS, DEMO_SAMPLE_ROWS, DEMO_SAMPLE_ROWS);
+  const setupImportSession = useCallback(
+    (columns: string[], rows: Record<string, string>[]) => {
+      const result: { columns: string[]; sampleRows: Record<string, string>[]; rawRows: Record<string, string>[] } = {
+        columns,
+        sampleRows: rows.slice(0, 3),
+        rawRows: rows,
+      };
       const defaultMappings = getDefaultMappings(result.columns);
 
       setImportSession({
@@ -51,10 +54,26 @@ export const ProductImportPage = ({ branchId, branchName }: Props) => {
       });
       setMappings(defaultMappings);
       setStep('mapping');
+    },
+    [branchId, branchName],
+  );
+
+  const handleFilePicked = useCallback(
+    (columns: string[], rows: Record<string, string>[]) => {
+      setupImportSession(columns, rows);
+    },
+    [setupImportSession],
+  );
+
+  const handleUseDemo = useCallback(async () => {
+    setLoadingState(true);
+    try {
+      await mockParseExcel(DEMO_COLUMNS, DEMO_SAMPLE_ROWS, DEMO_SAMPLE_ROWS);
+      setupImportSession(DEMO_COLUMNS, DEMO_SAMPLE_ROWS);
     } finally {
       setLoadingState(false);
     }
-  }, [branchId, branchName]);
+  }, [setupImportSession]);
 
   const handleUpdateMapping = useCallback(
     (index: number, mapping: ImportMapping) => {
@@ -131,6 +150,7 @@ export const ProductImportPage = ({ branchId, branchName }: Props) => {
           branchName={branchName}
           isLoading={loadingState}
           onUseDemoDataset={handleUseDemo}
+          onFilePicked={handleFilePicked}
         />
       ) : null}
 
