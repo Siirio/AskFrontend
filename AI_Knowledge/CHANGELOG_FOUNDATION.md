@@ -1,5 +1,30 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-06-22 - Role Simplification: Owner/Staff Only
+
+Removed MANAGER and OPERATOR roles from all frontend documentation. Business roles are now only OWNER and STAFF.
+
+- Owner manages businesses/branches and creates Staff. Staff works inside assigned branch workspace.
+- Staff management (EXPECTED_UX_UI_FLOW.md section 24): removed role picker; all staff created as STAFF.
+- Entry point table: Manager/Operator → Staff.
+- Unified login: removed manager/operator from role list.
+- Non-negotiable rules updated: Staff never self-register, created by Owner only.
+- Staff does not manage other accounts, branches, or business settings.
+- Authority table: only ROLE_BUSINESS_OWNER and ROLE_BUSINESS_STAFF.
+
+## 2026-06-22 - Automatic Supplier Check Search Flow
+
+Updated product search UX direction:
+
+- One submitted search query has one locked scope: `Товары` or `Услуги`.
+- Product result screen uses search-session tabs: `Найденное`, `Подходящие магазины`, `Чаты`.
+- `Найденное` contains exact catalog results, similar products, and known analogs.
+- `Подходящие магазины` contains automatically selected business/branch candidates, dispatch state, and supplier responses.
+- The customer no longer manually presses `Создать запрос` as the main fallback path.
+- Ask automatically sends a supplier check/request to suitable stores after search submit when candidates exist.
+- Auto-generated supplier check is visible to business as an incoming Activity/request item, but is not visible to the customer as an outgoing chat message.
+- `Чаты` appears only after a real business/customer conversation starts.
+
 ## 2026-06-21 - Auth and Staff Management Model Update
 
 Updated `EXPECTED_UX_UI_FLOW.md` and `FRONTEND_BACKEND_CONTRACT.md` to align with the refined backend auth and staff management model:

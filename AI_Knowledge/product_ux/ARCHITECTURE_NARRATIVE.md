@@ -9,11 +9,14 @@ The deeper product insight is that request broadcasting alone is not enough. If 
 The target flow is:
 
 ```text
-Customer search -> product/service results -> provider business context -> clear source and availability confidence
-  -> fallback request to suitable suppliers when exact data is missing
+Customer submits one scoped raw query
+  -> Ask opens one locked search session
+  -> Found tab shows catalog/search results
+  -> Supplier Check tab automatically checks suitable businesses
+  -> Chats tab appears only after real conversation starts
 ```
 
-Manual request routing remains useful because it handles missing catalogs, stale availability, uncertain services, and supplier confirmation. But it is no longer the only core flow. Suppliers should not manually answer every obvious availability question forever if they already have data somewhere else.
+Manual request routing should not feel like a separate customer action after search. For MVP, the main fallback path is automatic supplier check: when Ask has suitable supplier candidates, it sends the preserved raw query to them as a business-facing request/activity. The customer sees this as `Подходящие магазины`, not as an outgoing chat message.
 
 For frontend, the next technical goal is not to own supplier data ingestion. It is to present Smart Search, search results, catalog-backed hints, supplier replies, and uncertainty states honestly while backend/data systems mature.
 
