@@ -1,0 +1,284 @@
+﻿# Frontend Backend Contract
+
+This document captures the frontend-facing contract expectations for Ask. Backend implementation details belong in AskBackend; this repository tracks what the UI needs to render honestly.
+
+## Product Flow
+
+- Customer search is the primary entry point.
+- Category selection scopes Smart Search and must not replace it.
+- The frontend should show known products and services before fallback request creation when backend data supports it; businesses appear as providers/context for those results.
+- Product/service search may automatically create an auto supplier check/request after submit when suitable business/branch candidates exist.
+- The frontend must not require the customer to manually press `Create request` as the main fallback path.
+- Businesses appear as provider/context inside search sessions, not as a standalone business search scope.
+- The customer raw query must be preserved across search, fallback request creation, status, and response views.
+- One submitted search session has one locked scope: `PRODUCT` or `SERVICE`. Changing scope after submit creates a new search session.
+
+## Search Session Result Tabs
+
+After a customer submits a search, the result screen is organized around the current search session.
+
+Product search tabs:
+
+- `FOUND`: catalog/search results, including exact products, similar products, and known analogs.
+- `SUPPLIER_CHECK`: suitable businesses/branches automatically selected by Ask for this raw query, dispatch status, and supplier responses.
+- `CHATS`: appears only when at least one real conversation exists for this search session.
+
+Service search uses the same model, but the second tab is service-provider oriented.
+
+The `CHATS` tab must not appear merely because an automatic supplier check was sent. Auto-generated supplier check is visible to the business as an incoming activity, but it is not visible to the customer as an outgoing chat message and must not create customer unread chat notifications.
+
+## Entry Points
+
+There are three distinct entry paths into the system. They are not three equal "registrations":
+
+| Path | Who | How | Endpoint |
+|------|-----|-----|----------|
+| Customer registration | End-user searching | Self-registers | `POST /auth/customer/register` |
+| Business owner registration | Person creating a business | Self-registers | `POST /auth/business/register` |
+| Staff activation | Staff | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
+
+Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth/manager/register`. Staff accounts are created by owners inside the business cabinet.
+
+## Unified Login
+
+`POST /api/v1/auth/login` accepts `{ email, password }` and works for ALL roles: customer, business owner, business staff.
+
+Response `AuthSessionResponse` includes `activationRequired: boolean`. When `true`, the frontend must navigate to the password change screen (`POST /api/v1/auth/change-temporary-password`). The activation session TTL is 5 minutes.
+
+## Customer Request Statuses
+
+Frontend should expect stable machine-readable statuses and own visible localization.
+
+Lifecycle flow: `DRAFT` → `CREATED` → `DISPATCHING` → `SENT` → `PARTIALLY_RESPONDED` → `COMPLETED`
+
+- `DRAFT`: request is not ready for dispatch.
+- `CREATED`: request exists but is not being dispatched yet.
+- `DISPATCHING`: request is being sent to eligible suppliers.
+- `SENT`: request was sent and is waiting for replies.
+- `PARTIALLY_RESPONDED`: at least one supplier response exists.
+- `COMPLETED`: request lifecycle is complete.
+- `EXPIRED`: request TTL ended.
+- `CANCELLED`: request was cancelled.
+- `FAILED`: dispatch or lifecycle failed.
+
+`ROUTED`, `ANSWERED`, and `CLOSED` are no longer used.
+
+## Supplier Response Statuses
+
+### Product Request Responses
+
+- `HAS_ITEM`: business has the requested product or a sufficiently matching product.
+- `NO_ITEM`: business does not have it.
+- `NEED_CLARIFICATION`: business needs details.
+- `HAS_ANALOG`: business offers an analog.
+
+### Service Request Responses
+
+- `CAN_PROVIDE`: business can provide the service. When combined with `confirmedStartAt`/`confirmedEndAt`, creates a confirmed `booking` record and transitions to `CONFIRMED`. Without confirmed time, stays in `DISCUSSING`.
+- `CANNOT_PROVIDE`: business cannot provide it. Transitions to `CONFIRMATION_DECLINED`.
+- `NEED_CLARIFICATION`: business needs date, time, address, service type, or other details. Stays in `DISCUSSING`.
+- `SUGGEST_OTHER_TIME`: business proposes another time via `proposedStartAt`. Stays in `DISCUSSING`. Opens chat for discussion.
+
+### Service Request Time Fields
+
+Service requests track three levels of time:
+
+| Field | Set By | When | Meaning |
+|---|---|---|---|
+| `requestedStartAt` | Customer | Request creation | Desired time. Never changed by backend. |
+| `proposedStartAt` | Business | `SUGGEST_OTHER_TIME` | Counter-offer time. Updated on repeated proposals. |
+| `confirmedStartAt` | Business | `CAN_PROVIDE` | Finally agreed start time. Creates booking record. |
+| `confirmedEndAt` | Business | `CAN_PROVIDE` | Finally agreed end time. Creates booking record. |
+
+### ActivityDisplayStatus (DERIVED — never stored)
+
+The frontend Activity UI displays exactly ONE status per row. It is computed from `customerRequestStatus` + `supplierResponseStatus` + time fields:
+
+| ActivityDisplayStatus | Condition | What it means |
+|---|---|---|
+| `DISCUSSING` | All cases except the two below | Request is in discussion |
+| `CONFIRMED` | `CAN_PROVIDE` + `confirmedStartAt != null` | Time agreed, booking created |
+| `CONFIRMATION_DECLINED` | `CANNOT_PROVIDE` | Business declined |
+
+**Rules:**
+- `CAN_PROVIDE` without `confirmedStartAt` = `DISCUSSING` (business said "can do" but time not yet fixed).
+- `SUGGEST_OTHER_TIME` = always `DISCUSSING` (waiting for customer response in chat).
+- `NEED_CLARIFICATION` = always `DISCUSSING` (business asked a clarifying question).
+- Confirmation, change, or cancellation creates a **system event in conversation** — visible to both customer and business.
+
+Updating a business response updates the same row — it must not create duplicates.
+
+The old statuses `AVAILABLE`, `UNAVAILABLE`, `NEEDS_CONFIRMATION`, and `ALTERNATIVE_OFFERED` are no longer used.
+
+## Staff Statuses
+
+| Status | Display (Russian) | Can log in? | Temp password visible? |
+|--------|-------------------|-------------|------------------------|
+| `PENDING_ACTIVATION` | Ожидает активации | Limited (activation session) | Yes |
+| `ACTIVE` | Активен | Yes | No |
+| `PASSWORD_RESET_REQUIRED` | Требуется смена пароля | Limited (activation session) | Yes |
+| `DISABLED` | Заблокирован | No | No |
+
+## Staff Roles
+
+Business-facing roles are only:
+
+- `OWNER`: business-level owner. Can create branches, manage branch list, create/remove Staff accounts for branches, and enter any owned branch workspace.
+- `STAFF`: branch-level worker. Can use assigned branch workspace screens such as dashboard/activity, products, services, and other documented working sections. Cannot create branches or manage accounts.
+
+There is no `MANAGER` role and no `OPERATOR` role.
+
+Staff management endpoints require `OWNER` authority. Staff cannot create, update, disable, reset, or invite other Staff accounts.
+
+## Authority Strings (in auth_session.authority)
+
+| Role | Authority |
+|------|-----------|
+| Customer | `ROLE_CUSTOMER` |
+| Business owner | `ROLE_BUSINESS_OWNER` |
+| Business staff | `ROLE_BUSINESS_STAFF` |
+
+## Owner And Staff Routing
+
+After authentication:
+
+- `ROLE_BUSINESS_OWNER` opens the owner branch-management interface.
+- Owner can create branches, select a branch, and then enters the same working interface as Staff for that branch.
+- `ROLE_BUSINESS_STAFF` opens the assigned branch working interface directly.
+- Staff does not see branch creation, branch deletion, staff management, or business-level ownership screens.
+
+Frontend must not branch UI logic by `MANAGER` or `OPERATOR`.
+
+## Error Response Format
+
+All errors follow:
+
+```json
+{
+  "timestamp": "2026-06-21T10:30:00Z",
+  "errorCode": "INVALID_CREDENTIALS",
+  "message": "Неверный email или пароль",
+  "errors": null
+}
+```
+
+`ErrorResponse` fields: `timestamp` (datetime), `errorCode` (string), `message` (string), `errors` (array of `ErrorDetail` | null).
+
+`ErrorDetail` fields: `field` (string), `message` (string).
+
+HTTP status codes: 400 (validation), 401 (auth), 403 (forbidden), 404 (not found), 409 (conflict), 500 (internal), 502 (external service).
+
+## Frontend Data Needs
+
+API responses should support:
+
+- customer request history;
+- active request status and progress;
+- recipient count and response count;
+- response feed filters with counts;
+- compact response rows with supplier, status, price, distance, and product hint;
+- expanded response details with product image, supplier, product/service, price, comment, address, map action, and contacts;
+- supplier inbox sorted by unanswered or new requests;
+- supplier reply attempts and limit state;
+- per-request and per-supplier chat messages;
+- notification counts and read states;
+- staff list with Staff account statuses and temporary password visibility;
+- owner branch list and selected-branch context;
+- invite code list with usage counts and revocation state.
+
+## UI Truth Rules
+
+- Frontend owns localization and presentation, not data truth.
+- Backend returns stable statuses, ids, timestamps, source metadata, and machine-readable errors.
+- Manual replies may show status, price, comment, branch address, contact actions, map links, and explicit supplier notes.
+- Do not show exact stock quantity, courier availability, delivery SLA, guaranteed slots, or booking certainty unless supplier input or trusted integration data supports it.
+- Integration-backed facts should be visually distinguishable enough that users understand the source.
+- Temporary password is shown to owner ONLY in create/response/reset-password API responses and only while staff status is `PENDING_ACTIVATION` or `PASSWORD_RESET_REQUIRED`. After activation, `tempPassword` is `null`.
+- Staff use the unified `/auth/login` — there is no separate staff login endpoint.
+
+## Product Excel Import
+
+Excel-импорт товаров: бекенд владеет парсингом Excel, auto-mapping, нормализацией, валидацией и созданием товаров. Фронтенд реализует UX Wizard (Upload → Mapping → Preview → Approve) и отправляет файл / mapping на бекенд. Фронтенд НЕ парсит Excel, НЕ выполняет auto-mapping, НЕ нормализует строки — это зона ответственности бекенда.
+
+### Production Backend (Implemented)
+
+Бекенд реализован на `feature/T7-test-excel-import`. Полная спецификация: `AskBackend/AI_Knowledge/backend_tasks/06_product_excel_import_endpoints.md`.
+
+### Import Flow
+
+1. **Upload** — фронтенд отправляет `.xlsx` файл (multipart/form-data). Бекенд парсит Excel, генерирует auto-mappings, сохраняет сырые строки, возвращает `UploadResponse` с `importId`, колонками, sample rows (до 3), suggested target fields с confidence, статус `MAPPING_REQUIRED`.
+2. **Mapping** — фронтенд отправляет `MappingRequest` (массив sourceColumn → targetField + characteristicName). Бекенд заменяет mapping'и, нормализует все строки, вычисляет статусы VALID/WARNING/INVALID, возвращает `PreviewResponse` со статусом `PREVIEW_READY`.
+3. **Preview** — GET для повторного получения preview без изменения mapping.
+4. **Approve** — бекенд создает `Product` + `ProductOffer` для текущего филиала для каждой валидной строки, обновляет `SearchDocument`, возвращает `ApproveResponse` со статусом `IMPORTED`.
+5. **Cancel** — бекенд помечает импорт как `CANCELLED`.
+
+### Endpoints
+
+Base: `/api/v1/business-admin/branches/{branchId}/product-imports`
+
+| Step | Method | URL | Request | Response |
+|------|--------|-----|---------|----------|
+| Upload | `POST` | `/product-imports` | MultipartFile `file` | `UploadResponse` |
+| Map | `POST` | `/product-imports/{importId}/mapping` | `MappingRequest` JSON | `PreviewResponse` |
+| Preview | `GET` | `/product-imports/{importId}/preview` | — | `PreviewResponse` |
+| Approve | `POST` | `/product-imports/{importId}/approve` | — | `ApproveResponse` |
+| Cancel | `POST` | `/product-imports/{importId}/cancel` | — | `CancelResponse` |
+
+### Key DTOs
+
+**UploadResponse**: `importId` (UUID), `originalFileName`, `status`, `totalRows`, `columns` (ColumnInfo[] with sourceColumn, suggestedTargetField, confidence), `sampleRows` (Map<String,String>[]).
+
+**MappingRequest**: `mappings` (MappingEntry[] with sourceColumn, targetField, characteristicName).
+
+**PreviewResponse**: `importId`, `status`, `totalRows`, `validRows`, `invalidRows`, `warningRows`, `mappings` (ColumnMappingInfo[]), `rows` (RowPreview[] with rowId, rowNumber, status, normalizedData, errors, warnings).
+
+**ApproveResponse**: `importId`, `status`, `productsCreated`, `offersCreated`, `rowsSkipped`.
+
+**CancelResponse**: `importId`, `status`.
+
+### Target Fields
+
+| Field | Назначение |
+|-------|-----------|
+| `NAME` | Название товара (обязательно) |
+| `CATEGORY_LABEL` | Категория (свободный текст) |
+| `DESCRIPTION` | Описание |
+| `SKU` | Артикул / код товара |
+| `PRICE` | Цена |
+| `TAGS` | Теги (через запятую) |
+| `IGNORE` | Пропустить колонку |
+| `APPEND_TO_DESCRIPTION` | Добавить значение в описание |
+| `CHARACTERISTIC` | Создать характеристику товара |
+
+### Import Statuses (CatalogImportStatus)
+
+`UPLOADED` → `MAPPING_REQUIRED` (после upload) → `PREVIEW_READY` (после mapping) → `IMPORTED` (после approve) или `CANCELLED` (после cancel).
+
+### Row Statuses (RawRowStatus)
+
+| Status | Meaning |
+|--------|---------|
+| `VALID` | Товар готов к импорту |
+| `INVALID` | Товар не будет импортирован (нет названия) |
+| `WARNING` | Товар будет импортирован с предупреждениями (нечисловая цена) |
+
+### Access
+
+Доступ: Owner бизнеса и Staff филиала (`isOwnerOrStaffOfBranch`).
+
+### Frontend Prototype Branch
+
+Ветка `feature/product-excel-import` в AskFrontend содержит UX-прототип с клиентским парсингом (через `xlsx`) и mock API. Этот код — reference для UX, но НЕ production логика. Production фронтенд должен вызывать реальные бекенд-endpoint'ы и не дублировать парсинг/mapping/нормализацию.
+
+## Chat And Contact Actions
+
+- Ask chat is scoped to one request and one supplier.
+- Customer chat must have a back path to the supplier response feed.
+- Supplier chat opens as its own sub-view.
+- Auto supplier check is not a customer-visible chat message.
+- A customer-visible chat is created or surfaced only after a real business message, a business clarification action, or a customer-initiated chat action.
+- Business Activity may show the auto-generated supplier check as one incoming item/message that requires response.
+- WhatsApp, Telegram, map links, and Ask chat are separate per-response actions.
+- Map action should not appear when branch address is unknown.
+- Browser prototypes may use web URLs; native clients may use deep links.
+- For service requests, the chat is the primary channel for time negotiation. Confirmation, time change, or cancellation actions by the business create **system event messages** in the conversation — these are visible to both customer and business in the chat history.

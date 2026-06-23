@@ -36,23 +36,64 @@ When catalog confidence is low, Ask should route the request for confirmation ra
 
 ## Services Are A Separate Direction
 
-Ask should support services in the future. A user may choose whether they are looking for a product or a service.
+Services are a core product direction alongside products. A user chooses whether they are looking for a product or a service. The service model is fundmentally different from products — services involve time and capacity.
 
-Products are physical items. Services involve time and capacity. A service model may need:
+### Core Philosophy: Chat-First, Button-for-Fixation
 
-- service providers;
-- branches;
+Ask Services is **not a booking calendar** — it is **chat + structured fixation of a final agreement**. The primary communication channel is the regular Ask chat. Buttons/actions record the result of an agreement already reached in chat.
+
+### Three-Tier Service Maturity Model
+
+#### Level 1: MVP Request-to-Book (current)
+
+- Customer sends a request with desired time (`requestedStartAt`).
+- Time is **desired** — not a guaranteed slot.
+- Business confirms, declines, or continues discussion in chat.
+- No automatic guarantee of a free slot.
+
+#### Level 2: Minimal Confirmed Appointment Tracking (current)
+
+- After chat, business fixes the final **confirmedStartAt / confirmedEndAt**.
+- This creates a confirmed appointment record in the `booking` table.
+- The confirmed interval blocks future suggested time options for this service/branch (minimal overlap check).
+- This is NOT full CRM — no resources, masters, shifts, automatic slot availability.
+
+#### Level 3: Future Calendar System (NOT in current scope)
+
+- Masters, resources, employee schedules, overlaps, integrations, automatic slot availability.
+- **Nothing from this level is implemented now.**
+
+### Three-Level Time Model
+
+Service requests track three distinct time levels:
+
+- `requestedStartAt` — time the customer specified when creating the request (desired time). Never changed by backend.
+- `proposedStartAt` — time the business counter-offered via `SUGGEST_OTHER_TIME`. Can be updated on repeated proposals.
+- `confirmedStartAt` / `confirmedEndAt` — finally agreed time, fixed by the business via `CAN_PROVIDE`. Only this time creates a confirmed appointment.
+
+### ActivityDisplayStatus
+
+`ActivityDisplayStatus` is the **only** status visible in the Activity UI. It is **never stored** in the database — computed at runtime:
+
+| Status | Condition | Meaning |
+|---|---|---|
+| `DISCUSSING` | Default | In discussion. Actions: respond, confirm, decline, suggest other time. |
+| `CONFIRMED` | `CAN_PROVIDE` + `confirmedStartAt != null` | Time agreed. `booking` record created. |
+| `CONFIRMATION_DECLINED` | `CANNOT_PROVIDE` | Business declined. |
+
+### Future Directions
+
+A full service model may need:
+
+- service providers and branches;
 - specialists or resources;
-- schedules;
-- free windows;
-- durations;
-- price rules;
-- confirmation;
-- cancellation;
-- source of availability;
-- provider integrations.
+- schedules and free windows;
+- durations and price rules;
+- confirmation, cancellation, and rescheduling;
+- source of availability and provider integrations;
+- automatic slot availability.
 
-Services cannot be modeled as products with a different label. Before coding service search or booking, the team should write a system analysis covering source of truth, availability updates, integration options, MVP shortcuts, and scaling risks.
+Services cannot be modeled as products with a different label.
 
 ## Frontend Architecture Direction
 
