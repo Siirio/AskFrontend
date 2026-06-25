@@ -1,5 +1,71 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-06-25 — Session: Token storage fix, City/Category dropdowns, Profile editing, Branch management, Sidebar restructure
+
+### CRITICAL: Snake-case → camelCase conversion fix (was 403 on all authenticated endpoints)
+
+**Root cause:** Backend sends JSON with snake_case keys (`access_token`, `display_name`, `business_id`). Frontend TypeScript types and code use camelCase (`accessToken`, `displayName`, `businessId`). When `persistSession()` called `setStoredToken(session.accessToken)`, the value was `undefined` because the JSON property is `access_token`. `setStoredToken(undefined)` triggered `localStorage.removeItem()` — the JWT token was NEVER stored. All authenticated API requests had no `Authorization` header → Spring Security returned 403.
+
+**Fix:**
+- Added `transformKeys()` in `httpClient.ts` — recursively converts snake_case → camelCase on every `apiRequest()` response.
+- All direct `fetch()` calls in App.tsx now also apply `transformKeys()` on parsed JSON.
+- Import `transformKeys` from httpClient.ts for any new direct fetch calls.
+- API_BASE_URL default changed from `http://localhost:8080` to `http://localhost:9090` (matches backend local profile port).
+
+**How to verify:** After login/verify, check localStorage `"ask.accessToken"` — should contain the hex token string, not `null`/missing.
+
+### Sidebar Restructure (user feedback: "excel import must not be left side bar option")
+
+- **Removed from sidebar:** "Сотрудники" (Staff) and "Импорт" (Excel import) tabs.
+- **Excel import → button on Products page header** (right side of manage-header).
+- **Staff → accessed through Profile → Branches → click branch row** (not a sidebar tab).
+- Sidebar now has exactly 4 items: Активность / Товары / Услуги / Профиль.
+- BusinessTab type changed from `"activity" | "products" | "services" | "profile" | "staff" | "import"` to `"activity" | "products" | "services" | "profile"`.
+
+### City as dropdown (user feedback: city must be dropdown not free text)
+
+- City input replaced with API-fetched `<select>` dropdown everywhere:
+  - Auth screen (registration — branch city selection)
+  - Search page (city filter)
+  - Branch add form (BizProfilePage)
+- Uses `listCities()` from askClient → `GET /api/v1/cities`.
+- Removed `resolveCity()` free-text lookup function.
+
+### Categories as subcategory dropdowns (user feedback: no category pills on search)
+
+- Category pill buttons REMOVED from search page.
+- Categories now appear as dropdowns on:
+  - Products form — category `<select>` fetched from API (flattened tree).
+  - Services form — same pattern.
+- Uses `listCategories()` from askClient → `GET /api/v1/categories`.
+
+### Profile editing
+
+- **Client profile (ProfilePage):** Edit button → inline editing mode for displayName and email → Save calls `updateProfile()` → `POST /api/v1/auth/profile`.
+- **Business profile (BizProfilePage):** Same pattern — editable business name and email.
+- Roles display removed from regular user ProfilePage.
+
+### Branch management
+
+- **BizProfilePage:** Branch list fetched from API via `listBranches()` → `GET /api/v1/businesses/{businessId}/branches`.
+- Add branch modal with city dropdown, name, address, onlineOnly toggle.
+- Clickable branch rows → navigates to StaffPage for that branch (via `branchIdOverride` prop).
+- `createBranch()` and `updateBranch()` in askClient.
+
+### Bug discovered by testing: Verify response shows user as PENDING
+
+- `AuthProcessor.verifyCode()` fetches user DTO BEFORE calling `activateUser()`. The DTO has stale `PENDING` status in the verify response even though the user IS activated in DB. Cosmetic issue only — user is actually active, subsequent `currentSession()` reads fresh ACTIVE status from DB.
+
+### Error handling
+
+- Replaced ~10 hardcoded `showToast()` messages with `showToast(extractError(e))` throughout App.tsx.
+
+### Pending Frontend Work
+- Country dropdown + city cascade (country filters city list)
+- Excel import button visible when products table is empty (currently header only shows when products.length > 0)
+- Branch add form UI improvements
+- Import endpoints use direct fetch() — request bodies need snake_case conversion (currently send camelCase)
+
 ## 2026-06-22 - Product Excel Import Implementation
 
 Full Product Excel Import flow implemented from scratch: upload, column mapping, preview, and approval. This is the first working feature of the Ask Frontend application.
