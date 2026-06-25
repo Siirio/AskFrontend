@@ -1,6 +1,6 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
-## 2026-06-25 — Session: Token storage fix, City/Category dropdowns, Profile editing, Branch management, Sidebar restructure
+## 2026-06-25 — Session: Token storage fix, camelCase→snake_case request body fix, City/Category dropdowns, Profile editing, Branch management, Sidebar restructure
 
 ### CRITICAL: Snake-case → camelCase conversion fix (was 403 on all authenticated endpoints)
 
@@ -11,6 +11,29 @@
 - All direct `fetch()` calls in App.tsx now also apply `transformKeys()` on parsed JSON.
 - Import `transformKeys` from httpClient.ts for any new direct fetch calls.
 - API_BASE_URL default changed from `http://localhost:8080` to `http://localhost:9090` (matches backend local profile port).
+
+### CRITICAL: camelCase → snake_case request body conversion (was 400 on ALL POST/PATCH/PUT)
+
+**Root cause:** Jackson SNAKE_CASE naming strategy is **bidirectional** — it affects BOTH serialization (Java→JSON) AND deserialization (JSON→Java). Frontend was sending camelCase keys in request bodies (`businessName`, `cityId`, `displayName`, `onlineOnly`, `passwordConfirmation`). Jackson rejected these because it expects snake_case (`business_name`, `city_id`, `display_name`, `online_only`, `password_confirmation`). All POST/PATCH/PUT endpoints with request bodies returned 400 Bad Request.
+
+This silently broke:
+- Business registration (including the 400 the user reported when trying to register with city selected)
+- Profile update
+- Branch create/update
+- Product create/update
+- Service create/update
+- Staff create/update
+- Excel import column mapping
+
+Note: authClient.ts functions like `registerCustomer()`/`registerBusiness()` already used snake_case keys manually — these continued working (snake_case keys pass through `camelToSnakeKeys()` unchanged since they contain no uppercase).
+
+**Fix:**
+- Added `camelToSnakeKeys()` in `httpClient.ts` — recursively converts camelCase → snake_case on all outgoing request bodies.
+- Applied in `apiRequest()` before `JSON.stringify()` — covers all askClient and authClient calls automatically.
+- Exported `camelToSnakeKeys` for direct `fetch()` calls in App.tsx.
+- Applied to the Excel import mapping endpoint's direct `fetch()` call.
+
+**How to verify:** Register a business via frontend, then go to Profile → Add Branch → fill form with city selected → Create. Should succeed with 201 (or 200) instead of 400.
 
 **How to verify:** After login/verify, check localStorage `"ask.accessToken"` — should contain the hex token string, not `null`/missing.
 

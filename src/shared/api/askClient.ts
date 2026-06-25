@@ -7,8 +7,9 @@ import type {
   SearchResultDto, StaffDto, SupplierTaskDetailDto, SupplierTaskDto
 } from "./dto";
 
-export async function searchAsk(query: string, scope: "all" | "product" | "service") {
+export async function searchAsk(query: string, scope: "all" | "product" | "service", category?: string) {
   const params = new URLSearchParams({ q: query, scope });
+  if (category) params.set("category", category);
   const dtos = await apiRequest<SearchResultDto[]>(`/api/v1/search?${params.toString()}`);
   return dtos.map(mapSearchResult);
 }

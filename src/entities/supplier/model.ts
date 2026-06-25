@@ -3,6 +3,7 @@ export type SupplierTask = {
   query: string;
   customerArea: string;
   category: string;
+  ageMinutes: number;
   ageLabel: string;
   confidenceLabel: string;
   status: "new" | "needs_reply" | "answered";

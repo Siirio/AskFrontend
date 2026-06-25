@@ -17,6 +17,23 @@ export function transformKeys(obj: unknown): unknown {
   return obj;
 }
 
+function camelToSnake(key: string): string {
+  return key.replace(/([A-Z])/g, (_, c) => "_" + c.toLowerCase());
+}
+
+export function camelToSnakeKeys(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(camelToSnakeKeys);
+  if (typeof obj === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      result[camelToSnake(key)] = camelToSnakeKeys(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
 const TOKEN_STORAGE_KEY = "ask.accessToken";
 
 export function getStoredToken(): string | null {
@@ -59,7 +76,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: options.body ? JSON.stringify(camelToSnakeKeys(options.body)) : undefined,
   });
 
   if (!response.ok) {
