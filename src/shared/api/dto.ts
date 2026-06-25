@@ -84,7 +84,8 @@ export type BusinessProductDto = {
   productId: string;
   productOfferId: string;
   branchId: string;
-  categoryId: string;
+  categoryId: string | null;
+  categoryLabel: string | null;
   name: string;
   description: string;
   sku: string;
@@ -106,7 +107,8 @@ export type BusinessServiceDto = {
   serviceOfferingId: string;
   serviceBranchOfferId: string;
   branchId: string;
-  categoryId: string;
+  categoryId: string | null;
+  categoryLabel: string | null;
   name: string;
   description: string;
   basePrice: number;

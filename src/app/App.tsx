@@ -2,12 +2,12 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Search, History, UserRound, ShoppingBag, Building2, LogOut, Phone, MapPin,
   MessageCircle, Send, ShieldCheck, Clock, FileSpreadsheet, Plus, Settings2,
-  Inbox, Bell, Copy, Check, X, Upload, ArrowRight, ChevronLeft,
+  Inbox, Bell, Copy, Check, X, Upload, ArrowRight, ChevronLeft, ChevronDown,
   Package, Scissors, Users, Store, BarChart3, Home, Star, RefreshCw
 } from "lucide-react";
 import { loginWithPassword, logout as clearSession, registerBusiness, registerCustomer, updateProfile, verifyCode } from "../shared/api/authClient";
 import type { AuthChallenge } from "../shared/api/authClient";
-import { ApiError, API_BASE_URL, transformKeys } from "../shared/api/httpClient";
+import { ApiError, API_BASE_URL, transformKeys, camelToSnakeKeys } from "../shared/api/httpClient";
 import { searchAsk, createFallbackRequest, getSupplierTasks, getCustomerHistory, getCustomerRequestDetail, getSupplierTaskDetail, respondToTask, listProducts, createProduct, updateProduct, deleteProduct, listServices, createService, updateService, listStaff, createStaff, resetStaffPassword, updateStaff, listCities, listCategories, listBranches, createBranch } from "../shared/api/askClient";
 import type { SearchResult } from "../entities/search-result/model";
 import type { CustomerRequest } from "../entities/request/model";
@@ -20,17 +20,17 @@ type ClientTab = "search" | "history" | "profile";
 type ResultTab = "found" | "suppliers" | "chats";
 type BusinessTab = "activity" | "products" | "services" | "profile";
 type StaffStatus = "PENDING_ACTIVATION" | "ACTIVE" | "PASSWORD_RESET_REQUIRED" | "DISABLED";
-type ImportStep = "upload" | "mapping" | "preview" | "approved";
+type ImportStep = "upload" | "mapping" | "preview";
 
 type UserRole = "customer" | "business";
 type AuthMode = "login" | "register";
 
 interface BusinessProduct {
-  id: string; productOfferId: string; name: string; category: string; sku: string; price: string; enabled: boolean; source: string;
+  id: string; productOfferId: string; name: string; categoryId: string; category: string; sku: string; price: string; enabled: boolean; source: string;
 }
 
 interface BusinessService {
-  id: string; serviceBranchOfferId: string; name: string; category: string; price: string; duration: string; active: boolean; schedule: string;
+  id: string; serviceBranchOfferId: string; name: string; categoryId: string; category: string; price: string; duration: string; active: boolean; schedule: string;
 }
 
 interface StaffMember {
@@ -53,29 +53,107 @@ interface ChatThread {
 const staffStatusRu: Record<StaffStatus, string> = { PENDING_ACTIVATION: "Ожидает активации", ACTIVE: "Активен", PASSWORD_RESET_REQUIRED: "Требуется смена пароля", DISABLED: "Заблокирован" };
 const staffStatusClass: Record<StaffStatus, string> = { PENDING_ACTIVATION: "staff-pending", ACTIVE: "staff-active", PASSWORD_RESET_REQUIRED: "staff-reset", DISABLED: "staff-disabled" };
 
-const initialSuppliers: SupplierCheck[] = [
-  { id: "s1", business: "Oldschool Market", status: "HAS_ANALOG", statusLabel: "Есть аналог", price: "38 000 ₸", hint: "Кожаная куртка 90s", comment: "Можем показать похожую модель.", address: "ул. Панфилова 22", distance: "800 м", repliedAt: "10:24", hasChat: true, expanded: false },
-  { id: "s2", business: "Kaspi POS Store", status: "HAS_ITEM", statusLabel: "Есть в наличии", price: "99 000 ₸", hint: "Mercury MPRINT G80", comment: "Есть в магазине на Абая.", address: "ул. Абая 45", distance: "350 м", repliedAt: "10:30", hasChat: false, expanded: false },
-  { id: "s3", business: "Vintage Room", status: "SENT", statusLabel: "Отправлено", price: "", hint: "Ждем ответ", comment: "Автоматическая проверка отправлена.", address: "пр. Республика 10", distance: "1.8 км", repliedAt: "ожидаем", hasChat: false, expanded: false },
-  { id: "s4", business: "Drop Archive", status: "NEED_CLARIFICATION", statusLabel: "Нужно уточнение", price: "", hint: "Нужен размер", comment: "Напишите размер и материал.", address: "ул. Тауелсиздик 3", distance: "3.1 км", repliedAt: "10:38", hasChat: true, expanded: false },
-];
+const initialSuppliers: SupplierCheck[] = [];
 
-const initialMessages: ChatMessage[] = [
-  { id: "m1", role: "system", text: "Автоматическая проверка. Клиентское сообщение не создано." },
-  { id: "m2", role: "business", text: "Здравствуйте. Есть аналог, можем показать фото." },
-  { id: "m3", role: "customer", text: "Подойдет, если размер M и натуральная кожа." },
-];
+const initialMessages: ChatMessage[] = [];
 
-const initialChatThreads: ChatThread[] = [
-  { id: "ct1", with: "Oldschool Market", context: "Кожаная куртка 90s", lastMessage: "Подойдет, если размер M", time: "10:42", unread: 1 },
-  { id: "ct2", with: "Barber Point", context: "Мужская стрижка", lastMessage: "Завтра в 18:00 подходит", time: "09:15", unread: 0 },
-  { id: "ct3", with: "Drop Archive", context: "Нужен размер и материал", lastMessage: "Напишите детали", time: "вчера", unread: 0 },
-];
+const initialChatThreads: ChatThread[] = [];
 
 /* ── Helpers ── */
 function extractError(error: unknown): string {
   if (error instanceof ApiError) return error.message || `Ошибка ${error.status}`;
   return "Не удалось выполнить запрос. Проверьте соединение.";
+}
+
+type FilterKind = "text" | "number" | "date" | "boolean";
+type FilterMode = "contains" | "eq" | "lt" | "gt";
+type DashboardFilter = { field: string; mode: FilterMode; value: string };
+type DashboardColumn<T> = { field: keyof T & string; label: string; kind: FilterKind; value: (row: T) => unknown };
+
+function DashboardFilters<T>({ columns, filters, onChange }: { columns: DashboardColumn<T>[]; filters: DashboardFilter[]; onChange: (filters: DashboardFilter[]) => void }) {
+  function setFilter(index: number, patch: Partial<DashboardFilter>) {
+    onChange(filters.map((f, i) => i === index ? { ...f, ...patch } : f));
+  }
+  function addFilter() {
+    const column = columns[0];
+    onChange([...filters, { field: column.field, mode: defaultFilterMode(column.kind), value: "" }]);
+  }
+  function removeFilter(index: number) {
+    onChange(filters.filter((_, i) => i !== index));
+  }
+  return (
+    <div className="dashboard-filters">
+      {filters.map((filter, index) => {
+        const column = columns.find(c => c.field === filter.field) || columns[0];
+        return (
+          <div className="dashboard-filter-row" key={`${filter.field}-${index}`}>
+            <select value={filter.field} onChange={e => {
+              const nextColumn = columns.find(c => c.field === e.target.value) || columns[0];
+              setFilter(index, { field: nextColumn.field, mode: defaultFilterMode(nextColumn.kind), value: "" });
+            }}>
+              {columns.map(c => <option key={c.field} value={c.field}>{c.label}</option>)}
+            </select>
+            <select value={filter.mode} onChange={e => setFilter(index, { mode: e.target.value as FilterMode })}>
+              {filterModes(column.kind).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+            {column.kind === "boolean" ? (
+              <select value={filter.value} onChange={e => setFilter(index, { value: e.target.value })}>
+                <option value="">Любое</option>
+                <option value="true">Да</option>
+                <option value="false">Нет</option>
+              </select>
+            ) : (
+              <input type={column.kind === "date" ? "date" : column.kind === "number" ? "number" : "text"} value={filter.value} onChange={e => setFilter(index, { value: e.target.value })} />
+            )}
+            <button className="btn-ghost" onClick={() => removeFilter(index)}><X size={14} /></button>
+          </div>
+        );
+      })}
+      <button className="btn-outline" onClick={addFilter}><Plus size={16} />Фильтр</button>
+    </div>
+  );
+}
+
+function defaultFilterMode(kind: FilterKind): FilterMode {
+  if (kind === "number" || kind === "date") return "eq";
+  return "contains";
+}
+
+function filterModes(kind: FilterKind): Array<{ value: FilterMode; label: string }> {
+  if (kind === "number") return [{ value: "eq", label: "равно" }, { value: "lt", label: "меньше" }, { value: "gt", label: "больше" }];
+  if (kind === "date") return [{ value: "eq", label: "в день" }, { value: "lt", label: "раньше" }, { value: "gt", label: "позже" }];
+  if (kind === "boolean") return [{ value: "eq", label: "равно" }];
+  return [{ value: "contains", label: "содержит" }];
+}
+
+function applyDashboardFilters<T>(rows: T[], columns: DashboardColumn<T>[], filters: DashboardFilter[]): T[] {
+  return rows.filter(row => filters.every(filter => {
+    if (!filter.value) return true;
+    const column = columns.find(c => c.field === filter.field);
+    if (!column) return true;
+    return matchesFilter(column.value(row), filter.value, filter.mode, column.kind);
+  }));
+}
+
+function matchesFilter(raw: unknown, expected: string, mode: FilterMode, kind: FilterKind): boolean {
+  if (kind === "number") {
+    const left = Number(String(raw ?? "").replace(/[^0-9.-]/g, ""));
+    const right = Number(expected);
+    if (Number.isNaN(left) || Number.isNaN(right)) return false;
+    if (mode === "lt") return left < right;
+    if (mode === "gt") return left > right;
+    return left === right;
+  }
+  if (kind === "date") {
+    const left = new Date(String(raw ?? "")).getTime();
+    const right = new Date(expected).getTime();
+    if (Number.isNaN(left) || Number.isNaN(right)) return false;
+    if (mode === "lt") return left < right;
+    if (mode === "gt") return left > right;
+    return new Date(left).toDateString() === new Date(right).toDateString();
+  }
+  if (kind === "boolean") return String(Boolean(raw)) === expected;
+  return String(raw ?? "").toLowerCase().includes(expected.toLowerCase());
 }
 
 /* ── Main App ── */
@@ -150,6 +228,11 @@ function AuthScreen({ onLogin, onToast }: { onLogin: (s: any, r: UserRole) => vo
     try {
       const s = await loginWithPassword(email, password);
       const isBiz = s.role?.startsWith("ROLE_BUSINESS");
+      if ((selectedRole === "business") !== isBiz) {
+        setError(selectedRole === "business" ? "Такого продавца не существует" : "Такого пользователя не существует");
+        setLoading(false);
+        return;
+      }
       if (s.activationRequired) { onToast("Требуется активация аккаунта. Проверьте лог сервера."); setLoading(false); return; }
       let biz = s.business;
       if (isBiz && !biz) {
@@ -278,12 +361,16 @@ function BottomTabbar({ tab, onTabChange }: { tab: ClientTab; onTabChange: (t: C
 
 /* ── Search Page ── */
 function SearchPage({ showToast }: { showToast: (m: string) => void }) {
-  const [query, setQuery] = useState("зимние шины R16");
+  const [query, setQuery] = useState("");
   const [cityId, setCityId] = useState("");
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [scope, setScope] = useState<"all" | "product" | "service">("all");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [openCategoryScope, setOpenCategoryScope] = useState<"product" | "service" | null>(null);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [resultTab, setResultTab] = useState<ResultTab>("found");
   const [suppliers, setSuppliers] = useState<SupplierCheck[]>(initialSuppliers);
   const [chats] = useState<ChatThread[]>(initialChatThreads);
@@ -295,11 +382,40 @@ function SearchPage({ showToast }: { showToast: (m: string) => void }) {
 
   useEffect(() => {
     listCities().then(setCities).catch(() => {});
+    listCategories().then(cats => {
+      const flat: Array<{ id: string; name: string }> = [];
+      function walk(list: Array<{ id: string; name: string; children?: Array<{ id: string; name: string }> }>) {
+        for (const c of list) {
+          flat.push({ id: c.id, name: c.name });
+          if (c.children) walk(c.children);
+        }
+      }
+      walk(cats);
+      setCategories(flat);
+    }).catch(() => {});
   }, []);
 
   async function doSearch() {
     setLoading(true);
-    try { const r = await searchAsk(query, scope); setResults(r); setResultTab("found"); } catch { setResults([]); } finally { setLoading(false); }
+    setSearched(true);
+    try { const r = await searchAsk(query, scope, selectedCategory); setResults(r); setResultTab("found"); } catch { setResults([]); } finally { setLoading(false); }
+  }
+
+  function selectScope(nextScope: "all" | "product" | "service") {
+    setScope(nextScope);
+    setSelectedCategory("");
+    setOpenCategoryScope(null);
+  }
+
+  function toggleCategory(nextScope: "product" | "service") {
+    setScope(nextScope);
+    setOpenCategoryScope(openCategoryScope === nextScope ? null : nextScope);
+  }
+
+  function selectCategory(name: string, nextScope: "product" | "service") {
+    setScope(nextScope);
+    setSelectedCategory(name);
+    setOpenCategoryScope(null);
   }
 
   async function doFallback(s: "product" | "service") {
@@ -328,7 +444,7 @@ function SearchPage({ showToast }: { showToast: (m: string) => void }) {
             <h1>Найдите товар, услугу или поставщика</h1>
           </div>
           <label className="city-select"><span>Город</span>
-            <select value={cityId} onChange={e => setCityId(e.target.value)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 14, minWidth: 160 }}>
+            <select value={cityId} onChange={e => setCityId(e.target.value)}>
               <option value="">Выберите город</option>
               {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -339,32 +455,38 @@ function SearchPage({ showToast }: { showToast: (m: string) => void }) {
           <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") doSearch(); }} placeholder="Что ищете? Например: зимние шины R16" />
           <button className="btn-primary" onClick={doSearch} disabled={loading}>{loading ? "Поиск..." : "Найти"}</button>
         </div>
-        <div className="segmented">
-          {[["all","Все"],["product","Товары"],["service","Услуги"]].map(([v,l]) => (
-            <button key={v} className={scope === v ? "active" : ""} onClick={() => setScope(v as any)}>{l}</button>
+        <div className="segmented search-scope-control">
+          {(["product", "service"] as const).map(v => (
+            <div className="scope-menu" key={v}>
+              <button className={scope === v ? "active" : ""} onClick={() => selectScope(v)}>{v === "product" ? "Товары" : "Услуги"}</button>
+              <button className={`scope-arrow ${openCategoryScope === v ? "active" : ""}`} aria-label="Категории" onClick={() => toggleCategory(v)}><ChevronDown size={16} /></button>
+              {openCategoryScope === v && (
+                <div className="scope-dropdown">
+                  <button onClick={() => selectCategory("", v)}>Все категории</button>
+                  {categories.map(c => <button key={c.id} onClick={() => selectCategory(c.name, v)}>{c.name}</button>)}
+                </div>
+              )}
+            </div>
           ))}
+          <button className={scope === "all" ? "active" : ""} onClick={() => selectScope("all")}>По обеим</button>
+          {selectedCategory && <span className="scope-selected">{selectedCategory}</span>}
         </div>
       </section>
 
       {loading && <div className="empty-state">Ищем по товарам, услугам и профилям поставщиков...</div>}
 
-      {!loading && (results.length > 0 || true) && (
+      {!loading && searched && (
         <>
           <div className="result-tabs">
             <button className={resultTab === "found" ? "active" : ""} onClick={() => setResultTab("found")}>Найденное<span className="tab-badge">{results.length}</span></button>
-            <button className={resultTab === "suppliers" ? "active" : ""} onClick={() => setResultTab("suppliers")}>Подходящие магазины<span className="tab-badge">{suppliers.length}</span></button>
-            <button className={resultTab === "chats" ? "active" : ""} onClick={() => setResultTab("chats")}>Чаты<span className="tab-badge">{chats.length}</span></button>
+            {(request || suppliers.length > 0) && <button className={resultTab === "suppliers" ? "active" : ""} onClick={() => setResultTab("suppliers")}>Подходящие магазины<span className="tab-badge">{suppliers.length}</span></button>}
+            {chats.length > 0 && <button className={resultTab === "chats" ? "active" : ""} onClick={() => setResultTab("chats")}>Чаты<span className="tab-badge">{chats.length}</span></button>}
           </div>
 
           {resultTab === "found" && (
             <>
               {results.length === 0 ? (
-                <div className="empty-state"><Search size={32} /><p>Точных совпадений нет. Отправьте запрос поставщикам для ручного подтверждения.</p>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn-primary" onClick={() => doFallback("product")}><Send size={16} />Запросить товар</button>
-                    <button className="btn-outline" onClick={() => doFallback("service")}><ShieldCheck size={16} />Запросить услугу</button>
-                  </div>
-                </div>
+                <div className="empty-state"><Search size={32} /><p>Точных совпадений нет.</p></div>
               ) : (
                 <div className="result-grid">
                   {results.map(r => <ResultCard key={r.id} result={r} />)}
@@ -621,7 +743,7 @@ function BusinessShell({ session, onLogout, showToast }: { session: any; onLogou
 
   return (
     <div className="business-shell">
-      <BusinessSidebar tab={tab} onTabChange={setTab} bizName={bizName} branchName={branchName} onLogout={onLogout} />
+      <BusinessSidebar tab={tab} onTabChange={(t) => { setTab(t); setShowImport(false); }} bizName={bizName} branchName={branchName} onLogout={onLogout} />
       <div className="business-content">
         <MobileBizHeader bizName={bizName} branchName={branchName} tab={tab} onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} onLogout={onLogout} />
         {mobileMenuOpen && <MobileBizMenu tab={tab} onTabChange={(t) => { setTab(t); setMobileMenuOpen(false); }} onLogout={onLogout} />}
@@ -688,8 +810,17 @@ function ActivityPage({ session, showToast }: { session: any; showToast: (m: str
   const [chatLoading, setChatLoading] = useState(false);
   const [chatInp, setChatInp] = useState("");
   const [sending, setSending] = useState(false);
+  const [filters, setFilters] = useState<DashboardFilter[]>([]);
 
   const branchId = session.branchId;
+  const columns: DashboardColumn<SupplierTask>[] = [
+    { field: "query", label: "Запрос", kind: "text", value: row => row.query },
+    { field: "customerArea", label: "Город", kind: "text", value: row => row.customerArea },
+    { field: "category", label: "Категория", kind: "text", value: row => row.category },
+    { field: "ageMinutes", label: "Возраст, мин", kind: "number", value: row => row.ageMinutes },
+    { field: "status", label: "Статус", kind: "text", value: row => row.status },
+  ];
+  const visibleTasks = useMemo(() => applyDashboardFilters(tasks as SupplierTask[], columns, filters), [tasks, filters]);
 
   useEffect(() => {
     if (!branchId) { setLoading(false); return; }
@@ -730,20 +861,20 @@ function ActivityPage({ session, showToast }: { session: any; showToast: (m: str
   return (
     <div>
       <div className="manage-header"><h2>Активность</h2><span style={{ color: "var(--muted)", fontSize: 14 }}>{tasks.length} запроса</span></div>
+      <DashboardFilters columns={columns} filters={filters} onChange={setFilters} />
       {loading && <div className="empty-state"><RefreshCw size={24} className="spin" /><p>Загрузка...</p></div>}
       {!loading && (
         <div style={{ overflowX: "auto" }}>
           <table className="activity-table">
-            <thead><tr><th>Тип</th><th>Запрос</th><th>Город</th><th>Категория</th><th>Возраст</th><th>Точность</th><th>Статус</th><th>Действия</th></tr></thead>
+            <thead><tr><th>Тип</th><th>Запрос</th><th>Город</th><th>Категория</th><th>Обновлено</th><th>Статус</th><th>Действия</th></tr></thead>
             <tbody>
-              {tasks.map((t: any) => (
+              {visibleTasks.map((t: any) => (
                 <tr key={t.id}>
                   <td><span className="kind-pill">Запрос</span></td>
                   <td><strong>{t.query}</strong></td>
                   <td>{t.customerArea}</td>
                   <td>{t.category || "—"}</td>
                   <td>{t.ageLabel}</td>
-                  <td><span className={`conf-badge conf-${t.confidenceLabel}`}>{t.confidenceLabel === "high" ? "Высокая" : "Средняя"}</span></td>
                   <td><span className={`activity-status ${t.status === "new" ? "activity-discussing" : t.status === "needs_reply" ? "activity-discussing" : "activity-confirmed"}`}>{t.status === "new" ? "Новый" : t.status === "needs_reply" ? "Требует ответа" : "Отвечен"}</span></td>
                   <td>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -752,7 +883,7 @@ function ActivityPage({ session, showToast }: { session: any; showToast: (m: str
                   </td>
                 </tr>
               ))}
-              {tasks.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>Нет активных запросов</td></tr>}
+              {visibleTasks.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>Нет активных запросов</td></tr>}
             </tbody>
           </table>
         </div>
@@ -803,8 +934,18 @@ function ProductsPage({ showToast, session, onImport }: { showToast: (m: string)
   const [formEnabled, setFormEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [filters, setFilters] = useState<DashboardFilter[]>([]);
 
   const branchId = session.branchId;
+  const columns: DashboardColumn<BusinessProduct>[] = [
+    { field: "name", label: "Название", kind: "text", value: row => row.name },
+    { field: "category", label: "Категория", kind: "text", value: row => row.category },
+    { field: "sku", label: "SKU", kind: "text", value: row => row.sku },
+    { field: "price", label: "Цена", kind: "number", value: row => row.price },
+    { field: "source", label: "Источник", kind: "text", value: row => row.source },
+    { field: "enabled", label: "Активен", kind: "boolean", value: row => row.enabled },
+  ];
+  const visibleProducts = useMemo(() => applyDashboardFilters(products, columns, filters), [products, filters]);
 
   useEffect(() => {
     listCategories().then(cats => {
@@ -825,7 +966,7 @@ function ProductsPage({ showToast, session, onImport }: { showToast: (m: string)
     setLoading(true);
     listProducts(branchId).then(res => {
       setProducts(res.items.map(p => ({
-        id: p.productId, productOfferId: p.productOfferId, name: p.name, category: p.categoryId,
+        id: p.productId, productOfferId: p.productOfferId, name: p.name, categoryId: p.categoryId || "", category: p.categoryLabel || "—",
         sku: p.sku || "", price: p.price ? `${Number(p.price).toLocaleString("ru-RU")} ₸` : "—",
         enabled: p.enabled, source: "ADMIN",
       })));
@@ -855,7 +996,7 @@ function ProductsPage({ showToast, session, onImport }: { showToast: (m: string)
     setFormName(p.name);
     setFormSku(p.sku);
     setFormPrice(p.price === "—" ? "" : p.price.replace(/[^0-9]/g, ""));
-    setFormCategoryId(p.category);
+    setFormCategoryId(p.categoryId);
     setFormEnabled(p.enabled);
   }
 
@@ -888,13 +1029,14 @@ function ProductsPage({ showToast, session, onImport }: { showToast: (m: string)
   return (
     <div>
       <div className="manage-header"><h2>Товары</h2><div style={{ display: "flex", gap: 8 }}><button className="btn-outline" onClick={onImport}><FileSpreadsheet size={16} />Excel импорт</button><button className="btn-primary" onClick={openAdd}><Plus size={16} />Добавить товар</button></div></div>
+      <DashboardFilters columns={columns} filters={filters} onChange={setFilters} />
       {loading && <div className="empty-state"><RefreshCw size={24} className="spin" /><p>Загрузка...</p></div>}
       {!loading && (
         <div style={{ overflowX: "auto" }}>
           <table className="manage-table">
             <thead><tr><th>Название</th><th>Категория</th><th>SKU</th><th>Цена</th><th>Источник</th><th>Активен</th><th>Действия</th></tr></thead>
             <tbody>
-              {products.map(p => (
+              {visibleProducts.map(p => (
                 <tr key={p.id} style={{ opacity: p.enabled ? 1 : 0.5 }}>
                   <td><strong>{p.name}</strong></td>
                   <td>{p.category}</td>
@@ -910,7 +1052,7 @@ function ProductsPage({ showToast, session, onImport }: { showToast: (m: string)
                   </td>
                 </tr>
               ))}
-              {products.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>Нет товаров</td></tr>}
+              {visibleProducts.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>Нет товаров</td></tr>}
             </tbody>
           </table>
         </div>
@@ -960,8 +1102,18 @@ function ServicesPage({ showToast, session }: { showToast: (m: string) => void; 
   const [formActive, setFormActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
+  const [filters, setFilters] = useState<DashboardFilter[]>([]);
 
   const branchId = session.branchId;
+  const columns: DashboardColumn<BusinessService>[] = [
+    { field: "name", label: "Название", kind: "text", value: row => row.name },
+    { field: "category", label: "Категория", kind: "text", value: row => row.category },
+    { field: "price", label: "Цена", kind: "number", value: row => row.price },
+    { field: "duration", label: "Длительность", kind: "number", value: row => row.duration },
+    { field: "schedule", label: "График", kind: "text", value: row => row.schedule },
+    { field: "active", label: "Активна", kind: "boolean", value: row => row.active },
+  ];
+  const visibleServices = useMemo(() => applyDashboardFilters(services, columns, filters), [services, filters]);
 
   useEffect(() => {
     listCategories().then(cats => {
@@ -983,7 +1135,7 @@ function ServicesPage({ showToast, session }: { showToast: (m: string) => void; 
     listServices(branchId).then(res => {
       setServices(res.items.map(s => ({
         id: s.serviceOfferingId, serviceBranchOfferId: s.serviceBranchOfferId,
-        name: s.name, category: s.categoryId, price: s.basePrice ? `от ${Number(s.basePrice).toLocaleString("ru-RU")} ₸` : "Цена не указана",
+        name: s.name, categoryId: s.categoryId || "", category: s.categoryLabel || "—", price: s.basePrice ? `от ${Number(s.basePrice).toLocaleString("ru-RU")} ₸` : "Цена не указана",
         duration: s.durationMinutes ? `${s.durationMinutes} мин` : "", active: s.active,
         schedule: s.scheduleText || "",
       })));
@@ -1011,7 +1163,7 @@ function ServicesPage({ showToast, session }: { showToast: (m: string) => void; 
     setFormPrice(s.price === "Цена не указана" ? "" : s.price.replace(/[^0-9]/g, ""));
     setFormDuration(s.duration.replace(/[^0-9]/g, ""));
     setFormSchedule(s.schedule);
-    setFormCategoryId(s.category);
+    setFormCategoryId(s.categoryId);
     setFormActive(s.active);
   }
 
@@ -1040,10 +1192,11 @@ function ServicesPage({ showToast, session }: { showToast: (m: string) => void; 
   return (
     <div>
       <div className="manage-header"><h2>Услуги</h2><button className="btn-primary" onClick={openAdd}><Plus size={16} />Добавить услугу</button></div>
+      <DashboardFilters columns={columns} filters={filters} onChange={setFilters} />
       {loading && <div className="empty-state"><RefreshCw size={24} className="spin" /><p>Загрузка...</p></div>}
       {!loading && (
         <div className="service-list">
-          {services.map(s => (
+          {visibleServices.map(s => (
             <div className="service-row" key={s.id} style={{ opacity: s.active ? 1 : 0.5 }}>
               <Settings2 size={18} color="var(--muted)" />
               <div><strong>{s.name}</strong><span>{s.category} · {s.schedule || "—"}</span></div>
@@ -1055,7 +1208,7 @@ function ServicesPage({ showToast, session }: { showToast: (m: string) => void; 
               </div>
             </div>
           ))}
-          {services.length === 0 && <div className="empty-state"><p>Нет услуг</p></div>}
+          {visibleServices.length === 0 && <div className="empty-state"><p>Нет услуг</p></div>}
         </div>
       )}
 
@@ -1106,7 +1259,7 @@ function BizProfilePage({ session, showToast }: { session: any; showToast: (m: s
   const [newBranchCityId, setNewBranchCityId] = useState("");
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
   const [addingBranch, setAddingBranch] = useState(false);
-  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
 
   const businessId = session.businessId;
 
@@ -1175,28 +1328,26 @@ function BizProfilePage({ session, showToast }: { session: any; showToast: (m: s
         )}
       </div>
 
-      {selectedBranchId ? (
-        <div>
-          <button className="btn-ghost" onClick={() => setSelectedBranchId(null)} style={{ marginBottom: 12 }}><ChevronLeft size={16} />Назад к филиалам</button>
-          <StaffPage showToast={showToast} session={session} branchIdOverride={selectedBranchId} />
-        </div>
-      ) : (
-        <>
-          <div className="manage-header" style={{ marginTop: 24 }}><h2>Филиалы</h2><button className="btn-primary" onClick={() => setShowAddBranch(true)}><Plus size={16} />Добавить филиал</button></div>
-          {branchesLoading && <div className="empty-state"><RefreshCw size={20} className="spin" /><p>Загрузка...</p></div>}
-          {!branchesLoading && (
-            <div className="service-list" style={{ marginTop: 8 }}>
-              {branches.map(b => (
-                <div className="service-row" key={b.id} onClick={() => setSelectedBranchId(b.id)} style={{ cursor: "pointer" }}>
-                  <Store size={18} color="var(--muted)" />
-                  <div><strong>{b.name}</strong><span>{b.cityName}{b.address ? ` · ${b.address}` : ""}{b.onlineOnly ? " · Онлайн" : ""}</span></div>
-                  <Users size={16} color="var(--primary)" />
+      <div className="manage-header" style={{ marginTop: 24 }}><h2>Филиалы</h2><button className="btn-primary" onClick={() => setShowAddBranch(true)}><Plus size={16} />Добавить филиал</button></div>
+      {branchesLoading && <div className="empty-state"><RefreshCw size={20} className="spin" /><p>Загрузка...</p></div>}
+      {!branchesLoading && (
+        <div className="service-list branch-list" style={{ marginTop: 8 }}>
+          {branches.map(b => (
+            <div className="branch-item" key={b.id}>
+              <button className="service-row branch-toggle" onClick={() => setExpandedBranchId(expandedBranchId === b.id ? null : b.id)}>
+                <Store size={18} color="var(--muted)" />
+                <div><strong>{b.name}</strong><span>{b.cityName}{b.address ? ` · ${b.address}` : ""}{b.onlineOnly ? " · Онлайн" : ""}</span></div>
+                <ChevronDown size={16} color="var(--primary)" />
+              </button>
+              {expandedBranchId === b.id && (
+                <div className="branch-staff-panel">
+                  <StaffPage showToast={showToast} session={session} branchIdOverride={b.id} branchName={b.name} />
                 </div>
-              ))}
-              {branches.length === 0 && <div className="empty-state"><p>Нет филиалов</p></div>}
+              )}
             </div>
-          )}
-        </>
+          ))}
+          {branches.length === 0 && <div className="empty-state"><p>Нет филиалов</p></div>}
+        </div>
       )}
 
       {showAddBranch && (
@@ -1223,7 +1374,7 @@ function BizProfilePage({ session, showToast }: { session: any; showToast: (m: s
 }
 
 /* ── Staff Page ── */
-function StaffPage({ showToast, session, branchIdOverride }: { showToast: (m: string) => void; session: any; branchIdOverride?: string }) {
+function StaffPage({ showToast, session, branchIdOverride, branchName }: { showToast: (m: string) => void; session: any; branchIdOverride?: string; branchName?: string }) {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -1288,7 +1439,7 @@ function StaffPage({ showToast, session, branchIdOverride }: { showToast: (m: st
 
   return (
     <div>
-      <div className="manage-header"><h2>Сотрудники</h2><button className="btn-primary" onClick={() => setShowAdd(true)}><Plus size={16} />Добавить</button></div>
+      <div className="manage-header"><h2>Сотрудники{branchName ? `: ${branchName}` : ""}</h2><button className="btn-primary" onClick={() => setShowAdd(true)}><Plus size={16} />Добавить</button></div>
       {loading && <div className="empty-state"><RefreshCw size={24} className="spin" /><p>Загрузка...</p></div>}
       {!loading && (
         <div style={{ display: "grid", gap: 10 }}>
@@ -1343,74 +1494,137 @@ interface UploadResponse { importId: string; originalFileName: string; status: s
 interface ColumnMappingInfo { sourceColumn: string; targetField: string; characteristicName: string | null; approved: boolean; confidence: number; }
 interface RowPreviewData { rowId: string; rowNumber: number; status: string; normalizedData: Record<string, string>; errors: string[]; warnings: string[]; }
 interface PreviewResponseData { importId: string; status: string; totalRows: number; validRows: number; invalidRows: number; warningRows: number; mappings: ColumnMappingInfo[]; rows: RowPreviewData[]; }
-interface ApproveResponseData { importId: string; status: string; productsCreated: number; offersCreated: number; rowsSkipped: number; }
 
 const targetFieldLabels: Record<string, string> = {
-  NAME: "Название", CATEGORY_LABEL: "Категория", DESCRIPTION: "Описание",
-  SKU: "Артикул", PRICE: "Цена", TAGS: "Теги", IGNORE: "Пропустить",
+  NAME: "Название товара", CATEGORY_LABEL: "Категория", DESCRIPTION: "Описание",
+  SKU: "Артикул / Код товара", PRICE: "Цена", TAGS: "Теги", IGNORE: "Игнорировать",
   APPEND_TO_DESCRIPTION: "Добавить к описанию", CHARACTERISTIC: "Характеристика",
 };
 
+const standardFields = ["NAME", "CATEGORY_LABEL", "DESCRIPTION", "SKU", "PRICE", "TAGS"];
+const specialFields = ["IGNORE", "APPEND_TO_DESCRIPTION", "CHARACTERISTIC"];
+
+const importFormatGuide: Array<{ field: string; examples: string }> = [
+  { field: "Название товара", examples: "Наименование, Название, Товар, Name, Product" },
+  { field: "Категория", examples: "Категория товара, Группа, Category" },
+  { field: "Артикул / Код товара", examples: "SKU, ШК, Код, Арт, Article, Barcode" },
+  { field: "Цена", examples: "Цена продажи, Розница, Стоимость, Price" },
+  { field: "Описание", examples: "Описание товара, Description" },
+  { field: "Теги", examples: "Метки, Tags" },
+];
+
 /* ── Import Page ── */
 function ImportPage({ showToast, session, onClose }: { showToast: (m: string) => void; session: any; onClose?: () => void }) {
-  const [step, setStep] = useState<ImportStep>("upload");
+  const [step, setStep] = useState<"upload" | "mapping" | "preview">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [uploadRes, setUploadRes] = useState<UploadResponse | null>(null);
   const [mappings, setMappings] = useState<Record<string, string>>({});
+  const [charNames, setCharNames] = useState<Record<string, string>>({});
   const [previewRes, setPreviewRes] = useState<PreviewResponseData | null>(null);
-  const [approveRes, setApproveRes] = useState<ApproveResponseData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [modalCol, setModalCol] = useState<string | null>(null);
+  const [modalVal, setModalVal] = useState<string>("IGNORE");
 
   const branchId = session.branchId;
-  const authHeaders = { Authorization: `Bearer ${session.token}` };
+  const branchName = session.branchName || "Филиал";
+  const authHeaders: Record<string, string> = { Authorization: `Bearer ${session.token}` };
+
+  const stepperSteps = [
+    { id: "upload", label: "Загрузка" },
+    { id: "mapping", label: "Сопоставление" },
+    { id: "preview", label: "Превью" },
+  ];
+  const currentStepIdx = stepperSteps.findIndex(s => s.id === step);
 
   function openFilePicker() {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".xlsx";
-    input.onchange = (ev) => handleFile(ev as any);
+    input.accept = ".xlsx,.xls";
+    input.onchange = (ev) => handleFile((ev as any).target?.files?.[0]);
     input.click();
   }
 
-  const steps: Array<{ id: ImportStep; label: string }> = [
-    { id: "upload", label: "Загрузка" }, { id: "mapping", label: "Сопоставление" },
-    { id: "preview", label: "Предпросмотр" }, { id: "approved", label: "Готово" },
-  ];
-
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
+  function handleFile(f: File | undefined) {
     if (!f) return;
-    if (!f.name.toLowerCase().endsWith(".xlsx")) { showToast("Только .xlsx файлы"); return; }
+    if (!f.name.toLowerCase().endsWith(".xlsx") && !f.name.toLowerCase().endsWith(".xls")) {
+      showToast("Только .xlsx и .xls файлы"); return;
+    }
+    uploadFile(f);
+  }
+
+  async function uploadFile(f: File) {
     setFile(f); setError(null); setLoading(true);
     try {
       const fd = new FormData(); fd.append("file", f);
       const res = await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/product-imports`, { method: "POST", headers: authHeaders, body: fd });
       if (!res.ok) { const t = await res.text().catch(() => ""); throw new ApiError(res.status, t || `Ошибка ${res.status}`); }
-      const data: UploadResponse = await res.json();
+      const data: UploadResponse = transformKeys(await res.json()) as UploadResponse;
       setUploadRes(data);
       const initial: Record<string, string> = {};
-      for (const col of data.columns) initial[col.sourceColumn] = col.suggestedTargetField || "IGNORE";
+      const chars: Record<string, string> = {};
+      for (const col of data.columns) {
+        initial[col.sourceColumn] = col.suggestedTargetField || "IGNORE";
+        if (col.suggestedTargetField === "CHARACTERISTIC") chars[col.sourceColumn] = col.sourceColumn;
+      }
       setMappings(initial);
+      setCharNames(chars);
       setStep("mapping");
       showToast(`Файл загружен. ${data.totalRows} строк, ${data.columns.length} колонок.`);
     } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
   }
 
-  async function handleMapping() {
+  function handleDragOver(e: React.DragEvent) { e.preventDefault(); setDragOver(true); }
+  function handleDragLeave() { setDragOver(false); }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragOver(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) handleFile(f);
+  }
+
+  function openMappingModal(colName: string) {
+    setModalCol(colName);
+    setModalVal(mappings[colName] || "IGNORE");
+  }
+
+  function applyMappingModal() {
+    if (!modalCol) return;
+    setMappings(prev => ({ ...prev, [modalCol]: modalVal }));
+    if (modalVal === "CHARACTERISTIC") {
+      setCharNames(prev => ({ ...prev, [modalCol]: prev[modalCol] || modalCol }));
+    } else {
+      setCharNames(prev => { const n = { ...prev }; delete n[modalCol]; return n; });
+    }
+    setModalCol(null);
+  }
+
+  function handleFieldChange(colName: string, value: string) {
+    setMappings(prev => ({ ...prev, [colName]: value }));
+    if (value === "CHARACTERISTIC") {
+      setCharNames(prev => ({ ...prev, [colName]: prev[colName] || colName }));
+    } else {
+      setCharNames(prev => { const n = { ...prev }; delete n[colName]; return n; });
+    }
+  }
+
+  async function handleMappingSubmit() {
+    const hasName = Object.values(mappings).some(v => v === "NAME");
+    if (!hasName) { showToast("Укажите колонку с названием товара"); return; }
     setError(null); setLoading(true);
     try {
       const entries = Object.entries(mappings).map(([sourceColumn, targetField]) => ({
-        sourceColumn, targetField, characteristicName: targetField === "CHARACTERISTIC" ? sourceColumn : undefined,
+        sourceColumn, targetField,
+        characteristicName: targetField === "CHARACTERISTIC" ? (charNames[sourceColumn] || sourceColumn) : undefined,
       }));
       const res = await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/product-imports/${uploadRes!.importId}/mapping`, {
-        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ mappings: entries }),
+        method: "POST", headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(camelToSnakeKeys({ mappings: entries })),
       });
       if (!res.ok) { const t = await res.text().catch(() => ""); throw new ApiError(res.status, t || `Ошибка ${res.status}`); }
-      const data: PreviewResponseData = await res.json();
+      const data: PreviewResponseData = transformKeys(await res.json()) as PreviewResponseData;
       setPreviewRes(data);
       setStep("preview");
-      showToast(`Предпросмотр: ${data.validRows} ок, ${data.invalidRows} ошибок, ${data.warningRows} предупреждений`);
     } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
   }
 
@@ -1419,147 +1633,294 @@ function ImportPage({ showToast, session, onClose }: { showToast: (m: string) =>
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/product-imports/${uploadRes!.importId}/approve`, { method: "POST", headers: authHeaders });
       if (!res.ok) { const t = await res.text().catch(() => ""); throw new ApiError(res.status, t || `Ошибка ${res.status}`); }
-      const data: ApproveResponseData = await res.json();
-      setApproveRes(data);
-      setStep("approved");
+      const data = transformKeys(await res.json()) as any;
       showToast(`Импорт завершен! ${data.productsCreated} товаров создано.`);
+      resetImport();
+      onClose?.();
     } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
   }
 
   async function handleCancel() {
+    if (!uploadRes) { resetImport(); onClose?.(); return; }
     setError(null); setLoading(true);
     try {
-      await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/product-imports/${uploadRes!.importId}/cancel`, { method: "POST", headers: authHeaders });
-      resetImport(); showToast("Импорт отменен");
-    } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
+      await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/product-imports/${uploadRes.importId}/cancel`, { method: "POST", headers: authHeaders });
+    } catch { /* best effort */ } finally { setLoading(false); }
+    resetImport();
   }
 
   function resetImport() {
-    setStep("upload"); setFile(null); setUploadRes(null); setMappings({}); setPreviewRes(null); setApproveRes(null); setError(null);
+    setStep("upload"); setFile(null); setUploadRes(null); setMappings({});
+    setCharNames({}); setPreviewRes(null); setError(null);
+  }
+
+  function getSampleValues(colName: string): string[] {
+    if (!uploadRes?.sampleRows?.length) return [];
+    const vals = uploadRes.sampleRows.map(r => r[colName]).filter(Boolean);
+    return [...new Set(vals)].slice(0, 3);
   }
 
   if (!branchId) {
     return (
       <div>
         <div className="manage-header"><h2>Excel импорт</h2></div>
-        <div className="empty-state"><FileSpreadsheet size={32} /><p>Не найден филиал. Убедитесь, что ваш бизнес-аккаунт привязан к филиалу.</p></div>
+        <div className="empty-state"><FileSpreadsheet size={32} /><p>Не найден филиал.</p></div>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="manage-header"><h2>Excel импорт</h2>{onClose && <button className="btn-ghost" onClick={onClose}><ChevronLeft size={16} />Назад к товарам</button>}</div>
-      <div className="import-steps">
-        {steps.map((s, i) => (
-          <div key={s.id} className={`import-step ${step === s.id ? "active" : ""} ${steps.findIndex(s => s.id === step) > i ? "done" : ""}`}>
-            {steps.findIndex(s => s.id === step) > i ? <Check size={14} style={{ display: "inline", marginRight: 4 }} /> : null}{s.label}
-          </div>
-        ))}
+      {/* Header: back + stepper + branch */}
+      <div className="import-header">
+        <div>
+          {onClose && <button className="btn-ghost" onClick={handleCancel}><ChevronLeft size={16} />Назад к товарам</button>}
+        </div>
+        <div className="import-stepper">
+          {stepperSteps.map((s, i) => (
+            <div key={s.id} className={`import-stepper-step${step === s.id ? " active" : ""}${currentStepIdx > i ? " done" : ""}`}>
+              {currentStepIdx > i ? <Check size={14} /> : <span style={{ width: 14, height: 14, display: "inline-block", borderRadius: "50%", border: "2px solid currentColor", opacity: step === s.id ? 1 : 0.4 }} />}
+              {s.label}
+            </div>
+          ))}
+        </div>
+        <div className="import-branch-badge"><Store size={16} />{branchName}</div>
       </div>
 
-      {error && <div className="auth-error" style={{ margin: "12px 0" }}>{error}<button className="btn-ghost" style={{ marginLeft: 8, fontSize: 12 }} onClick={() => setError(null)}><X size={14} /></button></div>}
+      {error && <div className="auth-error" style={{ margin: "0 0 16px" }}>{error}<button className="btn-ghost" style={{ marginLeft: 8, fontSize: 12 }} onClick={() => setError(null)}><X size={14} /></button></div>}
 
       {loading && <div className="empty-state"><RefreshCw size={24} className="spin" /><p>Обработка...</p></div>}
 
+      {/* Step 1 — Upload */}
       {!loading && step === "upload" && (
-        <div>
-          <div className="import-dropzone" onClick={openFilePicker} style={{ cursor: "pointer" }}>
-            <Upload size={32} /><p style={{ marginTop: 8 }}>Нажмите для выбора Excel файла</p>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>.xlsx до 10MB</span>
+        <div className="import-card" style={{ marginBottom: 80 }}>
+          <h2>Импорт товаров из Excel</h2>
+          <p>Импорт применяется к текущему филиалу: <strong>{branchName}</strong></p>
+
+          <div
+            className={`import-upload-area${dragOver ? " drag-over" : ""}`}
+            onClick={openFilePicker}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Upload size={36} />
+            <p>Загрузите файл Excel (.xlsx) с товарами</p>
+            <span>Колонки будут автоматически сопоставлены с полями — проверить и поправить можно на следующем шаге</span>
+            <button className="btn-outline" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); openFilePicker(); }}>Выбрать файл</button>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>Поддерживаются файлы .xlsx и .xls</span>
           </div>
+
+          <div className="import-divider">или</div>
+
+          <button className="import-example-btn" onClick={() => showToast("Демо-файл будет доступен в ближайшее время")}>
+            <FileSpreadsheet size={18} />Использовать пример Excel
+          </button>
+          <div className="import-example-caption">Демо-набор: спортивное питание, 3 товара</div>
+
+          <div className="import-warning">
+            <strong>Важно</strong>
+            <p>Вы заполняете данные для витрины — то, что увидит клиент.</p>
+            <ul>
+              <li>Не включайте в файл: остатки, закупочные цены, поставщиков, маржинальность и другие внутренние данные бизнеса.</li>
+            </ul>
+          </div>
+
+          <table className="import-format-table">
+            <thead>
+              <tr><th>Поле товара</th><th>Подходящие заголовки колонок</th></tr>
+            </thead>
+            <tbody>
+              {importFormatGuide.map(row => (
+                <tr key={row.field}><td>{row.field}</td><td>{row.examples}</td></tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
+      {/* Step 2 — Mapping */}
       {!loading && step === "mapping" && uploadRes && (
-        <div>
-          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-            <div><span style={{ color: "var(--muted)", fontSize: 13 }}>Файл: </span><strong>{uploadRes.originalFileName}</strong></div>
-            <div><span style={{ color: "var(--muted)", fontSize: 13 }}>Строк: </span><strong>{uploadRes.totalRows}</strong></div>
-          </div>
-          <p style={{ margin: "0 0 12px", color: "#40505c" }}>Сопоставьте колонки из файла с полями товара. Автоматически предложено на основе заголовков.</p>
-          <div className="profile-section">
-            {uploadRes.columns.map(col => (
-              <div className="profile-field" key={col.sourceColumn} style={{ alignItems: "center" }}>
-                <label style={{ minWidth: 160 }}>{col.sourceColumn} {col.confidence > 0.7 && <span style={{ fontSize: 11, color: "var(--green)" }}>({(col.confidence * 100).toFixed(0)}%)</span>}</label>
-                <select value={mappings[col.sourceColumn] || "IGNORE"} onChange={e => setMappings(prev => ({ ...prev, [col.sourceColumn]: e.target.value }))} style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 14 }}>
-                  {Object.entries(targetFieldLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-          {uploadRes.sampleRows.length > 0 && (
-            <details style={{ marginTop: 16 }}>
-              <summary style={{ cursor: "pointer", color: "var(--primary)", fontSize: 13 }}>Пример данных (первые 3 строки)</summary>
-              <div style={{ overflowX: "auto", marginTop: 8 }}>
-                <table className="manage-table">
-                  <thead><tr>{Object.keys(uploadRes.sampleRows[0]).map(k => <th key={k}>{k}</th>)}</tr></thead>
-                  <tbody>{uploadRes.sampleRows.map((row, i) => <tr key={i}>{Object.values(row).map((v, j) => <td key={j}>{v}</td>)}</tr>)}</tbody>
-                </table>
-              </div>
-            </details>
-          )}
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-            <button className="btn-ghost" onClick={handleCancel} disabled={loading}>Отменить</button>
-            <button className="btn-primary" onClick={handleMapping} disabled={loading}>Далее <ArrowRight size={16} /></button>
-          </div>
-        </div>
-      )}
+        <>
+          <div className="import-card" style={{ marginBottom: 0 }}>
+            <h2>Сопоставление колонок</h2>
+            <p>Сопоставьте Excel-колонки с полями товаров. <strong>Название товара обязательно.</strong></p>
 
-      {!loading && step === "preview" && previewRes && (
-        <div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-            <div><span style={{ color: "var(--muted)", fontSize: 13 }}>Всего: </span><strong>{previewRes.totalRows}</strong></div>
-            <div><span style={{ color: "var(--muted)", fontSize: 13 }}>OK: </span><strong style={{ color: "var(--green)" }}>{previewRes.validRows}</strong></div>
-            <div><span style={{ color: "var(--muted)", fontSize: 13 }}>Ошибки: </span><strong style={{ color: "var(--red)" }}>{previewRes.invalidRows}</strong></div>
-            {previewRes.warningRows > 0 && <div><span style={{ color: "var(--muted)", fontSize: 13 }}>Предупреждения: </span><strong style={{ color: "#e67e22" }}>{previewRes.warningRows}</strong></div>}
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table className="manage-table">
+            <table className="import-mapping-table" style={{ marginTop: 16 }}>
               <thead>
-                <tr>
-                  <th>#</th>
-                  {previewRes.mappings.filter(m => m.targetField !== "IGNORE").map(m => <th key={m.sourceColumn}>{targetFieldLabels[m.targetField] || m.targetField}</th>)}
-                  <th>Статус</th>
-                </tr>
+                <tr><th>Колонка Excel</th><th>Поле Ask</th><th>Пример значений</th></tr>
               </thead>
               <tbody>
-                {previewRes.rows.map(row => {
-                  const rowStatus = row.status === "VALID" ? "conf-high" : row.status === "WARNING" ? "conf-medium" : "conf-low";
-                  const rowLabel = row.status === "VALID" ? "OK" : row.status === "WARNING" ? "Предупреждение" : "Ошибка";
+                {uploadRes.columns.map(col => {
+                  const currentVal = mappings[col.sourceColumn] || "IGNORE";
+                  const isMatched = col.confidence > 0.7 && standardFields.includes(col.suggestedTargetField);
+                  const isSpecial = specialFields.includes(currentVal);
+                  const samples = getSampleValues(col.sourceColumn);
                   return (
-                    <tr key={row.rowId}>
-                      <td>{row.rowNumber}</td>
-                      {previewRes!.mappings.filter(m => m.targetField !== "IGNORE").map(m => <td key={m.sourceColumn}>{row.normalizedData[m.targetField] || "—"}</td>)}
-                      <td>
-                        <span className={`conf-badge ${rowStatus}`}>{rowLabel}</span>
-                        {row.errors.length > 0 && <div style={{ fontSize: 11, color: "var(--red)", marginTop: 2 }}>{row.errors.join("; ")}</div>}
-                        {row.warnings.length > 0 && <div style={{ fontSize: 11, color: "#e67e22", marginTop: 2 }}>{row.warnings.join("; ")}</div>}
+                    <tr key={col.sourceColumn}>
+                      <td className="col-excel">{col.sourceColumn}</td>
+                      <td style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <select
+                          className={`field-select${isMatched ? " matched" : ""}${currentVal === "IGNORE" ? " ignored" : ""}`}
+                          value={currentVal}
+                          onChange={e => handleFieldChange(col.sourceColumn, e.target.value)}
+                          style={isSpecial && currentVal !== "IGNORE" ? { background: "var(--primary-bg)", borderColor: "var(--primary-light)" } : undefined}
+                        >
+                          {Object.entries(targetFieldLabels).map(([k, v]) => (
+                            <option key={k} value={k}>{v}{k === "CHARACTERISTIC" && charNames[col.sourceColumn] ? `: ${charNames[col.sourceColumn]}` : ""}</option>
+                          ))}
+                        </select>
+                        {currentVal === "IGNORE" && (
+                          <button className="btn-ghost" style={{ minHeight: 28, fontSize: 12 }} onClick={() => openMappingModal(col.sourceColumn)} title="Особые назначения">
+                            <Settings2 size={14} />
+                          </button>
+                        )}
                       </td>
+                      <td className="col-sample">{samples.length > 0 ? samples.join(" · ") : "—"}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-            <button className="btn-ghost" onClick={handleCancel} disabled={loading}>Отменить</button>
-            <button className="btn-ghost" onClick={() => setStep("mapping")} disabled={loading}>Назад к сопоставлению</button>
-            <button className="btn-primary" onClick={handleApprove} disabled={loading || previewRes.validRows === 0}><Check size={16} />Подтвердить импорт</button>
+
+          {/* Mapping modal */}
+          {modalCol && (
+            <div className="modal-overlay" onClick={() => setModalCol(null)}>
+              <div className="modal-panel field-select-modal" onClick={e => e.stopPropagation()}>
+                <h2>{modalCol}</h2>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", marginBottom: 6 }}>Примеры значений</div>
+                  <div className="sample-chips">
+                    {getSampleValues(modalCol).map((v, i) => <span key={i} className="sample-chip">{v}</span>)}
+                    {getSampleValues(modalCol).length === 0 && <span style={{ fontSize: 13, color: "var(--muted)" }}>Нет данных</span>}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", marginBottom: 8 }}>Назначение поля:</div>
+                  <div className="radio-group">
+                    {[
+                      { value: "IGNORE", label: "Игнорировать", desc: "Колонка не будет импортирована" },
+                      { value: "APPEND_TO_DESCRIPTION", label: "Добавить в описание", desc: "Значение добавится в описание товара" },
+                      { value: "CHARACTERISTIC", label: "Сделать характеристикой", desc: `Колонка станет характеристикой «${charNames[modalCol] || modalCol}»` },
+                    ].map(opt => (
+                      <label key={opt.value} className={`radio-option${modalVal === opt.value ? " selected" : ""}`}>
+                        <input
+                          type="radio"
+                          name={`modal-${modalCol}`}
+                          value={opt.value}
+                          checked={modalVal === opt.value}
+                          onChange={() => setModalVal(opt.value)}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>{opt.label}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted)" }}>{opt.desc}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="modal-actions">
+                  <button className="btn-ghost" onClick={() => setModalCol(null)}>Отмена</button>
+                  <button className="btn-primary" onClick={applyMappingModal}>Применить</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Step 3 — Preview */}
+      {!loading && step === "preview" && previewRes && (
+        <div className="import-card" style={{ marginBottom: 0 }}>
+          <h2>Превью импорта</h2>
+          <p>Проверьте данные перед импортом</p>
+
+          <div className="import-preview-summary" style={{ marginTop: 16 }}>
+            <div className="count">{previewRes.totalRows}</div>
+            <div>
+              <div className="label">Готово к импорту</div>
+              {previewRes.invalidRows > 0 && <div className="sub">{previewRes.invalidRows} строк с ошибками будут пропущены</div>}
+            </div>
+          </div>
+
+          {(() => {
+            const charMappings = previewRes.mappings.filter(m => m.targetField === "CHARACTERISTIC");
+            const ignoredMappings = previewRes.mappings.filter(m => m.targetField === "IGNORE");
+            return (
+              <>
+                {charMappings.length > 0 && (
+                  <>
+                    <div className="import-chip-list-title">Характеристики ({charMappings.length})</div>
+                    <div className="import-chip-list">
+                      {charMappings.map(m => (
+                        <span key={m.sourceColumn} className="import-chip char">
+                          {m.characteristicName || m.sourceColumn} = {m.sourceColumn}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {ignoredMappings.length > 0 && (
+                  <>
+                    <div className="import-chip-list-title">Игнорируются ({ignoredMappings.length})</div>
+                    <div className="import-chip-list">
+                      {ignoredMappings.map(m => (
+                        <span key={m.sourceColumn} className="import-chip ignored">{m.sourceColumn}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
+
+          <div className="import-preview-rows">
+            {previewRes.rows.map(row => {
+              const nameVal = row.normalizedData["NAME"] || Object.values(row.normalizedData)[0] || "—";
+              const extraFields = Object.entries(row.normalizedData)
+                .filter(([k]) => k !== "NAME")
+                .map(([, v]) => v)
+                .filter(Boolean)
+                .slice(0, 2)
+                .join(" · ");
+              return (
+                <div className="import-preview-row" key={row.rowId}>
+                  <div className="row-num">Строка {row.rowNumber}</div>
+                  <div className="row-data">{nameVal}{extraFields ? ` · ${extraFields}` : ""}</div>
+                  <span className={`conf-badge ${row.status === "VALID" ? "conf-high" : row.status === "WARNING" ? "conf-medium" : "conf-low"}`}>
+                    {row.status === "VALID" ? "OK" : row.status === "WARNING" ? "!" : "Ошибка"}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {!loading && step === "approved" && approveRes && (
-        <div className="empty-state">
-          <Check size={32} color="var(--green)" />
-          <p>Импорт успешно завершен.</p>
-          <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 14 }}>
-            <span>Товаров создано: <strong>{approveRes.productsCreated}</strong></span>
-            <span>Предложений: <strong>{approveRes.offersCreated}</strong></span>
-            {approveRes.rowsSkipped > 0 && <span>Пропущено: <strong>{approveRes.rowsSkipped}</strong></span>}
+      {/* Sticky bottom bar */}
+      {(step === "mapping" || step === "preview") && !loading && (
+        <div className="import-sticky-bar">
+          <div>
+            {step === "mapping" && (
+              <button className="btn-ghost" onClick={() => { setStep("upload"); setError(null); }}>Назад</button>
+            )}
+            {step === "preview" && (
+              <button className="btn-ghost" onClick={() => { setStep("mapping"); setError(null); }}>Назад</button>
+            )}
           </div>
-          <button className="btn-primary" onClick={resetImport} style={{ marginTop: 16 }}>Новый импорт</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {step === "mapping" && (
+              <button className="btn-primary" onClick={handleMappingSubmit} disabled={loading}>
+                Продолжить <ArrowRight size={16} />
+              </button>
+            )}
+            {step === "preview" && previewRes && (
+              <button className="btn-primary" onClick={handleApprove} disabled={loading || previewRes.validRows === 0}>
+                <Check size={16} />Импортировать {previewRes.totalRows}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

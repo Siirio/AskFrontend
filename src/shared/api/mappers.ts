@@ -44,15 +44,43 @@ export function mapSearchResult(dto: SearchResultDto): SearchResult {
   };
 }
 
-export function mapSupplierTask(dto: SupplierTaskDto): SupplierTask {
-  const ageLabel = dto.age_minutes < 60 ? `${dto.age_minutes} мин` : `${Math.floor(dto.age_minutes / 60)} ч`;
+function formatRelativeTime(minutes: number): string {
+  if (minutes < 1) return "только что";
+  if (minutes < 60) return formatMinutes(minutes);
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return formatHours(hours);
+  const days = Math.floor(minutes / (60 * 24));
+  if (days === 1) return "1 день назад";
+  if (days < 7) return formatDays(days);
+  return `${days} дн. назад`;
+}
 
+function formatMinutes(m: number): string {
+  if (m % 10 === 1 && m % 100 !== 11) return `${m} минуту назад`;
+  if ([2, 3, 4].includes(m % 10) && ![12, 13, 14].includes(m % 100)) return `${m} минуты назад`;
+  return `${m} минут назад`;
+}
+
+function formatHours(h: number): string {
+  if (h % 10 === 1 && h % 100 !== 11) return `${h} час назад`;
+  if ([2, 3, 4].includes(h % 10) && ![12, 13, 14].includes(h % 100)) return `${h} часа назад`;
+  return `${h} часов назад`;
+}
+
+function formatDays(d: number): string {
+  if (d % 10 === 1 && d % 100 !== 11) return `${d} день назад`;
+  if ([2, 3, 4].includes(d % 10) && ![12, 13, 14].includes(d % 100)) return `${d} дня назад`;
+  return `${d} дней назад`;
+}
+
+export function mapSupplierTask(dto: SupplierTaskDto): SupplierTask {
   return {
     id: dto.id,
     query: dto.query,
     customerArea: dto.customer_area,
     category: dto.category_name,
-    ageLabel,
+    ageMinutes: dto.age_minutes,
+    ageLabel: formatRelativeTime(dto.age_minutes),
     confidenceLabel: confidenceMap[dto.confidence_code],
     status: dto.status === "NEW" ? "new" : dto.status === "NEEDS_REPLY" ? "needs_reply" : "answered",
   };
