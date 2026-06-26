@@ -115,7 +115,7 @@ export function createStaff(businessId: string, branchId: string, data: { email:
   return apiRequest<StaffDto>(`/api/v1/businesses/${businessId}/branches/${branchId}/staff`, { method: "POST", auth: true, body: data });
 }
 
-export function updateStaff(businessId: string, branchId: string, staffId: string, data: { email?: string; displayName?: string }) {
+export function updateStaff(businessId: string, branchId: string, staffId: string, data: { status?: string }) {
   return apiRequest<StaffDto>(`/api/v1/businesses/${businessId}/branches/${branchId}/staff/${staffId}/update`, { method: "POST", auth: true, body: data });
 }
 
