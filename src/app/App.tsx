@@ -274,12 +274,12 @@ function AuthScreen({ onLogin, onToast }: { onLogin: (s: any, r: UserRole) => vo
         <div className="auth-hero">
           <div style={{ width: 48, height: 48, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 18 }}>A</div>
           <h1>{challenge ? "Подтвердите вход" : "Найдите товар, услугу или поставщика"}</h1>
-          <p>Ask — поиск товаров и услуг с подтверждением от местных поставщиков. Вход и регистрация через код подтверждения (SMTP пока не настроен — код в логах сервера).</p>
+          <p>Ask — поиск товаров и услуг с подтверждением от местных поставщиков.</p>
         </div>
 
         {challenge ? (
           <form className="auth-panel" onSubmit={handleVerify}>
-            <p style={{ margin: 0, color: "#40505c", lineHeight: 1.5 }}>Код отправлен на <strong>{challenge.masked_destination}</strong>. Введите 6 цифр из лога сервера.</p>
+            <p style={{ margin: 0, color: "#40505c", lineHeight: 1.5 }}>{challenge.code ? <>Ваш код подтверждения: <strong style={{ fontSize: 20, letterSpacing: 4 }}>{challenge.code}</strong></> : <>Код отправлен на <strong>{challenge.masked_destination}</strong></>}</p>
             <label>Код подтверждения<input value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} autoComplete="one-time-code" /></label>
             {error && <p className="auth-error">{error}</p>}
             <button className="btn-primary btn-full" type="submit" disabled={loading}><ShieldCheck size={18} />{loading ? "Проверка..." : "Подтвердить"}</button>

@@ -7,6 +7,7 @@ export type AuthChallenge = {
   channel: "EMAIL" | "SMS";
   masked_destination: string;
   expires_at: string;
+  code?: string;
 };
 
 export type AuthSession = {
