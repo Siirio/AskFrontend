@@ -1265,11 +1265,23 @@ function BizProfilePage({ session, showToast }: { session: any; showToast: (m: s
   useEffect(() => {
     if (!businessId) return;
     setBranchesLoading(true);
-    Promise.all([listBranches(businessId), listCities()])
-      .then(([brs, cts]) => { setBranches(brs); setCities(cts); })
-      .catch(() => {})
+    listBranches(businessId)
+      .then(setBranches)
+      .catch(e => {
+        setToast(extractError(e));
+        setTimeout(() => setToast(null), 2500);
+      })
       .finally(() => setBranchesLoading(false));
   }, [businessId]);
+
+  useEffect(() => {
+    listCities()
+      .then(setCities)
+      .catch(e => {
+        setToast(extractError(e));
+        setTimeout(() => setToast(null), 2500);
+      });
+  }, []);
 
   async function handleSaveProfile() {
     setSaving(true);
@@ -1356,7 +1368,7 @@ function BizProfilePage({ session, showToast }: { session: any; showToast: (m: s
             <label>Название<input value={newBranchName} onChange={e => setNewBranchName(e.target.value)} placeholder="ул. Абая, 1" /></label>
             <label>Адрес<input value={newBranchAddress} onChange={e => setNewBranchAddress(e.target.value)} /></label>
             <label>Город
-              <select value={newBranchCityId} onChange={e => setNewBranchCityId(e.target.value)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 14, width: "100%", marginTop: 4 }}>
+              <select value={newBranchCityId} onChange={e => setNewBranchCityId(e.target.value)} disabled={cities.length === 0} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", fontSize: 14, width: "100%", marginTop: 4 }}>
                 <option value="">Выберите город</option>
                 {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
