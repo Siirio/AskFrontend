@@ -1296,7 +1296,7 @@ function BizProfilePage({ session, showToast }: { session: any; showToast: (m: s
   }
 
   async function handleAddBranch() {
-    if (!newBranchName.trim()) return;
+    if (!businessId || !newBranchName.trim()) return;
     setAddingBranch(true);
     try {
       const b = await createBranch(businessId, {
@@ -1339,7 +1339,7 @@ function BizProfilePage({ session, showToast }: { session: any; showToast: (m: s
         )}
       </div>
 
-      <div className="manage-header" style={{ marginTop: 24 }}><h2>Филиалы</h2><button className="btn-primary" onClick={() => setShowAddBranch(true)}><Plus size={16} />Добавить филиал</button></div>
+      <div className="manage-header" style={{ marginTop: 24 }}><h2>Филиалы</h2>{businessId && <button className="btn-primary" onClick={() => setShowAddBranch(true)}><Plus size={16} />Добавить филиал</button>}</div>
       {branchesLoading && <div className="empty-state"><RefreshCw size={20} className="spin" /><p>Загрузка...</p></div>}
       {!branchesLoading && (
         <div className="service-list branch-list" style={{ marginTop: 8 }}>
