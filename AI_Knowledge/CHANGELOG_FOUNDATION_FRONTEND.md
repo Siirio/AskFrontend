@@ -208,3 +208,10 @@ Updated the frontend product architecture idea:
 - Platform UI can differ, but heavy request, catalog, service, and availability logic should not be duplicated separately in each UI.
 - Product catalog UX should account for Excel and CSV import flows backed by backend contracts.
 - Service-provider administration is expected to fit a web cabinet better than mobile-only screens for larger service data, schedules, discounts, conditions, specialists, and branches.
+
+## 2026-06-27 - Branch City Loading And Error Categorization
+
+- Business profile branch management now loads cities independently from branch list loading, so a branch-list failure no longer leaves the add-branch city dropdown empty.
+- Add-branch city dropdown is disabled when reference cities are unavailable instead of silently showing an empty selectable dropdown.
+- Frontend error handling now maps backend `errorCode` values such as `INVALID_CREDENTIALS`, `VALIDATION_ERROR`, `ACCESS_DENIED`, and `CITY_NOT_FOUND` to user-facing messages.
+- Login with a missing or wrong account should show invalid credentials instead of a generic server error when backend returns the shared `ErrorResponse` contract.
