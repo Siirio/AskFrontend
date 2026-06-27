@@ -8,6 +8,7 @@ import {
 import { loginWithPassword, logout as clearSession, registerBusiness, registerCustomer, updateProfile, verifyCode } from "../shared/api/authClient";
 import type { AuthChallenge } from "../shared/api/authClient";
 import { ApiError, API_BASE_URL, transformKeys, camelToSnakeKeys } from "../shared/api/httpClient";
+import { getUserFriendlyError } from "../shared/lib/errorUtils";
 import { searchAsk, createFallbackRequest, getSupplierTasks, getCustomerHistory, getCustomerRequestDetail, getSupplierTaskDetail, respondToTask, listProducts, createProduct, updateProduct, deleteProduct, listServices, createService, updateService, listStaff, createStaff, resetStaffPassword, updateStaff, listCities, listCategories, listBranches, createBranch } from "../shared/api/askClient";
 import type { SearchResult } from "../entities/search-result/model";
 import type { CustomerRequest } from "../entities/request/model";
@@ -59,10 +60,8 @@ const initialMessages: ChatMessage[] = [];
 
 const initialChatThreads: ChatThread[] = [];
 
-/* ── Helpers ── */
 function extractError(error: unknown): string {
-  if (error instanceof ApiError) return error.message || `Ошибка ${error.status}`;
-  return "Не удалось выполнить запрос. Проверьте соединение.";
+  return getUserFriendlyError(error);
 }
 
 type FilterKind = "text" | "number" | "date" | "boolean";
@@ -244,7 +243,7 @@ function AuthScreen({ onLogin, onToast }: { onLogin: (s: any, r: UserRole) => vo
       onLogin({ token: s.accessToken, role: s.role, userId: s.user?.userId ?? "", displayName: s.user?.displayName ?? "", email: email,
         businessId: biz?.businessId, businessName: biz?.businessName, branchId: biz?.branchId, branchName: biz?.branchName,
       }, isBiz ? "business" : "customer");
-    } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
+    } catch (err) { setError(getUserFriendlyError(err, "auth")); } finally { setLoading(false); }
   }
 
   async function handleRegister(e: FormEvent) {
@@ -254,7 +253,7 @@ function AuthScreen({ onLogin, onToast }: { onLogin: (s: any, r: UserRole) => vo
         ? await registerCustomer(displayName, email, password)
         : await registerBusiness({ email, password, businessName, branchName, branchCityId: branchCityId, branchAddress: branchName });
       setChallenge(ch);
-    } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
+    } catch (err) { setError(getUserFriendlyError(err, "auth")); } finally { setLoading(false); }
   }
 
   async function handleVerify(e: FormEvent) {
@@ -266,7 +265,7 @@ function AuthScreen({ onLogin, onToast }: { onLogin: (s: any, r: UserRole) => vo
       onLogin({ token: s.accessToken, role: s.role, userId: s.user?.userId ?? "", displayName: s.user?.displayName ?? "", email: email,
         businessId: s.business?.businessId, businessName: s.business?.businessName, branchId: s.business?.branchId, branchName: s.business?.branchName,
       }, isBiz ? "business" : "customer");
-    } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
+    } catch (err) { setError(getUserFriendlyError(err, "verify")); } finally { setLoading(false); }
   }
 
   return (
