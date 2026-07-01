@@ -22,3 +22,6 @@ dist/
 
 # Playwright
 .playwright-mcp/
+
+# local server logs
+*.log

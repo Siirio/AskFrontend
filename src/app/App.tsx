@@ -3,7 +3,7 @@ import {
   Search, History, UserRound, ShoppingBag, Building2, LogOut, Phone, MapPin,
   MessageCircle, Send, ShieldCheck, Clock, FileSpreadsheet, Plus, Settings2,
   Inbox, Bell, Copy, Check, X, Upload, ArrowRight, ChevronLeft, ChevronDown,
-  Package, Scissors, Users, Store, BarChart3, Home, Star, RefreshCw
+  Package, Scissors, Users, Store, BarChart3, Home, Star, RefreshCw, Sparkles, FolderUp, FileText
 } from "lucide-react";
 import { loginWithPassword, logout as clearSession, registerBusiness, registerCustomer, updateProfile, verifyCode } from "../shared/api/authClient";
 import type { AuthChallenge } from "../shared/api/authClient";
@@ -259,7 +259,7 @@ function AuthScreen({ onLogin, onToast }: { onLogin: (s: any, r: UserRole) => vo
   async function handleVerify(e: FormEvent) {
     e.preventDefault(); if (!challenge) return; setError(null); setLoading(true);
     try {
-      const s = await verifyCode(challenge.auth_challenge_id, code);
+      const s = await verifyCode(challenge.authChallengeId, code);
       const isBiz = s.role?.startsWith("ROLE_BUSINESS");
       if (s.activationRequired) { onToast("Требуется активация. Проверьте лог сервера для кода."); setLoading(false); return; }
       onLogin({ token: s.accessToken, role: s.role, userId: s.user?.userId ?? "", displayName: s.user?.displayName ?? "", email: email,
@@ -279,7 +279,14 @@ function AuthScreen({ onLogin, onToast }: { onLogin: (s: any, r: UserRole) => vo
 
         {challenge ? (
           <form className="auth-panel" onSubmit={handleVerify}>
-            <p style={{ margin: 0, color: "#40505c", lineHeight: 1.5 }}>{challenge.code ? <>Ваш код подтверждения: <strong style={{ fontSize: 20, letterSpacing: 4 }}>{challenge.code}</strong></> : <>Код отправлен на <strong>{challenge.masked_destination}</strong></>}</p>
+            {challenge.code ? (
+              <div style={{ background: "rgba(251, 191, 36, 0.12)", border: "1px solid rgba(251, 191, 36, 0.4)", borderRadius: 10, padding: "14px 18px", marginBottom: 16, textAlign: "center" }}>
+                <p style={{ margin: "0 0 6px 0", fontSize: 13, color: "#92400e", fontWeight: 500 }}>Тестовая среда — используйте код:</p>
+                <strong style={{ fontSize: 28, letterSpacing: 8, color: "#78350f", fontFamily: "'Courier New', monospace", userSelect: "all" }}>{challenge.code}</strong>
+              </div>
+            ) : (
+              <p style={{ margin: "0 0 12px 0", color: "#40505c", lineHeight: 1.5 }}>Код отправлен на <strong>{challenge.maskedDestination}</strong></p>
+            )}
             <label>Код подтверждения<input value={code} onChange={e => setCode(e.target.value)} placeholder="000000" maxLength={6} autoComplete="one-time-code" /></label>
             {error && <p className="auth-error">{error}</p>}
             <button className="btn-primary btn-full" type="submit" disabled={loading}><ShieldCheck size={18} />{loading ? "Проверка..." : "Подтвердить"}</button>
@@ -397,7 +404,7 @@ function SearchPage({ showToast }: { showToast: (m: string) => void }) {
   async function doSearch() {
     setLoading(true);
     setSearched(true);
-    try { const r = await searchAsk(query, scope, selectedCategory); setResults(r); setResultTab("found"); } catch { setResults([]); } finally { setLoading(false); }
+    try { const r = await searchAsk(query, scope, cities.find(c => c.id === cityId)?.name, selectedCategory); setResults(r); setResultTab("found"); } catch { setResults([]); } finally { setLoading(false); }
   }
 
   function selectScope(nextScope: "all" | "product" | "service") {
@@ -529,20 +536,35 @@ function SearchPage({ showToast }: { showToast: (m: string) => void }) {
 }
 
 function ResultCard({ result }: { result: SearchResult }) {
+  const sectionLabel = result.section === "OVER_BUDGET" ? "Дороже бюджета"
+    : result.section === "WRONG_CITY" ? "Другой город"
+      : result.section === "SIMILAR" ? "Похожее"
+        : null;
   const kindLabel: Record<string, string> = { product: "Товар", service: "Услуга", business: "Поставщик" };
   return (
-    <article className="result-card">
+    <article className="result-card brand-aware-card" style={{ ["--brand-accent" as string]: result.brandColor }}>
       <div className="result-card-head">
         <span className="kind-pill">{kindLabel[result.kind]}</span>
-        <span className={`conf-badge conf-${result.confidence}`}>{result.confidence === "high" ? "Высокая" : result.confidence === "medium" ? "Средняя" : "Низкая"} точность</span>
+        {sectionLabel && <span className="kind-pill">{sectionLabel}</span>}
+        {result.badges.slice(0, 2).map(badge => <span className="trust-badge" key={badge}>{badgeLabel(badge)}</span>)}
+      </div>
+      <div className="brand-strip">
+        <div className="brand-mark">{result.brandLogoUrl ? <img src={result.brandLogoUrl} alt="" /> : (result.businessName || result.supplierName || "A").slice(0, 1)}</div>
+        <div>
+          <strong>{result.businessName || result.supplierName}</strong>
+          {result.brandDescriptor && <span>{result.brandDescriptor}</span>}
+        </div>
       </div>
       <h3>{result.title}</h3>
-      <div className="supplier-line"><strong>{result.supplierName}</strong><span>{result.category}</span></div>
-      <p>{result.note}</p>
+      <div className="supplier-line"><span>{result.category}</span><span>{decisionStatusLabel(result)}</span></div>
+      <div className="match-reasons">
+        {(result.matchReasons ?? []).slice(0, 4).map(reason => <span key={reason}>{reasonLabel(reason)}</span>)}
+      </div>
+      {result.note && <p>{result.note}</p>}
       <div className="result-meta">
         <span className="price">{result.priceLabel ?? "Цена после уточнения"}</span>
-        <span>{result.sourceLabel}</span>
-        <span>{result.branch}</span>
+        <span>{result.branchContext || result.branch}</span>
+        <span>{pickupLabel(result.pickupOptions)}</span>
       </div>
       <div className="card-actions">
         {result.actions.includes("call") && <button className="icon-only" aria-label="Позвонить"><Phone size={17} /></button>}
@@ -552,6 +574,39 @@ function ResultCard({ result }: { result: SearchResult }) {
       </div>
     </article>
   );
+}
+
+function badgeLabel(value: string): string {
+  const labels: Record<string, string> = {
+    "official channel": "Есть официальный канал",
+    "complete card": "Карточка заполнена",
+    pickup: "Есть самовывоз",
+    "active drop": "Есть активный дроп",
+  };
+  return labels[value] ?? value;
+}
+
+function reasonLabel(value: string): string {
+  const labels: Record<string, string> = {
+    "matches by title": "Подходит по названию",
+    "pickup available": "Есть самовывоз",
+    "within budget": "В бюджете",
+    "brand matches this intent": "Бренд подходит под запрос",
+  };
+  if (value.startsWith("category:")) return value.replace("category:", "Категория:");
+  return labels[value] ?? value;
+}
+
+function decisionStatusLabel(result: SearchResult): string {
+  if (result.confirmationStatus === "BUSINESS_CONFIRMED") return "Подтверждено бизнесом";
+  if (result.confirmationStatus === "DATA_UPDATED") return "Данные обновлены";
+  return "Нужно подтверждение";
+}
+
+function pickupLabel(options: SearchResult["pickupOptions"]): string {
+  if (options.includes("PICKUP")) return "Самовывоз";
+  if (options.includes("ONLINE")) return "Онлайн";
+  return "Формат получения уточняется";
 }
 
 function SupplierRow({ supplier, onChat }: { supplier: SupplierCheck; onChat: () => void }) {
@@ -1505,6 +1560,9 @@ interface UploadResponse { importId: string; originalFileName: string; status: s
 interface ColumnMappingInfo { sourceColumn: string; targetField: string; characteristicName: string | null; approved: boolean; confidence: number; }
 interface RowPreviewData { rowId: string; rowNumber: number; status: string; normalizedData: Record<string, string>; errors: string[]; warnings: string[]; }
 interface PreviewResponseData { importId: string; status: string; totalRows: number; validRows: number; invalidRows: number; warningRows: number; mappings: ColumnMappingInfo[]; rows: RowPreviewData[]; }
+interface AutodumpDraftData { id: string; itemType: string; status: string; title: string; normalizedTitle?: string; categoryLabel?: string; subcategoryLabel?: string; price?: number | string; }
+interface AutodumpSessionData { sessionId: string; status: string; totalDraftCount: number; approvedCount: number; rejectedCount: number; errorCount: number; drafts: AutodumpDraftData[]; }
+interface AutodumpPublishData { sessionId: string; sessionStatus: string; published: number; skipped: number; }
 
 const targetFieldLabels: Record<string, string> = {
   NAME: "Название товара", CATEGORY_LABEL: "Категория", DESCRIPTION: "Описание",
@@ -1537,6 +1595,9 @@ function ImportPage({ showToast, session, onClose }: { showToast: (m: string) =>
   const [dragOver, setDragOver] = useState(false);
   const [modalCol, setModalCol] = useState<string | null>(null);
   const [modalVal, setModalVal] = useState<string>("IGNORE");
+  const [autodumpText, setAutodumpText] = useState("");
+  const [autodumpSession, setAutodumpSession] = useState<AutodumpSessionData | null>(null);
+  const [intakeFileNames, setIntakeFileNames] = useState<string[]>([]);
 
   const branchId = session.branchId;
   const branchName = session.branchName || "Филиал";
@@ -1552,17 +1613,64 @@ function ImportPage({ showToast, session, onClose }: { showToast: (m: string) =>
   function openFilePicker() {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".xlsx,.xls";
-    input.onchange = (ev) => handleFile((ev as any).target?.files?.[0]);
+    input.accept = ".xlsx,.xls,.csv,.txt,.pdf";
+    input.multiple = true;
+    input.onchange = (ev) => handleFiles(Array.from((ev as any).target?.files ?? []));
     input.click();
   }
 
-  function handleFile(f: File | undefined) {
-    if (!f) return;
-    if (!f.name.toLowerCase().endsWith(".xlsx") && !f.name.toLowerCase().endsWith(".xls")) {
-      showToast("Только .xlsx и .xls файлы"); return;
+  function handleFiles(files: File[]) {
+    if (files.length === 0) return;
+    setIntakeFileNames(files.map(f => f.name));
+    const excelFiles = files.filter(f => isExcelFile(f));
+    const textFiles = files.filter(f => isTextImportFile(f));
+    const pdfFiles = files.filter(f => f.name.toLowerCase().endsWith(".pdf"));
+    if (excelFiles.length > 0) {
+      if (files.length > 1 || excelFiles.length > 1) {
+        setError("Excel сопоставление сейчас открывается по одному файлу. Для нескольких файлов используйте CSV/TXT через AI Autodump.");
+        return;
+      }
+      uploadFile(excelFiles[0]);
+      return;
     }
-    uploadFile(f);
+    if (textFiles.length > 0) {
+      readTextFiles(textFiles);
+      return;
+    }
+    if (pdfFiles.length > 0) {
+      setError("PDF выбран. Для PDF будет отдельный workflow разбора документа, сейчас локально подключены Excel и текст.");
+      return;
+    }
+    showToast("Поддерживаются .xlsx, .xls, .csv, .txt и .pdf");
+  }
+
+  function isExcelFile(f: File) {
+    const name = f.name.toLowerCase();
+    if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+      return true;
+    }
+    return false;
+  }
+
+  function isTextImportFile(f: File) {
+    const name = f.name.toLowerCase();
+    if (name.endsWith(".txt") || name.endsWith(".csv")) {
+      return true;
+    }
+    return false;
+  }
+
+  async function readTextFiles(files: File[]) {
+    setError(null); setLoading(true);
+    try {
+      const parts = await Promise.all(files.map(async f => {
+        const text = await f.text();
+        return `Файл: ${f.name}\n${text}`;
+      }));
+      setAutodumpText(parts.join("\n\n---\n\n"));
+      setAutodumpSession(null);
+      showToast(`Файлы добавлены: ${files.length}. Нажмите «Заполнить через AI».`);
+    } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
   }
 
   async function uploadFile(f: File) {
@@ -1586,12 +1694,68 @@ function ImportPage({ showToast, session, onClose }: { showToast: (m: string) =>
     } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
   }
 
+  async function createAutodumpDrafts() {
+    if (!autodumpText.trim()) { showToast("Вставьте текст, прайс или список услуг"); return; }
+    setError(null); setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/autodump-sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(camelToSnakeKeys({
+          sourceType: "PASTE_TEXT",
+          inputSummary: autodumpText.trim().slice(0, 120),
+          rawText: autodumpText,
+        })),
+      });
+      if (!res.ok) { const t = await res.text().catch(() => ""); throw new ApiError(res.status, t || `Ошибка ${res.status}`); }
+      const created = transformKeys(await res.json()) as { sessionId: string };
+      const status = await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/autodump-sessions/${created.sessionId}`, { headers: authHeaders });
+      if (!status.ok) { const t = await status.text().catch(() => ""); throw new ApiError(status.status, t || `Ошибка ${status.status}`); }
+      const data = transformKeys(await status.json()) as AutodumpSessionData;
+      setAutodumpSession(data);
+      showToast(`AI подготовил ${data.drafts.length} позиций. Проверьте и опубликуйте.`);
+    } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
+  }
+
+  async function publishAutodumpDrafts() {
+    if (!autodumpSession) return;
+    setError(null); setLoading(true);
+    try {
+      const draftsToApprove = autodumpSession.drafts.filter(d => d.status !== "REJECTED" && d.status !== "PUBLISHED");
+      for (const draft of draftsToApprove) {
+        const approve = await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/autodump-sessions/${autodumpSession.sessionId}/drafts/${draft.id}/approve`, {
+          method: "POST",
+          headers: authHeaders,
+        });
+        if (!approve.ok) { const t = await approve.text().catch(() => ""); throw new ApiError(approve.status, t || `Ошибка ${approve.status}`); }
+      }
+      const res = await fetch(`${API_BASE_URL}/api/v1/business-admin/branches/${branchId}/autodump-sessions/${autodumpSession.sessionId}/publish`, {
+        method: "POST",
+        headers: authHeaders,
+      });
+      if (!res.ok) { const t = await res.text().catch(() => ""); throw new ApiError(res.status, t || `Ошибка ${res.status}`); }
+      const data = transformKeys(await res.json()) as AutodumpPublishData;
+      showToast(`AI dump опубликован: ${data.published} позиций, пропущено ${data.skipped}.`);
+      setAutodumpSession(null);
+      setAutodumpText("");
+      onClose?.();
+    } catch (err) { setError(extractError(err)); } finally { setLoading(false); }
+  }
+
   function handleDragOver(e: React.DragEvent) { e.preventDefault(); setDragOver(true); }
   function handleDragLeave() { setDragOver(false); }
   function handleDrop(e: React.DragEvent) {
     e.preventDefault(); setDragOver(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f) handleFile(f);
+    handleFiles(Array.from(e.dataTransfer.files ?? []));
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const files = Array.from(e.clipboardData.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+    e.preventDefault();
+    handleFiles(files);
   }
 
   function openMappingModal(colName: string) {
@@ -1662,7 +1826,7 @@ function ImportPage({ showToast, session, onClose }: { showToast: (m: string) =>
 
   function resetImport() {
     setStep("upload"); setFile(null); setUploadRes(null); setMappings({});
-    setCharNames({}); setPreviewRes(null); setError(null);
+    setCharNames({}); setPreviewRes(null); setError(null); setAutodumpText(""); setAutodumpSession(null); setIntakeFileNames([]);
   }
 
   function getSampleValues(colName: string): string[] {
@@ -1705,7 +1869,7 @@ function ImportPage({ showToast, session, onClose }: { showToast: (m: string) =>
       {/* Step 1 — Upload */}
       {!loading && step === "upload" && (
         <div className="import-card" style={{ marginBottom: 80 }}>
-          <h2>Импорт товаров из Excel</h2>
+          <h2>Импорт данных</h2>
           <p>Импорт применяется к текущему филиалу: <strong>{branchName}</strong></p>
 
           <div
@@ -1714,20 +1878,64 @@ function ImportPage({ showToast, session, onClose }: { showToast: (m: string) =>
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onPaste={handlePaste}
+            tabIndex={0}
+            style={{ gap: 10, alignItems: "stretch", textAlign: "left", marginTop: 16 }}
           >
-            <Upload size={36} />
-            <p>Загрузите файл Excel (.xlsx) с товарами</p>
-            <span>Колонки будут автоматически сопоставлены с полями — проверить и поправить можно на следующем шаге</span>
-            <button className="btn-outline" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); openFilePicker(); }}>Выбрать файл</button>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>Поддерживаются файлы .xlsx и .xls</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "center", textAlign: "center" }}>
+              <FolderUp size={36} />
+              <div>
+                <p>Перетащите файл или вставьте текст</p>
+                <span>Excel откроет сопоставление колонок, CSV/TXT пойдут в AI Autodump, PDF будет отдельным workflow документа.</span>
+              </div>
+            </div>
+            {intakeFileNames.length > 0 ? (
+              <div className="import-file-list" onClick={e => e.stopPropagation()}>
+                {intakeFileNames.map(name => (
+                  <div className="import-file-chip" key={name}>
+                    <FileText size={16} />
+                    <span>{name}</span>
+                  </div>
+                ))}
+                <button className="btn-ghost" onClick={() => { setIntakeFileNames([]); setAutodumpText(""); setAutodumpSession(null); }}>
+                  <X size={14} />Очистить
+                </button>
+              </div>
+            ) : (
+              <textarea
+                value={autodumpText}
+                onClick={e => e.stopPropagation()}
+                onChange={e => { setAutodumpText(e.target.value); setAutodumpSession(null); }}
+                placeholder={"Например:\nКреатин Maxler 500 г карамель - 8900 тг\nВелики на прокат 1 час от 4000 тг в час"}
+                style={{ width: "100%", minHeight: 140, marginTop: 10, resize: "vertical" }}
+              />
+            )}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 10 }}>
+              <button className="btn-outline" onClick={e => { e.stopPropagation(); openFilePicker(); }}>Выбрать файл</button>
+              <button className="btn-primary" onClick={e => { e.stopPropagation(); createAutodumpDrafts(); }} disabled={loading || !autodumpText.trim()}>
+                <Sparkles size={16} />Заполнить через AI
+              </button>
+              {autodumpSession && (
+                <button className="btn-outline" onClick={e => { e.stopPropagation(); publishAutodumpDrafts(); }} disabled={loading || autodumpSession.drafts.length === 0}>
+                  <Check size={16} />Опубликовать {autodumpSession.drafts.length}
+                </button>
+              )}
+            </div>
+            <span style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
+              {intakeFileNames.length > 0 ? `Выбрано файлов: ${intakeFileNames.length}` : "Поддерживаются .xlsx, .xls, .csv, .txt, .pdf"}
+            </span>
+            {autodumpSession && (
+              <div className="import-preview-rows" style={{ marginTop: 12 }}>
+                {autodumpSession.drafts.slice(0, 8).map(draft => (
+                  <div className="import-preview-row" key={draft.id}>
+                    <div className="row-num">{draft.itemType}</div>
+                    <div className="row-data">{draft.normalizedTitle || draft.title}{draft.categoryLabel ? ` · ${draft.categoryLabel}` : ""}{draft.price ? ` · ${draft.price}` : ""}</div>
+                    <span className="conf-badge conf-medium">{draft.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
-          <div className="import-divider">или</div>
-
-          <button className="import-example-btn" onClick={() => showToast("Демо-файл будет доступен в ближайшее время")}>
-            <FileSpreadsheet size={18} />Использовать пример Excel
-          </button>
-          <div className="import-example-caption">Демо-набор: спортивное питание, 3 товара</div>
 
           <div className="import-warning">
             <strong>Важно</strong>

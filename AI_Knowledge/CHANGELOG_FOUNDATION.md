@@ -1,5 +1,18 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-01 - Anti-Marketplace Result Cards
+
+- Search result cards now render brand identity, trust/completeness badges, match reasons, branch context, and confirmation state.
+- Frontend no longer shows internal AI confidence or raw score as customer-facing ranking proof.
+- Search requests send `sort: "intent_match"` as the default intent-fit ordering.
+- Product cards remain offer-fit cards, not cheapest-first marketplace tiles or rating-ranked buy boxes.
+
+## 2026-06-30 - Universal Import Intake
+
+- Product import upload now uses one intake surface for pasted text, Excel, CSV/TXT, and future PDF workflow routing.
+- CSV/TXT uploads can be selected or dropped as multiple files for AI Autodump without rendering raw file contents as the visible input.
+- Excel remains a one-file mapping workflow because column mapping and preview are file-scoped.
+
 ## 2026-06-22 - Role Simplification: Owner/Staff Only
 
 Removed MANAGER and OPERATOR roles from all frontend documentation. Business roles are now only OWNER and STAFF.

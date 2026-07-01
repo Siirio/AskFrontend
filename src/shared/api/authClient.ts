@@ -1,12 +1,12 @@
 import { apiRequest, setStoredToken } from "./httpClient";
 
 export type AuthChallenge = {
-  auth_challenge_id: string;
+  authChallengeId: string;
   role: string;
   purpose: string;
   channel: "EMAIL" | "SMS";
-  masked_destination: string;
-  expires_at: string;
+  maskedDestination: string;
+  expiresAt: string;
   code?: string;
 };
 

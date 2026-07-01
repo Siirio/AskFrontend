@@ -4,14 +4,23 @@ import type {
   BusinessProductDto, BusinessProductListDto,
   BusinessServiceDto, BusinessServiceListDto,
   CustomerRequestDetailDto, CustomerRequestHistoryDto,
-  SearchResultDto, StaffDto, SupplierTaskDetailDto, SupplierTaskDto
+  SearchResultDto, StaffDto, StructuredSearchDto, SupplierTaskDetailDto, SupplierTaskDto
 } from "./dto";
 
-export async function searchAsk(query: string, scope: "all" | "product" | "service", category?: string) {
-  const params = new URLSearchParams({ q: query, scope });
-  if (category) params.set("category", category);
-  const dtos = await apiRequest<SearchResultDto[]>(`/api/v1/search?${params.toString()}`);
-  return dtos.map(mapSearchResult);
+export async function searchAsk(query: string, scope: "all" | "product" | "service", city?: string, category?: string) {
+  const response = await apiRequest<StructuredSearchDto>("/api/v1/search", {
+    method: "POST",
+    body: {
+      rawQuery: query,
+      selectedMode: scope === "all" ? "AUTO" : scope.toUpperCase(),
+      selectedCategory: category || "",
+      city: city || "Астана",
+      userLocation: { lat: null, lng: null },
+      language: "ru",
+      sort: "intent_match",
+    },
+  });
+  return response.results.map(mapSearchResult);
 }
 
 export async function createFallbackRequest(query: string, scope: "product" | "service", city: string) {

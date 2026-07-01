@@ -2,14 +2,70 @@ export type SearchResultDto = {
   id: string;
   type: "PRODUCT" | "SERVICE" | "BUSINESS";
   name: string;
-  supplier_name: string;
-  branch_address: string;
-  category_name: string;
+  supplier_name?: string;
+  supplierName?: string;
+  brand_id?: string;
+  brandId?: string;
+  business_name?: string;
+  businessName?: string;
+  brand_color?: string;
+  brandColor?: string;
+  brand_logo_url?: string;
+  brandLogoUrl?: string;
+  brand_cover_url?: string;
+  brandCoverUrl?: string;
+  brand_descriptor?: string;
+  brandDescriptor?: string;
+  branch_address?: string;
+  branchAddress?: string;
+  branch_context?: string;
+  branchContext?: string;
+  category_name?: string;
+  categoryName?: string;
   price_text?: string;
-  confidence_code: "HIGH" | "MEDIUM" | "LOW";
+  priceText?: string;
+  availability_status?: "NEEDS_CONFIRMATION" | "UNKNOWN" | "CONFIRMED";
+  availabilityStatus?: "NEEDS_CONFIRMATION" | "UNKNOWN" | "CONFIRMED";
+  confirmation_status?: "NOT_CONFIRMED" | "BUSINESS_CONFIRMED" | "DATA_UPDATED" | "SUPPLIER_CHECK_CONFIRMED";
+  confirmationStatus?: "NOT_CONFIRMED" | "BUSINESS_CONFIRMED" | "DATA_UPDATED" | "SUPPLIER_CHECK_CONFIRMED";
+  pickup_options?: Array<"PICKUP" | "ONLINE">;
+  pickupOptions?: Array<"PICKUP" | "ONLINE">;
+  distance_text?: string;
+  distanceText?: string;
+  confidence_code?: "HIGH" | "MEDIUM" | "LOW";
+  confidenceCode?: "HIGH" | "MEDIUM" | "LOW";
   source: "CATALOG" | "SUPPLIER_REPLY" | "MANUAL_PROFILE" | "SERVICE_PROFILE";
-  public_note: string;
-  contact_actions: Array<"CALL" | "MAP" | "CHAT" | "REQUEST">;
+  source_type?: string;
+  sourceType?: string;
+  public_note?: string;
+  publicNote?: string;
+  section_type?: "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
+  sectionType?: "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
+  score?: number;
+  match_reasons?: string[];
+  matchReasons?: string[];
+  badges?: string[];
+  warnings?: string[];
+  requires_supplier_check?: boolean;
+  requiresSupplierCheck?: boolean;
+  contact_actions?: Array<"CALL" | "MAP" | "CHAT" | "REQUEST">;
+  contactActions?: Array<"CALL" | "MAP" | "CHAT" | "REQUEST">;
+  available_actions?: Array<"CALL" | "MAP" | "CHAT" | "REQUEST">;
+  availableActions?: Array<"CALL" | "MAP" | "CHAT" | "REQUEST">;
+};
+
+export type SearchResultSectionDto = {
+  type: "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
+  title: string;
+  items: SearchResultDto[];
+};
+
+export type StructuredSearchDto = {
+  intentStructure: unknown;
+  effectiveScope: string;
+  effectiveQueries: string[];
+  sections?: SearchResultSectionDto[];
+  results: SearchResultDto[];
 };
 
 export type SupplierTaskDto = {

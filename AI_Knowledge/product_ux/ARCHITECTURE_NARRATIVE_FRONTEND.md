@@ -115,6 +115,40 @@ Frontend should:
 - keep mock/prototype behavior clearly separate from production API assumptions;
 - verify visible behavior with browser/mobile checks when UI changes.
 
+## Anti-Marketplace Architecture (2026-07-01)
+
+Ask is NOT a marketplace. It is an intent layer that routes qualified demand to brands without taking away their identity.
+
+### Core Positioning
+
+- Marketplace sells products on a shelf.
+- Instagram/Telegram sell atmosphere and trust.
+- **Ask sells the match between customer intent and the right brand.**
+
+### What Ask Standardizes vs. Preserves
+
+| Standardize (decision layer) | Preserve (brand identity) |
+|---|---|
+| Availability, price, branch, pickup | Visual style, photos, tone of voice |
+| Confirmation status, data freshness | Brand story, collections, drops |
+| Relevance to query, intent match | "Why us" narrative |
+| Quick actions: clarify, chat, open | Official channels: Instagram, Telegram, site |
+| Supplier response quality tracking | Brand world, community, culture |
+
+### Brand-Aware Storefronts
+
+Each brand gets a LEGO-like page constructor inside Ask:
+- **Brand Kit:** color, logo, cover, tone of voice, 3-5 photos, description, links.
+- **Page Blocks:** hero, collections, products, about, drops, contacts, branches.
+- Standardized data for search; flexible brand expression for storefront.
+
+### Ranking Philosophy
+
+No absolute "best brand" rating. Only "best match for THIS intent."
+- Default sort: intent_match (query relevance + style + availability + distance + data confidence).
+- Price is a filter factor, not the default sort king.
+- Visible badges: data freshness, confirmation speed, card quality, business activity.
+
 ## Integration Boundaries
 
 Frontend should not call private provider APIs directly. External systems such as Telegram, WhatsApp, maps, inventory, POS, CRM, e-commerce, fiscal, and scheduling systems should appear in the UI only through safe backend contracts or public client-safe actions.

@@ -29,18 +29,38 @@ const sourceMap = {
 } as const;
 
 export function mapSearchResult(dto: SearchResultDto): SearchResult {
+  const confidenceCode = dto.confidence_code ?? dto.confidenceCode ?? "MEDIUM";
+  const contactActions = dto.available_actions ?? dto.availableActions ?? dto.contact_actions ?? dto.contactActions ?? [];
   return {
     id: dto.id,
     kind: kindMap[dto.type],
     title: dto.name,
-    supplierName: dto.supplier_name,
-    branch: dto.branch_address,
-    category: dto.category_name,
-    priceLabel: dto.price_text,
-    confidence: confidenceMap[dto.confidence_code],
+    supplierName: dto.supplier_name ?? dto.supplierName ?? "",
+    brandId: dto.brand_id ?? dto.brandId,
+    businessName: dto.business_name ?? dto.businessName ?? dto.supplier_name ?? dto.supplierName ?? "",
+    brandColor: dto.brand_color ?? dto.brandColor ?? "#0d9b7c",
+    brandLogoUrl: dto.brand_logo_url ?? dto.brandLogoUrl,
+    brandCoverUrl: dto.brand_cover_url ?? dto.brandCoverUrl,
+    brandDescriptor: dto.brand_descriptor ?? dto.brandDescriptor,
+    branch: dto.branch_address ?? dto.branchAddress ?? "",
+    branchContext: dto.branch_context ?? dto.branchContext ?? dto.branch_address ?? dto.branchAddress ?? "",
+    category: dto.category_name ?? dto.categoryName ?? "",
+    priceLabel: dto.price_text ?? dto.priceText,
+    availabilityStatus: dto.availability_status ?? dto.availabilityStatus ?? "NEEDS_CONFIRMATION",
+    confirmationStatus: dto.confirmation_status ?? dto.confirmationStatus ?? "NOT_CONFIRMED",
+    pickupOptions: dto.pickup_options ?? dto.pickupOptions ?? [],
+    distanceText: dto.distance_text ?? dto.distanceText,
+    confidence: confidenceMap[confidenceCode],
+    section: dto.section_type ?? dto.sectionType,
+    score: dto.score,
+    matchReasons: dto.match_reasons ?? dto.matchReasons ?? [],
+    badges: dto.badges ?? [],
+    warnings: dto.warnings ?? [],
     sourceLabel: sourceMap[dto.source],
-    note: dto.public_note,
-    actions: dto.contact_actions.map((action) => actionMap[action]),
+    sourceType: dto.source_type ?? dto.sourceType ?? dto.source,
+    note: dto.public_note ?? dto.publicNote ?? "",
+    requiresSupplierCheck: dto.requires_supplier_check ?? dto.requiresSupplierCheck ?? false,
+    actions: contactActions.map((action) => actionMap[action]),
   };
 }
 

@@ -1,12 +1,44 @@
 import { MapPin, MessageCircle, Phone, Send } from "lucide-react";
 import type { SearchResult } from "../../entities/search-result/model";
-import { ConfidenceBadge } from "../../shared/ui/ConfidenceBadge";
 
 const kindLabel = {
   product: "Товар",
   service: "Услуга",
   business: "Поставщик",
 };
+
+function badgeLabel(value: string): string {
+  const labels: Record<string, string> = {
+    "official channel": "Есть официальный канал",
+    "complete card": "Карточка заполнена",
+    pickup: "Есть самовывоз",
+    "active drop": "Есть активный дроп",
+  };
+  return labels[value] ?? value;
+}
+
+function reasonLabel(value: string): string {
+  const labels: Record<string, string> = {
+    "matches by title": "Подходит по названию",
+    "pickup available": "Есть самовывоз",
+    "within budget": "В бюджете",
+    "brand matches this intent": "Бренд подходит под запрос",
+  };
+  if (value.startsWith("category:")) return value.replace("category:", "Категория:");
+  return labels[value] ?? value;
+}
+
+function decisionStatusLabel(result: SearchResult): string {
+  if (result.confirmationStatus === "BUSINESS_CONFIRMED") return "Подтверждено бизнесом";
+  if (result.confirmationStatus === "DATA_UPDATED") return "Данные обновлены";
+  return "Нужно подтверждение";
+}
+
+function pickupLabel(options: SearchResult["pickupOptions"]): string {
+  if (options.includes("PICKUP")) return "Самовывоз";
+  if (options.includes("ONLINE")) return "Онлайн";
+  return "Формат получения уточняется";
+}
 
 export function SmartSearchWidget({ results, isLoading }: { results: SearchResult[]; isLoading: boolean }) {
   return (
@@ -24,21 +56,32 @@ export function SmartSearchWidget({ results, isLoading }: { results: SearchResul
 
       <div className="result-grid">
         {results.map((result) => (
-          <article className="result-card" key={result.id}>
+          <article className="result-card brand-aware-card" style={{ ["--brand-accent" as string]: result.brandColor }} key={result.id}>
             <div className="result-card-head">
               <span className="kind-pill">{kindLabel[result.kind]}</span>
-              <ConfidenceBadge value={result.confidence} />
+              {sectionLabel(result.section) ? <span className="kind-pill">{sectionLabel(result.section)}</span> : null}
+              {result.badges.slice(0, 2).map(badge => <span className="trust-badge" key={badge}>{badgeLabel(badge)}</span>)}
+            </div>
+            <div className="brand-strip">
+              <div className="brand-mark">{result.brandLogoUrl ? <img src={result.brandLogoUrl} alt="" /> : (result.businessName || result.supplierName || "A").slice(0, 1)}</div>
+              <div>
+                <strong>{result.businessName || result.supplierName}</strong>
+                {result.brandDescriptor ? <span>{result.brandDescriptor}</span> : null}
+              </div>
             </div>
             <h3>{result.title}</h3>
             <div className="supplier-line">
-              <strong>{result.supplierName}</strong>
               <span>{result.category}</span>
+              <span>{decisionStatusLabel(result)}</span>
             </div>
-            <p>{result.note}</p>
+            <div className="match-reasons">
+              {(result.matchReasons ?? []).slice(0, 4).map(reason => <span key={reason}>{reasonLabel(reason)}</span>)}
+            </div>
+            {result.note ? <p>{result.note}</p> : null}
             <div className="result-meta">
               <span>{result.priceLabel ?? "Цена после уточнения"}</span>
-              <span>{result.sourceLabel}</span>
-              <span>{result.branch}</span>
+              <span>{result.branchContext || result.branch}</span>
+              <span>{pickupLabel(result.pickupOptions)}</span>
             </div>
             <div className="card-actions">
               {result.actions.includes("call") ? (
@@ -68,4 +111,11 @@ export function SmartSearchWidget({ results, isLoading }: { results: SearchResul
       </div>
     </section>
   );
+}
+
+function sectionLabel(section: SearchResult["section"]): string | null {
+  if (section === "OVER_BUDGET") return "Дороже бюджета";
+  if (section === "WRONG_CITY") return "Другой город";
+  if (section === "SIMILAR") return "Похожее";
+  return null;
 }
