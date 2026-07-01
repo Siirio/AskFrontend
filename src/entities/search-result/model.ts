@@ -1,0 +1,35 @@
+export type ResultKind = "product" | "service" | "business";
+export type Confidence = "high" | "medium" | "low";
+export type SearchSection = "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
+
+export type SearchResult = {
+  id: string;
+  kind: ResultKind;
+  title: string;
+  supplierName: string;
+  brandId?: string;
+  businessName: string;
+  brandColor: string;
+  brandLogoUrl?: string;
+  brandCoverUrl?: string;
+  brandDescriptor?: string;
+  branch: string;
+  branchContext: string;
+  category: string;
+  priceLabel?: string;
+  availabilityStatus: "NEEDS_CONFIRMATION" | "UNKNOWN" | "CONFIRMED";
+  confirmationStatus: "NOT_CONFIRMED" | "BUSINESS_CONFIRMED" | "DATA_UPDATED" | "SUPPLIER_CHECK_CONFIRMED";
+  pickupOptions: Array<"PICKUP" | "ONLINE">;
+  distanceText?: string;
+  confidence: Confidence;
+  section?: SearchSection;
+  score?: number;
+  matchReasons?: string[];
+  badges: string[];
+  warnings?: string[];
+  sourceLabel: string;
+  sourceType: string;
+  note: string;
+  requiresSupplierCheck: boolean;
+  actions: Array<"call" | "map" | "chat" | "request">;
+};
