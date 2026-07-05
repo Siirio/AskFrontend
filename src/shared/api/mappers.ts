@@ -94,14 +94,22 @@ function formatDays(d: number): string {
 }
 
 export function mapSupplierTask(dto: SupplierTaskDto): SupplierTask {
+  const normalized = dto as SupplierTaskDto & {
+    customerArea?: string;
+    categoryName?: string;
+    ageMinutes?: number;
+    confidenceCode?: "HIGH" | "MEDIUM" | "LOW";
+  };
+  const ageMinutes = normalized.age_minutes ?? normalized.ageMinutes ?? 0;
+  const confidenceCode = normalized.confidence_code ?? normalized.confidenceCode ?? "MEDIUM";
   return {
-    id: dto.id,
-    query: dto.query,
-    customerArea: dto.customer_area,
-    category: dto.category_name,
-    ageMinutes: dto.age_minutes,
-    ageLabel: formatRelativeTime(dto.age_minutes),
-    confidenceLabel: confidenceMap[dto.confidence_code],
+    id: normalized.id,
+    query: normalized.query,
+    customerArea: normalized.customer_area ?? normalized.customerArea ?? "",
+    category: normalized.category_name ?? normalized.categoryName ?? "",
+    ageMinutes,
+    ageLabel: formatRelativeTime(ageMinutes),
+    confidenceLabel: confidenceMap[confidenceCode],
     status: dto.status === "NEW" ? "new" : dto.status === "NEEDS_REPLY" ? "needs_reply" : "answered",
   };
 }

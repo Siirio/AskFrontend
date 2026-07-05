@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:9090";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 function snakeToCamel(key: string): string {
   return key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
@@ -17,6 +17,8 @@ export function transformKeys(obj: unknown): unknown {
   return obj;
 }
 
+const TOKEN_STORAGE_KEY = "ask.accessToken";
+
 function camelToSnake(key: string): string {
   return key.replace(/([A-Z])/g, (_, c) => "_" + c.toLowerCase());
 }
@@ -34,8 +36,6 @@ export function camelToSnakeKeys(obj: unknown): unknown {
   return obj;
 }
 
-const TOKEN_STORAGE_KEY = "ask.accessToken";
-
 export function getStoredToken(): string | null {
   return window.localStorage.getItem(TOKEN_STORAGE_KEY);
 }
@@ -50,15 +50,17 @@ export function setStoredToken(token: string | null) {
 
 export class ApiError extends Error {
   status: number;
+  errorCode: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, errorCode: string | null = null) {
     super(message);
     this.status = status;
+    this.errorCode = errorCode;
   }
 }
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   auth?: boolean;
 };
@@ -81,7 +83,16 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new ApiError(response.status, text || `Request failed: ${response.status}`);
+    let message = text;
+    let errorCode: string | null = null;
+    try {
+      const json = JSON.parse(text);
+      if (json.message) message = json.message;
+      errorCode = json.error_code || json.errorCode || null;
+    } catch {
+      // not JSON, use raw text
+    }
+    throw new ApiError(response.status, message, errorCode);
   }
 
   if (response.status === 204) {

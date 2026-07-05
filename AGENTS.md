@@ -18,6 +18,7 @@ Read:
 - No invented facts: don't show "in stock" unless backend confirms it.
 - No public ratings on MVP.
 - Scope (Товары/Услуги) is locked per search session.
+- Never show internal implementation, backend/frontend architecture, stack, PWA, token, renderer, builder, plugin, or design-system explanations in the product UI; these belong only in docs and code, not visible screens.
 
 ## Anti-Marketplace Guardrails (2026-07-01)
 
@@ -50,13 +51,34 @@ Every card shows: "Подходит, потому что: oversized fit, в бю
 
 ## Visual Style
 
-- Clean white, teal accent (#0d9b7c), Inter font.
-- Never old warm ivory/brown/Trebuchet style.
-- See `DESIGN_AND_VISUALS_FRONTEND.md` for full guardrails.
+- Dark graphite/charcoal base, warm ivory text (#f4eee6), controlled orange accent (#ff5a1f), Inter font.
+- Never old warm ivory/brown/Trebuchet style. Never old light/teal (#0d9b7c) direction.
+- See `AI_Knowledge/product_ux/FRONTEND_REDESIGN_REFERENCE_STACK.md` for full visual and motion guardrails.
+- Design tokens: `--bg: #070807`, `--panel: rgba(22,22,21,0.86)`, `--text: #f4eee6`, `--orange: #ff5a1f`.
 
 ## Tech Stack
 
 - React + TypeScript + Vite
-- lucide-react for icons
+- lucide-react for icons (functional UI only, not large brand assets)
 - API_BASE_URL: http://localhost:9090
 - Backend sends snake_case; frontend converts via transformKeys() in httpClient.ts
+
+## Generative UI Renderer
+
+- Frontend is a **safe schema renderer**, not a free-form HTML host.
+- Backend/AI returns UI recipe JSON with `component` + `props`; frontend renders only whitelisted components.
+- Whitelist: `ProductCard`, `ServiceCard`, `DropCard`, `BusinessCandidateCard`, `StorefrontHero`, `ContactActions`, `DistanceBadge`, `MatchReasons`.
+- Never render arbitrary HTML, raw React, or unvalidated markdown from backend/AI.
+
+## Contact Actions
+
+- UI shows: Telegram, Instagram, WhatsApp, 2GIS, Site, Ask Chat as action buttons.
+- Click goes through `contactActionId` — backend resolves the actual contact/redirect securely.
+- Never show raw phone/username in UI unless backend explicitly returns it as public display value.
+- Contact hash is internal dedup infrastructure, never shown to users.
+
+## Storefront Builder
+
+- Brand storefront = constrained Canva-like builder (Puck or custom), NOT free-form Webflow.
+- Blocks: Hero, Products, Drops, About, Lookbook, Branches, Contacts, FAQ, Promo, "Why this matches".
+- Frontend renders published storefront pages from backend block config.

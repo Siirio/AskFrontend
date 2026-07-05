@@ -25,3 +25,5 @@ dist/
 
 # local server logs
 *.log
+
+.vercel

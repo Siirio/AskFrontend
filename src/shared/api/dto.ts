@@ -54,6 +54,99 @@ export type SearchResultDto = {
   availableActions?: Array<"CALL" | "MAP" | "CHAT" | "REQUEST">;
 };
 
+export type ContactActionDto = {
+  contactActionId: string;
+  provider: string;
+  label: string;
+};
+
+export type ContactResolveDto = {
+  actionType: "REDIRECT" | "DISPLAY" | "DEEP_LINK" | "CHAT";
+  redirectUrl?: string | null;
+  deepLink?: string | null;
+  displayValue?: string | null;
+  provider: string;
+  label: string;
+  expiresAt: string;
+};
+
+export type SearchV2CardDto = {
+  component: "ProductCard" | "ServiceCard" | "DropCard" | "BusinessCandidateCard";
+  resultId: string;
+  businessId?: string | null;
+  businessName?: string | null;
+  brandColor?: string | null;
+  brandLogoUrl?: string | null;
+  title: string;
+  price?: number | null;
+  availability?: "IN_STOCK" | "NEEDS_CONFIRMATION" | "UNKNOWN" | string;
+  matchReasons?: string[];
+  badges?: string[];
+  distanceMeters?: number | null;
+  branchName?: string | null;
+  hasActiveDrop?: boolean;
+  contactActions?: ContactActionDto[];
+};
+
+export type SearchV2SectionDto = {
+  type: "exact_products" | "similar_products" | "fresh_drops" | "suitable_storefronts" | "over_budget" | "needs_confirmation";
+  title: string;
+  cards: SearchV2CardDto[];
+};
+
+export type SearchV2ResponseDto = {
+  searchSessionId?: string | null;
+  rawQuery: string;
+  scope: string;
+  understoodQuery: string;
+  sections: SearchV2SectionDto[];
+  supplierCheckCount: number;
+};
+
+export type BrandProfileDto = {
+  id?: string;
+  businessId: string;
+  businessName?: string;
+  brandColor?: string;
+  logoUrl?: string;
+  coverUrl?: string;
+  toneOfVoice?: string;
+  description?: string;
+  instagramUrl?: string;
+  telegramUrl?: string;
+  websiteUrl?: string;
+};
+
+export type StorefrontBlockDto = {
+  blockId?: string;
+  blockType: string;
+  displayOrder: number;
+  config: Record<string, unknown>;
+  enabled: boolean;
+};
+
+export type StorefrontPageDto = {
+  businessId: string;
+  brandProfile: BrandProfileDto;
+  blocks: StorefrontBlockDto[];
+  publishedAt?: string | null;
+};
+
+export type BrandDropDto = {
+  id: string;
+  businessId: string;
+  name: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  type: string;
+  status: string;
+  coverUrl?: string;
+  productCount?: number;
+  tags?: string[];
+  productIds?: string[];
+};
+
 export type SearchResultSectionDto = {
   type: "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
   title: string;
@@ -190,4 +283,17 @@ export type StaffDto = {
   status: string;
   tempPassword: string;
   activatedAt: string;
+};
+
+export type BusinessCardBlockDto = {
+  localId: string;
+  blockType: string;
+  displayOrder: number;
+  config: Record<string, unknown>;
+};
+
+export type BusinessCardDto = {
+  businessId: string;
+  blocks: BusinessCardBlockDto[];
+  publishedAt?: string | null;
 };

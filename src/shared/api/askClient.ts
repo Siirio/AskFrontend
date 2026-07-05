@@ -3,8 +3,17 @@ import { mapSearchResult, mapSupplierTask } from "./mappers";
 import type {
   BusinessProductDto, BusinessProductListDto,
   BusinessServiceDto, BusinessServiceListDto,
+  BrandDropDto,
+  BrandProfileDto,
+  ContactResolveDto,
   CustomerRequestDetailDto, CustomerRequestHistoryDto,
-  SearchResultDto, StaffDto, StructuredSearchDto, SupplierTaskDetailDto, SupplierTaskDto
+  SearchResultDto,
+  SearchV2ResponseDto,
+  StaffDto,
+  StorefrontPageDto,
+  StructuredSearchDto,
+  SupplierTaskDetailDto,
+  SupplierTaskDto
 } from "./dto";
 
 export async function searchAsk(query: string, scope: "all" | "product" | "service", city?: string, category?: string) {
@@ -21,6 +30,34 @@ export async function searchAsk(query: string, scope: "all" | "product" | "servi
     },
   });
   return response.results.map(mapSearchResult);
+}
+
+export function searchAskV2(params: {
+  rawQuery: string;
+  scope: "all" | "product" | "service";
+  city?: string;
+  selectedCategory?: string;
+  sort?: "intent_match" | "price_asc" | "price_desc";
+}) {
+  return apiRequest<SearchV2ResponseDto>("/api/v1/search/v2", {
+    method: "POST",
+    body: {
+      rawQuery: params.rawQuery,
+      scope: params.scope,
+      selectedCategory: params.selectedCategory || "",
+      city: params.city || "Астана",
+      sort: params.sort || "intent_match",
+      userLocation: { lat: null, lng: null },
+      language: "ru",
+    },
+  });
+}
+
+export function resolveContactAction(contactActionId: string) {
+  return apiRequest<ContactResolveDto>(`/api/v1/contacts/${encodeURIComponent(contactActionId)}/resolve`, {
+    method: "POST",
+    auth: true,
+  });
 }
 
 export async function createFallbackRequest(query: string, scope: "product" | "service", city: string) {
@@ -150,4 +187,92 @@ export function createBranch(businessId: string, data: { name: string; address?:
 
 export function updateBranch(businessId: string, branchId: string, data: { name?: string; address?: string; cityId?: string; onlineOnly?: boolean }) {
   return apiRequest<{ id: string; name: string }>(`/api/v1/businesses/${businessId}/branches/${branchId}`, { method: "PATCH", auth: true, body: data });
+}
+
+export function getBrandProfile(businessId: string) {
+  return apiRequest<BrandProfileDto>(`/api/v1/businesses/${businessId}/brand-profile`);
+}
+
+export function updateBrandProfile(businessId: string, data: Partial<BrandProfileDto>) {
+  return apiRequest<BrandProfileDto>(`/api/v1/businesses/${businessId}/brand-profile`, {
+    method: "PUT",
+    auth: true,
+    body: data,
+  });
+}
+
+export function getStorefront(businessId: string) {
+  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront`);
+}
+
+export function getStorefrontDraft(businessId: string) {
+  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront/draft`, { auth: true });
+}
+
+export function saveStorefrontDraft(businessId: string, blocks: StorefrontPageDto["blocks"]) {
+  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront/draft`, {
+    method: "PUT",
+    auth: true,
+    body: { blocks },
+  });
+}
+
+export function publishStorefront(businessId: string) {
+  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront/publish`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function listDrops(businessId: string) {
+  return apiRequest<BrandDropDto[]>(`/api/v1/businesses/${businessId}/drops`);
+}
+
+export function createDrop(businessId: string, data: Partial<BrandDropDto>) {
+  return apiRequest<BrandDropDto>(`/api/v1/businesses/${businessId}/drops`, {
+    method: "POST",
+    auth: true,
+    body: data,
+  });
+}
+
+export function updateDrop(businessId: string, dropId: string, data: Partial<BrandDropDto>) {
+  return apiRequest<BrandDropDto>(`/api/v1/businesses/${businessId}/drops/${dropId}`, {
+    method: "PATCH",
+    auth: true,
+    body: data,
+  });
+}
+
+export function cancelDrop(businessId: string, dropId: string) {
+  return apiRequest<BrandDropDto>(`/api/v1/businesses/${businessId}/drops/${dropId}/cancel`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function deleteDrop(businessId: string, dropId: string) {
+  return apiRequest<void>(`/api/v1/businesses/${businessId}/drops/${dropId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+export function getBusinessCard(businessId: string) {
+  return apiRequest<import("./dto").BusinessCardDto>(`/api/v1/businesses/${businessId}/business-card`, { auth: true });
+}
+
+export function saveBusinessCard(businessId: string, blocks: import("./dto").BusinessCardBlockDto[]) {
+  return apiRequest<import("./dto").BusinessCardDto>(`/api/v1/businesses/${businessId}/business-card/draft`, {
+    method: "PUT",
+    auth: true,
+    body: { blocks },
+  });
+}
+
+export function publishBusinessCard(businessId: string) {
+  return apiRequest<import("./dto").BusinessCardDto>(`/api/v1/businesses/${businessId}/business-card/publish`, {
+    method: "POST",
+    auth: true,
+  });
 }

@@ -1,0 +1,139 @@
+/* ============================================
+   FCW Typography System
+   ============================================ */
+
+.fcw-display-xl {
+  font-family: var(--fcw-font-display);
+  font-size: var(--fcw-font-size-display-xl);
+  font-weight: var(--fcw-font-weight-black);
+  line-height: var(--fcw-line-height-tight);
+  letter-spacing: var(--fcw-tracking-tighter);
+}
+
+.fcw-display {
+  font-family: var(--fcw-font-display);
+  font-size: var(--fcw-font-size-display);
+  font-weight: var(--fcw-font-weight-bold);
+  line-height: var(--fcw-line-height-tight);
+  letter-spacing: var(--fcw-tracking-tight);
+}
+
+.fcw-h1 {
+  font-family: var(--fcw-font-display);
+  font-size: var(--fcw-font-size-h1);
+  font-weight: var(--fcw-font-weight-bold);
+  line-height: var(--fcw-line-height-snug);
+  letter-spacing: var(--fcw-tracking-tight);
+}
+
+.fcw-h2 {
+  font-family: var(--fcw-font-display);
+  font-size: var(--fcw-font-size-h2);
+  font-weight: var(--fcw-font-weight-semibold);
+  line-height: var(--fcw-line-height-snug);
+  letter-spacing: var(--fcw-tracking-normal);
+}
+
+.fcw-h3 {
+  font-family: var(--fcw-font-display);
+  font-size: var(--fcw-font-size-h3);
+  font-weight: var(--fcw-font-weight-semibold);
+  line-height: var(--fcw-line-height-normal);
+  letter-spacing: var(--fcw-tracking-normal);
+}
+
+.fcw-body-l {
+  font-family: var(--fcw-font-body);
+  font-size: var(--fcw-font-size-body-l);
+  font-weight: var(--fcw-font-weight-regular);
+  line-height: var(--fcw-line-height-relaxed);
+  letter-spacing: var(--fcw-tracking-normal);
+}
+
+.fcw-body {
+  font-family: var(--fcw-font-body);
+  font-size: var(--fcw-font-size-body);
+  font-weight: var(--fcw-font-weight-regular);
+  line-height: var(--fcw-line-height-relaxed);
+  letter-spacing: var(--fcw-tracking-normal);
+  max-width: 65ch;
+}
+
+.fcw-body-s {
+  font-family: var(--fcw-font-body);
+  font-size: var(--fcw-font-size-body-s);
+  font-weight: var(--fcw-font-weight-regular);
+  line-height: var(--fcw-line-height-normal);
+  letter-spacing: var(--fcw-tracking-wide);
+}
+
+.fcw-label {
+  font-family: var(--fcw-font-body);
+  font-size: var(--fcw-font-size-label);
+  font-weight: var(--fcw-font-weight-semibold);
+  line-height: 1.3;
+  letter-spacing: var(--fcw-tracking-wider);
+  text-transform: uppercase;
+}
+
+.fcw-mono { font-family: var(--fcw-font-mono); }
+
+.fcw-weight-light { font-weight: var(--fcw-font-weight-light); }
+.fcw-weight-regular { font-weight: var(--fcw-font-weight-regular); }
+.fcw-weight-medium { font-weight: var(--fcw-font-weight-medium); }
+.fcw-weight-semibold { font-weight: var(--fcw-font-weight-semibold); }
+.fcw-weight-bold { font-weight: var(--fcw-font-weight-bold); }
+.fcw-weight-black { font-weight: var(--fcw-font-weight-black); }
+
+.fcw-text-balance { text-wrap: balance; }
+.fcw-text-center { text-align: center; }
+.fcw-text-right { text-align: right; }
+
+.fcw-text-secondary { color: var(--fcw-color-text-secondary); }
+.fcw-text-tertiary { color: var(--fcw-color-text-tertiary); }
+
+.fcw-leading-tight { line-height: var(--fcw-line-height-tight); }
+.fcw-leading-snug { line-height: var(--fcw-line-height-snug); }
+.fcw-leading-normal { line-height: var(--fcw-line-height-normal); }
+.fcw-leading-relaxed { line-height: var(--fcw-line-height-relaxed); }
+.fcw-leading-loose { line-height: var(--fcw-line-height-loose); }
+
+.fcw-tracking-tighter { letter-spacing: var(--fcw-tracking-tighter); }
+.fcw-tracking-tight { letter-spacing: var(--fcw-tracking-tight); }
+.fcw-tracking-normal { letter-spacing: var(--fcw-tracking-normal); }
+.fcw-tracking-wide { letter-spacing: var(--fcw-tracking-wide); }
+.fcw-tracking-wider { letter-spacing: var(--fcw-tracking-wider); }
+
+.fcw-hyphens { hyphens: auto; overflow-wrap: break-word; }
+
+@media (max-width: 1024px) {
+  :root {
+    --fcw-font-size-display-xl: clamp(3rem, 10vw, 5rem);
+    --fcw-font-size-display: clamp(2.25rem, 8vw, 3.5rem);
+    --fcw-font-size-h1: clamp(1.75rem, 6vw, 2.5rem);
+    --fcw-font-size-h2: clamp(1.5rem, 4vw, 2rem);
+  }
+}
+
+@media (max-width: 390px) {
+  .fcw-body { max-width: 100%; }
+}
+
+/* Mobile type scale */
+@media (max-width: 1024px) {
+  :root {
+    --fcw-font-size-h1: 2rem;
+    --fcw-font-size-h2: 1.5rem;
+    --fcw-font-size-h3: 1.25rem;
+  }
+}
+
+@media (max-width: 390px) {
+  :root {
+    --fcw-font-size-display-xl: 2.5rem;
+    --fcw-font-size-display: 2rem;
+    --fcw-font-size-h1: 1.5rem;
+    --fcw-font-size-h2: 1.25rem;
+    --fcw-font-size-h3: 1.125rem;
+  }
+}
