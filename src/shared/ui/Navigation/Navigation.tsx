@@ -29,6 +29,10 @@ export function Navigation() {
   if (state.view === "auth") return null;
 
   const isBusiness = state.view === "business" || state.view === "staff";
+  const handleLogout = async () => {
+    await actions.logout();
+    navigate(ROUTES.auth, { replace: true });
+  };
 
   return (
     <>
@@ -72,7 +76,7 @@ export function Navigation() {
             </button>
             {state.session && (
               <>
-                <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={actions.logout} aria-label="Выйти">
+                <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={handleLogout} aria-label="Выйти">
                   <LogOut size={16} />
                 </button>
                 {!isBusiness && (
@@ -147,7 +151,7 @@ export function Navigation() {
               <Sun size={16} />
             </button>
             {state.session && (
-              <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={actions.logout} aria-label="Выйти">
+              <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={handleLogout} aria-label="Выйти">
                 <LogOut size={16} />
               </button>
             )}

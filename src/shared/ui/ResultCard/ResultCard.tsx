@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MapPin, ArrowUpRight, ShieldCheck, Clock3 } from "lucide-react";
+import { MapPin, MessageCircle } from "lucide-react";
 
 export interface ResultCardData {
   id: string;
@@ -7,6 +7,7 @@ export interface ResultCardData {
   subtitle?: string;
   price?: string;
   location?: string;
+  distance?: string;
   imageUrl?: string;
   brandName?: string;
   brandColor?: string;
@@ -14,16 +15,19 @@ export interface ResultCardData {
   intentReasons?: string[];
   matchScore?: number;
   type?: string;
+  hasContactAction?: boolean;
+  contactActionId?: string;
 }
 
 interface ResultCardProps {
   data: ResultCardData;
   index: number;
   onClick: () => void;
+  onChat: () => void;
   reduced: boolean;
 }
 
-export function ResultCard({ data, index, onClick, reduced }: ResultCardProps) {
+export function ResultCard({ data, index, onClick, onChat, reduced }: ResultCardProps) {
   return (
     <motion.div
       className="fcw-card-clickable fcw-overflow-hidden"
@@ -34,90 +38,65 @@ export function ResultCard({ data, index, onClick, reduced }: ResultCardProps) {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter") onClick(); }}
+      style={{ padding: "0.75rem 1rem" }}
     >
-      <div className="fcw-flex" style={{ gap: 0 }}>
-        {data.imageUrl && (
-          <div
-            className="fcw-ratio-product"
-            style={{
-              width: "120px",
-              flexShrink: 0,
-              background: `url(${data.imageUrl}) center/cover no-repeat`,
-              backgroundColor: "var(--fcw-color-surface-secondary)",
-            }}
-            aria-hidden="true"
-          />
-        )}
-        <div className="fcw-flex-col fcw-flex-1 fcw-p-md" style={{ gap: "0.5rem" }}>
-          <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-            <div>
-              <div className="fcw-flex fcw-items-center fcw-gap-sm" style={{ gap: "0.375rem" }}>
-                {data.brandName && (
-                  <span className="fcw-label" style={{ color: data.brandColor || "var(--fcw-color-primary)" }}>
-                    {data.brandName}
-                  </span>
-                )}
-                {data.verified && (
-                  <ShieldCheck size={14} style={{ color: "var(--fcw-color-accent)" }} />
-                )}
-              </div>
-              <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: "4px 0 0 0" }}>
-                {data.title}
-              </h3>
-            </div>
-            <div className="fcw-text-right">
-              {data.price && <div className="fcw-body-l fcw-weight-bold">{data.price}</div>}
-              {data.matchScore !== undefined && (
-                <div className="fcw-body-s" style={{ color: "var(--fcw-color-accent)" }}>
-                  {data.matchScore}% совпадение
-                </div>
-              )}
-            </div>
+      <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem" }}>
+        {/* Company logo */}
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "var(--fcw-radius-md)",
+            backgroundColor: data.brandColor || "var(--fcw-color-surface-tertiary)",
+            backgroundImage: data.imageUrl ? `url(${data.imageUrl})` : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            flexShrink: 0,
+          }}
+          aria-hidden="true"
+        />
+
+        {/* Main content */}
+        <div className="fcw-flex-col fcw-flex-1" style={{ gap: "0.25rem", minWidth: 0 }}>
+          <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
+            {data.brandName && (
+              <span className="fcw-body-s" style={{ color: data.brandColor || "var(--fcw-color-primary)", fontWeight: 600 }}>
+                {data.brandName}
+              </span>
+            )}
+            {data.distance && (
+              <span className="fcw-body-xs fcw-flex fcw-items-center" style={{ gap: "0.15rem", color: "var(--fcw-color-text-tertiary)" }}>
+                <MapPin size={10} />
+                {data.distance}
+              </span>
+            )}
           </div>
-
-          {data.subtitle && (
-            <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-              {data.subtitle}
-            </p>
-          )}
-
-          <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-            <div className="fcw-flex fcw-gap-sm" style={{ gap: "0.75rem" }}>
-              {data.location && (
-                <span className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
-                  <MapPin size={12} />
-                  {data.location}
-                </span>
-              )}
-              {data.type && (
-                <span className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
-                  <Clock3 size={12} />
-                  {data.type}
-                </span>
-              )}
-            </div>
-            <ArrowUpRight size={16} style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }} />
+          <div className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {data.title}
           </div>
-
-          {data.intentReasons && data.intentReasons.length > 0 && (
-            <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.375rem" }}>
-              {data.intentReasons.slice(0, 3).map((reason, i) => (
-                <span
-                  key={i}
-                  className="fcw-body-s"
-                  style={{
-                    padding: "0.125rem 0.5rem",
-                    backgroundColor: "var(--fcw-color-surface-tertiary)",
-                    borderRadius: "var(--fcw-radius-full)",
-                    color: "var(--fcw-color-text-secondary)",
-                  }}
-                >
-                  {reason}
-                </span>
-              ))}
-            </div>
+          {data.location && (
+            <span className="fcw-body-xs fcw-text-tertiary" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {data.location}
+            </span>
           )}
         </div>
+
+        {/* Price */}
+        {data.price && (
+          <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap", flexShrink: 0 }}>
+            {data.price}
+          </span>
+        )}
+
+        {/* Chat button */}
+        <button
+          className="fcw-btn fcw-btn-primary fcw-btn-sm"
+          style={{ flexShrink: 0, gap: "0.375rem" }}
+          onClick={(e) => { e.stopPropagation(); onChat(); }}
+        >
+          <MessageCircle size={14} />
+          <span className="fcw-hidden-mobile">Написать</span>
+        </button>
       </div>
     </motion.div>
   );

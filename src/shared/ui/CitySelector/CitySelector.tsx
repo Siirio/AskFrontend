@@ -99,30 +99,40 @@ export function CitySelector({ value, onChange, compact }: CitySelectorProps) {
               padding: "0.25rem",
             }}
           >
-            {cities.map(city => (
-              <button
-                key={city.id}
-                type="button"
-                className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-                style={{
-                  width: "100%",
-                  justifyContent: "flex-start",
-                  gap: "0.5rem",
-                  borderRadius: "var(--fcw-radius-md)",
-                  padding: "0.5rem 0.75rem",
-                  color: city.name === value ? "var(--fcw-color-primary)" : "var(--fcw-color-text)",
-                  fontWeight: city.name === value ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
-                  backgroundColor: city.name === value ? "color-mix(in srgb, var(--fcw-color-primary) 8%, transparent)" : "transparent",
-                  border: "none",
-                  fontFamily: "inherit",
-                  fontSize: "var(--fcw-font-size-body-s)",
-                }}
-                onClick={() => select(city.name)}
-              >
-                <MapPin size={12} style={{ color: city.name === value ? "var(--fcw-color-primary)" : "var(--fcw-color-text-tertiary)", flexShrink: 0 }} />
-                {city.name}
-              </button>
-            ))}
+            <div
+              style={{
+                maxHeight: "132px",
+                overflowY: "auto",
+                paddingRight: "0.125rem",
+                maskImage: cities.length > 3 ? "linear-gradient(to bottom, black 0%, black 72%, transparent 100%)" : undefined,
+                WebkitMaskImage: cities.length > 3 ? "linear-gradient(to bottom, black 0%, black 72%, transparent 100%)" : undefined,
+              }}
+            >
+              {cities.map(city => (
+                <button
+                  key={city.id}
+                  type="button"
+                  className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                  style={{
+                    width: "100%",
+                    justifyContent: "flex-start",
+                    gap: "0.5rem",
+                    borderRadius: "var(--fcw-radius-md)",
+                    padding: "0.5rem 0.75rem",
+                    color: city.name === value ? "var(--fcw-color-primary)" : "var(--fcw-color-text)",
+                    fontWeight: city.name === value ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
+                    backgroundColor: city.name === value ? "color-mix(in srgb, var(--fcw-color-primary) 8%, transparent)" : "transparent",
+                    border: "none",
+                    fontFamily: "inherit",
+                    fontSize: "var(--fcw-font-size-body-s)",
+                  }}
+                  onClick={() => select(city.name)}
+                >
+                  <MapPin size={12} style={{ color: city.name === value ? "var(--fcw-color-primary)" : "var(--fcw-color-text-tertiary)", flexShrink: 0 }} />
+                  {city.name}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

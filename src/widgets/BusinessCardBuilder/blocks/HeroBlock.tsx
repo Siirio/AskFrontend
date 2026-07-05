@@ -152,6 +152,7 @@ export function HeroBlock({ config, isEditing, onChange }: Props) {
             right: 8,
             display: "flex",
             gap: "0.375rem",
+            zIndex: 5,
           }}
         >
           <button
@@ -161,6 +162,36 @@ export function HeroBlock({ config, isEditing, onChange }: Props) {
           >
             <Image size={12} /> Add image
           </button>
+        </div>
+      )}
+      {isEditing && (
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            display: "flex",
+            gap: "0.25rem",
+            zIndex: 5,
+          }}
+        >
+          {(["centered", "left", "split"] as const).map(lo => (
+            <button
+              key={lo}
+              className="fcw-btn fcw-btn-sm"
+              style={{
+                fontSize: "0.625rem",
+                padding: "0.125rem 0.5rem",
+                background: layout === lo ? "var(--fcw-color-primary)" : "var(--fcw-color-surface)",
+                color: layout === lo ? "var(--fcw-color-primary-text)" : "var(--fcw-color-text-secondary)",
+                border: layout === lo ? "none" : "1px solid var(--fcw-color-border)",
+                borderRadius: "var(--fcw-radius-full)",
+              }}
+              onClick={() => onChange({ heroLayout: lo })}
+            >
+              {lo === "centered" ? "Center" : lo === "left" ? "Left" : "Split"}
+            </button>
+          ))}
         </div>
       )}
       {editingField === "heroImage" && (

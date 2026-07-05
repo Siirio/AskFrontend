@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { AuthSession, AuthChallenge } from "../../shared/api/authClient";
-import { loginWithPassword, registerCustomer, registerBusiness, verifyCode, resolveCity, logout as clearSession } from "../../shared/api/authClient";
+import { loginWithPassword, registerCustomer, registerBusiness, verifyCode, resolveCity, logout as clearSession, logoutRemote, updateProfile as updateProfileRequest } from "../../shared/api/authClient";
 import { ApiError } from "../../shared/api/httpClient";
 
 export type AppView = "auth" | "customer" | "business" | "staff";
@@ -52,7 +52,8 @@ interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; password: string; displayName: string; businessName?: string; branchAddress?: string; cityName: string }) => Promise<void>;
   verify: (code: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  updateProfile: (data: { displayName?: string; email?: string; phone?: string }) => Promise<void>;
   clearError: () => void;
 }
 
@@ -145,8 +146,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [challenge]);
 
-  const logout = useCallback(() => {
-    clearSession();
+  const logout = useCallback(async () => {
+    try {
+      await logoutRemote();
+    } catch {
+      clearSession();
+    }
     writeSession(null);
     setSession(null);
     setView("auth");
@@ -154,8 +159,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError("");
   }, []);
 
+  const updateProfile = useCallback(async (data: { displayName?: string; email?: string; phone?: string }) => {
+    setBusy(true);
+    setError("");
+    try {
+      const nextSession = await updateProfileRequest(data);
+      setSession(current => {
+        if (!current) return current;
+        return {
+          ...current,
+          user: nextSession.user ?? current.user,
+          business: nextSession.business ?? current.business,
+        };
+      });
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Ошибка сохранения профиля");
+      throw e;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   const state: AuthState = { session, view, challenge, busy, error, audience, mode };
-  const actions: AuthActions = { setAudience, setMode, login, register, verify, logout, clearError: () => setError("") };
+  const actions: AuthActions = { setAudience, setMode, login, register, verify, logout, updateProfile, clearError: () => setError("") };
 
   return (
     <AuthContext.Provider value={{ state, actions }}>

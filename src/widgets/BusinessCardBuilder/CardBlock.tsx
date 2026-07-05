@@ -79,7 +79,7 @@ export function CardBlock({ block, isSelected, isEditing, canMoveUp, canMoveDown
     setDragOver(null);
   };
 
-  const handleResizeStart = useCallback((e: React.MouseEvent, direction: "bottom"|"right") => {
+  const handleResizeStart = useCallback((e: React.MouseEvent, direction: "bottom"|"right"|"diagonal") => {
     e.preventDefault();
     e.stopPropagation();
     const startY = e.clientY;
@@ -91,9 +91,13 @@ export function CardBlock({ block, isSelected, isEditing, canMoveUp, canMoveDown
       if (direction === "bottom") {
         const dy = me.clientY - startY;
         onResize({ height: Math.max(60, startHeight + dy) });
-      } else {
+      } else if (direction === "right") {
         const dx = me.clientX - startX;
         onResize({ width: Math.max(200, startWidth + dx) });
+      } else {
+        const dx = me.clientX - startX;
+        const dy = me.clientY - startY;
+        onResize({ width: Math.max(200, startWidth + dx), height: Math.max(60, startHeight + dy) });
       }
     };
 
@@ -192,7 +196,9 @@ export function CardBlock({ block, isSelected, isEditing, canMoveUp, canMoveDown
               position: "absolute", bottom: 0, right: 0, width: 14, height: 14,
               cursor: "nwse-resize", zIndex: 5,
               background: "linear-gradient(135deg, transparent 50%, var(--fcw-color-border) 50%, var(--fcw-color-border) 62%, transparent 62%)",
-            }} />
+            }}
+            onMouseDown={e => handleResizeStart(e, "diagonal")}
+            />
           </>
         )}
 

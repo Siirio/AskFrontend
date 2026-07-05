@@ -11,6 +11,7 @@ interface Props {
 export function DropsBlock({ config, isEditing, onChange }: Props) {
   const drops = config.drops || [];
   const [editId, setEditId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState(false);
 
   const addDrop = () => {
     const newDrop: DropItem = { localId: `drop-${crypto.randomUUID()}`, name: "New Drop", price: "", status: "ACTIVE" };
@@ -38,13 +39,21 @@ export function DropsBlock({ config, isEditing, onChange }: Props) {
       }}
     >
       <h3 style={{ fontSize: "1.125rem", fontWeight: 600, margin: "0 0 1rem 0" }}>
-        {isEditing ? (
+        {editTitle ? (
           <input
+            autoFocus
             className="fcw-input"
-            defaultValue="Drops & Products"
-            style={{ fontSize: "1.125rem", fontWeight: 600, width: "100%", height: 36 }}
+            placeholder="Section title"
+            style={{ fontSize: "1.125rem", fontWeight: 600, height: 36, maxWidth: 300 }}
+            defaultValue={config.aboutTitle || "Drops & Products"}
+            onBlur={e => { onChange({ aboutTitle: e.target.value }); setEditTitle(false); }}
+            onKeyDown={e => { if (e.key === "Enter") { onChange({ aboutTitle: (e.target as HTMLInputElement).value }); setEditTitle(false); } if (e.key === "Escape") setEditTitle(false); }}
           />
-        ) : "Drops & Products"}
+        ) : (
+          <span style={{ cursor: isEditing ? "text" : "default" }} onClick={() => isEditing && setEditTitle(true)}>
+            {config.aboutTitle || "Drops & Products"}
+          </span>
+        )}
       </h3>
 
       {drops.length === 0 ? (

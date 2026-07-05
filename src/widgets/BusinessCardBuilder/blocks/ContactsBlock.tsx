@@ -2,9 +2,14 @@ import { useState } from "react";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
 import type { CardBlockConfig, ContactItem } from "../types";
 
-const PROVIDER_ICONS: Record<string, string> = {
-  TELEGRAM: "T", INSTAGRAM: "I", WHATSAPP: "W", PHONE: "P", SITE: "S", EMAIL: "E",
-};
+const PROVIDER_OPTIONS = [
+  { key: "TELEGRAM", label: "Telegram", icon: "T" },
+  { key: "INSTAGRAM", label: "Instagram", icon: "I" },
+  { key: "WHATSAPP", label: "WhatsApp", icon: "W" },
+  { key: "PHONE", label: "Phone", icon: "P" },
+  { key: "SITE", label: "Website", icon: "S" },
+  { key: "EMAIL", label: "Email", icon: "E" },
+];
 
 interface Props {
   config: CardBlockConfig;
@@ -75,10 +80,24 @@ export function ContactsBlock({ config, isEditing, onChange }: Props) {
                   fontWeight: 700, fontSize: "0.75rem", flexShrink: 0,
                 }}
               >
-                {PROVIDER_ICONS[contact.provider] || "?"}
+                {PROVIDER_OPTIONS.find(p => p.key === contact.provider)?.icon || "?"}
               </div>
               {editId === contact.localId ? (
                 <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: 1 }}>
+                  <select
+                    className="fcw-input"
+                    value={contact.provider}
+                    onChange={e => onChange({ contacts: contacts.map(c => c.localId === contact.localId ? { ...c, provider: e.target.value } : c) })}
+                    style={{ height: 28, fontSize: "0.6875rem", padding: "0 0.25rem" }}
+                  >
+                    {PROVIDER_OPTIONS.map(p => (
+                      <option key={p.key} value={p.key}>{p.label}</option>
+                    ))}
+                  </select>
+                  <input className="fcw-input" defaultValue={contact.url} placeholder="URL"
+                    style={{ height: 28, fontSize: "0.6875rem" }}
+                    onBlur={e => onChange({ contacts: contacts.map(c => c.localId === contact.localId ? { ...c, url: e.target.value } : c) })}
+                  />
                   <input autoFocus className="fcw-input" defaultValue={contact.label} placeholder="Label"
                     style={{ height: 28, fontSize: "0.75rem" }}
                     onBlur={e => { onChange({ contacts: contacts.map(c => c.localId === contact.localId ? { ...c, label: e.target.value } : c) }); setEditId(null); }}

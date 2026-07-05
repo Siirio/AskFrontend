@@ -1,7 +1,13 @@
 import { useState } from "react";
-import { Globe, Instagram, MessageCircle } from "lucide-react";
+import { Globe, Instagram, MessageCircle, Palette } from "lucide-react";
 import { Card } from "../../shared/ui/Card/Card";
 import type { BrandProfileDto } from "../../shared/api/dto";
+
+const BRAND_COLOR_PRESETS = [
+  "#e8824e", "#4e8ce8", "#e84e4e", "#4ee882",
+  "#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b",
+  "#84cc16", "#6b7280", "#1e293b", "#0f172a",
+];
 
 interface ProfileEditorProps {
   profile: BrandProfileDto;
@@ -89,6 +95,35 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
               </button>
             </div>
           </div>
+
+          <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+            <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Palette size={12} />Цвет бренда</span>
+            <div className="fcw-flex" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
+              {BRAND_COLOR_PRESETS.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => update({ brandColor: color })}
+                  style={{
+                    width: 32, height: 32, borderRadius: "var(--fcw-radius-md)", backgroundColor: color,
+                    border: profile.brandColor === color ? "2px solid var(--fcw-color-text)" : "2px solid transparent",
+                    cursor: "pointer", transition: "transform 0.15s ease",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.15)")}
+                  onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+                />
+              ))}
+              <div className="fcw-flex fcw-items-center" style={{ gap: "0.25rem", marginLeft: "0.25rem" }}>
+                <input
+                  type="color"
+                  value={profile.brandColor || "#e8824e"}
+                  onChange={e => update({ brandColor: e.target.value })}
+                  style={{ width: 28, height: 28, border: "none", borderRadius: "var(--fcw-radius-sm)", cursor: "pointer", padding: 0 }}
+                />
+                <span className="fcw-label" style={{ fontSize: "0.75rem" }}>{profile.brandColor || "#e8824e"}</span>
+              </div>
+            </div>
+          </label>
 
           <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
             <span className="fcw-label">Logo URL</span>

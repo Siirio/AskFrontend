@@ -72,6 +72,14 @@ export function ServicesBlock({ config, isEditing, onChange }: Props) {
                   <input className="fcw-input" defaultValue={svc.description || ""} placeholder="Description" style={{ height: 32, fontSize: "0.875rem" }}
                     onBlur={e => onChange({ services: services.map(s => s.localId === svc.localId ? { ...s, description: e.target.value } : s) })}
                   />
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <input className="fcw-input" defaultValue={svc.price || ""} placeholder="Price (e.g. 5 000 ₸)" style={{ height: 32, fontSize: "0.875rem", flex: 1 }}
+                      onBlur={e => onChange({ services: services.map(s => s.localId === svc.localId ? { ...s, price: e.target.value } : s) })}
+                    />
+                    <input className="fcw-input" defaultValue={svc.duration || ""} placeholder="Duration (e.g. 60 min)" style={{ height: 32, fontSize: "0.875rem", flex: 1 }}
+                      onBlur={e => onChange({ services: services.map(s => s.localId === svc.localId ? { ...s, duration: e.target.value } : s) })}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: 1, cursor: isEditing ? "pointer" : "default" }} onClick={() => isEditing && setEditId(svc.localId)}>

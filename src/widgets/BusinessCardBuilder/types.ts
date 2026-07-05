@@ -40,6 +40,7 @@ export interface CardBlockConfig {
   backgroundColor?: string;
   textColor?: string;
   fontFamily?: FontFamily;
+  fontSize?: number;
   alignment?: TextAlignment;
   shape?: BlockShape;
   height?: number;

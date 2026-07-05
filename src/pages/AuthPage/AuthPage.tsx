@@ -5,6 +5,7 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Input } from "../../shared/ui/Input/Input";
+import { CitySelector } from "../../shared/ui/CitySelector/CitySelector";
 import { ROUTES } from "../../app/routes";
 
 export function AuthPage() {
@@ -154,13 +155,10 @@ export function AuthPage() {
                         required
                       />
                     )}
-                    <Input
-                      label="Город"
-                      value={cityName}
-                      onChange={e => setCityName(e.target.value)}
-                      placeholder="Астана"
-                      required
-                    />
+                    <label className="fcw-flex-col" style={{ gap: "0.375rem" }}>
+                      <span className="fcw-input-label">Город главного филиала</span>
+                      <CitySelector value={cityName} onChange={setCityName} />
+                    </label>
                   </>
                 )}
 

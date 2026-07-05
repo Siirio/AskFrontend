@@ -196,6 +196,135 @@ API responses should support:
 - Temporary password is shown to owner ONLY in create/response/reset-password API responses and only while staff status is `PENDING_ACTIVATION` or `PASSWORD_RESET_REQUIRED`. After activation, `tempPassword` is `null`.
 - Staff use the unified `/auth/login` — there is no separate staff login endpoint.
 
+## Search V2 / Generative UI
+
+`POST /api/v1/search/v2` replaces the current search with a structured three-layer pipeline: raw query → AI intent structurer (SearchPlan JSON) → Meilisearch → PostgreSQL hydration → SearchResponse with sections.
+
+### SearchPlan Contract
+
+The AI intent structurer returns a SearchPlan JSON. Backend validates and executes it. Frontend never constructs or interprets SearchPlan — it sends rawQuery + scope and receives hydrated SearchResponse.
+
+### SearchResponse
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `searchSessionId` | UUID | Search session for history and tabs |
+| `rawQuery` | String | Original query preserved |
+| `scope` | String | `PRODUCT` or `SERVICE` |
+| `understoodQuery` | String | How AI understood the query (Russian) |
+| `sections` | [SearchSection] | Result sections in display order |
+| `supplierCheckCount` | Integer | How many auto supplier checks were created |
+
+### SearchSection
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `type` | String | `exact_products`, `similar_products`, `fresh_drops`, `suitable_storefronts`, `over_budget`, `needs_confirmation` |
+| `title` | String | Section title in Russian |
+| `cards` | [SearchResultCard] | Cards for this section |
+
+### SearchResultCard
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `component` | String | `ProductCard`, `ServiceCard`, `DropCard`, `BusinessCandidateCard` |
+| `resultId` | UUID | Result ID |
+| `businessId` | UUID | Business ID |
+| `businessName` | String | Brand name |
+| `brandColor` | String | Accent color from BrandProfile |
+| `brandLogoUrl` | String | Logo URL |
+| `title` | String | Card title |
+| `price` | Decimal | Price (nullable for drops) |
+| `availability` | String | `IN_STOCK`, `NEEDS_CONFIRMATION`, `UNKNOWN` |
+| `matchReasons` | [String] | Why this result matches (max 4) |
+| `badges` | [String] | Quality badges |
+| `distanceMeters` | Integer | Distance (nullable) |
+| `branchName` | String | Branch display name |
+| `hasActiveDrop` | Boolean | Brand has active drop |
+
+### Generative UI Rules
+
+- Frontend renders only whitelisted components: ProductCard, ServiceCard, DropCard, BusinessCandidateCard.
+- Frontend never renders arbitrary HTML or invents UI from backend text.
+- MatchReasons come from backend, never invented by frontend.
+- Badges are backend-controlled; frontend maps badge strings to visual treatments.
+- Default sort is `intent_match` (relevance). `price_asc`/`price_desc` available as user choice, not default.
+
+## Contact Actions
+
+Privacy-safe contact resolution through one-time tokens. Frontend never receives raw phone/username unless backend marks it PUBLIC.
+
+### Contact Resolve Flow
+
+`POST /api/v1/contacts/{contactActionId}/resolve` (authenticated):
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `actionType` | String | `REDIRECT`, `DISPLAY`, `DEEP_LINK`, `CHAT` |
+| `redirectUrl` | String | Browser redirect URL (if REDIRECT) |
+| `deepLink` | String | Native deep link (if DEEP_LINK) |
+| `displayValue` | String | Safe display value (if DISPLAY) |
+| `provider` | String | `TELEGRAM`, `INSTAGRAM`, `WHATSAPP`, `TWO_GIS`, `SITE`, `PHONE`, `ASK_CHAT` |
+| `label` | String | Human-readable label ("Написать в WhatsApp") |
+| `expiresAt` | Timestamp | Token expiry (30 min TTL) |
+
+### Rules
+
+- contactActionId is embedded in search result cards and business page responses.
+- Token lives 30 minutes, one-time or rate-limited.
+- For ASK_CHAT: resolves to existing or new conversation.
+- For external channels: backend decrypts contact, builds deep link (tg://, https://wa.me/, instagram://, 2gis://).
+- Backend logs every resolve: who, when, which contact, which action.
+
+## Storefront Builder
+
+Constrained page builder for brand mini-sites. Brands assemble pages from pre-defined blocks.
+
+### Brand Profile
+
+`GET /api/v1/businesses/{businessId}/brand-profile` (public):
+Returns brandColor, logoUrl, coverUrl, description, toneOfVoice, instagramUrl, telegramUrl, websiteUrl.
+
+`PUT /api/v1/businesses/{businessId}/brand-profile` (Owner): Update profile fields.
+
+### Storefront Endpoints
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| `GET` | `/api/v1/businesses/{businessId}/storefront` | No | Published page (404 if not published) |
+| `GET` | `/api/v1/businesses/{businessId}/storefront/draft` | Owner | Draft page |
+| `PUT` | `/api/v1/businesses/{businessId}/storefront/draft` | Owner | Save draft (full block replacement) |
+| `POST` | `/api/v1/businesses/{businessId}/storefront/publish` | Owner | Publish draft → published |
+
+### StorefrontBlock Types
+
+`HERO`, `PRODUCTS`, `DROPS`, `ABOUT`, `LOOKBOOK`, `BRANCHES`, `CONTACTS`, `FAQ`, `PROMO`, `WHY_THIS_MATCHES`
+
+Each block: blockId, blockType, displayOrder, config (block-specific JSON), enabled.
+
+### Rules
+
+- Only Owner manages storefront. Staff see read-only preview.
+- Publish copies all blocks from draft → published. Old published blocks deleted.
+- Brand color changes trigger Meilisearch re-sync of all business search documents.
+- Storefront is a constrained builder (Puck-style), not free-form Webflow.
+
+## Drops In Search
+
+Drops are brand events (new collection, restock, collab, etc.) surfaced as search signals.
+
+### DropCard In Search
+
+DropCard appears in `fresh_drops` search section. Rendered from Meilisearch type=DROP documents hydrated through PostgreSQL.
+
+### hasActiveDrop Badge
+
+When a brand has an active drop, its product cards receive `hasActiveDrop: true` and a "Новый дроп" badge. Active drops boost search ranking (+10% freshnessScore).
+
+### Public Drop List
+
+`GET /api/v1/businesses/{businessId}/drops` (public): Returns active and upcoming drops with name, description, type, status, startDate, endDate, coverUrl, productCount, tags.
+
 ## Product Excel Import
 
 Excel-импорт товаров: бекенд владеет парсингом Excel, auto-mapping, нормализацией, валидацией и созданием товаров. Фронтенд реализует UX Wizard (Upload → Mapping → Preview → Approve) и отправляет файл / mapping на бекенд. Фронтенд НЕ парсит Excel, НЕ выполняет auto-mapping, НЕ нормализует строки — это зона ответственности бекенда.

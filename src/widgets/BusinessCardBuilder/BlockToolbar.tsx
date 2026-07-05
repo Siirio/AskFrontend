@@ -203,6 +203,21 @@ export function BlockToolbar({ config, canMoveUp, canMoveDown, onMoveUp, onMoveD
 
           <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
             <span className="fcw-label" style={{ fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Font Size: {config.fontSize || 16}px
+            </span>
+            <input
+              type="range"
+              min={12}
+              max={32}
+              step={1}
+              value={config.fontSize || 16}
+              onChange={e => onChange({ fontSize: Number(e.target.value) })}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+            <span className="fcw-label" style={{ fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Height: {config.height || "auto"}
             </span>
             <input
