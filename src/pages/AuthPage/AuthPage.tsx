@@ -186,8 +186,14 @@ export function AuthPage() {
           <form onSubmit={handleVerify}>
             <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
               <p className="fcw-body fcw-text-secondary">
-                Код подтверждения отправлен на {email || "вашу почту"}
+                Код подтверждения отправлен на {state.challenge?.maskedDestination || email || "вашу почту"}
               </p>
+              {state.challenge?.code && (
+                <div className="fcw-card fcw-p-sm" style={{ background: "var(--fcw-color-surface-secondary)", borderRadius: "var(--fcw-radius-md)", textAlign: "center" }}>
+                  <p className="fcw-body-xs fcw-text-tertiary" style={{ marginBottom: "0.25rem" }}>Тестовый режим — код:</p>
+                  <p className="fcw-h3" style={{ fontFamily: "var(--fcw-font-mono)", letterSpacing: "0.2em", color: "var(--fcw-color-primary)" }}>{state.challenge.code}</p>
+                </div>
+              )}
               <Input
                 label="Код из письма"
                 value={code}
