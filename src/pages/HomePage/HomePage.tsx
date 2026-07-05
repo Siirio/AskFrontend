@@ -3,6 +3,8 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { SearchBar } from "../../shared/ui/SearchBar/SearchBar";
 import { CitySelector } from "../../shared/ui/CitySelector/CitySelector";
+import { SegmentedControl, type SegmentedOption } from "../../shared/ui/SegmentedControl/SegmentedControl";
+import { HomeCursorSurface } from "../../widgets/home-cursor-surface/HomeCursorSurface";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
@@ -35,6 +37,11 @@ export function HomePage() {
     setTimeout(() => setBusy(false), 100);
   };
 
+  const modeOptions: SegmentedOption<SearchMode>[] = [
+    { key: "products", label: "Товары", icon: <Package size={15} /> },
+    { key: "services", label: "Услуги", icon: <Briefcase size={15} /> },
+  ];
+
   return (
     <main id="main-content">
       <section
@@ -50,7 +57,7 @@ export function HomePage() {
         <div className="fcw-container fcw-relative" style={{ zIndex: 2 }}>
           <div
             className="fcw-flex-col fcw-items-center fcw-text-center fcw-mx-auto"
-            style={{ maxWidth: "600px", gap: "clamp(0.75rem, 1.5vw, 1.25rem)" }}
+            style={{ maxWidth: "820px", gap: "clamp(0.9rem, 1.7vw, 1.4rem)" }}
           >
             <motion.div
               className="fcw-label"
@@ -65,10 +72,10 @@ export function HomePage() {
             <motion.h1
               className="fcw-text-balance"
               style={{
-                fontSize: "clamp(1.5rem, 3.5vw, 2.25rem)",
+                fontSize: "clamp(2rem, 5vw, 4.75rem)",
                 fontWeight: "var(--fcw-font-weight-bold)",
-                lineHeight: "var(--fcw-line-height-snug)",
-                letterSpacing: "var(--fcw-tracking-tight)",
+                lineHeight: "1.03",
+                letterSpacing: "0",
                 fontFamily: "var(--fcw-font-body)",
                 margin: 0,
               }}
@@ -79,71 +86,34 @@ export function HomePage() {
               Найдём то, что вам подходит рядом
             </motion.h1>
 
-            {/* Mode toggle — Товары / Услуги */}
-            <motion.div
-              initial={reduced ? {} : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-            >
-              <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
-                <button
-                  className={`fcw-btn fcw-btn-sm ${mode === "products" ? "fcw-glassmorph-selected-seg" : ""}`}
-                  style={{
-                    background: mode === "products" ? undefined : "transparent",
-                    color: mode === "products" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                    fontWeight: mode === "products" ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
-                    borderRadius: "var(--fcw-radius-md) 0 0 var(--fcw-radius-md)",
-                    border: "none",
-                    boxShadow: "none",
-                    gap: "0.375rem",
-                  }}
-                  onClick={() => setMode("products")}
-                >
-                  <Package size={14} />
-                  Товары
-                </button>
-                <button
-                  className={`fcw-btn fcw-btn-sm ${mode === "services" ? "fcw-glassmorph-selected-seg" : ""}`}
-                  style={{
-                    background: mode === "services" ? undefined : "transparent",
-                    color: mode === "services" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                    fontWeight: mode === "services" ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
-                    borderRadius: "0 var(--fcw-radius-md) var(--fcw-radius-md) 0",
-                    border: "none",
-                    boxShadow: "none",
-                    gap: "0.375rem",
-                  }}
-                  onClick={() => setMode("services")}
-                >
-                  <Briefcase size={14} />
-                  Услуги
-                </button>
-              </div>
-            </motion.div>
-
-            {/* Search bar + city selector side by side */}
             <motion.div
               className="fcw-w-full"
               initial={reduced ? {} : { opacity: 0, scale: 0.95, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.55, ease: [0.34, 1.56, 0.64, 1] }}
-              style={{ maxWidth: "540px" }}
+              style={{ maxWidth: "760px" }}
             >
-              <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
+              <div className="home-search-row">
                 <div className="fcw-flex-1">
                   <SearchBar onSearch={handleSearch} busy={busy} placeholder="Например: кожаный рюкзак, чёрный, минималистичный" />
                 </div>
+                <SegmentedControl
+                  options={modeOptions}
+                  value={mode}
+                  onChange={setMode}
+                  layoutId="homeModePill"
+                  ariaLabel="Тип поиска"
+                  style={{ flexShrink: 0 }}
+                />
                 <div className="fcw-hidden-mobile">
                   <CitySelector value={city} onChange={setCity} />
                 </div>
               </div>
-              {/* Mobile city selector — below search */}
               <div className="fcw-flex fcw-justify-center fcw-hidden-desktop" style={{ marginTop: "0.5rem" }}>
                 <CitySelector value={city} onChange={setCity} compact />
               </div>
             </motion.div>
 
-            {/* Auth prompt */}
             {showAuthPrompt && !isAuthenticated && (
               <motion.div
                 className="fcw-flex-col fcw-items-center"
@@ -162,7 +132,6 @@ export function HomePage() {
               </motion.div>
             )}
 
-            {/* Auth CTA */}
             {!isAuthenticated && !showAuthPrompt && (
               <motion.div
                 className="fcw-flex fcw-flex-wrap fcw-justify-center fcw-items-center"
@@ -180,7 +149,7 @@ export function HomePage() {
           </div>
         </div>
 
-        {/* Ambient glow */}
+        <HomeCursorSurface />
         <div
           className="fcw-absolute"
           style={{

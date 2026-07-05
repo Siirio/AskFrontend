@@ -1,4 +1,4 @@
-import { apiRequest } from "./httpClient";
+import { API_BASE_URL, apiRequest, getStoredToken, transformKeys, ApiError } from "./httpClient";
 import { mapSearchResult, mapSupplierTask } from "./mappers";
 import type {
   BusinessProductDto, BusinessProductListDto,
@@ -16,6 +16,20 @@ import type {
   SupplierTaskDto
 } from "./dto";
 
+function getStoredUserLocation() {
+  try {
+    const raw = window.localStorage.getItem("ask.geo");
+    if (!raw) return { lat: null, lng: null };
+    const parsed = JSON.parse(raw) as { lat?: number; lng?: number };
+    return {
+      lat: typeof parsed.lat === "number" ? parsed.lat : null,
+      lng: typeof parsed.lng === "number" ? parsed.lng : null,
+    };
+  } catch {
+    return { lat: null, lng: null };
+  }
+}
+
 export async function searchAsk(query: string, scope: "all" | "product" | "service", city?: string, category?: string) {
   const response = await apiRequest<StructuredSearchDto>("/api/v1/search", {
     method: "POST",
@@ -24,7 +38,7 @@ export async function searchAsk(query: string, scope: "all" | "product" | "servi
       selectedMode: scope === "all" ? "AUTO" : scope.toUpperCase(),
       selectedCategory: category || "",
       city: city || "Астана",
-      userLocation: { lat: null, lng: null },
+      userLocation: getStoredUserLocation(),
       language: "ru",
       sort: "intent_match",
     },
@@ -37,7 +51,7 @@ export function searchAskV2(params: {
   scope: "all" | "product" | "service";
   city?: string;
   selectedCategory?: string;
-  sort?: "intent_match" | "price_asc" | "price_desc";
+  sort?: "intent_match" | "price_asc" | "price_desc" | "distance" | "active_events";
 }) {
   return apiRequest<SearchV2ResponseDto>("/api/v1/search/v2", {
     method: "POST",
@@ -47,7 +61,7 @@ export function searchAskV2(params: {
       selectedCategory: params.selectedCategory || "",
       city: params.city || "Астана",
       sort: params.sort || "intent_match",
-      userLocation: { lat: null, lng: null },
+      userLocation: getStoredUserLocation(),
       language: "ru",
     },
   });
@@ -67,11 +81,11 @@ export async function createFallbackRequest(query: string, scope: "product" | "s
     scope: string;
     city: string;
     status: string;
-    matched_suppliers: number;
+    matchedSuppliers: number;
   }>("/api/v1/customer-requests", {
     method: "POST",
     auth: true,
-    body: { query_text: query, scope, city_name: city },
+    body: { queryText: query, scope, cityName: city },
   });
 
   return {
@@ -80,7 +94,7 @@ export async function createFallbackRequest(query: string, scope: "product" | "s
     scope,
     city: response.city,
     status: response.status as "draft" | "dispatching" | "waiting" | "answered",
-    matchedSuppliers: response.matched_suppliers,
+    matchedSuppliers: response.matchedSuppliers,
   };
 }
 
@@ -175,6 +189,35 @@ export function listCities() {
 
 export function listCategories() {
   return apiRequest<Array<{ id: string; name: string; slug: string; parentId: string | null; children: Array<{ id: string; name: string; slug: string; parentId: string | null }> }>>("/api/v1/categories");
+}
+
+export async function uploadProductImport(branchId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const headers: Record<string, string> = {};
+  const token = getStoredToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const isAutodumpFile = /\.(txt|md|pdf)$/i.test(file.name);
+  const path = isAutodumpFile
+    ? `/api/v1/business-admin/branches/${branchId}/autodump-sessions/files`
+    : `/api/v1/business-admin/branches/${branchId}/product-imports`;
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    let message = text;
+    let errorCode: string | null = null;
+    try {
+      const json = JSON.parse(text);
+      if (json.message) message = json.message;
+      errorCode = json.error_code || json.errorCode || null;
+    } catch {}
+    throw new ApiError(response.status, message, errorCode);
+  }
+  return transformKeys(await response.json()) as { importId?: string; catalogImportId?: string; sessionId?: string; status?: string; totalRows?: number; draftsCreated?: number };
 }
 
 export function listBranches(businessId: string) {

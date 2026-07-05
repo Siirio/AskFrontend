@@ -1,5 +1,57 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-04 — Freshness Audit: Generative UI, Contact Actions, Storefront Builder, Visual Direction
+
+Deep audit of all MD files against the current Ask product direction. Frontend AGENTS.md and ARCHITECTURE_NARRATIVE_FRONTEND.md updated with Generative UI Renderer, Contact Actions, Storefront Builder. Visual style direction corrected from old light/teal to dark graphite/ivory/orange.
+
+### Generative UI Renderer
+
+- Backend returns UI recipe JSON, not arbitrary HTML. Frontend renders only whitelisted components.
+- Whitelist: ProductCard, ServiceCard, DropCard, BusinessCandidateCard, SearchSection, SearchResponse.
+- Search result sections: exact_products, similar_products, fresh_drops, suitable_storefronts, over_budget, needs_confirmation.
+- MatchReasons (max 4 per card) and badges rendered from backend data, never invented by frontend.
+
+### Contact Actions
+
+- Frontend never receives raw phone/username unless backend marks it as PUBLIC visibility.
+- contactActionId pattern: frontend receives short-lived token, calls POST /api/v1/contacts/{contactActionId}/resolve.
+- Resolve response: actionType (REDIRECT/DISPLAY/DEEP_LINK/CHAT), provider, deepLink/redirectUrl/displayValue.
+- Contact actions in search cards: WhatsApp, Telegram, Instagram, 2GIS, phone, website — rendered as distinct per-card actions.
+- contactActionId is generated per-search-response, lives 30 minutes, one-time or rate-limited.
+
+### Storefront Builder
+
+- Constrained Canva-like builder, NOT free-form Webflow. Puck (MIT) recommended.
+- Block types: Hero, Products, Drops, About, Lookbook, Branches, Contacts, FAQ, Promo, "Why this matches".
+- Draft/published flow: owner edits draft, publish copies to published. Customers see only published.
+- Storefront rendered from GET /api/v1/businesses/{businessId}/storefront → blocks array with blockType, displayOrder, config.
+- Brand color from BrandProfile used as accent in search result cards.
+
+### Visual Direction Fix
+
+- Old: Clean white, teal accent (#0d9b7c). New: Dark graphite (#070807), warm ivory text (#f4eee6), orange accent (#ff5a1f).
+- Design tokens added to AGENTS.md: --bg, --panel, --text, --orange.
+- Old DESIGN_AND_VISUALS_FRONTEND.md (light/teal) was already deleted; confirmed stale.
+
+### Drops In Search Results
+
+- DropCard component in fresh_drops search section.
+- hasActiveDrop badge on product cards when brand has an active drop.
+- Drops are type=DROP in Meilisearch, hydrated into DropCard by Search Orchestrator.
+
+### Docs Updated
+
+- Frontend AGENTS.md: added Generative UI Renderer, Contact Actions, Storefront Builder sections.
+- ARCHITECTURE_NARRATIVE_FRONTEND.md: added Generative UI Renderer (UI recipe JSON example, whitelist), Contact Actions (contactActionId pattern, BusinessExternalLink), Storefront Builder (Puck, block types, publish flow).
+
+## 2026-07-04 — Session: Full frontend redesign source stack and product register
+
+- Added `C:\MyProjects\Team\Ask\PRODUCT.md` as the root product register expected by the Impeccable design workflow.
+- Added `AI_Knowledge/product_ux/FRONTEND_REDESIGN_REFERENCE_STACK.md` as the durable source for the full frontend remake.
+- Marked `ASK_FRONTEND_REDESIGN_REWORK_PROMPT.md` as the latest visual/structure brief while preserving `EXPECTED_UX_UI_FLOW_FRONTEND.md`, frontend/backend contracts, and backend task specs as behavioral/API boundaries.
+- Recorded current implementation gates: frontend must remain PWA, current Vite config has no PWA plugin, and premium motion/component tooling should be added only when used.
+- Marked old `DESIGN_AND_VISUALS_FRONTEND.md` light/teal direction as stale for this remake because the file is deleted in the current working tree and conflicts with the new graphite/ivory/orange redesign prompt.
+
 ## 2026-06-25 — Session: Token storage fix, camelCase→snake_case request body fix, City/Category dropdowns, Profile editing, Branch management, Sidebar restructure
 
 ### CRITICAL: Snake-case → camelCase conversion fix (was 403 on all authenticated endpoints)

@@ -38,12 +38,12 @@ export function registerCustomer(displayName: string, email: string, password: s
   return apiRequest<AuthChallenge>("/api/v1/auth/customer/register", {
     method: "POST",
     body: {
-      display_name: displayName,
+      displayName,
       email,
       password,
-      password_confirmation: password,
-      accepted_user_agreement: true,
-      remember_me: true,
+      passwordConfirmation: password,
+      acceptedUserAgreement: true,
+      rememberMe: true,
     },
   });
 }
@@ -61,14 +61,14 @@ export function registerBusiness(params: {
     body: {
       email: params.email,
       password: params.password,
-      password_confirmation: params.password,
-      business_name: params.businessName,
-      branch_name: params.branchName,
-      branch_city_id: params.branchCityId,
-      branch_address: params.branchAddress,
-      online_only: false,
-      accepted_business_rules: true,
-      remember_me: true,
+      passwordConfirmation: params.password,
+      businessName: params.businessName,
+      branchName: params.branchName,
+      branchCityId: params.branchCityId,
+      branchAddress: params.branchAddress,
+      onlineOnly: false,
+      acceptedBusinessRules: true,
+      rememberMe: true,
     },
   });
 }
@@ -76,7 +76,7 @@ export function registerBusiness(params: {
 export function verifyCode(authChallengeId: string, code: string) {
   return apiRequest<AuthSession>("/api/v1/auth/verify", {
     method: "POST",
-    body: { auth_challenge_id: authChallengeId, code },
+    body: { authChallengeId, code },
   }).then(persistSession);
 }
 
@@ -86,6 +86,13 @@ export function resolveCity(name: string) {
 
 export function logout() {
   setStoredToken(null);
+}
+
+export function logoutRemote() {
+  return apiRequest<{ success: boolean }>("/api/v1/auth/logout", {
+    method: "POST",
+    auth: true,
+  }).finally(logout);
 }
 
 export function updateProfile(data: { displayName?: string; email?: string; phone?: string }) {

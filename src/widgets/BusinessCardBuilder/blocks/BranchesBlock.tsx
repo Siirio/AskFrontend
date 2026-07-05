@@ -71,6 +71,9 @@ export function BranchesBlock({ config, isEditing, onChange }: Props) {
                   <input className="fcw-input" defaultValue={branch.city} placeholder="City" style={{ height: 32, fontSize: "0.875rem" }}
                     onBlur={e => onChange({ branches: branches.map(b => b.localId === branch.localId ? { ...b, city: e.target.value } : b) })}
                   />
+                  <input className="fcw-input" defaultValue={branch.hours || ""} placeholder="Hours (e.g. Mon-Fri 9:00-18:00)" style={{ height: 32, fontSize: "0.875rem" }}
+                    onBlur={e => onChange({ branches: branches.map(b => b.localId === branch.localId ? { ...b, hours: e.target.value } : b) })}
+                  />
                 </div>
               ) : (
                 <div className="fcw-flex-col" style={{ gap: "0.25rem", cursor: isEditing ? "pointer" : "default" }} onClick={() => isEditing && setEditId(branch.localId)}>

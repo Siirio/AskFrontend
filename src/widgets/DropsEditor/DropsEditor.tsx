@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Check, Plus, Eye, Trash2, Calendar, Tag } from "lucide-react";
+import { Sparkles, X, Check, Plus, Eye, Trash2, Calendar, Tag, Loader2 } from "lucide-react";
 import { Card } from "../../shared/ui/Card/Card";
 import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
 import type { BrandDropDto } from "../../shared/api/dto";
@@ -40,10 +40,19 @@ interface DropsEditorProps {
 export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnly }: DropsEditorProps) {
   const [form, setForm] = useState<DropForm>(emptyForm);
   const [previewMode, setPreviewMode] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
   const update = (patch: Partial<DropForm>) => setForm(f => ({ ...f, ...patch }));
 
   const handleCreate = async () => {
     if (!form.name.trim()) return;
+    if (form.startDate && form.endDate && new Date(form.endDate) <= new Date(form.startDate)) {
+      setSaveState("error");
+      setErrorMessage("End date must be after start date.");
+      return;
+    }
+    setSaveState("saving");
+    setErrorMessage("");
     try {
       await onCreate({
         name: form.name,
@@ -56,7 +65,12 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
       });
       setForm(emptyForm);
       setPreviewMode(false);
-    } catch { /* parent handles error */ }
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 1800);
+    } catch (err: unknown) {
+      setSaveState("error");
+      setErrorMessage(err instanceof Error ? err.message : "Failed to create drop. Check the data and try again.");
+    }
   };
 
   const selectedType = DROP_TYPES.find(t => t.key === form.type);
@@ -149,9 +163,13 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
                       <textarea className="fcw-textarea" value={form.description} onChange={e => update({ description: e.target.value })} rows={2} />
                     </label>
 
-                    <button className="fcw-btn fcw-btn-primary" onClick={handleCreate} disabled={busy || !form.name.trim()}>
-                      <Plus size={16} /> Create Drop
+                    <button className="fcw-btn fcw-btn-primary" onClick={handleCreate} disabled={busy || saveState === "saving" || !form.name.trim()}>
+                      {saveState === "saving" ? <Loader2 className="fcw-animate-spin" size={16} /> : saveState === "saved" ? <Check size={16} /> : <Plus size={16} />}
+                      {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : saveState === "error" ? "Try again" : "Create Drop"}
                     </button>
+                    {saveState === "error" && errorMessage && (
+                      <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)", margin: "0.25rem 0 0 0" }}>{errorMessage}</p>
+                    )}
                   </div>
                 </motion.div>
               ) : (

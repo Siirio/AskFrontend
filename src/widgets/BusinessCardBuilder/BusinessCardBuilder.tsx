@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Send, Monitor, Smartphone, Layout, Loader2, Check, Plus } from "lucide-react";
+import { Save, Send, Monitor, Smartphone, Loader2, Check, Plus } from "lucide-react";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { CardBlock } from "./CardBlock";
 import { AddBlockPopover } from "./AddBlockPopover";
@@ -16,7 +16,7 @@ interface Props {
   readOnly: boolean;
 }
 
-type DeviceView = "desktop" | "mobile" | "both";
+type DeviceView = "desktop" | "mobile";
 
 function detectIsMobile(): boolean {
   return typeof window !== "undefined" && window.innerWidth < 768;
@@ -36,7 +36,7 @@ export function BusinessCardBuilder({ blocks: initialBlocks, onSave, onPublish, 
   const [blocks, setBlocks] = useState<CardBlockType[]>(initialBlocks);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deviceView, setDeviceView] = useState<DeviceView>(() => detectIsMobile() ? "mobile" : "desktop");
-  const [showAddFirst, setShowAddFirst] = useState(false);
+  const [showAddPopover, setShowAddPopover] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const isEditing = !readOnly;
@@ -104,66 +104,127 @@ export function BusinessCardBuilder({ blocks: initialBlocks, onSave, onPublish, 
     }
   };
 
-  const showDesktop = deviceView === "desktop" || deviceView === "both";
-  const showMobile = deviceView === "mobile" || deviceView === "both";
-
-  const renderBlocks = () => (
-    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-      {isEditing && blocks.length === 0 && (
-        <div style={{ padding: "3rem", textAlign: "center" }}>
-          <p className="fcw-body fcw-text-secondary" style={{ marginBottom: "1rem" }}>Начните создавать визитку</p>
-          <button className="fcw-btn fcw-btn-primary" onClick={() => setShowAddFirst(true)}>
-            <Plus size={16} /> Добавить первый блок
-          </button>
+  const renderPreview = () => (
+    <div style={{
+      position: "sticky",
+      top: 80,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "1rem",
+    }}>
+      {deviceView === "desktop" ? (
+        <div style={{ width: "100%", maxWidth: 480, filter: "drop-shadow(0 24px 48px rgba(0,0,0,0.32))" }}>
+          <div style={{
+            width: "100%", aspectRatio: "16 / 10",
+            borderRadius: "8px 8px 0 0",
+            background: "linear-gradient(135deg, #2c2c2e, #1c1c1e)",
+            padding: "5px 6px 3px", border: "1px solid #3a3a3c", borderBottom: "none",
+          }}>
+            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff5f57" }} />
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#febc2e" }} />
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#28c840" }} />
+              <div style={{ flex: 1, height: 18, background: "#3a3a3c", borderRadius: 3, margin: "0 4px" }} />
+            </div>
+          </div>
+          <div style={{
+            background: "#1c1c1e", borderRadius: "0 0 8px 8px",
+            border: "1px solid #3a3a3c", borderTop: "none", padding: "0 3px 5px",
+          }}>
+            <div style={{
+              backgroundColor: "var(--fcw-color-surface)", borderRadius: 3, overflow: "hidden",
+              aspectRatio: "16 / 9.35", display: "flex", flexDirection: "column",
+            }}>
+              <div style={{ padding: "1rem 1.25rem", overflowY: "auto", flex: 1 }}>
+                <div className="fcw-flex-col" style={{ gap: "0.15rem" }}>
+                  {blocks.map(block => (
+                    <CardBlock
+                      key={block.localId}
+                      block={block}
+                      isSelected={false}
+                      isEditing={false}
+                      canMoveUp={false}
+                      canMoveDown={false}
+                      onSelect={() => {}}
+                      onChange={() => {}}
+                      onResize={() => {}}
+                      onMove={() => {}}
+                      onMoveUp={() => {}}
+                      onMoveDown={() => {}}
+                      onDelete={() => {}}
+                      onDuplicate={() => {}}
+                      onAddBlock={() => {}}
+                      index={0}
+                      total={blocks.length}
+                      onDragTo={() => {}}
+                    />
+                  ))}
+                  {blocks.length === 0 && (
+                    <div style={{ padding: "2rem", textAlign: "center", opacity: 0.3 }}>
+                      <Smartphone size={32} style={{ marginBottom: "0.5rem" }} />
+                      <p className="fcw-body-s">Предпросмотр</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-
-      {blocks.length === 0 && !isEditing && (
-        <div style={{ padding: "3rem", textAlign: "center", color: "var(--fcw-color-text-tertiary)" }}>
-          <Layout size={48} style={{ opacity: 0.2, marginBottom: "1rem" }} />
-          <p className="fcw-body">Визитка пока пуста</p>
-        </div>
-      )}
-
-      {blocks.map((block, index) => (
-        <CardBlock
-          key={block.localId}
-          block={block}
-          isSelected={selectedId === block.localId}
-          isEditing={isEditing}
-          canMoveUp={index > 0}
-          canMoveDown={index < blocks.length - 1}
-          onSelect={() => setSelectedId(isEditing ? block.localId : null)}
-          onChange={patch => handleChangeBlock(block.localId, patch)}
-          onResize={patch => handleResizeBlock(block.localId, patch)}
-          onMove={() => {}} // handled by drag-and-drop
-          onMoveUp={() => handleMoveBlock(index, index - 1)}
-          onMoveDown={() => handleMoveBlock(index, index + 1)}
-          onDelete={() => handleDelete(block.localId)}
-          onDuplicate={() => handleDuplicate(block)}
-          onAddBlock={handleAddBlock}
-          index={index}
-          total={blocks.length}
-          onDragTo={toIndex => handleMoveBlock(index, toIndex)}
-        />
-      ))}
-
-      {isEditing && blocks.length > 0 && (
-        <div style={{ position: "relative", height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 1, backgroundColor: "var(--fcw-color-border)" }} />
-          <button
-            className="fcw-btn fcw-btn-ghost fcw-btn-sm fcw-btn-icon"
-            style={{ position: "relative", zIndex: 1, borderRadius: "50%", width: 28, height: 28 }}
-            onClick={() => setShowAddFirst(v => !v)}
-          >
-            <Plus size={16} />
-          </button>
-          {showAddFirst && (
-            <AddBlockPopover
-              onSelect={type => { handleAddBlock(type, blocks.length - 1); setShowAddFirst(false); }}
-              onClose={() => setShowAddFirst(false)}
-            />
-          )}
+      ) : (
+        <div style={{ width: 240, filter: "drop-shadow(0 24px 48px rgba(0,0,0,0.35))" }}>
+          <div style={{
+            width: "100%", aspectRatio: "1 / 2", borderRadius: 28,
+            background: "linear-gradient(135deg, #2c2c2e, #1c1c1e)",
+            padding: 6, border: "2px solid #3a3a3c", position: "relative",
+          }}>
+            <div style={{
+              position: "absolute", left: "50%", top: 10, transform: "translateX(-50%)",
+              width: "30%", height: 14, borderRadius: "0 0 10px 10px",
+              background: "#030303", zIndex: 2,
+            }} />
+            <div style={{
+              backgroundColor: "var(--fcw-color-surface)", borderRadius: 22,
+              height: "100%", overflow: "hidden", display: "flex", flexDirection: "column",
+            }}>
+              <div style={{ padding: "2.25rem 0.5rem 1rem", overflowY: "auto", flex: 1 }}>
+                <div className="fcw-flex-col" style={{ gap: "0.1rem" }}>
+                  {blocks.map(block => (
+                    <CardBlock
+                      key={block.localId}
+                      block={block}
+                      isSelected={false}
+                      isEditing={false}
+                      canMoveUp={false}
+                      canMoveDown={false}
+                      onSelect={() => {}}
+                      onChange={() => {}}
+                      onResize={() => {}}
+                      onMove={() => {}}
+                      onMoveUp={() => {}}
+                      onMoveDown={() => {}}
+                      onDelete={() => {}}
+                      onDuplicate={() => {}}
+                      onAddBlock={() => {}}
+                      index={0}
+                      total={blocks.length}
+                      onDragTo={() => {}}
+                    />
+                  ))}
+                  {blocks.length === 0 && (
+                    <div style={{ padding: "2rem", textAlign: "center", opacity: 0.3 }}>
+                      <Smartphone size={24} style={{ marginBottom: "0.5rem" }} />
+                      <p className="fcw-body-s">Предпросмотр</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{
+                height: 3, width: 60, background: "#3a3a3c",
+                borderRadius: 2, margin: "0 auto 6px", flexShrink: 0,
+              }} />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -171,6 +232,7 @@ export function BusinessCardBuilder({ blocks: initialBlocks, onSave, onPublish, 
 
   return (
     <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
+      {/* Header: device toggle + actions */}
       <motion.div
         initial={reduced ? {} : { opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -178,34 +240,27 @@ export function BusinessCardBuilder({ blocks: initialBlocks, onSave, onPublish, 
         className="fcw-flex-between fcw-flex-wrap"
         style={{ gap: "1rem" }}
       >
-        <div className="fcw-flex fcw-items-center" style={{ gap: "1rem" }}>
-          <h2 className="fcw-h2" style={{ margin: 0 }}>Визитка</h2>
-
-          <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
-            {([
-              { key: "desktop" as DeviceView, icon: <Monitor size={14} />, label: "Десктоп" },
-              { key: "mobile" as DeviceView, icon: <Smartphone size={14} />, label: "Телефон" },
-              { key: "both" as DeviceView, icon: <span style={{ display: "inline-flex", gap: 1 }}><Monitor size={12} /><Smartphone size={12} /></span>, label: "Оба" },
-            ]).map(opt => (
-              <button
-                key={opt.key}
-                className={`fcw-btn fcw-btn-sm ${deviceView === opt.key ? "fcw-glassmorph-selected-seg" : ""}`}
-                style={{
-                  background: deviceView === opt.key ? undefined : "transparent",
-                  color: deviceView === opt.key ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                  fontWeight: deviceView === opt.key ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
-                  border: "none",
-                  boxShadow: "none",
-                  gap: "0.375rem",
-                  padding: "0.375rem 0.75rem",
-                }}
-                onClick={() => setDeviceView(opt.key)}
-              >
-                {opt.icon}
-                <span className="fcw-hidden-mobile">{opt.label}</span>
-              </button>
-            ))}
-          </div>
+        <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
+          {([
+            { key: "desktop" as DeviceView, icon: <Monitor size={14} />, label: "Десктоп" },
+            { key: "mobile" as DeviceView, icon: <Smartphone size={14} />, label: "Телефон" },
+          ]).map(opt => (
+            <button
+              key={opt.key}
+              className={`fcw-btn fcw-btn-sm ${deviceView === opt.key ? "fcw-glassmorph-selected-seg" : ""}`}
+              style={{
+                background: deviceView === opt.key ? undefined : "transparent",
+                color: deviceView === opt.key ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
+                fontWeight: deviceView === opt.key ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
+                border: "none", boxShadow: "none",
+                gap: "0.375rem", padding: "0.375rem 0.75rem",
+              }}
+              onClick={() => setDeviceView(opt.key)}
+            >
+              {opt.icon}
+              <span className="fcw-hidden-mobile">{opt.label}</span>
+            </button>
+          ))}
         </div>
 
         {!readOnly && (
@@ -221,60 +276,79 @@ export function BusinessCardBuilder({ blocks: initialBlocks, onSave, onPublish, 
         )}
       </motion.div>
 
-      <div style={{
-        display: "flex",
-        gap: showDesktop && showMobile ? "var(--fcw-space-lg)" : "0",
-        alignItems: "flex-start",
-        justifyContent: "center",
-      }}>
-        {showDesktop && (
-          <div style={{
-            flex: showMobile ? 3 : 1,
-            maxWidth: showMobile ? undefined : 900,
-            backgroundColor: "var(--fcw-color-surface)",
-            borderRadius: "var(--fcw-radius-lg)",
-            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-            padding: "1.5rem",
-            minHeight: 400,
-          }}>
-            <div className="fcw-label fcw-text-tertiary" style={{ marginBottom: "0.75rem", textAlign: "center" }}>Десктоп</div>
-            {renderBlocks()}
-          </div>
-        )}
-
-        {showMobile && (
-          <div style={{
-            flex: showDesktop ? 2 : "none",
-            width: showDesktop ? undefined : 375,
-            maxWidth: 375,
-          }}>
-            <div className="fcw-label fcw-text-tertiary" style={{ marginBottom: "0.75rem", textAlign: "center" }}>Телефон</div>
-            <div style={{
-              backgroundColor: "var(--fcw-color-surface)",
-              borderRadius: "2rem",
-              border: "2px solid var(--fcw-color-border)",
-              padding: "1.5rem 1rem",
-              minHeight: 500,
-              maxHeight: 700,
-              overflowY: "auto",
-              position: "relative",
-            }}>
-              <div style={{
-                position: "absolute",
-                top: 8,
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 80,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: "var(--fcw-color-border)",
-              }} />
-              <div style={{ marginTop: 8 }}>
-                {renderBlocks()}
-              </div>
+      {/* Main: left=edit, right=preview */}
+      <div style={{ display: "flex", gap: "var(--fcw-space-lg)", alignItems: "flex-start" }}>
+        {/* Edit area */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {isEditing && blocks.length === 0 && (
+            <div style={{ padding: "2rem", textAlign: "center" }}>
+              <button className="fcw-btn fcw-btn-primary" onClick={() => setShowAddPopover(true)}>
+                <Plus size={16} /> Добавить блок
+              </button>
+              {showAddPopover && (
+                <div style={{ marginTop: "0.5rem", display: "flex", justifyContent: "center" }}>
+                  <AddBlockPopover
+                    onSelect={type => { handleAddBlock(type, -1); setShowAddPopover(false); }}
+                    onClose={() => setShowAddPopover(false)}
+                  />
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+
+          {blocks.length === 0 && !isEditing && (
+            <div style={{ padding: "2rem", textAlign: "center", opacity: 0.4 }}>
+              <p className="fcw-body">Блоки не добавлены</p>
+            </div>
+          )}
+
+          {blocks.map((block, index) => (
+            <CardBlock
+              key={block.localId}
+              block={block}
+              isSelected={selectedId === block.localId}
+              isEditing={isEditing}
+              canMoveUp={index > 0}
+              canMoveDown={index < blocks.length - 1}
+              onSelect={() => setSelectedId(isEditing ? block.localId : null)}
+              onChange={patch => handleChangeBlock(block.localId, patch)}
+              onResize={patch => handleResizeBlock(block.localId, patch)}
+              onMove={() => {}}
+              onMoveUp={() => handleMoveBlock(index, index - 1)}
+              onMoveDown={() => handleMoveBlock(index, index + 1)}
+              onDelete={() => handleDelete(block.localId)}
+              onDuplicate={() => handleDuplicate(block)}
+              onAddBlock={handleAddBlock}
+              index={index}
+              total={blocks.length}
+              onDragTo={toIndex => handleMoveBlock(index, toIndex)}
+            />
+          ))}
+
+          {isEditing && blocks.length > 0 && (
+            <div style={{ position: "relative", height: 32, display: "flex", alignItems: "center", justifyContent: "center", marginTop: "0.25rem" }}>
+              <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 1, backgroundColor: "var(--fcw-color-border)" }} />
+              <button
+                className="fcw-btn fcw-btn-ghost fcw-btn-sm fcw-btn-icon"
+                style={{ position: "relative", zIndex: 1, borderRadius: "50%", width: 32, height: 32 }}
+                onClick={() => setShowAddPopover(v => !v)}
+              >
+                <Plus size={16} />
+              </button>
+              {showAddPopover && (
+                <AddBlockPopover
+                  onSelect={type => { handleAddBlock(type, blocks.length - 1); setShowAddPopover(false); }}
+                  onClose={() => setShowAddPopover(false)}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Preview sidebar */}
+        <div className="fcw-hidden-mobile" style={{ width: 280, flexShrink: 0 }}>
+          {renderPreview()}
+        </div>
       </div>
     </div>
   );

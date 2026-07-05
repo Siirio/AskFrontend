@@ -149,6 +149,85 @@ No absolute "best brand" rating. Only "best match for THIS intent."
 - Price is a filter factor, not the default sort king.
 - Visible badges: data freshness, confirmation speed, card quality, business activity.
 
+## Generative UI Renderer (2026-07-04)
+
+Frontend is a **safe schema renderer**, not a free-form HTML/CSS host. Backend/AI returns UI recipe JSON — frontend renders only approved components.
+
+### Contract
+
+Backend returns:
+
+```json
+{
+  "layout": "search_results",
+  "sections": [
+    {
+      "type": "exact_products",
+      "title": "Нашли похожее на твой запрос",
+      "cards": [
+        {
+          "component": "ProductCard",
+          "productId": "uuid",
+          "matchReasons": ["Levi's", "винтажный стиль", "есть рядом", "из свежего дропа"]
+        }
+      ]
+    },
+    {
+      "type": "fresh_drops",
+      "title": "Свежие поступления",
+      "cards": [
+        {
+          "component": "DropCard",
+          "dropId": "uuid",
+          "matchReasons": ["сегодняшний дроп", "совпадает по бренду и стилю"]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Whitelist Components
+
+Frontend renders only these approved components: `ProductCard`, `ServiceCard`, `DropCard`, `BusinessCandidateCard`, `StorefrontHero`, `ContactActions`, `DistanceBadge`, `MatchReasons`.
+
+Never render arbitrary HTML, raw React, unvalidated markdown, or free-form CSS from backend/AI.
+
+### Result Sections (inside `Найденное`)
+
+- exact products
+- similar products
+- fresh drops
+- suitable storefronts
+- over-budget / wrong-city / needs-confirmation sections
+
+## Contact Actions (2026-07-04)
+
+UI shows action buttons: Telegram, Instagram, WhatsApp, 2GIS, Site, Ask Chat. Click goes through `contactActionId` — backend resolves the actual contact/redirect securely.
+
+- Never show raw phone/username unless backend explicitly returns it as public display value.
+- Contact hash is internal dedup infrastructure, never shown to users.
+- `BusinessExternalLink` records drive external channel buttons.
+
+## Storefront Builder (2026-07-04)
+
+Brand storefront = constrained Canva-like builder, NOT free-form Webflow.
+
+### Technology
+- **Puck** (MIT, open-source visual editor for React) — recommended for MVP. Own data, no vendor lock-in, saves page data to own DB, renders with own components.
+- Craft.js is lower-level (framework for building editors). GrapesJS is too free-form (risk of breaking visual system).
+
+### Blocks
+Hero, Products, Drops, About, Lookbook, Branches, Contacts, FAQ, Promo, "Why this matches".
+
+### Flow
+1. Brand owner opens storefront builder in business cabinet.
+2. Adds/reorders blocks from constrained palette.
+3. Configures each block (product bindings, drop bindings, text, images).
+4. Previews how storefront looks to customers.
+5. Publishes — backend stores ordered block config.
+6. Customer sees rendered storefront from published block config.
+
 ## Integration Boundaries
 
 Frontend should not call private provider APIs directly. External systems such as Telegram, WhatsApp, maps, inventory, POS, CRM, e-commerce, fiscal, and scheduling systems should appear in the UI only through safe backend contracts or public client-safe actions.
