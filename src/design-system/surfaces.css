@@ -1,0 +1,255 @@
+/* ============================================
+   FCW Surface System
+   ============================================ */
+
+.fcw-surface-primary {
+  background-color: var(--fcw-color-surface);
+  color: var(--fcw-color-text);
+}
+
+.fcw-surface-secondary {
+  background-color: var(--fcw-color-surface-secondary);
+  color: var(--fcw-color-text);
+}
+
+.fcw-surface-tertiary {
+  background-color: var(--fcw-color-surface-tertiary);
+  color: var(--fcw-color-text);
+}
+
+.fcw-surface-inverse {
+  background-color: var(--fcw-color-text);
+  color: var(--fcw-color-surface);
+}
+
+/* Card surface */
+.fcw-card {
+  background-color: var(--fcw-color-surface);
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-lg);
+  box-shadow: var(--fcw-shadow-sm);
+  transition: box-shadow var(--fcw-duration-fast) var(--fcw-ease-out),
+              transform var(--fcw-duration-fast) var(--fcw-ease-out);
+}
+
+.fcw-card:hover {
+  box-shadow: var(--fcw-shadow-md);
+  transform: translateY(-2px);
+}
+
+.fcw-card-interactive {
+  cursor: pointer;
+}
+
+.fcw-card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--fcw-shadow-sm);
+}
+
+.fcw-card-flush {
+  background-color: var(--fcw-color-surface);
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-lg);
+}
+
+/* Glass surface — theme-aware frosted glass */
+.fcw-glass {
+  background: color-mix(in srgb, var(--fcw-color-surface) 60%, transparent);
+  backdrop-filter: var(--fcw-blur-glass);
+  -webkit-backdrop-filter: var(--fcw-blur-glass);
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  box-shadow: var(--fcw-shadow-lg);
+}
+
+.fcw-glass-dark {
+  background: color-mix(in srgb, var(--fcw-color-surface) 75%, transparent);
+  backdrop-filter: var(--fcw-blur-glass);
+  -webkit-backdrop-filter: var(--fcw-blur-glass);
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+}
+
+/* Glassmorphism — frosted glass with grain texture + 3D depth */
+.fcw-glassmorph {
+  position: relative;
+  background: color-mix(in srgb, var(--fcw-color-surface-secondary) 70%, transparent);
+  backdrop-filter: var(--fcw-blur-glass);
+  -webkit-backdrop-filter: var(--fcw-blur-glass);
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-lg);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform-style: preserve-3d;
+  transform: perspective(800px) translateZ(0);
+  transition: all var(--fcw-duration-normal) var(--fcw-ease-out);
+  overflow: hidden;
+}
+
+/* Grain texture overlay */
+.fcw-glassmorph::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  background-repeat: repeat;
+  border-radius: inherit;
+}
+
+.fcw-glassmorph:hover {
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: perspective(800px) translateZ(8px) rotateX(1deg);
+  border-color: var(--fcw-color-border-hover);
+}
+
+.fcw-glassmorph:active {
+  transform: perspective(800px) translateZ(0) rotateX(0);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all var(--fcw-duration-instant) var(--fcw-ease-out);
+}
+
+.fcw-glassmorph-selected {
+  position: relative;
+  background: color-mix(in srgb, var(--fcw-color-primary) 12%, var(--fcw-color-surface-secondary) 70%);
+  backdrop-filter: var(--fcw-blur-glass);
+  -webkit-backdrop-filter: var(--fcw-blur-glass);
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-primary);
+  border-radius: var(--fcw-radius-lg);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 0 1px color-mix(in srgb, var(--fcw-color-primary) 20%, transparent);
+  transform-style: preserve-3d;
+  transform: perspective(800px) translateZ(4px);
+  transition: all var(--fcw-duration-normal) var(--fcw-ease-out);
+  overflow: hidden;
+}
+
+.fcw-glassmorph-selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  background-repeat: repeat;
+  border-radius: inherit;
+}
+
+.fcw-glassmorph-selected:hover {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 1px color-mix(in srgb, var(--fcw-color-primary) 30%, transparent);
+  transform: perspective(800px) translateZ(10px) rotateX(1deg);
+}
+
+/* Segmented glassmorph — for pill/toggle groups */
+.fcw-glassmorph-segmented {
+  position: relative;
+  background: color-mix(in srgb, var(--fcw-color-surface-secondary) 60%, transparent);
+  backdrop-filter: var(--fcw-blur-glass);
+  -webkit-backdrop-filter: var(--fcw-blur-glass);
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-lg);
+  padding: 0.25rem;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform-style: preserve-3d;
+  transform: perspective(800px) translateZ(2px);
+  transition: all var(--fcw-duration-normal) var(--fcw-ease-out);
+  overflow: hidden;
+}
+
+.fcw-glassmorph-segmented::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  background-repeat: repeat;
+  border-radius: inherit;
+}
+
+.fcw-glassmorph-segmented:hover {
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: perspective(800px) translateZ(6px) rotateX(0.5deg);
+}
+
+.fcw-glassmorph-selected-seg {
+  position: relative;
+  background: color-mix(in srgb, var(--fcw-color-primary) 14%, var(--fcw-color-surface-secondary) 65%) !important;
+  backdrop-filter: var(--fcw-blur-glass);
+  -webkit-backdrop-filter: var(--fcw-blur-glass);
+  border: var(--fcw-border-width-thin) solid color-mix(in srgb, var(--fcw-color-primary) 40%, transparent) !important;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transform: perspective(800px) translateZ(4px);
+  transition: all var(--fcw-duration-normal) var(--fcw-ease-out);
+  overflow: hidden;
+}
+
+.fcw-glassmorph-selected-seg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  background-repeat: repeat;
+  border-radius: inherit;
+}
+
+/* Shadow elevations */
+.fcw-elevation-none { box-shadow: var(--fcw-shadow-none); }
+.fcw-elevation-sm { box-shadow: var(--fcw-shadow-sm); }
+.fcw-elevation-md { box-shadow: var(--fcw-shadow-md); }
+.fcw-elevation-lg { box-shadow: var(--fcw-shadow-lg); }
+.fcw-elevation-xl { box-shadow: var(--fcw-shadow-xl); }
+.fcw-elevation-2xl { box-shadow: var(--fcw-shadow-2xl); }
+.fcw-elevation-inner { box-shadow: var(--fcw-shadow-inner); }
+
+/* Border utilities */
+.fcw-border { border: var(--fcw-border-width-thin) solid var(--fcw-color-border); }
+.fcw-border-hover:hover { border-color: var(--fcw-color-border-hover); }
+.fcw-border-top { border-top: var(--fcw-border-width-thin) solid var(--fcw-color-border); }
+.fcw-border-bottom { border-bottom: var(--fcw-border-width-thin) solid var(--fcw-color-border); }
+
+/* Radius utilities */
+.fcw-radius-none { border-radius: var(--fcw-radius-none); }
+.fcw-radius-sm { border-radius: var(--fcw-radius-sm); }
+.fcw-radius-md { border-radius: var(--fcw-radius-md); }
+.fcw-radius-lg { border-radius: var(--fcw-radius-lg); }
+.fcw-radius-xl { border-radius: var(--fcw-radius-xl); }
+.fcw-radius-2xl { border-radius: var(--fcw-radius-2xl); }
+.fcw-radius-full { border-radius: var(--fcw-radius-full); }
+
+/* Blur utilities */
+.fcw-blur-glass { backdrop-filter: var(--fcw-blur-glass); -webkit-backdrop-filter: var(--fcw-blur-glass); }
+.fcw-blur-subtle { backdrop-filter: var(--fcw-blur-subtle); -webkit-backdrop-filter: var(--fcw-blur-subtle); }
+.fcw-blur-heavy { backdrop-filter: var(--fcw-blur-heavy); -webkit-backdrop-filter: var(--fcw-blur-heavy); }
+
+/* Ratio boxes */
+.fcw-ratio-square { aspect-ratio: var(--fcw-ratio-square); }
+.fcw-ratio-video { aspect-ratio: var(--fcw-ratio-video); }
+.fcw-ratio-portrait { aspect-ratio: var(--fcw-ratio-portrait); }
+.fcw-ratio-cinema { aspect-ratio: var(--fcw-ratio-cinema); }
+.fcw-ratio-product { aspect-ratio: var(--fcw-ratio-product); }

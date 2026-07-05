@@ -1,0 +1,298 @@
+/* ============================================
+   FCW Motion System
+   ============================================ */
+
+/* Reduced motion -- ALWAYS include */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================
+   Entrance Animations
+   ============================================ */
+
+@keyframes fcw-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fcw-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fcw-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fcw-slide-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fcw-slide-left {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fcw-slide-right {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fcw-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fcw-scale-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+
+/* ============================================
+   Mask Reveal Animations
+   ============================================ */
+
+@keyframes fcw-mask-reveal-up {
+  from { clip-path: inset(100% 0 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes fcw-mask-reveal-down {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes fcw-mask-reveal-right {
+  from { clip-path: inset(0 0 0 100%); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes fcw-mask-reveal-left {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes fcw-mask-reveal-center {
+  from { clip-path: inset(50% 50% 50% 50%); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+/* ============================================
+   Continuous Animations
+   ============================================ */
+
+@keyframes fcw-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fcw-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fcw-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fcw-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes fcw-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fcw-bounce-in {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 1; transform: scale(1.05); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================
+   Utility Animation Classes
+   ============================================ */
+
+.fcw-animate-fade-in {
+  animation: fcw-fade-in var(--fcw-duration-normal) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-fade-out {
+  animation: fcw-fade-out var(--fcw-duration-normal) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-slide-up {
+  animation: fcw-slide-up var(--fcw-duration-slow) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-slide-down {
+  animation: fcw-slide-down var(--fcw-duration-slow) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-slide-left {
+  animation: fcw-slide-left var(--fcw-duration-slow) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-slide-right {
+  animation: fcw-slide-right var(--fcw-duration-slow) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-scale-in {
+  animation: fcw-scale-in var(--fcw-duration-normal) var(--fcw-ease-spring) both;
+}
+
+.fcw-animate-scale-out {
+  animation: fcw-scale-out var(--fcw-duration-normal) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-mask-reveal-up {
+  animation: fcw-mask-reveal-up var(--fcw-duration-cinematic) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-mask-reveal-down {
+  animation: fcw-mask-reveal-down var(--fcw-duration-cinematic) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-mask-reveal-right {
+  animation: fcw-mask-reveal-right var(--fcw-duration-cinematic) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-mask-reveal-left {
+  animation: fcw-mask-reveal-left var(--fcw-duration-cinematic) var(--fcw-ease-out) both;
+}
+
+.fcw-animate-spin {
+  animation: fcw-spin 1s linear infinite;
+}
+
+.fcw-animate-pulse {
+  animation: fcw-pulse 2s var(--fcw-ease-in-out) infinite;
+}
+
+.fcw-animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: fcw-shimmer 1.5s linear infinite;
+}
+
+.fcw-animate-shake {
+  animation: fcw-shake 0.3s var(--fcw-ease-out);
+}
+
+.fcw-animate-float {
+  animation: fcw-float 3s var(--fcw-ease-in-out) infinite;
+}
+
+.fcw-animate-bounce-in {
+  animation: fcw-bounce-in var(--fcw-duration-slow) var(--fcw-ease-spring) both;
+}
+
+/* ============================================
+   Stagger Delays
+   ============================================ */
+
+.fcw-stagger-1 { animation-delay: 0ms; }
+.fcw-stagger-2 { animation-delay: 100ms; }
+.fcw-stagger-3 { animation-delay: 200ms; }
+.fcw-stagger-4 { animation-delay: 300ms; }
+.fcw-stagger-5 { animation-delay: 400ms; }
+.fcw-stagger-6 { animation-delay: 500ms; }
+.fcw-stagger-7 { animation-delay: 600ms; }
+.fcw-stagger-8 { animation-delay: 700ms; }
+.fcw-stagger-9 { animation-delay: 800ms; }
+.fcw-stagger-10 { animation-delay: 900ms; }
+
+/* ============================================
+   Duration Utilities
+   ============================================ */
+
+.fcw-duration-instant { transition-duration: var(--fcw-duration-instant); animation-duration: var(--fcw-duration-instant); }
+.fcw-duration-fast { transition-duration: var(--fcw-duration-fast); animation-duration: var(--fcw-duration-fast); }
+.fcw-duration-normal { transition-duration: var(--fcw-duration-normal); animation-duration: var(--fcw-duration-normal); }
+.fcw-duration-slow { transition-duration: var(--fcw-duration-slow); animation-duration: var(--fcw-duration-slow); }
+.fcw-duration-cinematic { transition-duration: var(--fcw-duration-cinematic); animation-duration: var(--fcw-duration-cinematic); }
+
+/* ============================================
+   Easing Utilities
+   ============================================ */
+
+.fcw-ease-out { transition-timing-function: var(--fcw-ease-out); }
+.fcw-ease-in { transition-timing-function: var(--fcw-ease-in); }
+.fcw-ease-in-out { transition-timing-function: var(--fcw-ease-in-out); }
+.fcw-ease-spring { transition-timing-function: var(--fcw-ease-spring); }
+.fcw-ease-bounce { transition-timing-function: var(--fcw-ease-bounce); }
+
+/* ============================================
+   Interactive Transitions
+   ============================================ */
+
+.fcw-transition-all {
+  transition: all var(--fcw-duration-fast) var(--fcw-ease-out);
+}
+
+.fcw-transition-transform {
+  transition: transform var(--fcw-duration-fast) var(--fcw-ease-out);
+}
+
+.fcw-transition-opacity {
+  transition: opacity var(--fcw-duration-fast) var(--fcw-ease-out);
+}
+
+.fcw-transition-colors {
+  transition: background-color var(--fcw-duration-fast) var(--fcw-ease-out),
+              color var(--fcw-duration-fast) var(--fcw-ease-out),
+              border-color var(--fcw-duration-fast) var(--fcw-ease-out);
+}
+
+/* ============================================
+   Magnetic Hover
+   ============================================ */
+
+.fcw-magnetic {
+  transition: transform var(--fcw-duration-fast) var(--fcw-ease-out);
+}
+
+/* ============================================
+   Scroll-Driven Reveal
+   ============================================ */
+
+.fcw-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity var(--fcw-duration-slow) var(--fcw-ease-out),
+              transform var(--fcw-duration-slow) var(--fcw-ease-out);
+}
+
+.fcw-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================
+   3D Perspective
+   ============================================ */
+
+.fcw-perspective-near { perspective: var(--fcw-depth-near); }
+.fcw-perspective-mid { perspective: var(--fcw-depth-mid); }
+.fcw-perspective-far { perspective: var(--fcw-depth-far); }
+.fcw-preserve-3d { transform-style: preserve-3d; }
