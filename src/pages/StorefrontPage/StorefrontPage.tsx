@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Store } from "lucide-react";
@@ -5,6 +6,7 @@ import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
 
 export function StorefrontPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { reduced } = useMotion();
 
@@ -17,7 +19,7 @@ export function StorefrontPage() {
           onClick={() => navigate(-1)}
         >
           <ArrowLeft size={16} />
-          Назад
+          {t("storefront.back")}
         </button>
 
         <motion.div
@@ -39,13 +41,13 @@ export function StorefrontPage() {
               <Store size={28} style={{ color: "var(--fcw-color-text-tertiary)" }} />
             </div>
             <h1 className="fcw-h2" style={{ margin: "0 0 0.5rem 0" }}>
-              Витрина бренда
+              {t("storefront.title")}
             </h1>
             <p className="fcw-body fcw-text-secondary" style={{ margin: "0 0 0.25rem 0", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
-              Настраиваемая публичная страница бренда с товарами, услугами и контактами.
+              {t("storefront.description")}
             </p>
             <p className="fcw-body-s" style={{ color: "var(--fcw-color-primary)", margin: 0 }}>
-              Появится позже
+              {t("storefront.comingSoon")}
             </p>
           </Card>
         </motion.div>

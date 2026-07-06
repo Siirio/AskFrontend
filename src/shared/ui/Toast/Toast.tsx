@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, createContext, useContext, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, CircleAlert, X } from "lucide-react";
 
@@ -23,6 +24,7 @@ export function useToast() {
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const show = useCallback((message: string, type: ToastType = "info") => {
@@ -80,7 +82,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <button
                 className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm"
                 onClick={() => dismiss(toast.id)}
-                aria-label="Закрыть"
+                aria-label={t("modal.close")}
                 style={{ flexShrink: 0 }}
               >
                 <X size={14} />

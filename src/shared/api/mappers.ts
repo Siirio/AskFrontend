@@ -1,3 +1,4 @@
+import i18n from "../i18n/i18n";
 import type { SearchResult } from "../../entities/search-result/model";
 import type { SupplierTask } from "../../entities/supplier/model";
 import type { SearchResultDto, SupplierTaskDto } from "./dto";
@@ -21,12 +22,10 @@ const actionMap = {
   REQUEST: "request",
 } as const;
 
-const sourceMap = {
-  CATALOG: "Каталог поставщика",
-  SUPPLIER_REPLY: "Ручной ответ",
-  MANUAL_PROFILE: "Профиль поставщика",
-  SERVICE_PROFILE: "Профиль услуги",
-} as const;
+function sourceLabel(key: string): string | undefined {
+  const translated = i18n.t(`source.${key}`);
+  return translated !== `source.${key}` ? translated : undefined;
+}
 
 export function mapSearchResult(dto: SearchResultDto): SearchResult {
   const confidenceCode = dto.confidence_code ?? dto.confidenceCode ?? "MEDIUM";
@@ -56,7 +55,7 @@ export function mapSearchResult(dto: SearchResultDto): SearchResult {
     matchReasons: dto.match_reasons ?? dto.matchReasons ?? [],
     badges: dto.badges ?? [],
     warnings: dto.warnings ?? [],
-    sourceLabel: sourceMap[dto.source],
+    sourceLabel: sourceLabel(dto.source) ?? "",
     sourceType: dto.source_type ?? dto.sourceType ?? dto.source,
     note: dto.public_note ?? dto.publicNote ?? "",
     requiresSupplierCheck: dto.requires_supplier_check ?? dto.requiresSupplierCheck ?? false,
@@ -65,32 +64,12 @@ export function mapSearchResult(dto: SearchResultDto): SearchResult {
 }
 
 function formatRelativeTime(minutes: number): string {
-  if (minutes < 1) return "только что";
-  if (minutes < 60) return formatMinutes(minutes);
+  if (minutes < 1) return i18n.t("time.justNow");
+  if (minutes < 60) return i18n.t("time.minAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return formatHours(hours);
+  if (hours < 24) return i18n.t("time.hourAgo", { count: hours });
   const days = Math.floor(minutes / (60 * 24));
-  if (days === 1) return "1 день назад";
-  if (days < 7) return formatDays(days);
-  return `${days} дн. назад`;
-}
-
-function formatMinutes(m: number): string {
-  if (m % 10 === 1 && m % 100 !== 11) return `${m} минуту назад`;
-  if ([2, 3, 4].includes(m % 10) && ![12, 13, 14].includes(m % 100)) return `${m} минуты назад`;
-  return `${m} минут назад`;
-}
-
-function formatHours(h: number): string {
-  if (h % 10 === 1 && h % 100 !== 11) return `${h} час назад`;
-  if ([2, 3, 4].includes(h % 10) && ![12, 13, 14].includes(h % 100)) return `${h} часа назад`;
-  return `${h} часов назад`;
-}
-
-function formatDays(d: number): string {
-  if (d % 10 === 1 && d % 100 !== 11) return `${d} день назад`;
-  if ([2, 3, 4].includes(d % 10) && ![12, 13, 14].includes(d % 100)) return `${d} дня назад`;
-  return `${d} дней назад`;
+  return i18n.t("time.dayAgo", { count: days });
 }
 
 export function mapSupplierTask(dto: SupplierTaskDto): SupplierTask {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, ArrowRight, ChevronDown, MapPin, Package, Briefcase, Loader2, Plus, Send } from "lucide-react";
@@ -11,23 +12,24 @@ import { getCustomerHistory, getCustomerRequestDetail } from "../../shared/api/a
 import type { CustomerRequestHistoryDto, CustomerRequestDetailDto } from "../../shared/api/dto";
 import { buildRoute, ROUTES } from "../../app/routes";
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (key: string, opts?: Record<string, number>) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins} мин. назад`;
+  if (mins < 60) return t("time.minAgo", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ч. назад`;
+  if (hours < 24) return t("time.hourAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} дн. назад`;
+  return t("time.dayAgo", { count: days });
 }
 
-function lastReplyPreview(detail: CustomerRequestDetailDto | undefined): string | null {
+function lastReplyPreview(detail: CustomerRequestDetailDto | undefined, t: (key: string, opts?: Record<string, string>) => string): string | null {
   if (!detail || detail.replies.length === 0) return null;
   const last = detail.replies[detail.replies.length - 1];
-  return last.comment || last.productHint || `${last.supplierName} — предложение`;
+  return last.comment || last.productHint || t("chats.lastReplyFallback", { name: last.supplierName });
 }
 
 export function ChatsPage() {
+  const { t } = useTranslation();
   const { reduced } = useMotion();
   const { state } = useAuth();
   const navigate = useNavigate();
@@ -58,7 +60,7 @@ export function ChatsPage() {
         });
         setDetailCache(cache);
       })
-      .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки"))
+      .catch(e => setError(e instanceof Error ? e.message : t("chats.error.title")))
       .finally(() => setBusy(false));
   }, [state.view]);
 
@@ -97,11 +99,11 @@ export function ChatsPage() {
       <main id="main-content">
         <div className="fcw-container fcw-section" style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <EmptyState
-            title="Требуется авторизация"
-            description="Войдите, чтобы видеть чаты"
+            title={t("chats.auth.title")}
+            description={t("chats.auth.description")}
             action={
               <button className="fcw-btn fcw-btn-primary" onClick={() => navigate(ROUTES.auth)}>
-                Войти
+                {t("chats.auth.login")}
                 <ArrowRight size={16} />
               </button>
             }
@@ -122,9 +124,9 @@ export function ChatsPage() {
           style={{ gap: "1rem", marginBottom: "var(--fcw-space-lg)" }}
         >
           <div>
-            <h1 className="fcw-h1" style={{ marginBottom: "var(--fcw-space-sm)" }}>Чаты</h1>
+            <h2 className="fcw-h2" style={{ marginBottom: "var(--fcw-space-sm)" }}>{t("chats.title")}</h2>
             <p className="fcw-body fcw-text-secondary" style={{ margin: 0 }}>
-              Переписка с магазинами и исполнителями по вашим запросам
+              {t("chats.subtitle")}
             </p>
           </div>
           <button
@@ -133,19 +135,19 @@ export function ChatsPage() {
             style={{ gap: "0.5rem" }}
           >
             <Plus size={16} />
-            Новый запрос
+            {t("chats.newRequest")}
           </button>
         </motion.div>
 
-        {busy && <Loading size="md" text="Загрузка чатов..." />}
+        {busy && <Loading size="md" text={t("chats.loading")} />}
 
         {error && (
           <EmptyState
-            title="Ошибка загрузки"
+            title={t("chats.error.title")}
             description={error}
             action={
               <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => window.location.reload()}>
-                Повторить
+                {t("chats.error.retry")}
               </button>
             }
           />
@@ -153,14 +155,9 @@ export function ChatsPage() {
 
         {!busy && !error && items.length === 0 && (
           <EmptyState
-            title="Нет активных чатов"
-            description="Чаты появятся здесь после того, как магазины ответят на ваши запросы"
+            title={t("chats.empty.title")}
+            description={t("chats.empty.description")}
             icon={<MessageCircle size={36} style={{ color: "var(--fcw-color-text-tertiary)" }} />}
-            action={
-              <button className="fcw-btn fcw-btn-primary" onClick={() => navigate(ROUTES.home)} style={{ gap: "0.5rem" }}>
-                <Plus size={16} /> Новый запрос
-              </button>
-            }
           />
         )}
 
@@ -168,7 +165,7 @@ export function ChatsPage() {
           <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
             {items.map((item, i) => {
               const cachedDetail = detailCache[item.id];
-              const preview = lastReplyPreview(cachedDetail);
+              const preview = lastReplyPreview(cachedDetail, t);
 
               return (
               <motion.div
@@ -194,13 +191,13 @@ export function ChatsPage() {
                       <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
                         <span className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
                           {item.scope === "product" ? <Package size={11} /> : <Briefcase size={11} />}
-                          {item.scope === "product" ? "Товар" : "Услуга"}
+                          {item.scope === "product" ? t("chats.scope.product") : t("chats.scope.service")}
                         </span>
                         <span className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
                           <MapPin size={11} />
                           {item.city}
                         </span>
-                        <span className="fcw-body-s fcw-text-tertiary">{timeAgo(item.createdAt)}</span>
+                        <span className="fcw-body-s fcw-text-tertiary">{timeAgo(item.createdAt, t)}</span>
                         {item.replyCount > 0 && (
                           <span className="fcw-body-xs" style={{
                             color: "var(--fcw-color-accent)",
@@ -242,7 +239,7 @@ export function ChatsPage() {
                           borderRadius: "0 0 var(--fcw-radius-lg) var(--fcw-radius-lg)",
                         }}
                       >
-                        {detailBusy && <Loading size="sm" text="Загрузка..." />}
+                        {detailBusy && <Loading size="sm" text={t("chats.loadingDetail")} />}
                         {!detailBusy && detail && detail.replies.length > 0 && (
                           <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
                             {detail.replies.map((reply, j) => (
@@ -254,7 +251,7 @@ export function ChatsPage() {
                               }}>
                                 <div className="fcw-flex-between" style={{ marginBottom: "0.25rem" }}>
                                   <span className="fcw-body-s fcw-weight-semibold">{reply.supplierName}</span>
-                                  <span className="fcw-body-s fcw-text-tertiary">{timeAgo(reply.createdAt)}</span>
+                                  <span className="fcw-body-s fcw-text-tertiary">{timeAgo(reply.createdAt, t)}</span>
                                 </div>
                                 <div className="fcw-body-s fcw-text-tertiary" style={{ marginBottom: "0.375rem" }}>
                                   {reply.branchName}
@@ -280,7 +277,7 @@ export function ChatsPage() {
                           <input
                             type="text"
                             className="fcw-input"
-                            placeholder="Новый запрос по этой теме..."
+                            placeholder={t("chats.replyInput.placeholder")}
                             value={replyText}
                             onChange={e => setReplyText(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter") handleSendReply(); }}
@@ -290,7 +287,7 @@ export function ChatsPage() {
                             className="fcw-btn fcw-btn-primary fcw-btn-sm fcw-btn-icon"
                             onClick={handleSendReply}
                             disabled={!replyText.trim()}
-                            aria-label="Отправить"
+                            aria-label={t("chats.replyInput.send")}
                           >
                             <Send size={14} />
                           </button>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { MapPin, MessageCircle } from "lucide-react";
 
@@ -17,6 +18,7 @@ export interface ResultCardData {
   type?: string;
   hasContactAction?: boolean;
   contactActionId?: string;
+  businessId?: string | null;
 }
 
 interface ResultCardProps {
@@ -28,6 +30,7 @@ interface ResultCardProps {
 }
 
 export function ResultCard({ data, index, onClick, onChat, reduced }: ResultCardProps) {
+  const { t } = useTranslation();
   return (
     <motion.div
       className="fcw-card-clickable fcw-overflow-hidden"
@@ -95,7 +98,7 @@ export function ResultCard({ data, index, onClick, onChat, reduced }: ResultCard
           onClick={(e) => { e.stopPropagation(); onChat(); }}
         >
           <MessageCircle size={14} />
-          <span className="fcw-hidden-mobile">Написать</span>
+          <span className="fcw-hidden-mobile">{t("resultCard.write")}</span>
         </button>
       </div>
     </motion.div>

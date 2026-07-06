@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { AuthSession, AuthChallenge } from "../../shared/api/authClient";
 import { loginWithPassword, registerCustomer, registerBusiness, verifyCode, resolveCity, logout as clearSession, logoutRemote, updateProfile as updateProfileRequest } from "../../shared/api/authClient";
 import { ApiError } from "../../shared/api/httpClient";
@@ -60,6 +61,7 @@ interface AuthActions {
 const AuthContext = createContext<{ state: AuthState; actions: AuthActions } | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const initialSession = readSession();
   const [session, setSession] = useState<AuthSession | null>(initialSession);
   const [view, setView] = useState<AppView>(() => initialSession ? resolveView(initialSession) : "auth");
@@ -91,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setChallenge((e as any).body.challenge);
         return;
       }
-      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Ошибка входа");
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : t("auth.error.loginFailed"));
     } finally {
       setBusy(false);
     }
@@ -119,9 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       if (e instanceof ApiError && e.errorCode === "EMAIL_ALREADY_REGISTERED") {
         setMode("login");
-        setError("Этот email уже зарегистрирован. Войдите — вкладка «Вход».");
+        setError(t("auth.error.emailTaken"));
       } else {
-        setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Ошибка регистрации");
+        setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : t("auth.error.registerFailed"));
       }
     } finally {
       setBusy(false);
@@ -140,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAudience(nextView === "customer" ? "customer" : "business");
       setChallenge(null);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Неверный код");
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : t("auth.error.wrongCode"));
     } finally {
       setBusy(false);
     }
@@ -173,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Ошибка сохранения профиля");
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : t("auth.error.profileUpdateFailed"));
       throw e;
     } finally {
       setBusy(false);

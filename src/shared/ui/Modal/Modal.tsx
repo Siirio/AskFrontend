@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { createFocusTrap } from "../../../lib/fcw/accessibility";
@@ -19,6 +20,7 @@ const sizeMap: Record<string, string> = {
 };
 
 export function Modal({ open, onClose, title, children, size = "md" }: ModalProps) {
+  const { t } = useTranslation();
   const { reduced } = useMotion();
   const overlayRef = useRef<HTMLDivElement>(null);
   const trapRef = useRef<ReturnType<typeof createFocusTrap> | null>(null);
@@ -73,7 +75,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
                 <button
                   className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm"
                   onClick={onClose}
-                  aria-label="Закрыть"
+                  aria-label={t("modal.close")}
                 >
                   <X size={18} />
                 </button>

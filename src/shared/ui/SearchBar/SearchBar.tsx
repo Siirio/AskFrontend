@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMotion } from "../../../app/providers/MotionProvider";
@@ -11,7 +12,8 @@ interface SearchBarProps {
   compact?: boolean;
 }
 
-export function SearchBar({ onSearch, initialQuery = "", placeholder = "Что ищете?", busy, compact }: SearchBarProps) {
+export function SearchBar({ onSearch, initialQuery = "", placeholder, busy, compact }: SearchBarProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
   const { reduced } = useMotion();
@@ -58,7 +60,7 @@ export function SearchBar({ onSearch, initialQuery = "", placeholder = "Что �
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={placeholder || t("searchBar.placeholder")}
           className="fcw-flex-1"
           style={{
             background: "transparent",
@@ -84,7 +86,7 @@ export function SearchBar({ onSearch, initialQuery = "", placeholder = "Что �
               style={{ flexShrink: 0, gap: "0.375rem" }}
             >
               <Sparkles size={14} />
-              {!compact && "Поиск"}
+              {!compact && t("searchBar.button")}
             </motion.button>
           )}
         </AnimatePresence>
