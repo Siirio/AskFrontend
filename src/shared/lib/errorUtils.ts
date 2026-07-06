@@ -1,4 +1,5 @@
 import { ApiError } from "../api/httpClient";
+import i18n from "../i18n/i18n";
 
 type ErrorContext = "auth" | "verify" | "network" | "default";
 
@@ -6,34 +7,6 @@ type BackendError = {
   errorCode?: string;
   error_code?: string;
   message?: string;
-};
-
-const FALLBACKS: Record<ErrorContext, string> = {
-  auth: "Не удалось войти. Проверьте данные и попробуйте снова.",
-  verify: "Не удалось подтвердить код. Проверьте код и попробуйте снова.",
-  network: "Не удалось выполнить запрос. Проверьте соединение.",
-  default: "Что-то пошло не так. Попробуйте еще раз.",
-};
-
-const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_CREDENTIALS: "Неверный email или пароль.",
-  ACCOUNT_NOT_ACTIVE: "Аккаунт не активен.",
-  ACCESS_DENIED: "Недостаточно прав для этого действия.",
-  VALIDATION_ERROR: "Проверьте заполненные поля.",
-  MALFORMED_REQUEST: "Некорректный формат запроса.",
-  CITY_NOT_FOUND: "Город не найден.",
-  BRANCH_NOT_FOUND: "Филиал не найден.",
-  STAFF_NOT_FOUND: "Сотрудник не найден.",
-  EMAIL_ALREADY_REGISTERED: "Email уже зарегистрирован.",
-  EMAIL_ALREADY_EXISTS: "Пользователь с таким email уже существует.",
-  PHONE_ALREADY_REGISTERED: "Телефон уже зарегистрирован.",
-  CHALLENGE_NOT_FOUND: "Код подтверждения не найден.",
-  CHALLENGE_EXPIRED: "Код подтверждения истек.",
-  CHALLENGE_MAX_ATTEMPTS: "Превышено количество попыток.",
-  CHALLENGE_INVALID_CODE: "Неверный код подтверждения.",
-  DATA_CONFLICT: "Данные конфликтуют с текущим состоянием.",
-  FILE_TOO_LARGE: "Размер файла превышает допустимый лимит.",
-  INTERNAL_ERROR: "Внутренняя ошибка сервера. Попробуйте позже.",
 };
 
 function looksLikeJson(str: string): boolean {
@@ -59,8 +32,10 @@ function parseBackendError(json: string): BackendError | null {
 
 function backendMessage(error: BackendError): string | null {
   const code = error.errorCode ?? error.error_code;
-  if (code && ERROR_MESSAGES[code]) {
-    return ERROR_MESSAGES[code];
+  if (code) {
+    const key = `error.${code}`;
+    const translated = i18n.t(key);
+    if (translated !== key) return translated;
   }
   if (error.message && !looksTechnical(error.message) && error.message.length < 200) {
     return error.message.trim();
@@ -69,29 +44,30 @@ function backendMessage(error: BackendError): string | null {
 }
 
 export function getUserFriendlyError(error: unknown, context: ErrorContext = "default"): string {
+  const fallbackKey = `error.fallback.${context}`;
   if (error instanceof ApiError) {
     const raw = error.message;
 
     if (looksLikeJson(raw)) {
       const parsed = parseBackendError(raw);
       const message = parsed ? backendMessage(parsed) : null;
-      return message ?? FALLBACKS[context];
+      return message ?? i18n.t(fallbackKey);
     }
 
     if (raw && !looksTechnical(raw) && raw.length < 200) {
       return raw;
     }
 
-    return FALLBACKS[context];
+    return i18n.t(fallbackKey);
   }
 
   if (error instanceof TypeError && error.message.includes("fetch")) {
-    return FALLBACKS.network;
+    return i18n.t("error.fallback.network");
   }
 
   if (error instanceof Error && error.message && !looksTechnical(error.message) && error.message.length < 200) {
     return error.message;
   }
 
-  return FALLBACKS[context];
+  return i18n.t(fallbackKey);
 }

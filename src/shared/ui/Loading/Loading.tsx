@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 
 interface LoadingProps {
@@ -22,9 +23,10 @@ export function Loading({ size = "md", text }: LoadingProps) {
 }
 
 export function PageLoading() {
+  const { t } = useTranslation();
   return (
     <div className="fcw-flex-center" style={{ minHeight: "60vh" }}>
-      <Loading size="lg" text="Загрузка..." />
+      <Loading size="lg" text={t("loading.default")} />
     </div>
   );
 }

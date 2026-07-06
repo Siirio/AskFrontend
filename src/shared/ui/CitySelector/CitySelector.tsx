@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, ChevronDown, Loader2 } from "lucide-react";
 import { listCities } from "../../api/askClient";
@@ -11,6 +12,7 @@ interface CitySelectorProps {
 }
 
 export function CitySelector({ value, onChange, compact }: CitySelectorProps) {
+  const { t } = useTranslation();
   const { reduced } = useMotion();
   const [open, setOpen] = useState(false);
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
@@ -22,7 +24,7 @@ export function CitySelector({ value, onChange, compact }: CitySelectorProps) {
     listCities()
       .then(setCities)
       .catch(() => {
-        setCities([{ id: "1", name: "Алматы" }, { id: "2", name: "Астана" }, { id: "3", name: "Шымкент" }]);
+        setCities([{ id: "1", name: t("citySelector.almaty") }, { id: "2", name: t("citySelector.astana") }, { id: "3", name: t("citySelector.shymkent") }]);
       })
       .finally(() => setBusy(false));
   }, []);
@@ -100,6 +102,7 @@ export function CitySelector({ value, onChange, compact }: CitySelectorProps) {
             }}
           >
             <div
+              className="fcw-scrollbar-thin"
               style={{
                 maxHeight: "132px",
                 overflowY: "auto",

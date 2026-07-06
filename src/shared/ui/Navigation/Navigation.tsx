@@ -1,30 +1,33 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Search, History, MessageCircle, UserRound, Sun, LogOut, Building2 } from "lucide-react";
 import { ROUTES } from "../../../app/routes";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { useTheme } from "../../../app/providers/ThemeProvider";
-
-const consumerDesktopLinks = [
-  { to: ROUTES.home, label: "Поиск", icon: <Search size={18} /> },
-  { to: ROUTES.history, label: "История", icon: <History size={18} /> },
-  { to: ROUTES.chats, label: "Чаты", icon: <MessageCircle size={18} /> },
-];
-
-const consumerMobileLinks = [
-  { to: ROUTES.home, label: "Поиск", icon: <Search size={20} /> },
-  { to: ROUTES.history, label: "История", icon: <History size={20} /> },
-  { to: ROUTES.profile, label: "Профиль", icon: <UserRound size={20} /> },
-];
-
-const businessMobileLinks = [
-  { to: ROUTES.business, label: "Обзор", icon: <Building2 size={20} /> },
-  { to: ROUTES.profile, label: "Профиль", icon: <UserRound size={20} /> },
-];
+import { LanguageSwitcher } from "../LanguageSwitcher/LanguageSwitcher";
 
 export function Navigation() {
+  const { t } = useTranslation();
   const { state, actions } = useAuth();
   const { toggle } = useTheme();
   const navigate = useNavigate();
+
+  const consumerDesktopLinks = [
+    { to: ROUTES.home, label: t("nav.search"), icon: <Search size={18} /> },
+    { to: ROUTES.history, label: t("nav.history"), icon: <History size={18} /> },
+    { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={18} /> },
+  ];
+
+  const consumerMobileLinks = [
+    { to: ROUTES.home, label: t("nav.search"), icon: <Search size={20} /> },
+    { to: ROUTES.history, label: t("nav.history"), icon: <History size={20} /> },
+    { to: ROUTES.profile, label: t("nav.profile"), icon: <UserRound size={20} /> },
+  ];
+
+  const businessMobileLinks = [
+    { to: ROUTES.business, label: t("nav.overview"), icon: <Building2 size={20} /> },
+    { to: ROUTES.profile, label: t("nav.profile"), icon: <UserRound size={20} /> },
+  ];
 
   if (state.view === "auth") return null;
 
@@ -71,12 +74,13 @@ export function Navigation() {
           </div>
 
           <div className="fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
-            <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={toggle} aria-label="Переключить тему">
+            <LanguageSwitcher />
+            <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={toggle} aria-label={t("nav.toggleTheme")}>
               <Sun size={16} />
             </button>
             {state.session && (
               <>
-                <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={handleLogout} aria-label="Выйти">
+                <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={handleLogout} aria-label={t("nav.logout")}>
                   <LogOut size={16} />
                 </button>
                 {!isBusiness && (
@@ -86,7 +90,7 @@ export function Navigation() {
                     onClick={() => navigate(ROUTES.profile)}
                   >
                     <UserRound size={16} />
-                    <span className="fcw-body-s">Профиль</span>
+                    <span className="fcw-body-s">{t("nav.profile")}</span>
                   </button>
                 )}
               </>
@@ -147,11 +151,11 @@ export function Navigation() {
             ASK
           </button>
           <div className="fcw-flex fcw-items-center" style={{ gap: "0.125rem" }}>
-            <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={toggle} aria-label="Переключить тему">
+            <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={toggle} aria-label={t("nav.toggleTheme")}>
               <Sun size={16} />
             </button>
             {state.session && (
-              <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={handleLogout} aria-label="Выйти">
+              <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={handleLogout} aria-label={t("nav.logout")}>
                 <LogOut size={16} />
               </button>
             )}

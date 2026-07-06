@@ -356,6 +356,36 @@
 
 .fcw-scrollbar-hide::-webkit-scrollbar { display: none; }
 
+.fcw-scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.fcw-scrollbar-thin:hover {
+  scrollbar-color: var(--fcw-color-border) transparent;
+}
+
+.fcw-scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fcw-scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fcw-scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 3px;
+}
+
+.fcw-scrollbar-thin:hover::-webkit-scrollbar-thumb {
+  background-color: var(--fcw-color-border);
+}
+
+.fcw-scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--fcw-color-border-hover);
+}
+
 /* Drag States */
 .fcw-draggable { cursor: grab; user-select: none; }
 .fcw-draggable:active { cursor: grabbing; }

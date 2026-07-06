@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
@@ -6,6 +7,8 @@ import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
 import { buildRoute, ROUTES } from "../../app/routes";
+
+type GeoStatus = "active" | "off" | "expired" | "denied" | "requesting" | "notGranted" | "unavailable";
 
 const AVATAR_STORAGE_KEY = "ask.profileAvatar";
 const GEO_STORAGE_KEY = "ask.geo";
@@ -29,6 +32,7 @@ function isGeoExpired(updatedAt: string): boolean {
 }
 
 export function ProfilePage() {
+  const { t } = useTranslation();
   const { state, actions } = useAuth();
   const { reduced } = useMotion();
   const navigate = useNavigate();
@@ -39,12 +43,22 @@ export function ProfilePage() {
     return stored !== null && !isGeoExpired(stored.updatedAt);
   });
   const [geoBusy, setGeoBusy] = useState(false);
-  const [geoText, setGeoText] = useState(() => {
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>(() => {
     const stored = getStoredGeo();
-    if (!stored) return "Геопозиция выключена";
-    if (isGeoExpired(stored.updatedAt)) return "Требуется обновление";
-    return "Геопозиция активна";
+    if (!stored) return "off";
+    if (isGeoExpired(stored.updatedAt)) return "expired";
+    return "active";
   });
+
+  const geoStatusLabels: Record<GeoStatus, string> = {
+    active: t("profile.geo.active"),
+    off: t("profile.geo.off"),
+    expired: t("profile.geo.expired"),
+    denied: t("profile.geo.denied"),
+    unavailable: t("profile.geo.unavailable"),
+    requesting: t("profile.geo.requesting"),
+    notGranted: t("profile.geo.notGranted"),
+  };
   const user = state.session?.user;
   const business = state.session?.business;
   const isBusiness = state.view === "business" || state.view === "staff";
@@ -57,12 +71,12 @@ export function ProfilePage() {
 
   function validateEmail(email: string) {
     if (!email) return undefined;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? undefined : "Некорректный email";
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? undefined : t("profile.validation.invalidEmail");
   }
 
   function validatePhone(phone: string) {
     if (!phone) return undefined;
-    return /^\+?[\d\s()-]{7,18}$/.test(phone) ? undefined : "Некорректный номер телефона";
+    return /^\+?[\d\s()-]{7,18}$/.test(phone) ? undefined : t("profile.validation.invalidPhone");
   }
 
   useEffect(() => {
@@ -70,19 +84,19 @@ export function ProfilePage() {
     navigator.permissions.query({ name: "geolocation" }).then(perm => {
       if (perm.state === "denied") {
         setGeoActive(false);
-        setGeoText("Доступ запрещён браузером");
+        setGeoStatus("denied");
         window.localStorage.removeItem(GEO_STORAGE_KEY);
       } else if (perm.state === "prompt") {
         const stored = getStoredGeo();
         if (!stored) {
           setGeoActive(false);
-          setGeoText("Геопозиция выключена");
+          setGeoStatus("off");
         }
       }
       perm.addEventListener("change", () => {
         if (perm.state === "denied") {
           setGeoActive(false);
-          setGeoText("Доступ запрещён браузером");
+          setGeoStatus("denied");
           window.localStorage.removeItem(GEO_STORAGE_KEY);
         }
       });
@@ -119,11 +133,11 @@ export function ProfilePage() {
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
-      setGeoText("Геолокация недоступна");
+      setGeoStatus("unavailable");
       return;
     }
     setGeoBusy(true);
-    setGeoText("Запрашиваем доступ...");
+    setGeoStatus("requesting");
     navigator.geolocation.getCurrentPosition(
       position => {
         window.localStorage.setItem(GEO_STORAGE_KEY, JSON.stringify({
@@ -133,12 +147,12 @@ export function ProfilePage() {
         }));
         setGeoActive(true);
         setGeoBusy(false);
-        setGeoText("Геопозиция активна");
+        setGeoStatus("active");
       },
       () => {
         setGeoActive(false);
         setGeoBusy(false);
-        setGeoText("Доступ не получен");
+        setGeoStatus("notGranted");
       },
       { enableHighAccuracy: true, maximumAge: 60000, timeout: 10000 },
     );
@@ -176,14 +190,14 @@ export function ProfilePage() {
               </div>
 
               <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-                <h1 className="fcw-h2" style={{ margin: "0 0 0.25rem 0" }}>{user?.displayName || "Пользователь"}</h1>
-                <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0 }}>{user?.email || "Email не указан"}</p>
-                <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.125rem 0 0" }}>{user?.phone || "Телефон не указан"}</p>
+                <h1 className="fcw-h2" style={{ margin: "0 0 0.25rem 0" }}>{user?.displayName || t("profile.displayNameFallback")}</h1>
+                <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0 }}>{user?.email || t("profile.emailFallback")}</p>
+                <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.125rem 0 0" }}>{user?.phone || t("profile.phoneFallback")}</p>
               </div>
 
               {isBusiness && (
                 <span className="fcw-label" style={{ color: "var(--fcw-color-primary)" }}>
-                  {state.view === "staff" ? "Сотрудник" : "Бизнес"}
+                  {state.view === "staff" ? t("profile.role.staff") : t("profile.role.business")}
                 </span>
               )}
             </div>
@@ -191,23 +205,23 @@ export function ProfilePage() {
 
           <Card padding="lg">
             <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem", marginBottom: "var(--fcw-space-md)" }}>
-              <h2 className="fcw-h3" style={{ margin: 0 }}>Данные профиля</h2>
+              <h2 className="fcw-h3" style={{ margin: 0 }}>{t("profile.section.profileData")}</h2>
               <label className="fcw-btn fcw-btn-secondary fcw-btn-sm">
                 <Camera size={14} />
-                Аватар
+                {t("profile.avatar")}
                 <input type="file" accept="image/*" onChange={event => handleAvatar(event.target.files?.[0])} style={{ display: "none" }} />
               </label>
             </div>
             <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}>
-                <input className="fcw-input" value={editForm.displayName} onChange={event => setEditForm(prev => ({ ...prev, displayName: event.target.value }))} placeholder="Имя" />
+                <input className="fcw-input" value={editForm.displayName} onChange={event => setEditForm(prev => ({ ...prev, displayName: event.target.value }))} placeholder={t("profile.placeholder.name")} />
                 <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
                   <input
                     className="fcw-input"
                     type="email"
                     value={editForm.email}
                     onChange={event => { setEditForm(prev => ({ ...prev, email: event.target.value })); setFormErrors(prev => ({ ...prev, email: undefined })); }}
-                    placeholder="Email"
+                    placeholder={t("profile.placeholder.email")}
                     style={formErrors.email ? { borderColor: "var(--fcw-color-error)" } : undefined}
                   />
                   {formErrors.email && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{formErrors.email}</span>}
@@ -217,7 +231,7 @@ export function ProfilePage() {
                     className="fcw-input"
                     value={editForm.phone}
                     onChange={event => { setEditForm(prev => ({ ...prev, phone: event.target.value })); setFormErrors(prev => ({ ...prev, phone: undefined })); }}
-                    placeholder="Телефон"
+                    placeholder={t("profile.placeholder.phone")}
                     style={formErrors.phone ? { borderColor: "var(--fcw-color-error)" } : undefined}
                   />
                   {formErrors.phone && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{formErrors.phone}</span>}
@@ -225,19 +239,19 @@ export function ProfilePage() {
               </div>
               <button className="fcw-btn fcw-btn-primary fcw-btn-sm" style={{ alignSelf: "flex-start" }} onClick={handleSaveProfile} disabled={state.busy}>
                 {state.busy ? <Loader2 className="fcw-animate-spin" size={14} /> : <CheckCircle2 size={14} />}
-                Сохранить
+                {t("profile.save")}
               </button>
             </div>
           </Card>
 
           <Card padding="none">
             <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)" }} onClick={requestLocation} disabled={geoBusy}>
-              {geoBusy ? <Loader2 className="fcw-animate-spin" size={18} /> : geoActive ? <CheckCircle2 size={18} style={{ color: "var(--fcw-color-accent)" }} /> : geoText.includes("Требуется") ? <AlertTriangle size={18} style={{ color: "var(--fcw-amber-500)" }} /> : <MapPin size={18} style={{ color: "var(--fcw-color-primary)" }} />}
+              {geoBusy ? <Loader2 className="fcw-animate-spin" size={18} /> : geoActive ? <CheckCircle2 size={18} style={{ color: "var(--fcw-color-accent)" }} /> : geoStatus === "expired" ? <AlertTriangle size={18} style={{ color: "var(--fcw-amber-500)" }} /> : <MapPin size={18} style={{ color: "var(--fcw-color-primary)" }} />}
               <span className="fcw-flex-1 fcw-text-left">
-                <span className="fcw-body" style={{ display: "block" }}>Геопозиция</span>
-                <span className="fcw-body-s fcw-text-tertiary">{geoText}</span>
+                <span className="fcw-body" style={{ display: "block" }}>{t("profile.geo")}</span>
+                <span className="fcw-body-s fcw-text-tertiary">{geoStatusLabels[geoStatus]}</span>
               </span>
-              {geoText.includes("Требуется") && <RefreshCw size={14} style={{ color: "var(--fcw-amber-500)" }} />}
+              {geoStatus === "expired" && <RefreshCw size={14} style={{ color: "var(--fcw-amber-500)" }} />}
             </button>
 
             <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={() => {
@@ -259,9 +273,9 @@ export function ProfilePage() {
               }
             }}>
               {notificationsEnabled ? <Bell size={18} style={{ color: "var(--fcw-color-primary)" }} /> : <BellOff size={18} />}
-              <span className="fcw-flex-1 fcw-text-left">Уведомления</span>
+              <span className="fcw-flex-1 fcw-text-left">{t("profile.notifications")}</span>
               <span className="fcw-label" style={{ color: notificationsEnabled ? "var(--fcw-color-accent)" : "var(--fcw-color-text-tertiary)" }}>
-                {notificationsEnabled ? "Включены" : "Выключены"}
+                {notificationsEnabled ? t("profile.notifications.on") : t("profile.notifications.off")}
               </span>
             </button>
 
@@ -275,13 +289,13 @@ export function ProfilePage() {
             {isBusiness && business && (
               <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={() => navigate(buildRoute(ROUTES.storefront, {}, { businessId: business.businessId }))}>
                 <Package size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                <span className="fcw-flex-1 fcw-text-left">Моя витрина</span>
+                <span className="fcw-flex-1 fcw-text-left">{t("profile.myStorefront")}</span>
               </button>
             )}
 
             <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", color: "var(--fcw-color-error)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={handleLogout}>
               <LogOut size={18} />
-              <span className="fcw-flex-1 fcw-text-left">Выйти</span>
+              <span className="fcw-flex-1 fcw-text-left">{t("profile.logout")}</span>
             </button>
           </Card>
         </motion.div>

@@ -1,13 +1,15 @@
+import { useTranslation } from "react-i18next";
 import { FileSpreadsheet, Inbox, Plus, Settings2 } from "lucide-react";
 import type { ServiceOffering, SupplierTask } from "../../entities/supplier/model";
 
 export function SupplierWorkspace({ tasks, services }: { tasks: SupplierTask[]; services: ServiceOffering[] }) {
+  const { t } = useTranslation();
   return (
     <section className="workspace">
       <div className="workspace-panel">
         <div className="section-heading">
-          <p className="eyebrow">Поставщик</p>
-          <h2>Рабочая очередь</h2>
+          <p className="eyebrow">{t("supplier.workspace")}</p>
+          <h2>{t("supplier.queue")}</h2>
         </div>
         <div className="task-list">
           {tasks.map((task) => (
@@ -19,7 +21,7 @@ export function SupplierWorkspace({ tasks, services }: { tasks: SupplierTask[]; 
                   {task.category} · {task.customerArea} · {task.ageLabel}
                 </span>
               </div>
-              <span className={`task-state state-${task.status}`}>{task.status === "answered" ? "Отвечено" : "Нужен ответ"}</span>
+              <span className={`task-state state-${task.status}`}>{task.status === "answered" ? t("supplier.answered") : t("supplier.needsReply")}</span>
             </article>
           ))}
         </div>
@@ -28,10 +30,10 @@ export function SupplierWorkspace({ tasks, services }: { tasks: SupplierTask[]; 
       <div className="workspace-panel">
         <div className="section-heading row-heading">
           <div>
-            <p className="eyebrow">Кабинет услуг</p>
-            <h2>Услуги и импорт</h2>
+            <p className="eyebrow">{t("supplier.services")}</p>
+            <h2>{t("supplier.servicesImport")}</h2>
           </div>
-          <button aria-label="Добавить услугу">
+          <button aria-label={t("supplier.addService")}>
             <Plus size={18} />
           </button>
         </div>
@@ -45,13 +47,13 @@ export function SupplierWorkspace({ tasks, services }: { tasks: SupplierTask[]; 
                   {service.branch} · {service.duration} · {service.priceLabel}
                 </span>
               </div>
-              <span>Подтверждение вручную</span>
+              <span>{t("supplier.manualConfirm")}</span>
             </article>
           ))}
         </div>
         <button className="import-button">
           <FileSpreadsheet size={18} aria-hidden="true" />
-          Импорт Excel/CSV для каталога
+          {t("supplier.importExcel")}
         </button>
       </div>
     </section>

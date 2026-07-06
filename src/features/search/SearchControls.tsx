@@ -1,5 +1,5 @@
+import { useTranslation } from "react-i18next";
 import { Search, SlidersHorizontal } from "lucide-react";
-import { appCopy } from "../../shared/config/copy";
 
 type Props = {
   query: string;
@@ -12,15 +12,23 @@ type Props = {
 };
 
 export function SearchControls({ query, city, scope, onQueryChange, onCityChange, onScopeChange, onSubmit }: Props) {
+  const { t } = useTranslation();
+
+  const scopeOptions: Array<[string, string]> = [
+    ["all", t("searchControls.all")],
+    ["product", t("searchControls.products")],
+    ["service", t("searchControls.services")],
+  ];
+
   return (
-    <section className="search-shell" aria-label="Поиск Ask">
+    <section className="search-shell" aria-label={t("searchControls.brand")}>
       <div className="search-topline">
         <div>
           <p className="eyebrow">Smart Search</p>
-          <h1>Найдите товар, услугу или поставщика</h1>
+          <h1>{t("searchControls.placeholder")}</h1>
         </div>
         <label className="city-select">
-          <span>{appCopy.cityPlaceholder}</span>
+          <span>{t("citySelector.placeholder")}</span>
           <input value={city} onChange={(event) => onCityChange(event.target.value)} />
         </label>
       </div>
@@ -33,26 +41,22 @@ export function SearchControls({ query, city, scope, onQueryChange, onCityChange
           onKeyDown={(event) => {
             if (event.key === "Enter") onSubmit();
           }}
-          placeholder={appCopy.searchPlaceholder}
+          placeholder={t("searchBar.placeholder")}
         />
         <button className="primary-button" onClick={onSubmit}>
-          Найти
+          {t("searchControls.find")}
         </button>
       </div>
 
-      <div className="segmented" aria-label="Тип поиска">
-        {[
-          ["all", "Все"],
-          ["product", "Товары"],
-          ["service", "Услуги"],
-        ].map(([value, label]) => (
+      <div className="segmented" aria-label={t("searchControls.brand")}>
+        {scopeOptions.map(([value, label]) => (
           <button key={value} className={scope === value ? "active" : ""} onClick={() => onScopeChange(value as "all" | "product" | "service")}>
             {label}
           </button>
         ))}
         <span className="filter-note">
           <SlidersHorizontal size={16} aria-hidden="true" />
-          Категория как фильтр, не вместо запроса
+          {t("searchControls.categoryHint")}
         </span>
       </div>
     </section>

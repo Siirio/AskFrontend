@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { SearchBar } from "../../shared/ui/SearchBar/SearchBar";
@@ -13,9 +14,10 @@ import { ArrowRight, Package, Briefcase } from "lucide-react";
 type SearchMode = "products" | "services";
 
 export function HomePage() {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<SearchMode>("products");
-  const [city, setCity] = useState("Алматы");
+  const [city, setCity] = useState(t("citySelector.almaty"));
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const navigate = useNavigate();
   const { reduced } = useMotion();
@@ -38,8 +40,8 @@ export function HomePage() {
   };
 
   const modeOptions: SegmentedOption<SearchMode>[] = [
-    { key: "products", label: "Товары", icon: <Package size={15} /> },
-    { key: "services", label: "Услуги", icon: <Briefcase size={15} /> },
+    { key: "products", label: t("home.products"), icon: <Package size={15} /> },
+    { key: "services", label: t("home.services"), icon: <Briefcase size={15} /> },
   ];
 
   return (
@@ -66,7 +68,7 @@ export function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              Поиск по смыслу, не по словам
+{t("home.hero.tagline")}
             </motion.div>
 
             <motion.h1
@@ -83,7 +85,7 @@ export function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
-              Найдём то, что вам подходит рядом
+{t("home.hero.title")}
             </motion.h1>
 
             <motion.div
@@ -95,14 +97,14 @@ export function HomePage() {
             >
               <div className="home-search-row">
                 <div className="fcw-flex-1">
-                  <SearchBar onSearch={handleSearch} busy={busy} placeholder="Например: кожаный рюкзак, чёрный, минималистичный" />
+                  <SearchBar onSearch={handleSearch} busy={busy} placeholder={t("home.search.placeholder")} />
                 </div>
                 <SegmentedControl
                   options={modeOptions}
                   value={mode}
                   onChange={setMode}
                   layoutId="homeModePill"
-                  ariaLabel="Тип поиска"
+                  ariaLabel={t("home.search.ariaLabel")}
                   style={{ flexShrink: 0 }}
                 />
                 <div className="fcw-hidden-mobile">
@@ -123,10 +125,10 @@ export function HomePage() {
                 transition={{ duration: 0.3 }}
               >
                 <p className="fcw-body fcw-weight-medium" style={{ color: "var(--fcw-color-primary)" }}>
-                  Вы должны авторизоваться
+                  {t("home.auth.required")}
                 </p>
                 <button className="fcw-btn fcw-btn-primary" onClick={() => navigate(ROUTES.auth)}>
-                  Войти
+                  {t("home.auth.login")}
                   <ArrowRight size={16} />
                 </button>
               </motion.div>
@@ -140,9 +142,9 @@ export function HomePage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8, duration: 0.5 }}
               >
-                <span className="fcw-body-s fcw-text-tertiary">Уже есть аккаунт?</span>
+                <span className="fcw-body-s fcw-text-tertiary">{t("home.auth.hasAccount")}</span>
                 <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => navigate(ROUTES.auth)}>
-                  Войти
+                  {t("home.auth.login")}
                 </button>
               </motion.div>
             )}

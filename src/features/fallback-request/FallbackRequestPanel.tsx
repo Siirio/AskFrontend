@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Clock, Send, ShieldCheck } from "lucide-react";
 import type { CustomerRequest } from "../../entities/request/model";
 
@@ -10,13 +11,14 @@ type Props = {
 };
 
 export function FallbackRequestPanel({ query, city, isSending, request, onCreate }: Props) {
+  const { t } = useTranslation();
   return (
     <section className="fallback-panel">
       <div>
-        <p className="eyebrow">Fallback</p>
-        <h2>Если данных мало, Ask отправит запрос подходящим поставщикам</h2>
+        <p className="eyebrow">{t("fallbackRequest.eyebrow")}</p>
+        <h2>{t("fallbackRequest.heading")}</h2>
         <p className="muted">
-          Поиск остается первым шагом. Запрос нужен только когда каталог, профиль или расписание не дают надежного ответа.
+          {t("fallbackRequest.subtext")}
         </p>
       </div>
 
@@ -24,9 +26,9 @@ export function FallbackRequestPanel({ query, city, isSending, request, onCreate
         <div className="waiting-state">
           <Clock size={22} aria-hidden="true" />
           <div>
-            <strong>Запрос отправлен</strong>
+            <strong>{t("fallbackRequest.sent")}</strong>
             <span>
-              {request.matchedSuppliers} поставщиков могут ответить по запросу «{request.query}» в городе {city}.
+              {t("fallbackRequest.sentSuppliers", { count: request.matchedSuppliers, query: request.query, city })}
             </span>
           </div>
         </div>
@@ -34,11 +36,11 @@ export function FallbackRequestPanel({ query, city, isSending, request, onCreate
         <div className="fallback-actions">
           <button disabled={!query.trim() || isSending} onClick={() => onCreate("product")}>
             <Send size={17} aria-hidden="true" />
-            Запросить товар
+            {t("fallbackRequest.product")}
           </button>
           <button disabled={!query.trim() || isSending} onClick={() => onCreate("service")}>
             <ShieldCheck size={17} aria-hidden="true" />
-            Запросить услугу
+            {t("fallbackRequest.service")}
           </button>
         </div>
       )}

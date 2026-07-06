@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft } from "lucide-react";
@@ -9,6 +10,7 @@ import { CitySelector } from "../../shared/ui/CitySelector/CitySelector";
 import { ROUTES } from "../../app/routes";
 
 export function AuthPage() {
+  const { t } = useTranslation();
   const { state, actions } = useAuth();
   const { reduced } = useMotion();
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ export function AuthPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [cityName, setCityName] = useState("Астана");
+  const [cityName, setCityName] = useState(t("citySelector.astana"));
   const [code, setCode] = useState("");
 
   if (state.view !== "auth" && !state.challenge) {
@@ -65,7 +67,7 @@ export function AuthPage() {
             }}
             onClick={() => actions.setAudience("customer")}
           >
-            Покупатель
+            {t("auth.audience.customer")}
           </button>
           <button
             className={`fcw-flex-1 fcw-btn fcw-btn-sm ${state.audience === "business" ? "fcw-glassmorph-selected" : ""}`}
@@ -79,7 +81,7 @@ export function AuthPage() {
             }}
             onClick={() => actions.setAudience("business")}
           >
-            Бизнес
+            {t("auth.audience.business")}
           </button>
         </div>
 
@@ -99,7 +101,7 @@ export function AuthPage() {
                 }}
                 onClick={() => actions.setMode("login")}
               >
-                Вход
+                {t("auth.mode.login")}
               </button>
               <button
                 className={`fcw-flex-1 fcw-btn fcw-btn-sm ${state.mode === "register" ? "fcw-glassmorph-selected" : ""}`}
@@ -113,14 +115,14 @@ export function AuthPage() {
                 }}
                 onClick={() => actions.setMode("register")}
               >
-                Регистрация
+                {t("auth.mode.register")}
               </button>
             </div>
 
             <form onSubmit={state.mode === "login" ? handleLogin : handleRegister}>
               <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
                 <Input
-                  label="Email"
+                  label={t("auth.label.email")}
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -129,7 +131,7 @@ export function AuthPage() {
                   autoComplete="email"
                 />
                 <Input
-                  label="Пароль"
+                  label={t("auth.label.password")}
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -140,23 +142,23 @@ export function AuthPage() {
                 {state.mode === "register" && (
                   <>
                     <Input
-                      label="Имя"
+                      label={t("auth.label.name")}
                       value={displayName}
                       onChange={e => setDisplayName(e.target.value)}
-                      placeholder="Ваше имя"
+                      placeholder={t("auth.placeholder.name")}
                       required
                     />
                     {isBusiness && (
                       <Input
-                        label="Название компании"
+                        label={t("auth.label.companyName")}
                         value={businessName}
                         onChange={e => setBusinessName(e.target.value)}
-                        placeholder="Название вашего бизнеса"
+                        placeholder={t("auth.placeholder.companyName")}
                         required
                       />
                     )}
                     <label className="fcw-flex-col" style={{ gap: "0.375rem" }}>
-                      <span className="fcw-input-label">Город главного филиала</span>
+                      <span className="fcw-input-label">{t("auth.label.branchCity")}</span>
                       <CitySelector value={cityName} onChange={setCityName} />
                     </label>
                   </>
@@ -174,7 +176,7 @@ export function AuthPage() {
                   disabled={state.busy}
                   style={{ marginTop: "0.5rem" }}
                 >
-                  {state.busy ? "..." : state.mode === "login" ? "Войти" : "Зарегистрироваться"}
+                  {state.busy ? "..." : state.mode === "login" ? t("auth.button.login") : t("auth.button.register")}
                   {!state.busy && <ArrowRight size={18} />}
                 </button>
               </div>
@@ -184,19 +186,19 @@ export function AuthPage() {
           <form onSubmit={handleVerify}>
             <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
               <p className="fcw-body fcw-text-secondary">
-                Код подтверждения отправлен на {state.challenge?.maskedDestination || email || "вашу почту"}
+                {t("auth.codeSent", { destination: state.challenge?.maskedDestination || email || "" })}
               </p>
               {state.challenge?.code && (
                 <div className="fcw-card fcw-p-sm" style={{ background: "var(--fcw-color-surface-secondary)", borderRadius: "var(--fcw-radius-md)", textAlign: "center" }}>
-                  <p className="fcw-body-xs fcw-text-tertiary" style={{ marginBottom: "0.25rem" }}>Тестовый режим — код:</p>
+                  <p className="fcw-body-xs fcw-text-tertiary" style={{ marginBottom: "0.25rem" }}>{t("auth.testMode")}</p>
                   <p className="fcw-h3" style={{ fontFamily: "var(--fcw-font-mono)", letterSpacing: "0.2em", color: "var(--fcw-color-primary)" }}>{state.challenge.code}</p>
                 </div>
               )}
               <Input
-                label="Код из письма"
+                label={t("auth.label.code")}
                 value={code}
                 onChange={e => setCode(e.target.value)}
-                placeholder="000000"
+                placeholder={t("auth.placeholder.code")}
                 required
                 autoFocus
               />
@@ -210,7 +212,7 @@ export function AuthPage() {
                 className="fcw-btn fcw-btn-primary fcw-btn-full fcw-btn-lg"
                 disabled={state.busy}
               >
-                {state.busy ? "Проверка..." : "Подтвердить"}
+                {state.busy ? t("auth.button.verifying") : t("auth.button.confirm")}
               </button>
             </div>
           </form>
@@ -222,7 +224,7 @@ export function AuthPage() {
           onClick={() => navigate(-1)}
         >
           <ArrowLeft size={14} />
-          Назад
+          {t("auth.button.back")}
         </button>
       </motion.div>
     </main>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, MapPin, Phone, MessageCircle, ShieldCheck, Clock3, Store, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -15,6 +16,7 @@ export function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const { reduced } = useMotion();
   const { state: authState } = useAuth();
 
@@ -29,12 +31,12 @@ export function ProductPage() {
       <main id="main-content">
         <div className="fcw-container fcw-section" style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <EmptyState
-            title="Товар не найден"
-            description={`Информация о товаре #${id} недоступна. Вернитесь к результатам поиска и выберите предложение.`}
+            title={t("product.notFound")}
+            description={t("product.notFoundDesc", { id })}
             action={
               <button className="fcw-btn fcw-btn-primary" onClick={() => navigate(-1)}>
                 <ArrowLeft size={16} />
-                Назад
+                {t("auth.button.back")}
               </button>
             }
           />
@@ -43,7 +45,7 @@ export function ProductPage() {
     );
   }
 
-  const typeLabel = card.type === "ServiceCard" ? "Услуга" : "Товар";
+  const typeLabel = card.type === "ServiceCard" ? t("product.type.service") : t("product.type.product");
   const reasons = card.intentReasons?.slice(0, 3) || [];
 
   const handleRequestContact = async () => {
@@ -58,7 +60,7 @@ export function ProductPage() {
       setContactState("success");
     } catch (err: unknown) {
       setContactState("error");
-      setContactError(err instanceof Error ? err.message : "Не удалось запросить контакт");
+      setContactError(err instanceof Error ? err.message : t("product.contactFailed"));
     }
   };
 
@@ -73,7 +75,7 @@ export function ProductPage() {
       setShowMessageModal(false);
     } catch (err: unknown) {
       setContactState("error");
-      setContactError(err instanceof Error ? err.message : "Не удалось отправить сообщение");
+      setContactError(err instanceof Error ? err.message : t("product.messageFailed"));
     }
   };
 
@@ -82,7 +84,7 @@ export function ProductPage() {
       <div className="fcw-container fcw-section-sm">
         <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => navigate(-1)} style={{ marginBottom: "var(--fcw-space-md)" }}>
           <ArrowLeft size={16} />
-          Назад к результатам
+          {t("product.backToResults")}
         </button>
 
         <motion.div
@@ -114,7 +116,7 @@ export function ProductPage() {
               {!card.imageUrl && (
                 <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem", color: "var(--fcw-color-text-secondary)" }}>
                   <ImageIcon size={28} />
-                  <span className="fcw-body-s">Фото появится после подтверждения продавца</span>
+                  <span className="fcw-body-s">{t("product.photoPending")}</span>
                 </div>
               )}
             </div>
@@ -131,7 +133,7 @@ export function ProductPage() {
               {card.subtitle && <p className="fcw-body fcw-text-secondary" style={{ margin: "0 0 1rem 0" }}>{card.subtitle}</p>}
               <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "1rem" }}>
                 <div className="fcw-h2 fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", margin: 0 }}>
-                  {card.price || "Цена по запросу"}
+                  {card.price || t("product.priceOnRequest")}
                 </div>
                 {card.location && (
                   <span className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
@@ -145,15 +147,15 @@ export function ProductPage() {
 
           <aside className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)", position: "sticky", top: 86 }}>
             <Card padding="lg">
-              <h2 className="fcw-h3" style={{ margin: "0 0 0.75rem 0" }}>Связаться</h2>
+              <h2 className="fcw-h3" style={{ margin: "0 0 0.75rem 0" }}>{t("product.contact")}</h2>
               <div className="fcw-flex-col" style={{ gap: "0.625rem" }}>
                 <button className="fcw-btn fcw-btn-primary fcw-btn-full" onClick={() => setShowMessageModal(true)}>
                   <MessageCircle size={18} />
-                  Написать продавцу
+                  {t("product.messageSeller")}
                 </button>
                 <button className="fcw-btn fcw-btn-secondary fcw-btn-full" onClick={handleRequestContact} disabled={contactState === "loading"}>
                   {contactState === "loading" ? <Loader2 className="fcw-animate-spin" size={18} /> : contactState === "success" ? <CheckCircle2 size={18} /> : <Phone size={18} />}
-                  {contactState === "success" ? "Запрос отправлен" : "Запросить контакт"}
+                  {contactState === "success" ? t("product.requestSent") : t("product.requestContact")}
                 </button>
                 {contactState === "error" && (
                   <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)", margin: 0 }}>{contactError}</p>
@@ -165,14 +167,14 @@ export function ProductPage() {
               <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
                 <div className="fcw-flex-between" style={{ gap: "0.75rem" }}>
                   <div>
-                    <h2 className="fcw-h3" style={{ margin: 0 }}>{card.brandName || "Продавец"}</h2>
+                    <h2 className="fcw-h3" style={{ margin: 0 }}>{card.brandName || t("product.seller")}</h2>
                     {card.location && <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.25rem 0 0" }}>{card.location}</p>}
                   </div>
                   <Store size={20} style={{ color: "var(--fcw-color-primary)", flexShrink: 0 }} />
                 </div>
                 {card.brandName && (
                   <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => navigate(`/storefront/${card.id}`)}>
-                    Открыть витрину
+                    {t("product.openStorefront")}
                   </button>
                 )}
               </div>
@@ -180,7 +182,7 @@ export function ProductPage() {
 
             {reasons.length > 0 && (
               <Card padding="lg">
-                <h2 className="fcw-h3" style={{ margin: "0 0 0.75rem 0" }}>Почему подходит</h2>
+                <h2 className="fcw-h3" style={{ margin: "0 0 0.75rem 0" }}>{t("product.whyMatch")}</h2>
                 <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
                   {reasons.map((reason, index) => (
                     <div key={index} className="fcw-body-s fcw-flex" style={{ gap: "0.5rem", alignItems: "flex-start" }}>
@@ -194,15 +196,15 @@ export function ProductPage() {
           </aside>
         </motion.div>
 
-        <Modal open={showMessageModal} onClose={() => { setShowMessageModal(false); setContactState("idle"); setContactError(""); }} title="Написать продавцу">
+        <Modal open={showMessageModal} onClose={() => { setShowMessageModal(false); setContactState("idle"); setContactError(""); }} title={t("product.modal.title")}>
           <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
             <p className="fcw-body fcw-text-secondary" style={{ margin: 0 }}>
-              Ваше сообщение будет отправлено продавцу <strong>{card.brandName || "продавца"}</strong> по товару &laquo;{card.title}&raquo;.
+              {t("product.modal.body", { seller: card.brandName || "", product: card.title })}
             </p>
             <textarea
               className="fcw-input"
               rows={4}
-              placeholder="Здравствуйте, меня интересует..."
+              placeholder={t("product.modal.placeholder")}
               value={messageText}
               onChange={e => setMessageText(e.target.value)}
             />
@@ -214,11 +216,11 @@ export function ProductPage() {
             )}
             <div className="fcw-flex" style={{ gap: "0.5rem", justifyContent: "flex-end" }}>
               <button className="fcw-btn fcw-btn-secondary" onClick={() => { setShowMessageModal(false); setContactState("idle"); setContactError(""); }}>
-                Отмена
+                {t("product.modal.cancel")}
               </button>
               <button className="fcw-btn fcw-btn-primary" onClick={handleSendMessage} disabled={!messageText.trim() || contactState === "loading"}>
                 {contactState === "loading" ? <Loader2 className="fcw-animate-spin" size={16} /> : <MessageCircle size={16} />}
-                Отправить
+                {t("product.modal.send")}
               </button>
             </div>
           </div>

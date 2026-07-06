@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,6 +14,7 @@ import { Card } from "../../shared/ui/Card/Card";
 import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
 import { Loading } from "../../shared/ui/Loading/Loading";
 import { useToast } from "../../shared/ui/Toast/Toast";
+import { Select } from "../../shared/ui/Select/Select";
 import { DropsEditor } from "../../widgets/DropsEditor/DropsEditor";
 import { ProfileEditor } from "../../widgets/ProfileEditor/ProfileEditor";
 import { BusinessCardBuilder } from "../../widgets/BusinessCardBuilder/BusinessCardBuilder";
@@ -60,18 +62,6 @@ interface BranchInfo {
   status: string;
 }
 
-const sidebarItems: { key: BusinessSection; label: string; icon: React.ReactNode }[] = [
-  { key: "overview", label: "Обзор", icon: <Layout size={18} /> },
-  { key: "products", label: "Товары", icon: <Package size={18} /> },
-  { key: "services", label: "Услуги", icon: <Briefcase size={18} /> },
-  { key: "events", label: "Ивенты", icon: <Calendar size={18} /> },
-  { key: "business-card", label: "Визитка", icon: <Sparkles size={18} /> },
-  { key: "profile", label: "Профиль", icon: <UserRound size={18} /> },
-];
-
-const profileSubtabs: { key: ProfileSubtab; label: string; icon: React.ReactNode }[] = [
-  { key: "brand", label: "Бренд", icon: <UserRound size={14} /> },
-];
 
 const DEFAULT_BRAND_COLOR = "#e8824e";
 
@@ -93,27 +83,11 @@ function flattenCategories(items: CategoryInfo[]): CategoryInfo[] {
   return items.flatMap(item => [item, ...flattenCategories(item.children || [])]);
 }
 
-function taskStatusLabel(status: SupplierTask["status"]) {
-  if (status === "answered") return "Подтверждено";
-  if (status === "needs_reply") return "Требует ответа";
-  return "Обсуждается";
-}
-
-function taskBudgetLabel(task: SupplierTask) {
-  return task.category ? task.category : "Бюджет не указан";
-}
-
-function formatStaffStatus(status: string) {
-  if (status === "PENDING_ACTIVATION") return "Ожидает активации";
-  if (status === "PASSWORD_RESET_REQUIRED") return "Требуется смена пароля";
-  if (status === "ACTIVE") return "Активен";
-  if (status === "DISABLED") return "Отключен";
-  return status;
-}
 
 export function BusinessPage() {
   const { state } = useAuth();
   const { reduced } = useMotion();
+  const { t } = useTranslation();
   const [section, setSection] = useState<BusinessSection>("overview");
   const [profileSubtab, setProfileSubtab] = useState<ProfileSubtab>("brand");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -168,6 +142,45 @@ export function BusinessPage() {
 
   const activeBranchId = selectedBranchId || branches[0]?.id || "";
 
+  const sidebarItems: { key: BusinessSection; label: string; icon: React.ReactNode }[] = [
+    { key: "overview", label: t("business.overview"), icon: <Layout size={18} /> },
+    { key: "products", label: t("business.products"), icon: <Package size={18} /> },
+    { key: "services", label: t("business.services"), icon: <Briefcase size={18} /> },
+    { key: "events", label: t("business.events"), icon: <Calendar size={18} /> },
+    { key: "business-card", label: t("business.businessCard"), icon: <Sparkles size={18} /> },
+    { key: "profile", label: t("business.profile"), icon: <UserRound size={18} /> },
+  ];
+
+  const profileSubtabs: { key: ProfileSubtab; label: string; icon: React.ReactNode }[] = [
+    { key: "brand", label: t("business.brand"), icon: <UserRound size={14} /> },
+  ];
+
+  function taskStatusLabel(status: SupplierTask["status"]) {
+    if (status === "answered") return t("business.status.confirmed");
+    if (status === "needs_reply") return t("business.status.needsReply");
+    return t("business.status.discussing");
+  }
+
+  function taskBudgetLabel(task: SupplierTask) {
+    return task.category ? task.category : t("business.budgetUnspecified");
+  }
+
+  function formatStaffStatus(status: string) {
+    if (status === "PENDING_ACTIVATION") return t("business.staffStatus.pendingActivation");
+    if (status === "PASSWORD_RESET_REQUIRED") return t("business.staffStatus.passwordResetRequired");
+    if (status === "ACTIVE") return t("business.status.active");
+    if (status === "DISABLED") return t("business.status.disabled");
+    return status;
+  }
+
+  const quickActions = [
+    { label: t("business.product.add"), icon: <Package size={16} />, onClick: () => setSection("products") },
+    { label: t("business.service.add"), icon: <Briefcase size={16} />, onClick: () => setSection("services") },
+    { label: t("business.importData"), icon: <Upload size={16} />, onClick: () => setSection("import") },
+    { label: t("business.profile"), icon: <UserRound size={16} />, onClick: () => setSection("profile") },
+    { label: t("business.businessCard"), icon: <Sparkles size={16} />, onClick: () => setSection("business-card") },
+  ];
+
   const loadCoreData = useCallback(async () => {
     if (!businessId) return;
     setBusy(true);
@@ -185,7 +198,7 @@ export function BusinessPage() {
         setImportBranchId(current => current || branchesRes.value[0]?.id || "");
       }
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка загрузки", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.loadError"), "error");
     } finally {
       setBusy(false);
     }
@@ -287,9 +300,9 @@ export function BusinessPage() {
     try {
       const saved = await updateBrandProfile(businessId, profile);
       setProfile(saved);
-      toast.show("Профиль сохранен.", "success");
+      toast.show(t("business.toast.profileSaved"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка сохранения", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.saveError"), "error");
     } finally {
       setBusy(false);
     }
@@ -297,15 +310,15 @@ export function BusinessPage() {
 
   const handleCreateDrop = async (data: Partial<BrandDropDto>) => {
     if (!businessId) {
-      toast.show("?????? ??????? ?? ???????. ??????? ? ??????-??????? ?????.", "error");
+      toast.show(t("business.toast.sessionNotFound"), "error");
       return;
     }
     try {
       const created = await createDrop(businessId, data);
       setDrops(current => [created, ...current]);
-      toast.show("????? ????????.", "success");
+      toast.show(t("business.toast.dropCreated"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "?????? ?????????? ??????", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.dropCreateError"), "error");
       throw e;
     }
   };
@@ -336,7 +349,7 @@ export function BusinessPage() {
     const res = await saveBusinessCard(businessId, blocks as unknown as import("../../shared/api/dto").BusinessCardBlockDto[]);
     setCardBlocks(res.blocks as unknown as CardBlock[]);
     setCardPublishedAt(res.publishedAt || null);
-    toast.show("Визитка сохранена.", "success");
+    toast.show(t("business.toast.cardSaved"), "success");
   };
 
   const handlePublishCard = async () => {
@@ -344,7 +357,7 @@ export function BusinessPage() {
     const res = await publishBusinessCard(businessId);
     setCardBlocks(res.blocks as unknown as CardBlock[]);
     setCardPublishedAt(res.publishedAt || null);
-    toast.show("Визитка опубликована.", "success");
+    toast.show(t("business.toast.cardPublished"), "success");
   };
 
   useEffect(() => { if (section === "business-card") loadCard(); }, [section, loadCard]);
@@ -359,7 +372,7 @@ export function BusinessPage() {
   const handleCreateProduct = async () => {
     if (!activeBranchId || !productForm.name) return;
     if (!productForm.categoryId) {
-      toast.show("Выберите категорию товара.", "error");
+      toast.show(t("business.toast.selectCategory"), "error");
       return;
     }
     try {
@@ -371,9 +384,9 @@ export function BusinessPage() {
       });
       resetProductForm();
       loadProducts();
-      toast.show("Товар добавлен.", "success");
+      toast.show(t("business.toast.productCreated"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка создания товара", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.productCreateError"), "error");
     }
   };
 
@@ -387,9 +400,9 @@ export function BusinessPage() {
       });
       resetProductForm();
       loadProducts();
-      toast.show("Товар обновлен.", "success");
+      toast.show(t("business.toast.productUpdated"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка обновления", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
     }
   };
 
@@ -398,9 +411,9 @@ export function BusinessPage() {
     try {
       await deleteProduct(activeBranchId, product.productOfferId);
       loadProducts();
-      toast.show("Товар удален.", "success");
+      toast.show(t("business.toast.productDeleted"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка удаления", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.deleteError"), "error");
     }
   };
 
@@ -425,7 +438,7 @@ export function BusinessPage() {
   const handleCreateService = async () => {
     if (!activeBranchId || !serviceForm.name) return;
     if (!serviceForm.categoryId) {
-      toast.show("Выберите категорию услуги.", "error");
+      toast.show(t("business.toast.selectServiceCategory"), "error");
       return;
     }
     try {
@@ -439,9 +452,9 @@ export function BusinessPage() {
       } as any);
       resetServiceForm();
       loadServices();
-      toast.show("Услуга добавлена.", "success");
+      toast.show(t("business.toast.serviceCreated"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка создания услуги", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.serviceCreateError"), "error");
     }
   };
 
@@ -457,9 +470,9 @@ export function BusinessPage() {
       } as any);
       resetServiceForm();
       loadServices();
-      toast.show("Услуга обновлена.", "success");
+      toast.show(t("business.toast.serviceUpdated"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка обновления", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
     }
   };
 
@@ -479,11 +492,11 @@ export function BusinessPage() {
   // Branch CRUD
   const handleCreateBranch = async () => {
     if (!businessId) {
-      toast.show("Сессия бизнеса не найдена. Выйдите и зайдите в бизнес-аккаунт снова.", "error");
+      toast.show(t("business.toast.sessionNotFound"), "error");
       return;
     }
     if (!branchForm.name.trim()) {
-      toast.show("Введите название филиала.", "error");
+      toast.show(t("business.toast.enterBranchName"), "error");
       return;
     }
     try {
@@ -497,9 +510,9 @@ export function BusinessPage() {
       setSelectedBranchId(created.id);
       setImportBranchId(created.id);
       loadBranches();
-      toast.show("Филиал создан.", "success");
+      toast.show(t("business.toast.branchCreated"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка создания филиала", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.branchCreateError"), "error");
     }
   };
 
@@ -511,9 +524,9 @@ export function BusinessPage() {
       const created = await createStaff(businessId, branchId, form);
       setStaffByBranch(current => ({ ...current, [branchId]: [created, ...(current[branchId] || [])] }));
       setStaffForms(current => ({ ...current, [branchId]: { displayName: "", email: "" } }));
-      toast.show("Сотрудник добавлен. Временный пароль показан в карточке сотрудника.", "success");
+      toast.show(t("business.toast.staffAdded"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка добавления сотрудника", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.staffAddError"), "error");
     } finally {
       setStaffBusy("");
     }
@@ -528,9 +541,9 @@ export function BusinessPage() {
         ...current,
         [branchId]: (current[branchId] || []).map(item => item.id === staffId ? updated : item),
       }));
-      toast.show("Новый временный пароль создан.", "success");
+      toast.show(t("business.toast.passwordReset"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : "Ошибка сброса пароля", "error");
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.passwordResetError"), "error");
     } finally {
       setStaffBusy("");
     }
@@ -541,7 +554,7 @@ export function BusinessPage() {
     const allowed = nextFiles.filter(file => /\.(xlsx|txt|md|pdf)$/i.test(file.name));
     const rejected = nextFiles.filter(file => !allowed.includes(file));
     setImportFiles(allowed);
-    setImportStatus(rejected.length > 0 ? "Пока что данный формат не поддерживается" : "");
+    setImportStatus(rejected.length > 0 ? t("business.importUnsupportedFormat") : "");
   };
 
   const handleUploadImport = async () => {
@@ -553,21 +566,14 @@ export function BusinessPage() {
       for (const file of importFiles) {
         await uploadProductImport(branchId, file);
       }
-      setImportStatus(`Загружено файлов: ${importFiles.length}. Проверьте предпросмотр перед публикацией.`);
+      setImportStatus(t("business.importFilesUploaded", { count: importFiles.length }));
     } catch (e) {
-      setImportStatus(e instanceof ApiError ? e.message : "Ошибка загрузки файла");
+      setImportStatus(e instanceof ApiError ? e.message : t("business.importUploadError"));
     } finally {
       setImportBusy(false);
     }
   };
 
-  const quickActions = [
-    { label: "Добавить товар", icon: <Package size={16} />, onClick: () => setSection("products") },
-    { label: "Добавить услугу", icon: <Briefcase size={16} />, onClick: () => setSection("services") },
-    { label: "Импорт", icon: <Upload size={16} />, onClick: () => setSection("import") },
-    { label: "Профиль", icon: <UserRound size={16} />, onClick: () => setSection("profile") },
-    { label: "Визитка", icon: <Sparkles size={16} />, onClick: () => setSection("business-card") },
-  ];
 
   const sidebar = (
     <nav style={{ display: "flex", flexDirection: "column", gap: "0.25rem", padding: "var(--fcw-space-sm)" }}>
@@ -701,7 +707,7 @@ export function BusinessPage() {
           <div className="fcw-container" style={{ paddingTop: "var(--fcw-space-md)", paddingBottom: "var(--fcw-space-section)" }}>
             {/* Mobile section selector */}
             <div className="fcw-hidden-desktop fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)", gap: "0.5rem" }}>
-              <button className="fcw-btn fcw-btn-ghost fcw-btn-icon" onClick={() => setSidebarOpen(true)} aria-label="Меню">
+              <button className="fcw-btn fcw-btn-ghost fcw-btn-icon" onClick={() => setSidebarOpen(true)} aria-label={t("business.menu")}>
                 <Menu size={20} />
               </button>
               <div className="fcw-flex fcw-items-center" style={{ gap: "0.375rem", overflow: "hidden" }}>
@@ -732,55 +738,43 @@ export function BusinessPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              <Card padding="lg" style={{ marginBottom: "var(--fcw-space-lg)" }}>
-                <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "1rem" }}>
-                  <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem" }}>
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: "var(--fcw-radius-md)",
-                        backgroundColor: profile.brandColor || DEFAULT_BRAND_COLOR,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div>
-                      <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                        <span className="fcw-body-l fcw-weight-bold">
-                          {state.session?.business?.businessName || "Кабинет компании"}
-                        </span>
-                        <span className="fcw-label" style={{
-                          color: isStaff ? "var(--fcw-color-text-tertiary)" : "var(--fcw-color-primary)",
-                          backgroundColor: isStaff ? "var(--fcw-color-surface-secondary)" : "color-mix(in srgb, var(--fcw-color-primary) 10%, transparent)",
-                          padding: "0.125rem 0.5rem",
-                          borderRadius: "var(--fcw-radius-full)",
-                        }}>
-                          {isStaff ? "Сотрудник" : "Владелец"}
-                        </span>
-                      </div>
-                      <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem", marginTop: "0.25rem" }}>
-                        <span className="fcw-body-s fcw-text-secondary">
-                          {state.session?.user?.email || ""}
-                        </span>
-                        <span className="fcw-body-xs fcw-text-tertiary">·</span>
-                        <select
-                          className="fcw-input"
-                          value={activeBranchId}
-                          onChange={event => {
-                            setSelectedBranchId(event.target.value);
-                            setImportBranchId(event.target.value);
-                          }}
-                          style={{ width: "auto", minWidth: 180, height: 30, fontSize: "0.75rem", padding: "0.125rem 0.5rem" }}
-                        >
-                          {branches.map(branch => (
-                            <option key={branch.id} value={branch.id}>{branch.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "0.5rem 0",
+                marginBottom: "var(--fcw-space-lg)",
+                borderBottom: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+              }}>
+                <div style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  backgroundColor: profile.brandColor || DEFAULT_BRAND_COLOR,
+                  flexShrink: 0,
+                }} />
+                <span className="fcw-body fcw-weight-semibold" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {state.session?.business?.businessName || t("business.companyCabinet")}
+                </span>
+                <span className="fcw-label" style={{
+                  color: isStaff ? "var(--fcw-color-text-tertiary)" : "var(--fcw-color-primary)",
+                  backgroundColor: isStaff ? "var(--fcw-color-surface-secondary)" : "color-mix(in srgb, var(--fcw-color-primary) 10%, transparent)",
+                  padding: "0.125rem 0.5rem",
+                  borderRadius: "var(--fcw-radius-full)",
+                  flexShrink: 0,
+                }}>
+                  {isStaff ? t("business.staff") : t("business.owner")}
+                </span>
+                <div style={{ flex: 1 }} />
+                {branches.length > 0 && (
+                  <Select
+                    size="sm"
+                    options={branches.map(b => ({ value: b.id, label: b.name }))}
+                    value={activeBranchId}
+                    onChange={(v) => { setSelectedBranchId(v); setImportBranchId(v); }}
+                  />
+                )}
+              </div>
 
               <motion.div
                 key={section + (section === "profile" ? profileSubtab : "")}
@@ -795,20 +789,20 @@ export function BusinessPage() {
                       <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "1rem", marginBottom: "var(--fcw-space-md)" }}>
                         <div>
                           <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                            <h2 className="fcw-h2" style={{ margin: 0 }}>Запросы клиентов</h2>
+                            <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.clientRequests")}</h2>
                             <span className="fcw-label" style={{ color: "var(--fcw-color-primary)" }}>{filteredTasks.length}</span>
                           </div>
                           <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>
-                            Все обращения по текущему филиалу
+                            {t("business.allRequests")}
                           </p>
                         </div>
                         <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
                           <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
                             {([
-                              ["all", "Все"],
-                              ["discussing", "Обсуждается"],
-                              ["confirmed", "Подтверждено"],
-                              ["declined", "Отклонено"],
+                              ["all", t("business.filter.all")],
+                              ["discussing", t("business.filter.discussing")],
+                              ["confirmed", t("business.filter.confirmed")],
+                              ["declined", t("business.filter.rejected")],
                             ] as const).map(([key, label]) => (
                               <button
                                 key={key}
@@ -822,8 +816,8 @@ export function BusinessPage() {
                           </div>
                           <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
                             {([
-                              ["cards", <Grid3X3 size={14} />, "Карточки"],
-                              ["rows", <List size={14} />, "Строки"],
+                              ["cards", <Grid3X3 size={14} />, t("business.cards")],
+                              ["rows", <List size={14} />, t("business.rows")],
                             ] as const).map(([key, icon, label]) => (
                               <button
                                 key={key}
@@ -841,10 +835,10 @@ export function BusinessPage() {
 
                       <div className="fcw-grid-4" style={{ gap: "0.5rem", marginBottom: "var(--fcw-space-md)" }}>
                         {[
-                          { label: "Новые", value: discussingTasks.length },
-                          { label: "Требуют ответа", value: replyTasks.length },
-                          { label: "Подтверждено", value: confirmedTasks.length },
-                          { label: "Отклонено", value: declinedTasks.length },
+                          { label: t("business.new"), value: discussingTasks.length },
+                          { label: t("business.needsReply"), value: replyTasks.length },
+                          { label: t("business.status.confirmed"), value: confirmedTasks.length },
+                          { label: t("business.filter.rejected"), value: declinedTasks.length },
                         ].map(item => (
                           <div key={item.label} style={{ padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)" }}>
                             <span className="fcw-body-xs fcw-text-tertiary">{item.label}</span>
@@ -854,7 +848,7 @@ export function BusinessPage() {
                       </div>
 
                       {filteredTasks.length === 0 && (
-                        <EmptyState title="Нет запросов" description="Новые обращения по филиалу появятся здесь." />
+                        <EmptyState title={t("business.noRequests")} description={t("business.noRequestsDesc")} />
                       )}
 
                       {filteredTasks.length > 0 && taskView === "cards" && (
@@ -870,12 +864,12 @@ export function BusinessPage() {
                               <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0 }}>{task.query}</h3>
                               <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.375rem 0" }}>{taskBudgetLabel(task)}</p>
                               <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
-                                <span className="fcw-body-s fcw-text-tertiary">Клиент · {task.customerArea || "район не указан"}</span>
-                                <span className="fcw-body-s fcw-text-tertiary">2 сообщения</span>
+                                <span className="fcw-body-s fcw-text-tertiary">{t("business.client")} · {task.customerArea || t("business.areaUnspecified")}</span>
+                                <span className="fcw-body-s fcw-text-tertiary">{t("business.messagesCount")}</span>
                               </div>
                               <div className="fcw-flex" style={{ gap: "0.5rem", marginTop: "0.875rem" }}>
-                                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm"><MessageCircle size={14} />Открыть</button>
-                                <button className="fcw-btn fcw-btn-primary fcw-btn-sm"><Reply size={14} />Ответить</button>
+                                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm"><MessageCircle size={14} />{t("business.open")}</button>
+                                <button className="fcw-btn fcw-btn-primary fcw-btn-sm"><Reply size={14} />{t("business.reply")}</button>
                               </div>
                             </article>
                           ))}
@@ -890,7 +884,7 @@ export function BusinessPage() {
                                 <span className="fcw-body fcw-weight-medium" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.query}</span>
                                 <span className="fcw-body-s fcw-text-tertiary">{taskStatusLabel(task.status)} · {task.ageLabel}</span>
                               </div>
-                              <button className="fcw-btn fcw-btn-primary fcw-btn-sm"><Reply size={14} />Ответить</button>
+                              <button className="fcw-btn fcw-btn-primary fcw-btn-sm"><Reply size={14} />{t("business.reply")}</button>
                             </div>
                           ))}
                         </div>
@@ -905,43 +899,43 @@ export function BusinessPage() {
                   <div>
                     <div className="fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)" }}>
                       <div>
-                        <h2 className="fcw-h2" style={{ margin: 0 }}>Товары</h2>
+                        <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.products")}</h2>
                         {productsTotal > 0 && (
-                          <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>Всего: {productsTotal}</p>
+                          <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>{t("business.total", { count: productsTotal })}</p>
                         )}
                       </div>
                       {!isStaff && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
                           <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setSection("import")}>
-                            <Upload size={16} />Импорт
+                            <Upload size={16} />{t("business.import.title")}
                           </button>
                           <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { resetProductForm(); setShowProductForm(true); }}>
-                            <Plus size={16} />Добавить товар
+                            <Plus size={16} />{t("business.product.add")}
                           </button>
                         </div>
                       )}
                     </div>
 
                     {!activeBranchId && (
-                      <EmptyState title="Нет филиалов" description="Сначала создайте филиал в разделе «Филиалы»" />
+                      <EmptyState title={t("business.noBranches")} description={t("business.noBranchesDesc")} />
                     )}
 
-                    {activeBranchId && productsBusy && <Loading size="sm" text="Загрузка товаров..." />}
+                    {activeBranchId && productsBusy && <Loading size="sm" text={t("business.loadingProducts")} />}
 
                     {activeBranchId && !productsBusy && products.length === 0 && !showProductForm && (
                       <EmptyState
-                        title="Нет товаров"
-                        description="Добавьте товары, чтобы они появились в поиске и на витрине"
+                        title={t("business.noProducts")}
+                        description={t("business.noProductsDesc")}
                         action={!isStaff ? (
                           <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => setShowProductForm(true)}>
-                            <Plus size={16} />Добавить товар
+                            <Plus size={16} />{t("business.product.add")}
                           </button>
                         ) : undefined}
                       />
                     )}
 
                     {activeBranchId && !productsBusy && (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "0.5rem" }}>
+                      <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                         <AnimatePresence>
                           {showProductForm && !editProduct && (
                             <motion.div
@@ -955,34 +949,30 @@ export function BusinessPage() {
                                 <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
                                   <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                                    Новый товар
+                                    {t("business.newProduct")}
                                   </h3>
                                   <input
                                     className="fcw-input"
-                                    placeholder="Название товара *"
+                                    placeholder={t("business.product.namePlaceholder")}
                                     value={productForm.name}
                                     onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
                                   />
                                   <input
                                     className="fcw-input"
-                                    placeholder="Описание"
+                                    placeholder={t("business.product.descriptionPlaceholder")}
                                     value={productForm.description}
                                     onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
                                   />
-                                  <select
-                                    className="fcw-input"
+                                  <Select
+                                    options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
                                     value={productForm.categoryId}
-                                    onChange={e => setProductForm(p => ({ ...p, categoryId: e.target.value }))}
+                                    onChange={v => setProductForm(p => ({ ...p, categoryId: v }))}
+                                    placeholder={t("business.product.categoryPlaceholder")}
                                     style={{ maxWidth: "320px" }}
-                                  >
-                                    <option value="">Категория товара *</option>
-                                    {flattenCategories(categories).map(category => (
-                                      <option key={category.id} value={category.id}>{category.name}</option>
-                                    ))}
-                                  </select>
+                                  />
                                   <input
                                     className="fcw-input"
-                                    placeholder="Цена (₸)"
+                                    placeholder={t("business.product.pricePlaceholder")}
                                     type="number"
                                     value={productForm.price}
                                     onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))}
@@ -990,9 +980,9 @@ export function BusinessPage() {
                                   />
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                     <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateProduct}>
-                                      <Check size={14} />Создать
+                                      <Check size={14} />{t("business.create")}
                                     </button>
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>Отмена</button>
+                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>{t("business.cancel")}</button>
                                   </div>
                                 </div>
                               </Card>
@@ -1001,55 +991,53 @@ export function BusinessPage() {
                         </AnimatePresence>
 
                         {products.map(p => (
-                          <Card key={p.productOfferId} padding="md">
+                          <div key={p.productOfferId} style={{
+                            display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
+                            padding: "0.5rem 0.75rem",
+                            backgroundColor: "var(--fcw-color-surface)",
+                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                            borderRadius: "var(--fcw-radius-md)",
+                          }}>
                             {editProduct?.productOfferId === p.productOfferId ? (
-                              <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
+                              <div className="fcw-flex-col" style={{ gap: "0.75rem", width: "100%" }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(120px, 180px)", gap: "0.75rem" }}>
-                                  <input className="fcw-input" value={productForm.name} onChange={e => setProductForm(v => ({ ...v, name: e.target.value }))} placeholder="Название товара" />
-                                  <input className="fcw-input" type="number" value={productForm.price} onChange={e => setProductForm(v => ({ ...v, price: e.target.value }))} placeholder="Цена" />
+                                  <input className="fcw-input" value={productForm.name} onChange={e => setProductForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.product.namePlaceholder")} />
+                                  <input className="fcw-input" type="number" value={productForm.price} onChange={e => setProductForm(v => ({ ...v, price: e.target.value }))} placeholder={t("business.product.pricePlaceholder")} />
                                 </div>
-                                <input className="fcw-input" value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder="Описание" />
+                                <input className="fcw-input" value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.product.descriptionPlaceholder")} />
                                 <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateProduct}><Check size={14} />Сохранить</button>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>Отмена</button>
+                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateProduct}><Check size={14} />{t("business.save")}</button>
+                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>{t("business.cancel")}</button>
                                 </div>
                               </div>
                             ) : (
-                            <div className="fcw-flex-between" style={{ gap: "0.75rem" }}>
-                              <div style={{ minWidth: 0 }}>
-                                <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                                  <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {p.name}
-                                  </span>
-                                  {!p.enabled && (
-                                    <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>Скрыт</span>
-                                  )}
+                            <>
+                              <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "120px" }}>
+                                {p.name}
+                              </span>
+                              {p.categoryLabel && (
+                                <span className="fcw-body-s fcw-text-tertiary">{p.categoryLabel}</span>
+                              )}
+                              {!p.enabled && (
+                                <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>{t("business.hidden")}</span>
+                              )}
+                              <div style={{ flex: 1 }} />
+                              <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap" }}>
+                                {p.price > 0 ? `${p.price.toLocaleString("ru-KZ")} ₸` : "—"}
+                              </span>
+                              {!isStaff && (
+                                <div className="fcw-flex" style={{ gap: "0.25rem" }}>
+                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => openEditProduct(p)} aria-label={t("business.editAria")}>
+                                    <Edit3 size={14} />
+                                  </button>
+                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => handleDeleteProduct(p)} aria-label={t("business.deleteAria")}>
+                                    <Trash2 size={14} />
+                                  </button>
                                 </div>
-                                {p.description && (
-                                  <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>{p.description}</p>
-                                )}
-                                {p.categoryLabel && (
-                                  <span className="fcw-body-s fcw-text-tertiary">{p.categoryLabel}</span>
-                                )}
-                              </div>
-                              <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem", flexShrink: 0 }}>
-                                <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap" }}>
-                                  {p.price > 0 ? `${p.price.toLocaleString("ru-KZ")} ₸` : "—"}
-                                </span>
-                                {!isStaff && (
-                                  <div className="fcw-flex" style={{ gap: "0.25rem" }}>
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => openEditProduct(p)} aria-label="Редактировать">
-                                      <Edit3 size={14} />
-                                    </button>
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => handleDeleteProduct(p)} aria-label="Удалить">
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                              )}
+                            </>
                             )}
-                          </Card>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -1060,39 +1048,39 @@ export function BusinessPage() {
                 {section === "services" && (
                   <div>
                     <div className="fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)" }}>
-                      <h2 className="fcw-h2" style={{ margin: 0 }}>Услуги</h2>
+                      <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.services")}</h2>
                       {!isStaff && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
                           <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setSection("import")}>
-                            <Upload size={16} />Импорт
+                            <Upload size={16} />{t("business.import.title")}
                           </button>
                           <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { resetServiceForm(); setShowServiceForm(true); }}>
-                            <Plus size={16} />Добавить услугу
+                            <Plus size={16} />{t("business.service.add")}
                           </button>
                         </div>
                       )}
                     </div>
 
                     {!activeBranchId && (
-                      <EmptyState title="Нет филиалов" description="Сначала создайте филиал в разделе «Филиалы»" />
+                      <EmptyState title={t("business.noBranches")} description={t("business.noBranchesDesc")} />
                     )}
 
-                    {activeBranchId && servicesBusy && <Loading size="sm" text="Загрузка услуг..." />}
+                    {activeBranchId && servicesBusy && <Loading size="sm" text={t("business.loadingServices")} />}
 
                     {activeBranchId && !servicesBusy && services.length === 0 && !showServiceForm && (
                       <EmptyState
-                        title="Нет услуг"
-                        description="Добавьте услуги, чтобы клиенты могли находить вас в поиске"
+                        title={t("business.noServices")}
+                        description={t("business.noServicesDesc")}
                         action={!isStaff ? (
                           <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => setShowServiceForm(true)}>
-                            <Plus size={16} />Добавить услугу
+                            <Plus size={16} />{t("business.service.add")}
                           </button>
                         ) : undefined}
                       />
                     )}
 
                     {activeBranchId && !servicesBusy && (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "0.5rem" }}>
+                      <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                         <AnimatePresence>
                           {showServiceForm && !editService && (
                             <motion.div
@@ -1106,34 +1094,34 @@ export function BusinessPage() {
                                 <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
                                   <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                                    Новая услуга
+                                    {t("business.newService")}
                                   </h3>
                                   <input
                                     className="fcw-input"
-                                    placeholder="Название услуги *"
+                                    placeholder={t("business.service.namePlaceholder")}
                                     value={serviceForm.name}
                                     onChange={e => setServiceForm(s => ({ ...s, name: e.target.value }))}
                                   />
                                   <input
                                     className="fcw-input"
-                                    placeholder="Описание"
+                                    placeholder={t("business.service.descriptionPlaceholder")}
                                     value={serviceForm.description}
                                     onChange={e => setServiceForm(s => ({ ...s, description: e.target.value }))}
                                   />
-                                  <select
-                                    className="fcw-input"
+                                  <Select
+                                    options={[
+                                      { value: "FIXED", label: t("business.scheduleFixed") },
+                                      { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
+                                      { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
+                                    ]}
                                     value={serviceForm.scheduleType}
-                                    onChange={e => setServiceForm(s => ({ ...s, scheduleType: e.target.value as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
+                                    onChange={v => setServiceForm(s => ({ ...s, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
                                     style={{ maxWidth: "260px" }}
-                                  >
-                                    <option value="FIXED">Фиксированная длительность</option>
-                                    <option value="FLEXIBLE">Свяжемся с вами</option>
-                                    <option value="APPOINTMENT">Запись на время</option>
-                                  </select>
+                                  />
                                   <div className="fcw-flex" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
                                     <input
                                       className="fcw-input"
-                                      placeholder="Цена (₸)"
+                                      placeholder={t("business.service.pricePlaceholder")}
                                       type="number"
                                       value={serviceForm.basePrice}
                                       onChange={e => setServiceForm(s => ({ ...s, basePrice: e.target.value }))}
@@ -1142,7 +1130,7 @@ export function BusinessPage() {
                                     {serviceForm.scheduleType === "FIXED" && (
                                       <input
                                         className="fcw-input"
-                                        placeholder="Длительность (мин)"
+                                        placeholder={t("business.service.durationPlaceholder")}
                                         type="number"
                                         value={serviceForm.durationMinutes}
                                         onChange={e => setServiceForm(s => ({ ...s, durationMinutes: e.target.value }))}
@@ -1150,34 +1138,30 @@ export function BusinessPage() {
                                       />
                                     )}
                                     {serviceForm.scheduleType === "FLEXIBLE" && (
-                                      <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center", maxWidth: "160px" }}>Вы сами свяжетесь с клиентом</span>
+                                      <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center", maxWidth: "160px" }}>{t("business.scheduleFlexibleHint")}</span>
                                     )}
                                     {serviceForm.scheduleType === "APPOINTMENT" && (
                                       <input
                                         className="fcw-input"
-                                        placeholder="Часы работы (напр. Пн-Пт 9:00-18:00)"
+                                        placeholder={t("business.service.hoursPlaceholder")}
                                         value={serviceForm.durationMinutes}
                                         onChange={e => setServiceForm(s => ({ ...s, durationMinutes: e.target.value }))}
                                         style={{ maxWidth: "260px" }}
                                       />
                                     )}
                                   </div>
-                                  <select
-                                    className="fcw-input"
+                                  <Select
+                                    options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
                                     value={serviceForm.categoryId}
-                                    onChange={e => setServiceForm(s => ({ ...s, categoryId: e.target.value }))}
+                                    onChange={v => setServiceForm(s => ({ ...s, categoryId: v }))}
+                                    placeholder={t("business.service.categoryPlaceholder")}
                                     style={{ maxWidth: "320px" }}
-                                  >
-                                    <option value="">Категория услуги *</option>
-                                    {flattenCategories(categories).map(category => (
-                                      <option key={category.id} value={category.id}>{category.name}</option>
-                                    ))}
-                                  </select>
+                                  />
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                     <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateService}>
-                                      <Check size={14} />Создать
+                                      <Check size={14} />{t("business.create")}
                                     </button>
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetServiceForm}>Отмена</button>
+                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetServiceForm}>{t("business.cancel")}</button>
                                   </div>
                                 </div>
                               </Card>
@@ -1186,83 +1170,76 @@ export function BusinessPage() {
                         </AnimatePresence>
 
                         {services.map(s => (
-                          <Card key={s.serviceBranchOfferId} padding="md">
+                          <div key={s.serviceBranchOfferId} style={{
+                            display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
+                            padding: "0.5rem 0.75rem",
+                            backgroundColor: "var(--fcw-color-surface)",
+                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                            borderRadius: "var(--fcw-radius-md)",
+                          }}>
                             {editService?.serviceBranchOfferId === s.serviceBranchOfferId ? (
-                              <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                                <select
-                                  className="fcw-input"
+                              <div className="fcw-flex-col" style={{ gap: "0.75rem", width: "100%" }}>
+                                <Select
+                                  options={[
+                                    { value: "FIXED", label: t("business.scheduleFixed") },
+                                    { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
+                                    { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
+                                  ]}
                                   value={serviceForm.scheduleType}
-                                  onChange={e => setServiceForm(v => ({ ...v, scheduleType: e.target.value as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
+                                  onChange={v => setServiceForm(v2 => ({ ...v2, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
                                   style={{ maxWidth: "260px" }}
-                                >
-                                  <option value="FIXED">Фиксированная длительность</option>
-                                  <option value="FLEXIBLE">Свяжемся с вами</option>
-                                  <option value="APPOINTMENT">Запись на время</option>
-                                </select>
+                                />
                                 <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(110px, 160px) minmax(110px, 160px)", gap: "0.75rem" }}>
-                                  <input className="fcw-input" value={serviceForm.name} onChange={e => setServiceForm(v => ({ ...v, name: e.target.value }))} placeholder="Название услуги" />
-                                  <input className="fcw-input" type="number" value={serviceForm.basePrice} onChange={e => setServiceForm(v => ({ ...v, basePrice: e.target.value }))} placeholder="Цена" />
+                                  <input className="fcw-input" value={serviceForm.name} onChange={e => setServiceForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.service.namePlaceholder")} />
+                                  <input className="fcw-input" type="number" value={serviceForm.basePrice} onChange={e => setServiceForm(v => ({ ...v, basePrice: e.target.value }))} placeholder={t("business.service.pricePlaceholder")} />
                                   {serviceForm.scheduleType === "FIXED" && (
-                                    <input className="fcw-input" type="number" value={serviceForm.durationMinutes} onChange={e => setServiceForm(v => ({ ...v, durationMinutes: e.target.value }))} placeholder="Минуты" />
+                                    <input className="fcw-input" type="number" value={serviceForm.durationMinutes} onChange={e => setServiceForm(v => ({ ...v, durationMinutes: e.target.value }))} placeholder={t("business.service.minutesPlaceholder")} />
                                   )}
                                   {serviceForm.scheduleType === "FLEXIBLE" && (
-                                    <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center" }}>Вы свяжетесь с клиентом</span>
+                                    <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center" }}>{t("business.scheduleFlexibleHint")}</span>
                                   )}
                                   {serviceForm.scheduleType === "APPOINTMENT" && (
-                                    <input className="fcw-input" value={serviceForm.durationMinutes} onChange={e => setServiceForm(v => ({ ...v, durationMinutes: e.target.value }))} placeholder="Часы работы" />
+                                    <input className="fcw-input" value={serviceForm.durationMinutes} onChange={e => setServiceForm(v => ({ ...v, durationMinutes: e.target.value }))} placeholder={t("business.service.hoursPlaceholder")} />
                                   )}
                                 </div>
-                                <input className="fcw-input" value={serviceForm.description} onChange={e => setServiceForm(v => ({ ...v, description: e.target.value }))} placeholder="Описание или сценарий выполнения" />
+                                <input className="fcw-input" value={serviceForm.description} onChange={e => setServiceForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.service.descriptionPlaceholder")} />
                                 <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateService}><Check size={14} />Сохранить</button>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetServiceForm}>Отмена</button>
+                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateService}><Check size={14} />{t("business.save")}</button>
+                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetServiceForm}>{t("business.cancel")}</button>
                                 </div>
                               </div>
                             ) : (
-                            <div className="fcw-flex-between" style={{ gap: "0.75rem" }}>
-                              <div style={{ minWidth: 0 }}>
-                                <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                                  <span className="fcw-body fcw-weight-medium">{s.name}</span>
-                                  {!s.active && (
-                                    <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>Неактивна</span>
-                                  )}
-                                </div>
-                                {s.description && (
-                                  <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>{s.description}</p>
-                                )}
-                                <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", marginTop: "0.25rem" }}>
-                                  {s.durationMinutes > 0 && (
-                                    <span className="fcw-body-s fcw-text-secondary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
-                                      <Clock3 size={11} />{s.durationMinutes} мин
-                                    </span>
-                                  )}
-                                  {(s as any).scheduleType && (s as any).scheduleType !== "FIXED" && (
-                                    <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)" }}>
-                                      {(s as any).scheduleType === "FLEXIBLE" ? "Свяжемся с вами" : "По записи"}
-                                    </span>
-                                  )}
-                                </div>
-                                {s.scheduleText && (
-                                  <div className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem", marginTop: "0.25rem" }}>
-                                    <Clock3 size={11} />{s.scheduleText}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem", flexShrink: 0 }}>
-                                <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap" }}>
-                                  {s.basePrice > 0 ? `${s.basePrice.toLocaleString("ru-KZ")} ₸` : "—"}
+                            <>
+                              <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "120px" }}>
+                                {s.name}
+                              </span>
+                              {(s as any).scheduleType && (s as any).scheduleType !== "FIXED" && (
+                                <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>
+                                  {(s as any).scheduleType === "FLEXIBLE" ? t("business.scheduleFlexibleLabel") : t("business.scheduleAppointmentLabel")}
                                 </span>
-                                {!isStaff && (
-                                  <div className="fcw-flex" style={{ gap: "0.25rem" }}>
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => openEditService(s)} aria-label="Редактировать">
-                                      <Edit3 size={14} />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                              )}
+                              {s.durationMinutes > 0 && (
+                                <span className="fcw-body-s fcw-text-secondary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
+                                  <Clock3 size={11} />{s.durationMinutes}{t("business.minutes")}
+                                </span>
+                              )}
+                              {!s.active && (
+                                <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>{t("business.inactive")}</span>
+                              )}
+                              <div style={{ flex: 1 }} />
+                              <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap" }}>
+                                {s.basePrice > 0 ? `${s.basePrice.toLocaleString("ru-KZ")} ₸` : "—"}
+                              </span>
+                              {!isStaff && (
+                                <div className="fcw-flex" style={{ gap: "0.25rem" }}>
+                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => openEditService(s)} aria-label={t("business.editAria")}>
+                                    <Edit3 size={14} />
+                                  </button>
+                                </div>
+                              )}
+                            </>
                             )}
-                          </Card>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -1272,32 +1249,22 @@ export function BusinessPage() {
                 {/* Branches */}
                 {/* Events */}
                 {section === "events" && (
-                  <div>
-                    <div className="fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)" }}>
-                      <div>
-                        <h2 className="fcw-h2" style={{ margin: 0 }}>Ивенты</h2>
-                        <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>
-                          {drops.filter(d => d.status === "ACTIVE").length} активных
-                        </p>
-                      </div>
-                    </div>
-                    <DropsEditor
-                      drops={drops}
-                      onCreate={handleCreateDrop}
-                      onCancel={handleCancelDrop}
-                      onDelete={handleDeleteDrop}
-                      busy={busy}
-                      readOnly={isStaff}
-                    />
-                  </div>
+                  <DropsEditor
+                    drops={drops}
+                    onCreate={handleCreateDrop}
+                    onCancel={handleCancelDrop}
+                    onDelete={handleDeleteDrop}
+                    busy={busy}
+                    readOnly={isStaff}
+                  />
                 )}
 
                 {/* Import data */}
                 {section === "import" && (
                   <div>
-                    <h2 className="fcw-h2" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>Импорт данных</h2>
+                    <h2 className="fcw-h2" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>{t("business.importData")}</h2>
                     <p className="fcw-body fcw-text-secondary" style={{ marginBottom: "var(--fcw-space-lg)" }}>
-                      Импортируйте товары и услуги быстро и без ошибок
+                      {t("business.importDesc")}
                     </p>
                     <Card padding="lg">
                       <div
@@ -1315,13 +1282,13 @@ export function BusinessPage() {
                         }}
                       >
                         <Upload size={28} style={{ color: "var(--fcw-color-primary)", marginBottom: "0.75rem" }} />
-                        <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0 }}>Перетащите файл сюда</h3>
+                        <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0 }}>{t("business.importDragHere")}</h3>
                         <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.35rem 0 1rem" }}>
-                          Поддерживаются XLSX, TXT, MD и PDF. Другие форматы можно выбрать, но они не будут загружены.
+                          {t("business.importFormats")}
                         </p>
                         <label className="fcw-btn fcw-btn-primary fcw-btn-sm" style={{ display: "inline-flex" }}>
                           <Upload size={14} />
-                          Выбрать файл
+                          {t("business.importSelectFile")}
                           <input
                             type="file"
                             multiple
@@ -1343,7 +1310,7 @@ export function BusinessPage() {
                       )}
 
                       {importStatus && (
-                        <div className="fcw-body-s" style={{ marginTop: "var(--fcw-space-md)", color: importStatus.includes("не поддерживается") || importStatus.includes("Ошибка") ? "var(--fcw-color-error)" : "var(--fcw-color-accent)" }}>
+                        <div className="fcw-body-s" style={{ marginTop: "var(--fcw-space-md)", color: "var(--fcw-color-text-secondary)" }}>
                           {importStatus}
                         </div>
                       )}
@@ -1351,56 +1318,56 @@ export function BusinessPage() {
                       <div className="fcw-flex" style={{ gap: "0.75rem", marginTop: "var(--fcw-space-md)" }}>
                         <button className="fcw-btn fcw-btn-primary" onClick={handleUploadImport} disabled={importBusy || importFiles.length === 0 || !branches.length}>
                           {importBusy ? <Loader2 className="fcw-animate-spin" size={16} /> : <Upload size={16} />}
-                          Загрузить
+                          {t("business.importUpload")}
                         </button>
                         <button className="fcw-btn fcw-btn-secondary" onClick={() => {
                           setImportFiles([]);
                           setImportStatus("");
                         }} disabled={importBusy || importFiles.length === 0}>
-                          Очистить
+                          {t("business.importClear")}
                         </button>
                       </div>
                     </Card>
                     <div style={{ marginTop: "var(--fcw-space-lg)" }}>
                       <Card padding="lg">
-                        <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>Настройки импорта</h3>
+                        <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>{t("business.importSettings")}</h3>
                         <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
                           <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                            <label className="fcw-body-s fcw-weight-medium">Филиал импорта</label>
-                            <select
-                              className="fcw-input"
+                            <label className="fcw-body-s fcw-weight-medium">{t("business.importBranch")}</label>
+                            <Select
+                              options={branches.map(b => ({ value: b.id, label: b.name }))}
                               value={importBranchId || activeBranchId}
-                              onChange={event => setImportBranchId(event.target.value)}
+                              onChange={v => setImportBranchId(v)}
+                              placeholder={branches.length === 0 ? t("business.noBranchesOption") : undefined}
                               style={{ width: "100%", maxWidth: "320px" }}
-                            >
-                              {branches.length > 0 ? branches.map(b => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                              )) : (
-                                <option>Нет филиалов</option>
-                              )}
-                            </select>
+                            />
                           </div>
                           <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                            <label className="fcw-body-s fcw-weight-medium">Язык файла</label>
-                            <select className="fcw-input" style={{ width: "100%", maxWidth: "320px" }}>
-                              <option>Русский</option>
-                              <option>Казахский</option>
-                            </select>
+                            <label className="fcw-body-s fcw-weight-medium">{t("business.importLanguage")}</label>
+                            <Select
+                              options={[
+                                { value: "ru", label: t("business.russian") },
+                                { value: "kk", label: t("business.kazakh") },
+                              ]}
+                              value="ru"
+                              onChange={() => {}}
+                              style={{ width: "100%", maxWidth: "320px" }}
+                            />
                           </div>
                           <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                            <label className="fcw-body-s fcw-weight-medium">Что загружаем</label>
+                            <label className="fcw-body-s fcw-weight-medium">{t("business.importWhat")}</label>
                             <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                              <button className="fcw-btn fcw-btn-primary fcw-btn-sm">Товары</button>
-                              <button className="fcw-btn fcw-btn-secondary fcw-btn-sm">Услуги</button>
+                              <button className="fcw-btn fcw-btn-primary fcw-btn-sm">{t("business.products")}</button>
+                              <button className="fcw-btn fcw-btn-secondary fcw-btn-sm">{t("business.services")}</button>
                             </div>
                           </div>
                           <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", cursor: "pointer" }}>
                             <input type="checkbox" defaultChecked />
-                            <span className="fcw-body-s">В файле есть названия колонок</span>
+                            <span className="fcw-body-s">{t("business.importHasHeaders")}</span>
                           </label>
                           <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", cursor: "pointer" }}>
                             <input type="checkbox" />
-                            <span className="fcw-body-s">Обновлять существующие позиции</span>
+                            <span className="fcw-body-s">{t("business.importUpdateExisting")}</span>
                           </label>
                         </div>
                         <div
@@ -1413,7 +1380,7 @@ export function BusinessPage() {
                             color: "var(--fcw-color-text-secondary)",
                           }}
                         >
-                          Не загружайте внутренние данные: закупочные цены, маржинальность, поставщиков и остатки, если они не должны быть видны клиентам.
+                          {t("business.importWarning")}
                         </div>
                       </Card>
                     </div>
@@ -1435,8 +1402,8 @@ export function BusinessPage() {
 
                 {/* Profile */}
                 {section === "profile" && (
-                  <div style={{ maxWidth: "640px", margin: "0 auto" }}>
-                    <h2 className="fcw-h2" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>Кабинет компании</h2>
+                  <div>
+                    <h2 className="fcw-h2" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>{t("business.companyCabinet")}</h2>
                     <ProfileEditor
                       profile={profile}
                       onChange={setProfile}

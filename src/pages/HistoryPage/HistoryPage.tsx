@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, ArrowRight, ChevronDown, MapPin, Package, Briefcase, MessageCircle, Loader2, Plus, Send } from "lucide-react";
@@ -11,11 +12,11 @@ import { getCustomerHistory, getCustomerRequestDetail } from "../../shared/api/a
 import type { CustomerRequestHistoryDto, CustomerRequestDetailDto } from "../../shared/api/dto";
 import { buildRoute, ROUTES } from "../../app/routes";
 
-const statusLabels: Record<string, string> = {
-  draft: "Черновик",
-  dispatching: "Отправляется",
-  waiting: "Ожидает ответа",
-  answered: "Есть ответы",
+const STATUS_KEYS: Record<string, string> = {
+  draft: "history.status.draft",
+  dispatching: "history.status.dispatching",
+  waiting: "history.status.waiting",
+  answered: "history.status.answered",
 };
 
 const statusColors: Record<string, string> = {
@@ -30,23 +31,24 @@ const scopeIcons: Record<string, React.ReactNode> = {
   service: <Briefcase size={14} />,
 };
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (key: string, opts?: Record<string, number>) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins} мин. назад`;
+  if (mins < 60) return t("time.minAgo", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ч. назад`;
+  if (hours < 24) return t("time.hourAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} дн. назад`;
+  return t("time.dayAgo", { count: days });
 }
 
-function lastReplyPreview(detail: CustomerRequestDetailDto | undefined): string | null {
+function lastReplyPreview(detail: CustomerRequestDetailDto | undefined, t: (key: string, opts?: Record<string, string>) => string): string | null {
   if (!detail || detail.replies.length === 0) return null;
   const last = detail.replies[detail.replies.length - 1];
-  return last.comment || last.productHint || `${last.supplierName} — предложение`;
+  return last.comment || last.productHint || t("history.lastReplyFallback", { name: last.supplierName });
 }
 
 export function HistoryPage() {
+  const { t } = useTranslation();
   const { reduced } = useMotion();
   const { state } = useAuth();
   const navigate = useNavigate();
@@ -77,7 +79,7 @@ export function HistoryPage() {
         });
         setDetailCache(cache);
       })
-      .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки"))
+      .catch(e => setError(e instanceof Error ? e.message : t("history.error.title")))
       .finally(() => setBusy(false));
   }, [state.view]);
 
@@ -116,11 +118,11 @@ export function HistoryPage() {
       <main id="main-content">
         <div className="fcw-container fcw-section" style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <EmptyState
-            title="Требуется авторизация"
-            description="Войдите, чтобы видеть историю поиска"
+            title={t("history.auth.title")}
+            description={t("history.auth.description")}
             action={
               <button className="fcw-btn fcw-btn-primary" onClick={() => navigate(ROUTES.auth)}>
-                Войти
+                {t("history.auth.login")}
                 <ArrowRight size={16} />
               </button>
             }
@@ -141,9 +143,9 @@ export function HistoryPage() {
           style={{ gap: "1rem", marginBottom: "var(--fcw-space-lg)" }}
         >
           <div>
-            <h1 className="fcw-h1" style={{ marginBottom: "var(--fcw-space-sm)" }}>История</h1>
+            <h2 className="fcw-h2" style={{ marginBottom: "var(--fcw-space-sm)" }}>{t("history.title")}</h2>
             <p className="fcw-body fcw-text-secondary" style={{ margin: 0 }}>
-              Ваши поисковые запросы и ответы магазинов
+              {t("history.subtitle")}
             </p>
           </div>
           <button
@@ -152,19 +154,19 @@ export function HistoryPage() {
             style={{ gap: "0.5rem" }}
           >
             <Plus size={16} />
-            Новый запрос
+            {t("history.newRequest")}
           </button>
         </motion.div>
 
-        {busy && <Loading size="md" text="Загрузка истории..." />}
+        {busy && <Loading size="md" text={t("history.loading")} />}
 
         {error && (
           <EmptyState
-            title="Ошибка загрузки"
+            title={t("history.error.title")}
             description={error}
             action={
               <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => window.location.reload()}>
-                Повторить
+                {t("history.error.retry")}
               </button>
             }
           />
@@ -172,14 +174,9 @@ export function HistoryPage() {
 
         {!busy && !error && items.length === 0 && (
           <EmptyState
-            title="История пуста"
-            description="Ваши поисковые запросы будут сохраняться здесь вместе с ответами магазинов"
+            title={t("history.empty.title")}
+            description={t("history.empty.description")}
             icon={<Clock size={36} style={{ color: "var(--fcw-color-text-tertiary)" }} />}
-            action={
-              <button className="fcw-btn fcw-btn-primary" onClick={() => navigate(ROUTES.home)} style={{ gap: "0.5rem" }}>
-                <Plus size={16} /> Новый запрос
-              </button>
-            }
           />
         )}
 
@@ -187,7 +184,7 @@ export function HistoryPage() {
           <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
             {items.map((item, i) => {
               const cachedDetail = detailCache[item.id];
-              const preview = lastReplyPreview(cachedDetail);
+              const preview = lastReplyPreview(cachedDetail, t);
 
               return (
               <motion.div
@@ -215,7 +212,7 @@ export function HistoryPage() {
                           <MapPin size={11} />
                           {item.city}
                         </span>
-                        <span className="fcw-body-s fcw-text-tertiary">{timeAgo(item.createdAt)}</span>
+                        <span className="fcw-body-s fcw-text-tertiary">{timeAgo(item.createdAt, t)}</span>
                         {item.replyCount > 0 ? (
                           <span className="fcw-body-xs" style={{
                             color: "var(--fcw-color-accent)",
@@ -228,7 +225,7 @@ export function HistoryPage() {
                             {item.replyCount}
                           </span>
                         ) : (
-                          <span className="fcw-body-s fcw-text-tertiary">Нет ответов</span>
+                          <span className="fcw-body-s fcw-text-tertiary">{t("history.noReplies")}</span>
                         )}
                       </div>
                     </div>
@@ -242,7 +239,7 @@ export function HistoryPage() {
                           borderRadius: "var(--fcw-radius-full)",
                         }}
                       >
-                        {statusLabels[item.status] || item.status}
+                        {t(STATUS_KEYS[item.status] || item.status)}
                       </span>
                       <motion.span
                         animate={{ rotate: expandedId === item.id ? 180 : 0 }}
@@ -273,9 +270,9 @@ export function HistoryPage() {
                           borderRadius: "0 0 var(--fcw-radius-lg) var(--fcw-radius-lg)",
                         }}
                       >
-                        {detailBusy && <Loading size="sm" text="Загрузка ответов..." />}
+                        {detailBusy && <Loading size="sm" text={t("history.loadingReplies")} />}
                         {!detailBusy && detail && detail.replies.length === 0 && (
-                          <p className="fcw-body-s fcw-text-tertiary" style={{ margin: 0 }}>Пока нет ответов от магазинов</p>
+                          <p className="fcw-body-s fcw-text-tertiary" style={{ margin: 0 }}>{t("history.noRepliesYet")}</p>
                         )}
                         {!detailBusy && detail && detail.replies.length > 0 && (
                           <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
@@ -318,7 +315,7 @@ export function HistoryPage() {
                           <input
                             type="text"
                             className="fcw-input"
-                            placeholder="Новый запрос по этой теме..."
+                            placeholder={t("history.replyInput.placeholder")}
                             value={replyText}
                             onChange={e => setReplyText(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter") handleSendReply(); }}
@@ -328,7 +325,7 @@ export function HistoryPage() {
                             className="fcw-btn fcw-btn-primary fcw-btn-sm fcw-btn-icon"
                             onClick={handleSendReply}
                             disabled={!replyText.trim()}
-                            aria-label="Отправить"
+                            aria-label={t("history.replyInput.send")}
                           >
                             <Send size={14} />
                           </button>

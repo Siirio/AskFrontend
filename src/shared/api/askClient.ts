@@ -1,4 +1,5 @@
 import { API_BASE_URL, apiRequest, getStoredToken, transformKeys, ApiError } from "./httpClient";
+import i18n from "../i18n/i18n";
 import { mapSearchResult, mapSupplierTask } from "./mappers";
 import type {
   BusinessProductDto, BusinessProductListDto,
@@ -39,7 +40,7 @@ export async function searchAsk(query: string, scope: "all" | "product" | "servi
       selectedCategory: category || "",
       city: city || "Астана",
       userLocation: getStoredUserLocation(),
-      language: "ru",
+      language: i18n.language || "ru",
       sort: "intent_match",
     },
   });
@@ -62,7 +63,7 @@ export function searchAskV2(params: {
       city: params.city || "Астана",
       sort: params.sort || "intent_match",
       userLocation: getStoredUserLocation(),
-      language: "ru",
+      language: i18n.language || "ru",
     },
   });
 }
@@ -303,6 +304,10 @@ export function deleteDrop(businessId: string, dropId: string) {
 
 export function getBusinessCard(businessId: string) {
   return apiRequest<import("./dto").BusinessCardDto>(`/api/v1/businesses/${businessId}/business-card`, { auth: true });
+}
+
+export function getPublicBusinessCard(businessId: string) {
+  return apiRequest<import("./dto").BusinessCardDto>(`/api/v1/businesses/${businessId}/business-card`);
 }
 
 export function saveBusinessCard(businessId: string, blocks: import("./dto").BusinessCardBlockDto[]) {

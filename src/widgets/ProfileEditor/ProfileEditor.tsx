@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Globe, Instagram, MessageCircle, Palette } from "lucide-react";
 import { Card } from "../../shared/ui/Card/Card";
 import type { BrandProfileDto } from "../../shared/api/dto";
@@ -18,6 +19,7 @@ interface ProfileEditorProps {
 }
 
 export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: ProfileEditorProps) {
+  const { t } = useTranslation();
   const [avatarShape, setAvatarShape] = useState<"circle" | "square">("circle");
   const update = (patch: Partial<BrandProfileDto>) => onChange({ ...profile, ...patch });
 
@@ -37,9 +39,9 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
             {profile.logoUrl ? <img src={profile.logoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
           </div>
           <div>
-            <h2 className="fcw-h3" style={{ margin: 0 }}>{profile.businessName || "Brand Profile"}</h2>
+            <h2 className="fcw-h3" style={{ margin: 0 }}>{profile.businessName || t("profileEditor.brandProfile")}</h2>
             <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>
-              {profile.description || "Read-only access to business data."}
+              {profile.description || t("profileEditor.readOnlyAccess")}
             </p>
           </div>
         </div>
@@ -48,10 +50,10 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
   }
 
   return (
-    <div style={{ maxWidth: "480px", margin: "0 auto" }}>
-      <Card padding="lg">
+    <Card padding="lg">
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1fr)", gap: "var(--fcw-space-lg)" }}>
+        {/* Left column: avatar + brand color + logo URL */}
         <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-          {/* Avatar preview + shape toggle */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
             <div
               style={{
@@ -80,7 +82,7 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
                 }}
                 onClick={() => setAvatarShape("circle")}
               >
-                Circle
+                {t("profileEditor.circle")}
               </button>
               <button
                 className={`fcw-btn fcw-btn-sm ${avatarShape === "square" ? "fcw-glassmorph-selected-seg" : ""}`}
@@ -91,13 +93,13 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
                 }}
                 onClick={() => setAvatarShape("square")}
               >
-                Square
+                {t("profileEditor.square")}
               </button>
             </div>
           </div>
 
           <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-            <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Palette size={12} />Цвет бренда</span>
+            <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Palette size={12} />{t("profileEditor.brandColor")}</span>
             <div className="fcw-flex" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
               {BRAND_COLOR_PRESETS.map(color => (
                 <button
@@ -126,35 +128,40 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
           </label>
 
           <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-            <span className="fcw-label">Logo URL</span>
+            <span className="fcw-label">{t("profileEditor.logoUrl")}</span>
             <input className="fcw-input" value={profile.logoUrl || ""} onChange={e => update({ logoUrl: e.target.value })} placeholder="https://..." />
           </label>
+        </div>
 
+        {/* Right column: description + social links */}
+        <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
           <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-            <span className="fcw-label">Description</span>
+            <span className="fcw-label">{t("profileEditor.description")}</span>
             <textarea className="fcw-textarea" value={profile.description || ""} onChange={e => update({ description: e.target.value })} rows={3} />
           </label>
 
           <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Globe size={12} />Website</span>
+              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Globe size={12} />{t("profileEditor.website")}</span>
               <input className="fcw-input" value={profile.websiteUrl || ""} onChange={e => update({ websiteUrl: e.target.value })} placeholder="https://..." />
             </label>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Instagram size={12} />Instagram</span>
+              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Instagram size={12} />{t("profileEditor.instagram")}</span>
               <input className="fcw-input" value={profile.instagramUrl || ""} onChange={e => update({ instagramUrl: e.target.value })} placeholder="https://instagram.com/..." />
             </label>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><MessageCircle size={12} />Telegram</span>
+              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><MessageCircle size={12} />{t("profileEditor.telegram")}</span>
               <input className="fcw-input" value={profile.telegramUrl || ""} onChange={e => update({ telegramUrl: e.target.value })} placeholder="https://t.me/..." />
             </label>
           </div>
-
-          <button className="fcw-btn fcw-btn-primary" onClick={onSave} disabled={busy}>
-            Save Profile
-          </button>
         </div>
-      </Card>
-    </div>
+      </div>
+
+      <div style={{ marginTop: "var(--fcw-space-lg)" }}>
+        <button className="fcw-btn fcw-btn-primary" onClick={onSave} disabled={busy}>
+          {t("profileEditor.save")}
+        </button>
+      </div>
+    </Card>
   );
 }

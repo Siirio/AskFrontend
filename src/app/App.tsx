@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Navigation } from "../shared/ui/Navigation/Navigation";
 import { HomePage } from "../pages/HomePage/HomePage";
 import { ResultsPage } from "../pages/ResultsPage/ResultsPage";
@@ -13,10 +14,11 @@ import { ChatsPage } from "../pages/ChatsPage/ChatsPage";
 import { ROUTES } from "./routes";
 
 export function App() {
+  const { t } = useTranslation();
   return (
     <>
       <a href="#main-content" className="fcw-skip-link">
-        Пропустить навигацию
+        {t("app.skipNav")}
       </a>
       <Navigation />
       <Routes>

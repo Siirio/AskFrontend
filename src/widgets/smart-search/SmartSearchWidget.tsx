@@ -1,57 +1,66 @@
+import { useTranslation } from "react-i18next";
 import { MapPin, MessageCircle, Phone, Send } from "lucide-react";
 import type { SearchResult } from "../../entities/search-result/model";
 
-const kindLabel = {
-  product: "Товар",
-  service: "Услуга",
-  business: "Поставщик",
-};
-
-function badgeLabel(value: string): string {
-  const labels: Record<string, string> = {
-    "official channel": "Есть официальный канал",
-    "complete card": "Карточка заполнена",
-    pickup: "Есть самовывоз",
-    "active drop": "Есть активный дроп",
-  };
-  return labels[value] ?? value;
-}
-
-function reasonLabel(value: string): string {
-  const labels: Record<string, string> = {
-    "matches by title": "Подходит по названию",
-    "pickup available": "Есть самовывоз",
-    "within budget": "В бюджете",
-    "brand matches this intent": "Бренд подходит под запрос",
-  };
-  if (value.startsWith("category:")) return value.replace("category:", "Категория:");
-  return labels[value] ?? value;
-}
-
-function decisionStatusLabel(result: SearchResult): string {
-  if (result.confirmationStatus === "BUSINESS_CONFIRMED") return "Подтверждено бизнесом";
-  if (result.confirmationStatus === "DATA_UPDATED") return "Данные обновлены";
-  return "Нужно подтверждение";
-}
-
-function pickupLabel(options: SearchResult["pickupOptions"]): string {
-  if (options.includes("PICKUP")) return "Самовывоз";
-  if (options.includes("ONLINE")) return "Онлайн";
-  return "Формат получения уточняется";
-}
-
 export function SmartSearchWidget({ results, isLoading }: { results: SearchResult[]; isLoading: boolean }) {
+  const { t } = useTranslation();
+
+  const kindLabel: Record<string, string> = {
+    product: t("smartSearch.kindProduct"),
+    service: t("smartSearch.kindService"),
+    business: t("smartSearch.kindBusiness"),
+  };
+
+  function badgeLabel(value: string): string {
+    const labels: Record<string, string> = {
+      "official channel": t("smartSearch.badgeOfficial"),
+      "complete card": t("smartSearch.badgeComplete"),
+      pickup: t("smartSearch.badgePickup"),
+      "active drop": t("smartSearch.badgeActiveDrop"),
+    };
+    return labels[value] ?? value;
+  }
+
+  function reasonLabel(value: string): string {
+    const labels: Record<string, string> = {
+      "matches by title": t("smartSearch.reasonTitle"),
+      "pickup available": t("smartSearch.reasonPickup"),
+      "within budget": t("smartSearch.reasonBudget"),
+      "brand matches this intent": t("smartSearch.reasonBrand"),
+    };
+    if (value.startsWith("category:")) return `${t("smartSearch.reasonCategory")}: ${value.replace("category:", "")}`;
+    return labels[value] ?? value;
+  }
+
+  function decisionStatusLabel(result: SearchResult): string {
+    if (result.confirmationStatus === "BUSINESS_CONFIRMED") return t("smartSearch.statusConfirmed");
+    if (result.confirmationStatus === "DATA_UPDATED") return t("smartSearch.statusUpdated");
+    return t("smartSearch.statusNeedsConfirm");
+  }
+
+  function pickupLabel(options: SearchResult["pickupOptions"]): string {
+    if (options.includes("PICKUP")) return t("smartSearch.pickup");
+    if (options.includes("ONLINE")) return t("smartSearch.online");
+    return t("smartSearch.pickupUnknown");
+  }
+
+  function sectionLabel(section: SearchResult["section"]): string | null {
+    if (section === "OVER_BUDGET") return t("smartSearch.sectionOverBudget");
+    if (section === "WRONG_CITY") return t("smartSearch.sectionWrongCity");
+    if (section === "SIMILAR") return t("smartSearch.sectionSimilar");
+    return null;
+  }
   return (
     <section className="results-section">
       <div className="section-heading">
-        <p className="eyebrow">Результаты</p>
-        <h2>Сначала найденные данные, затем подтверждение</h2>
+        <p className="eyebrow">{t("smartSearch.results")}</p>
+        <h2>{t("smartSearch.subtitle")}</h2>
       </div>
 
-      {isLoading ? <div className="empty-state">Ищем по товарам, услугам и профилям поставщиков...</div> : null}
+      {isLoading ? <div className="empty-state">{t("smartSearch.searching")}</div> : null}
 
       {!isLoading && results.length === 0 ? (
-        <div className="empty-state">Точных совпадений нет. Сохраните запрос и отправьте его поставщикам для ручного подтверждения.</div>
+        <div className="empty-state">{t("smartSearch.noMatch")}</div>
       ) : null}
 
       <div className="result-grid">
@@ -79,30 +88,30 @@ export function SmartSearchWidget({ results, isLoading }: { results: SearchResul
             </div>
             {result.note ? <p>{result.note}</p> : null}
             <div className="result-meta">
-              <span>{result.priceLabel ?? "Цена после уточнения"}</span>
+              <span>{result.priceLabel ?? t("smartSearch.priceAfter")}</span>
               <span>{result.branchContext || result.branch}</span>
               <span>{pickupLabel(result.pickupOptions)}</span>
             </div>
             <div className="card-actions">
               {result.actions.includes("call") ? (
-                <button aria-label="Позвонить">
+                <button aria-label={t("smartSearch.callAria")}>
                   <Phone size={17} />
                 </button>
               ) : null}
               {result.actions.includes("map") ? (
-                <button aria-label="Показать на карте">
+                <button aria-label={t("smartSearch.mapAria")}>
                   <MapPin size={17} />
                 </button>
               ) : null}
               {result.actions.includes("chat") ? (
-                <button aria-label="Открыть чат">
+                <button aria-label={t("smartSearch.chatAria")}>
                   <MessageCircle size={17} />
                 </button>
               ) : null}
               {result.actions.includes("request") ? (
                 <button className="icon-text-button">
                   <Send size={17} />
-                  Подтвердить
+                  {t("smartSearch.confirm")}
                 </button>
               ) : null}
             </div>
@@ -111,11 +120,4 @@ export function SmartSearchWidget({ results, isLoading }: { results: SearchResul
       </div>
     </section>
   );
-}
-
-function sectionLabel(section: SearchResult["section"]): string | null {
-  if (section === "OVER_BUDGET") return "Дороже бюджета";
-  if (section === "WRONG_CITY") return "Другой город";
-  if (section === "SIMILAR") return "Похожее";
-  return null;
 }

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2 } from "lucide-react";
 import type { ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
 import { useMotion } from "../../app/providers/MotionProvider";
-import { resolveContactAction } from "../../shared/api/askClient";
-import type { ContactResolveDto } from "../../shared/api/dto";
+import { resolveContactAction, getPublicBusinessCard } from "../../shared/api/askClient";
+import type { ContactResolveDto, BusinessCardDto } from "../../shared/api/dto";
 
 interface Props {
   data: ResultCardData | null;
@@ -12,11 +13,23 @@ interface Props {
 }
 
 export function CompanyCard({ data, onClose }: Props) {
+  const { t } = useTranslation();
   const { reduced } = useMotion();
   const [showChat, setShowChat] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
   const [contactInfo, setContactInfo] = useState<ContactResolveDto | null>(null);
   const [chatMessage, setChatMessage] = useState("");
+  const [cardData, setCardData] = useState<BusinessCardDto | null>(null);
+  const [cardLoading, setCardLoading] = useState(false);
+
+  useEffect(() => {
+    if (!data?.businessId) return;
+    setCardLoading(true);
+    getPublicBusinessCard(data.businessId)
+      .then(setCardData)
+      .catch(() => setCardData(null))
+      .finally(() => setCardLoading(false));
+  }, [data?.businessId]);
 
   const handleOpenChat = async () => {
     setShowChat(true);
@@ -116,7 +129,7 @@ export function CompanyCard({ data, onClose }: Props) {
                 <button
                   className="fcw-btn fcw-btn-ghost fcw-btn-icon"
                   onClick={() => setShowChat(false)}
-                  aria-label="Назад к информации"
+                  aria-label={t("companyCard.backToInfo")}
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -124,7 +137,7 @@ export function CompanyCard({ data, onClose }: Props) {
                 <button
                   className="fcw-btn fcw-btn-ghost fcw-btn-icon"
                   onClick={onClose}
-                  aria-label="Закрыть"
+                  aria-label={t("companyCard.close")}
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -143,7 +156,7 @@ export function CompanyCard({ data, onClose }: Props) {
               />
               <div className="fcw-flex-col" style={{ gap: "0.125rem", minWidth: 0 }}>
                 <span className="fcw-body fcw-weight-semibold" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {showChat ? `Чат — ${brandLabel}` : brandLabel}
+                  {showChat ? t("companyCard.chatWith", { brand: brandLabel }) : brandLabel}
                 </span>
                 {!showChat && (
                   <span className="fcw-body-xs fcw-text-tertiary">
@@ -154,7 +167,7 @@ export function CompanyCard({ data, onClose }: Props) {
               <button
                 className="fcw-btn fcw-btn-ghost fcw-btn-icon"
                 onClick={onClose}
-                aria-label="Закрыть"
+                aria-label={t("companyCard.close")}
                 style={{ marginLeft: "auto" }}
               >
                 <X size={18} />
@@ -190,13 +203,13 @@ export function CompanyCard({ data, onClose }: Props) {
                             }}
                           >
                             <p className="fcw-body-s" style={{ margin: 0 }}>
-                              {contactInfo.actionType === "REDIRECT" && "Чат откроется в отдельном приложении. Нажмите кнопку ниже чтобы перейти."}
-                              {contactInfo.actionType === "DISPLAY" && `Контакт: ${contactInfo.displayValue || contactInfo.label}`}
-                              {contactInfo.actionType === "DEEP_LINK" && "Чат доступен через приложение."}
-                              {contactInfo.actionType === "CHAT" && "Напишите ваше сообщение продавцу."}
+                              {contactInfo.actionType === "REDIRECT" && t("companyCard.chat.redirect")}
+                              {contactInfo.actionType === "DISPLAY" && t("companyCard.chat.display", { value: contactInfo.displayValue || contactInfo.label })}
+                              {contactInfo.actionType === "DEEP_LINK" && t("companyCard.chat.deeplink")}
+                              {contactInfo.actionType === "CHAT" && t("companyCard.chat.chat")}
                             </p>
                             <p className="fcw-body-xs fcw-text-tertiary" style={{ margin: "0.375rem 0 0 0" }}>
-                              Через {contactInfo.provider} — {contactInfo.label}
+                              {t("companyCard.chat.via", { provider: contactInfo.provider, label: contactInfo.label })}
                             </p>
                           </div>
                         ) : (
@@ -209,7 +222,7 @@ export function CompanyCard({ data, onClose }: Props) {
                             }}
                           >
                             <p className="fcw-body-s fcw-text-tertiary" style={{ margin: 0 }}>
-                              Напишите продавцу чтобы начать общение
+                              {t("companyCard.chat.start")}
                             </p>
                           </div>
                         )}
@@ -230,7 +243,7 @@ export function CompanyCard({ data, onClose }: Props) {
                     <input
                       type="text"
                       className="fcw-input"
-                      placeholder="Введите сообщение..."
+                      placeholder={t("companyCard.chatPlaceholder")}
                       value={chatMessage}
                       onChange={e => setChatMessage(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
@@ -240,7 +253,7 @@ export function CompanyCard({ data, onClose }: Props) {
                       className="fcw-btn fcw-btn-primary fcw-btn-icon"
                       onClick={handleSend}
                       disabled={!chatMessage.trim()}
-                      aria-label="Отправить"
+                      aria-label={t("companyCard.send")}
                     >
                       <Send size={16} />
                     </button>
@@ -275,7 +288,7 @@ export function CompanyCard({ data, onClose }: Props) {
                     )}
                     {data.distance && (
                       <div className="fcw-body-s fcw-text-secondary">
-                        Расстояние: {data.distance}
+                        {t("companyCard.distance")}: {data.distance}
                       </div>
                     )}
                     {data.price && (
@@ -288,7 +301,7 @@ export function CompanyCard({ data, onClose }: Props) {
                   {/* Intent reasons */}
                   {data.intentReasons && data.intentReasons.length > 0 && (
                     <div style={{ marginTop: "1.25rem" }}>
-                      <span className="fcw-label" style={{ display: "block", marginBottom: "0.5rem" }}>Почему вам подходит</span>
+                      <span className="fcw-label" style={{ display: "block", marginBottom: "0.5rem" }}>{t("companyCard.whyMatch")}</span>
                       <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.375rem" }}>
                         {data.intentReasons.map((reason, i) => (
                           <span
@@ -308,21 +321,20 @@ export function CompanyCard({ data, onClose }: Props) {
                     </div>
                   )}
 
-                  {/* Business card placeholder */}
-                  <div
-                    style={{
-                      marginTop: "1.5rem",
-                      padding: "2rem",
-                      textAlign: "center",
-                      backgroundColor: "var(--fcw-color-surface-secondary)",
-                      borderRadius: "var(--fcw-radius-lg)",
-                      border: "1px dashed var(--fcw-color-border)",
-                    }}
-                  >
-                    <p className="fcw-body-s fcw-text-tertiary" style={{ margin: 0 }}>
-                      Визитка компании загружается...
-                    </p>
-                  </div>
+                  {/* Business card */}
+                  {cardLoading ? (
+                    <div style={{ marginTop: "1.5rem", padding: "2rem", textAlign: "center" }}>
+                      <Loader2 className="fcw-animate-spin" size={20} style={{ color: "var(--fcw-color-text-tertiary)" }} />
+                    </div>
+                  ) : cardData && cardData.blocks.length > 0 ? (
+                    <div style={{ marginTop: "1.5rem" }}>
+                      {[...cardData.blocks].sort((a, b) => a.displayOrder - b.displayOrder).map((block) => (
+                        <div key={block.localId} style={{ marginBottom: "0.75rem" }}>
+                          <PreviewBlock block={block} brandColor={data?.brandColor} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -342,7 +354,7 @@ export function CompanyCard({ data, onClose }: Props) {
                   onClick={handleOpenChat}
                 >
                   <MessageCircle size={16} />
-                  Написать продавцу
+                  {t("companyCard.messageSeller")}
                 </button>
               </div>
             )}
@@ -351,4 +363,70 @@ export function CompanyCard({ data, onClose }: Props) {
       )}
     </AnimatePresence>
   );
+}
+
+function PreviewBlock({ block, brandColor }: { block: { blockType: string; config: Record<string, unknown> }; brandColor?: string }) {
+  const cfg = block.config || {};
+  const bg = (cfg.backgroundColor as string) || "transparent";
+  const color = (cfg.textColor as string) || "var(--fcw-color-text)";
+
+  switch (block.blockType) {
+    case "HERO":
+      return (
+        <div style={{ padding: "1rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)", textAlign: "center" }}>
+          {(cfg.heroImage as string) && <img src={cfg.heroImage as string} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: "var(--fcw-radius-sm)", marginBottom: "0.5rem" }} />}
+          {(cfg.heroTitle as string) && <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color }}>{cfg.heroTitle as string}</h3>}
+          {(cfg.heroSubtitle as string) && <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color, opacity: 0.7 }}>{cfg.heroSubtitle as string}</p>}
+        </div>
+      );
+    case "ABOUT":
+      return (
+        <div style={{ padding: "1rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
+          {(cfg.aboutTitle as string) && <h4 style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600, color }}>{cfg.aboutTitle as string}</h4>}
+          {(cfg.aboutText as string) && <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color, opacity: 0.8, lineHeight: 1.5 }}>{cfg.aboutText as string}</p>}
+        </div>
+      );
+    case "GALLERY": {
+      const images = (cfg.images as string[]) || [];
+      if (images.length === 0) return null;
+      return (
+        <div style={{ padding: "0.5rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: "0.375rem" }}>
+            {images.map((img, i) => (
+              <img key={i} src={img} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "var(--fcw-radius-sm)" }} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+    case "CONTACTS": {
+      const contacts = (cfg.contacts as Array<{ provider: string; url: string; label: string }>) || [];
+      if (contacts.length === 0) return null;
+      return (
+        <div style={{ padding: "0.75rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
+          {contacts.map((c, i) => (
+            <a key={i} href={c.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontSize: "0.8125rem", color: brandColor || "var(--fcw-color-primary)", textDecoration: "none", marginBottom: "0.25rem" }}>
+              {c.label || c.provider}
+            </a>
+          ))}
+        </div>
+      );
+    }
+    case "SERVICES": {
+      const services = (cfg.services as Array<{ name: string; description?: string; price?: string }>) || [];
+      if (services.length === 0) return null;
+      return (
+        <div style={{ padding: "0.75rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
+          {services.map((s, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.375rem 0", borderBottom: i < services.length - 1 ? "1px solid var(--fcw-color-border)" : undefined }}>
+              <span style={{ fontSize: "0.8125rem", color }}>{s.name}</span>
+              {s.price && <span style={{ fontSize: "0.8125rem", fontWeight: 600, color }}>{s.price}</span>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    default:
+      return null;
+  }
 }

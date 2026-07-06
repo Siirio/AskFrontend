@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowDownNarrowWide, ArrowLeft, ArrowUpDown, Briefcase, ChevronDown, CircleDollarSign, MapPin, MessageCircle, Navigation, Package, Sparkles, Store, Tags } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowDownNarrowWide, ArrowLeft, Briefcase, CircleDollarSign, MapPin, MessageCircle, Navigation, Package, Plus, Sparkles, Store, Tags } from "lucide-react";
 import { SearchBar } from "../../shared/ui/SearchBar/SearchBar";
-import { CitySelector } from "../../shared/ui/CitySelector/CitySelector";
 import { SegmentedControl, type SegmentedOption } from "../../shared/ui/SegmentedControl/SegmentedControl";
 import { ResultCard, type ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
 import { CompanyCard } from "../../widgets/CompanyCard/CompanyCard";
@@ -18,50 +18,51 @@ type SearchMode = "products" | "services";
 type ResultsTab = "found" | "matching" | "chats";
 type SortKey = "intent_match" | "distance" | "active_events" | "price_asc" | "price_desc";
 
-const SORT_OPTIONS: SegmentedOption<SortKey>[] = [
-  { key: "intent_match", label: "По релевантности", icon: <Sparkles size={16} /> },
-  { key: "distance", label: "Сначала рядом", icon: <Navigation size={16} /> },
-  { key: "active_events", label: "Активные дропы", icon: <Tags size={16} /> },
-  { key: "price_asc", label: "Дешевле", icon: <ArrowDownNarrowWide size={16} /> },
-  { key: "price_desc", label: "Дороже", icon: <CircleDollarSign size={16} /> },
-];
-
-function mapCard(card: SearchV2CardDto): ResultCardData {
-  const contactAction = card.contactActions?.[0];
-  return {
-    id: card.resultId,
-    title: card.title || "Без названия",
-    subtitle: undefined,
-    price: card.price ? `${card.price.toLocaleString("ru-KZ")} ₸` : undefined,
-    location: card.branchName ?? undefined,
-    imageUrl: card.brandLogoUrl ?? undefined,
-    brandName: card.businessName ?? undefined,
-    brandColor: card.brandColor ?? undefined,
-    distance: card.distanceMeters ? `${(card.distanceMeters / 1000).toFixed(1)} км` : undefined,
-    verified: false,
-    intentReasons: card.matchReasons,
-    matchScore: undefined,
-    type: card.component,
-    hasContactAction: Boolean(contactAction),
-    contactActionId: contactAction?.contactActionId,
-  };
-}
-
 export function ResultsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { reduced } = useMotion();
   const query = searchParams.get("query") || "";
   const mode = (searchParams.get("mode") || "products") as SearchMode;
-  const city = searchParams.get("city") || "Алматы";
+  const city = searchParams.get("city") || t("citySelector.almaty");
 
   const [results, setResults] = useState<ResultCardData[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<ResultsTab>("found");
   const [sort, setSort] = useState<SortKey>("intent_match");
-  const [sortOpen, setSortOpen] = useState(false);
   const [overlayCard, setOverlayCard] = useState<ResultCardData | null>(null);
+
+  const sortOptions: SegmentedOption<SortKey>[] = [
+    { key: "intent_match", label: t("results.sort.relevance"), icon: <Sparkles size={16} /> },
+    { key: "distance", label: t("results.sort.distance"), icon: <Navigation size={16} /> },
+    { key: "active_events", label: t("results.sort.activeEvents"), icon: <Tags size={16} /> },
+    { key: "price_asc", label: t("results.sort.priceAsc"), icon: <ArrowDownNarrowWide size={16} /> },
+    { key: "price_desc", label: t("results.sort.priceDesc"), icon: <CircleDollarSign size={16} /> },
+  ];
+
+  function mapCard(card: SearchV2CardDto): ResultCardData {
+    const contactAction = card.contactActions?.[0];
+    return {
+      id: card.resultId,
+      title: card.title || t("results.noTitle"),
+      subtitle: undefined,
+      price: card.price ? `${card.price.toLocaleString("ru-KZ")} ${t("currency.short")}` : undefined,
+      location: card.branchName ?? undefined,
+      imageUrl: card.brandLogoUrl ?? undefined,
+      brandName: card.businessName ?? undefined,
+      brandColor: card.brandColor ?? undefined,
+      distance: card.distanceMeters ? `${(card.distanceMeters / 1000).toFixed(1)} ${t("results.km")}` : undefined,
+      verified: false,
+      intentReasons: card.matchReasons,
+      matchScore: undefined,
+      type: card.component,
+      hasContactAction: Boolean(contactAction),
+      contactActionId: contactAction?.contactActionId,
+      businessId: card.businessId,
+    };
+  }
 
   const scopeKey = mode === "products" ? "product" : "service";
 
@@ -74,7 +75,7 @@ export function ResultsPage() {
         const cards = res.sections.flatMap(s => s.cards.map(mapCard));
         setResults(cards);
       })
-      .catch(e => setError(e instanceof Error ? e.message : "Ошибка поиска"))
+      .catch(e => setError(e instanceof Error ? e.message : t("results.error.title")))
       .finally(() => setBusy(false));
   }, [query, scopeKey, city, sort]);
 
@@ -82,28 +83,13 @@ export function ResultsPage() {
     navigate(buildRoute(ROUTES.results, {}, { query: newQuery, mode, city }));
   };
 
-  const handleCityChange = (newCity: string) => {
-    setSearchParams({ query, mode, city: newCity });
-  };
-
-  const handleModeChange = (newMode: SearchMode) => {
-    setSearchParams({ query, mode: newMode, city });
-  };
-
-  const matchingLabel = mode === "products" ? "Подходящие магазины" : "Подходящие исполнители";
+  const matchingLabel = mode === "products" ? t("results.tab.matching") : t("results.tab.matchingServices");
 
   const tabs: SegmentedOption<ResultsTab>[] = [
-    { key: "found", label: "Найденное", icon: mode === "products" ? <Package size={15} /> : <Briefcase size={15} /> },
+    { key: "found", label: t("results.tab.found"), icon: mode === "products" ? <Package size={15} /> : <Briefcase size={15} /> },
     { key: "matching", label: matchingLabel, icon: <Store size={15} /> },
-    { key: "chats", label: "Чаты", icon: <MessageCircle size={15} /> },
+    { key: "chats", label: t("results.tab.chats"), icon: <MessageCircle size={15} /> },
   ];
-
-  const modeOptions: SegmentedOption<SearchMode>[] = [
-    { key: "products", label: "Товары", icon: <Package size={16} /> },
-    { key: "services", label: "Услуги", icon: <Briefcase size={16} /> },
-  ];
-
-  const activeSortLabel = SORT_OPTIONS.find(option => option.key === sort)?.label ?? SORT_OPTIONS[0].label;
 
   const isEmpty = !busy && !error && results.length === 0 && query;
 
@@ -124,7 +110,7 @@ export function ResultsPage() {
             <button
               className="fcw-btn fcw-btn-ghost fcw-btn-icon"
               onClick={() => navigate(-1)}
-              aria-label="Назад"
+              aria-label={t("results.back")}
               style={{ flexShrink: 0 }}
             >
               <ArrowLeft size={20} />
@@ -132,26 +118,14 @@ export function ResultsPage() {
             <div className="fcw-flex-1" style={{ minWidth: 0 }}>
               <SearchBar key={`s-${query}`} onSearch={handleSearch} initialQuery={query} busy={busy} />
             </div>
-            <SegmentedControl
-              options={modeOptions}
-              value={mode}
-              onChange={handleModeChange}
-              layoutId="resultsModePill"
-              ariaLabel="Тип поиска"
-              className="fcw-hidden-mobile"
-              style={{ flexShrink: 0 }}
-            />
-            <CitySelector value={city} onChange={handleCityChange} />
-          </div>
-
-          <div className="fcw-hidden-desktop" style={{ marginBottom: "0.5rem" }}>
-            <SegmentedControl
-              options={modeOptions}
-              value={mode}
-              onChange={handleModeChange}
-              layoutId="resultsMobileModePill"
-              ariaLabel="Тип поиска"
-            />
+            <button
+              className="fcw-btn fcw-btn-primary fcw-btn-sm"
+              onClick={() => navigate(ROUTES.home)}
+              style={{ gap: "0.5rem", flexShrink: 0 }}
+            >
+              <Plus size={16} />
+              {t("results.newRequest")}
+            </button>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -160,7 +134,7 @@ export function ResultsPage() {
               value={activeTab}
               onChange={setActiveTab}
               layoutId="resultsTabPill"
-              ariaLabel="Разделы результатов"
+              ariaLabel={t("results.sections")}
             />
           </div>
         </div>
@@ -172,17 +146,17 @@ export function ResultsPage() {
             <div className="results-center">
               {busy && (
                 <div style={{ padding: "4rem 0" }}>
-                  <Loading size="lg" text="Поиск..." />
+                  <Loading size="lg" text={t("results.searching")} />
                 </div>
               )}
 
               {error && (
                 <EmptyState
-                  title="Ошибка поиска"
+                  title={t("results.error.title")}
                   description={error}
                   action={
                     <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => handleSearch(query)}>
-                      Повторить
+                      {t("results.error.retry")}
                     </button>
                   }
                 />
@@ -190,8 +164,8 @@ export function ResultsPage() {
 
               {isEmpty && (
                 <EmptyState
-                  title="Ничего не найдено"
-                  description="Попробуйте изменить запрос или город"
+                  title={t("results.empty.title")}
+                  description={t("results.empty.description")}
                 />
               )}
 
@@ -226,7 +200,7 @@ export function ResultsPage() {
             >
               <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.5rem" }}>
                 <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0 }}>
-                  Запрос отправлен в {Math.min(results.length, 7)} {mode === "products" ? "магазинов" : "исполнителей"} · {Math.min(results.length, 4)} уже ответили
+                  {t("results.matching.sent", { stores: Math.min(results.length, 7), entity: mode === "products" ? t("results.tab.matching") : t("results.tab.matchingServices") })} · {t("results.matching.responded", { count: Math.min(results.length, 4) })}
                 </p>
               </div>
               {results.slice(0, 6).map((card, i) => (
@@ -255,7 +229,7 @@ export function ResultsPage() {
                     <div className="fcw-flex-col fcw-flex-1" style={{ gap: "0.25rem" }}>
                       <div className="fcw-flex-between">
                         <span className="fcw-body fcw-weight-semibold">{card.brandName || card.title}</span>
-                        <span className="fcw-label" style={{ color: "var(--fcw-color-accent)" }}>Уже ответили</span>
+                        <span className="fcw-label" style={{ color: "var(--fcw-color-accent)" }}>{t("results.matching.respondedLabel")}</span>
                       </div>
                       {card.location && (
                         <span className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
@@ -287,7 +261,7 @@ export function ResultsPage() {
                             color: "var(--fcw-color-accent)",
                           }}
                         >
-                          Самовывоз: сегодня
+                          {t("results.matching.pickupToday")}
                         </span>
                       </div>
                     </div>
@@ -307,8 +281,8 @@ export function ResultsPage() {
             >
               {results.filter(c => c.hasContactAction).length === 0 ? (
                 <EmptyState
-                  title="Чаты"
-                  description="Контекстные чаты появятся здесь после отправки запросов магазинам"
+                  title={t("results.tab.chats")}
+                  description={t("results.chats.empty")}
                 />
               ) : (
                 results.filter(c => c.hasContactAction).map(card => (
@@ -327,10 +301,10 @@ export function ResultsPage() {
                       }} />
                       <div className="fcw-flex-col fcw-flex-1" style={{ gap: "0.125rem", minWidth: 0 }}>
                         <span className="fcw-body fcw-weight-medium">{card.brandName || card.title}</span>
-                        <span className="fcw-body-xs fcw-text-tertiary">Нажмите чтобы открыть визитку и написать</span>
+                        <span className="fcw-body-xs fcw-text-tertiary">{t("results.chats.clickHint")}</span>
                       </div>
                       <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={e => { e.stopPropagation(); setOverlayCard(card); }}>
-                        <MessageCircle size={14} /> Написать
+                        <MessageCircle size={14} /> {t("results.chats.write")}
                       </button>
                     </div>
                   </div>
@@ -340,42 +314,17 @@ export function ResultsPage() {
               )}
             </div>
 
-            <aside className="results-sort-rail" aria-label="Сортировка результатов">
-              <button
-                type="button"
-                className="fcw-btn fcw-btn-secondary fcw-btn-sm results-sort-trigger"
-                onClick={() => setSortOpen(open => !open)}
-                aria-expanded={sortOpen}
-              >
-                <ArrowUpDown size={15} />
-                <span>Сортировка</span>
-                <ChevronDown size={15} style={{ transform: sortOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 220ms var(--fcw-ease-out)" }} />
-              </button>
-              <span className="fcw-body-xs fcw-text-tertiary results-sort-current">{activeSortLabel}</span>
-              <AnimatePresence>
-                {sortOpen && (
-                  <motion.div
-                    initial={reduced ? { opacity: 1 } : { opacity: 0, y: -8, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
-                    transition={{ duration: reduced ? 0.01 : 0.24, ease: [0.16, 1, 0.3, 1] }}
-                    className="results-sort-menu"
-                  >
-                    <SegmentedControl
-                      options={SORT_OPTIONS}
-                      value={sort}
-                      onChange={(nextSort) => {
-                        setSort(nextSort);
-                        setSortOpen(false);
-                      }}
-                      layoutId="resultsSortPill"
-                      ariaLabel="Метод сортировки"
-                      vertical
-                      iconOnly
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            <aside className="results-sort-rail" aria-label={t("results.sort.railLabel")}>
+              <span className="fcw-label fcw-text-tertiary" style={{ marginBottom: "0.5rem", display: "block" }}>{t("results.sort.label")}</span>
+              <SegmentedControl
+                options={sortOptions}
+                value={sort}
+                onChange={setSort}
+                layoutId="resultsSortPill"
+                ariaLabel={t("results.sort.ariaLabel")}
+                vertical
+                iconOnly
+              />
             </aside>
           </div>
         </div>
