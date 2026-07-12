@@ -7,8 +7,8 @@ import { ProductPage } from "../pages/ProductPage/ProductPage";
 import { StorefrontPage } from "../pages/StorefrontPage/StorefrontPage";
 import { ProfilePage } from "../pages/ProfilePage/ProfilePage";
 import { BusinessPage } from "../pages/BusinessPage/BusinessPage";
-import { HistoryPage } from "../pages/HistoryPage/HistoryPage";
 import { ChatsPage } from "../pages/ChatsPage/ChatsPage";
+import { OAuthCallbackPage } from "../pages/OAuthCallbackPage/OAuthCallbackPage";
 
 export const router = createBrowserRouter([
   { path: ROUTES.home, element: <HomePage /> },
@@ -18,7 +18,7 @@ export const router = createBrowserRouter([
   { path: ROUTES.storefront, element: <StorefrontPage /> },
   { path: ROUTES.profile, element: <ProfilePage /> },
   { path: ROUTES.business, element: <BusinessPage /> },
-  { path: ROUTES.history, element: <HistoryPage /> },
   { path: ROUTES.chats, element: <ChatsPage /> },
+  { path: ROUTES.oauthCallback, element: <OAuthCallbackPage /> },
   { path: "*", element: <Navigate to={ROUTES.home} replace /> },
 ]);

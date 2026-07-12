@@ -1,40 +1,79 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, CheckCheck, Paperclip, FileText } from "lucide-react";
-import type { ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
+import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, Pin, PinOff, CheckCheck, Paperclip, FileText } from "lucide-react";
+import { useChat } from "./ChatContext";
 import { useMotion } from "../../app/providers/MotionProvider";
-import { getPublicBusinessCard, startChatConversation, getChatMessages, sendChatMessage, uploadChatFile } from "../../shared/api/askClient";
+import { startChatConversation, getChatMessages, sendChatMessage, markChatRead, getPublicBusinessCard, uploadChatFile } from "../../shared/api/askClient";
 import type { BusinessCardDto, ChatMessageDto } from "../../shared/api/dto";
 
-interface Props {
-  data: ResultCardData | null;
-  onClose: () => void;
-}
+const PANEL_WIDTH = 380;
 
-export function CompanyCard({ data, onClose }: Props) {
+export function ChatPanel() {
   const { t } = useTranslation();
   const { reduced } = useMotion();
+  const { isOpen, isPinned, chatData, closeChat, togglePin } = useChat();
   const [showChat, setShowChat] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [cardData, setCardData] = useState<BusinessCardDto | null>(null);
   const [cardLoading, setCardLoading] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [chatError, setChatError] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!data?.businessId) return;
+    if (!isOpen || !chatData?.businessId) return;
     setCardLoading(true);
-    getPublicBusinessCard(data.businessId)
+    getPublicBusinessCard(chatData.businessId)
       .then(setCardData)
       .catch(() => setCardData(null))
       .finally(() => setCardLoading(false));
-  }, [data?.businessId]);
+  }, [isOpen, chatData?.businessId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowChat(false);
+      setChatMessage("");
+      setMessages([]);
+      setConversationId(null);
+      setChatError("");
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && isPinned) {
+      document.body.setAttribute("data-chat-panel-pinned", "");
+    } else {
+      document.body.removeAttribute("data-chat-panel-pinned");
+    }
+    return () => { document.body.removeAttribute("data-chat-panel-pinned"); };
+  }, [isOpen, isPinned]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeChat();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, closeChat]);
+
+  useEffect(() => {
+    if (!isOpen || isPinned) return;
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as HTMLElement)) {
+        closeChat();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isOpen, isPinned, closeChat]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,11 +91,11 @@ export function CompanyCard({ data, onClose }: Props) {
   const handleOpenChat = async () => {
     setShowChat(true);
     setChatError("");
-    if (!data?.businessId || conversationId) return;
+    if (!chatData?.businessId || conversationId) return;
     setChatBusy(true);
     try {
-      const subject = data.title || data.brandName || t("companyCard.newChat");
-      const conv = await startChatConversation(data.businessId, subject);
+      const subject = chatData.title || chatData.brandName || t("companyCard.newChat");
+      const conv = await startChatConversation(chatData.businessId, subject);
       setConversationId(conv.conversationId);
       await loadMessages(conv.conversationId);
     } catch {
@@ -82,14 +121,14 @@ export function CompanyCard({ data, onClose }: Props) {
       return;
     }
 
-    if (!data?.businessId) {
+    if (!chatData?.businessId) {
       setChatError(t("companyCard.chat.error"));
       return;
     }
 
     try {
-      const subject = data.title || data.brandName || t("companyCard.newChat");
-      const conv = await startChatConversation(data.businessId, subject);
+      const subject = chatData.title || chatData.brandName || t("companyCard.newChat");
+      const conv = await startChatConversation(chatData.businessId, subject);
       setConversationId(conv.conversationId);
       const msg = await sendChatMessage(conv.conversationId, text);
       setMessages([msg]);
@@ -117,66 +156,53 @@ export function CompanyCard({ data, onClose }: Props) {
     }
   };
 
-  const brandLabel = data?.brandName || data?.title || "";
+  const brandLabel = chatData?.brandName || chatData?.title || "";
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   return (
     <AnimatePresence>
-      {data && (
-        <motion.div
-          className="fcw-fixed fcw-z-modal"
-          style={{
-            inset: 0,
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* Backdrop */}
-          <motion.div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              backdropFilter: "blur(8px)",
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
+      {isOpen && chatData && (
+        <>
+          {isMobile && (
+            <motion.div
+              style={{
+                position: "fixed", inset: 0, zIndex: 9998,
+                backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)",
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeChat}
+            />
+          )}
 
-          {/* Panel */}
           <motion.div
+            ref={panelRef}
             style={{
-              position: "relative",
-              width: "100%",
-              maxWidth: showChat ? 720 : 720,
-              maxHeight: "92vh",
+              position: "fixed",
+              top: 0,
+              right: 0,
+              width: isMobile ? "100%" : PANEL_WIDTH,
+              height: "100vh",
+              zIndex: 9999,
               backgroundColor: "var(--fcw-color-surface)",
-              borderRadius: "var(--fcw-radius-xl) var(--fcw-radius-xl) 0 0",
-              overflow: "hidden",
+              borderLeft: isMobile ? "none" : "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "0 -8px 40px rgba(0,0,0,0.25)",
+              boxShadow: isMobile ? "none" : "-8px 0 40px rgba(0,0,0,0.15)",
             }}
-            initial={reduced ? {} : { y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 360, damping: 36 }}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            initial={reduced ? { opacity: 0 } : { x: isMobile ? "100%" : PANEL_WIDTH }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={isMobile ? { x: "100%", opacity: 0 } : { x: PANEL_WIDTH, opacity: 0 }}
+            transition={reduced ? { duration: 0.15 } : { type: "spring", stiffness: 360, damping: 36 }}
           >
-            {/* Header */}
             <div
               style={{
-                padding: "1rem 1.25rem",
+                padding: "0.875rem 1rem",
                 borderBottom: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
                 display: "flex",
                 alignItems: "center",
-                gap: "0.75rem",
+                gap: "0.625rem",
                 flexShrink: 0,
               }}
             >
@@ -186,65 +212,63 @@ export function CompanyCard({ data, onClose }: Props) {
                   onClick={() => setShowChat(false)}
                   aria-label={t("companyCard.backToInfo")}
                 >
-                  <ArrowLeft size={20} />
+                  <ArrowLeft size={18} />
                 </button>
-              ) : (
-                <button
-                  className="fcw-btn fcw-btn-ghost fcw-btn-icon"
-                  onClick={onClose}
-                  aria-label={t("companyCard.close")}
-                >
-                  <ArrowLeft size={20} />
-                </button>
-              )}
+              ) : null}
               <div
                 style={{
-                  width: 40,
-                  height: 40,
+                  width: 36, height: 36,
                   borderRadius: "var(--fcw-radius-md)",
-                  backgroundColor: data.brandColor || "var(--fcw-color-surface-tertiary)",
-                  backgroundImage: data.imageUrl ? `url(${data.imageUrl})` : undefined,
+                  backgroundColor: chatData.brandColor || "var(--fcw-color-surface-tertiary)",
+                  backgroundImage: chatData.imageUrl ? `url(${chatData.imageUrl})` : undefined,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   flexShrink: 0,
                 }}
               />
-              <div className="fcw-flex-col" style={{ gap: "0.125rem", minWidth: 0 }}>
-                <span className="fcw-body fcw-weight-semibold" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div className="fcw-flex-col" style={{ gap: "0.0625rem", minWidth: 0, flex: 1 }}>
+                <span className="fcw-body fcw-weight-semibold" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.8125rem" }}>
                   {showChat ? t("companyCard.chatWith", { brand: brandLabel }) : brandLabel}
                 </span>
-                {!showChat && (
-                  <span className="fcw-body-xs fcw-text-tertiary">
-                    {data.brandName ? data.title : ""}
+                {!showChat && chatData.brandName && (
+                  <span className="fcw-body-xs fcw-text-tertiary" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {chatData.title}
                   </span>
                 )}
               </div>
+              {!isMobile && (
+                <button
+                  className="fcw-btn fcw-btn-ghost fcw-btn-icon"
+                  onClick={togglePin}
+                  aria-label={isPinned ? t("chatPanel.unpin") : t("chatPanel.pin")}
+                  style={{ color: isPinned ? "var(--fcw-color-primary)" : undefined }}
+                >
+                  {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
+                </button>
+              )}
               <button
                 className="fcw-btn fcw-btn-ghost fcw-btn-icon"
-                onClick={onClose}
+                onClick={closeChat}
                 aria-label={t("companyCard.close")}
-                style={{ marginLeft: "auto" }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Content */}
             <AnimatePresence mode="wait">
               {showChat ? (
                 <motion.div
                   key="chat"
-                  initial={{ opacity: 0, x: 40 }}
+                  initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -40 }}
+                  exit={{ opacity: 0, x: -30 }}
                   transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}
                 >
-                  {/* Messages area */}
-                  <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
+                  <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
                     {chatBusy ? (
                       <div style={{ display: "flex", justifyContent: "center", padding: "2rem" }}>
-                        <Loader2 className="fcw-animate-spin" size={24} style={{ color: "var(--fcw-color-text-tertiary)" }} />
+                        <Loader2 className="fcw-animate-spin" size={22} style={{ color: "var(--fcw-color-text-tertiary)" }} />
                       </div>
                     ) : chatError ? (
                       <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
@@ -317,10 +341,9 @@ export function CompanyCard({ data, onClose }: Props) {
                     )}
                   </div>
 
-                  {/* Chat input */}
                   <div
                     style={{
-                      padding: "0.75rem 1.25rem",
+                      padding: "0.75rem 1rem",
                       borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
                       display: "flex",
                       gap: "0.5rem",
@@ -364,54 +387,51 @@ export function CompanyCard({ data, onClose }: Props) {
               ) : (
                 <motion.div
                   key="info"
-                  initial={{ opacity: 0, x: -40 }}
+                  initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 40 }}
+                  exit={{ opacity: 0, x: 30 }}
                   transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}
+                  style={{ flex: 1, overflowY: "auto", padding: "1rem" }}
                 >
-                  {/* Brand stripe */}
                   <div
                     style={{
                       height: 4,
                       borderRadius: 2,
-                      backgroundColor: data.brandColor || "var(--fcw-color-primary)",
-                      marginBottom: "1.25rem",
+                      backgroundColor: chatData.brandColor || "var(--fcw-color-primary)",
+                      marginBottom: "1rem",
                     }}
                   />
 
-                  {/* Info section */}
-                  <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                    {data.location && (
+                  <div className="fcw-flex-col" style={{ gap: "0.625rem" }}>
+                    {chatData.location && (
                       <div className="fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}>
                         <MapPin size={14} style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }} />
-                        <span className="fcw-body-s fcw-text-secondary">{data.location}</span>
+                        <span className="fcw-body-s fcw-text-secondary">{chatData.location}</span>
                       </div>
                     )}
-                    {data.distance && (
+                    {chatData.distance && (
                       <div className="fcw-body-s fcw-text-secondary">
-                        {t("companyCard.distance")}: {data.distance}
+                        {t("companyCard.distance")}: {chatData.distance}
                       </div>
                     )}
-                    {data.price && (
+                    {chatData.price && (
                       <div className="fcw-body-l fcw-weight-bold" style={{ color: "var(--fcw-color-primary)" }}>
-                        {data.price}
+                        {chatData.price}
                       </div>
                     )}
                   </div>
 
 
 
-                  {/* Business card */}
                   {cardLoading ? (
-                    <div style={{ marginTop: "1.5rem", padding: "2rem", textAlign: "center" }}>
+                    <div style={{ marginTop: "1.25rem", padding: "2rem", textAlign: "center" }}>
                       <Loader2 className="fcw-animate-spin" size={20} style={{ color: "var(--fcw-color-text-tertiary)" }} />
                     </div>
                   ) : cardData && cardData.blocks.length > 0 ? (
-                    <div style={{ marginTop: "1.5rem" }}>
+                    <div style={{ marginTop: "1.25rem" }}>
                       {[...cardData.blocks].sort((a, b) => a.displayOrder - b.displayOrder).map((block) => (
-                        <div key={block.localId} style={{ marginBottom: "0.75rem" }}>
-                          <PreviewBlock block={block} brandColor={data?.brandColor} />
+                        <div key={block.localId} style={{ marginBottom: "0.625rem" }}>
+                          <PreviewBlock block={block} brandColor={chatData.brandColor} />
                         </div>
                       ))}
                     </div>
@@ -420,11 +440,10 @@ export function CompanyCard({ data, onClose }: Props) {
               )}
             </AnimatePresence>
 
-            {/* Footer */}
             {!showChat && (
               <div
                 style={{
-                  padding: "1rem 1.25rem",
+                  padding: "0.875rem 1rem",
                   borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
                   flexShrink: 0,
                 }}
@@ -440,7 +459,7 @@ export function CompanyCard({ data, onClose }: Props) {
               </div>
             )}
           </motion.div>
-        </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
@@ -454,17 +473,17 @@ function PreviewBlock({ block, brandColor }: { block: { blockType: string; confi
   switch (block.blockType) {
     case "HERO":
       return (
-        <div style={{ padding: "1rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)", textAlign: "center" }}>
-          {(cfg.heroImage as string) && <img src={cfg.heroImage as string} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: "var(--fcw-radius-sm)", marginBottom: "0.5rem" }} />}
-          {(cfg.heroTitle as string) && <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color }}>{cfg.heroTitle as string}</h3>}
-          {(cfg.heroSubtitle as string) && <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color, opacity: 0.7 }}>{cfg.heroSubtitle as string}</p>}
+        <div style={{ padding: "0.75rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)", textAlign: "center" }}>
+          {(cfg.heroImage as string) && <img src={cfg.heroImage as string} alt="" style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: "var(--fcw-radius-sm)", marginBottom: "0.375rem" }} />}
+          {(cfg.heroTitle as string) && <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color }}>{cfg.heroTitle as string}</h3>}
+          {(cfg.heroSubtitle as string) && <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color, opacity: 0.7 }}>{cfg.heroSubtitle as string}</p>}
         </div>
       );
     case "ABOUT":
       return (
-        <div style={{ padding: "1rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
-          {(cfg.aboutTitle as string) && <h4 style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600, color }}>{cfg.aboutTitle as string}</h4>}
-          {(cfg.aboutText as string) && <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color, opacity: 0.8, lineHeight: 1.5 }}>{cfg.aboutText as string}</p>}
+        <div style={{ padding: "0.75rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
+          {(cfg.aboutTitle as string) && <h4 style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 600, color }}>{cfg.aboutTitle as string}</h4>}
+          {(cfg.aboutText as string) && <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color, opacity: 0.8, lineHeight: 1.5 }}>{cfg.aboutText as string}</p>}
         </div>
       );
     case "GALLERY": {
@@ -472,7 +491,7 @@ function PreviewBlock({ block, brandColor }: { block: { blockType: string; confi
       if (images.length === 0) return null;
       return (
         <div style={{ padding: "0.5rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: "0.375rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: "0.375rem" }}>
             {images.map((img, i) => (
               <img key={i} src={img} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "var(--fcw-radius-sm)" }} />
             ))}
@@ -484,9 +503,9 @@ function PreviewBlock({ block, brandColor }: { block: { blockType: string; confi
       const contacts = (cfg.contacts as Array<{ provider: string; url: string; label: string }>) || [];
       if (contacts.length === 0) return null;
       return (
-        <div style={{ padding: "0.75rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
+        <div style={{ padding: "0.625rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
           {contacts.map((c, i) => (
-            <a key={i} href={c.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontSize: "0.8125rem", color: brandColor || "var(--fcw-color-primary)", textDecoration: "none", marginBottom: "0.25rem" }}>
+            <a key={i} href={c.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontSize: "0.75rem", color: brandColor || "var(--fcw-color-primary)", textDecoration: "none", marginBottom: "0.25rem" }}>
               {c.label || c.provider}
             </a>
           ))}
@@ -497,11 +516,11 @@ function PreviewBlock({ block, brandColor }: { block: { blockType: string; confi
       const services = (cfg.services as Array<{ name: string; description?: string; price?: string }>) || [];
       if (services.length === 0) return null;
       return (
-        <div style={{ padding: "0.75rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
+        <div style={{ padding: "0.625rem", backgroundColor: bg, borderRadius: "var(--fcw-radius-md)" }}>
           {services.map((s, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.375rem 0", borderBottom: i < services.length - 1 ? "1px solid var(--fcw-color-border)" : undefined }}>
-              <span style={{ fontSize: "0.8125rem", color }}>{s.name}</span>
-              {s.price && <span style={{ fontSize: "0.8125rem", fontWeight: 600, color }}>{s.price}</span>}
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.25rem 0", borderBottom: i < services.length - 1 ? "1px solid var(--fcw-color-border)" : undefined }}>
+              <span style={{ fontSize: "0.75rem", color }}>{s.name}</span>
+              {s.price && <span style={{ fontSize: "0.75rem", fontWeight: 600, color }}>{s.price}</span>}
             </div>
           ))}
         </div>

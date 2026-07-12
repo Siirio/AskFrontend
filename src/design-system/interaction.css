@@ -186,6 +186,16 @@
   background-color: var(--fcw-color-surface-secondary);
 }
 
+.fcw-input[type="number"]::-webkit-outer-spin-button,
+.fcw-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.fcw-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 .fcw-input-error {
   border-color: var(--fcw-color-error);
   animation: fcw-shake 0.3s var(--fcw-ease-out);

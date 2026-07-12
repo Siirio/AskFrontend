@@ -13,7 +13,6 @@ export type ServiceOffering = {
   id: string;
   title: string;
   branch: string;
-  duration: string;
   priceLabel: string;
   availabilityMode: "manual_confirmation" | "schedule_backed";
 };

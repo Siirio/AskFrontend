@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import MapLocationPicker from "../../widgets/MapLocationPicker/MapLocationPicker";
 import {
   Package, Briefcase, Building2, UserRound,
   Sparkles, Plus, RefreshCw, Loader2,
-  ChevronDown, Menu, X, MapPin, Trash2, Edit3, Check, Clock3, Layout,
-  Grid3X3, List, Calendar, Upload, MessageCircle, Reply, Users, Copy
+  ChevronDown, Menu, X, MapPin, Trash2, Edit3, Check, Layout,
+  Calendar, Upload, MessageCircle, Reply, Link2
 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
@@ -18,7 +19,7 @@ import { Select } from "../../shared/ui/Select/Select";
 import { DropsEditor } from "../../widgets/DropsEditor/DropsEditor";
 import { ProfileEditor } from "../../widgets/ProfileEditor/ProfileEditor";
 import { BusinessCardBuilder } from "../../widgets/BusinessCardBuilder/BusinessCardBuilder";
-import type { CardBlock } from "../../widgets/BusinessCardBuilder/types";
+import { ProductImportWizard } from "../../widgets/ProductImportWizard/ProductImportWizard";
 import {
   getBrandProfile, listDrops,
   updateBrandProfile,
@@ -27,8 +28,8 @@ import {
   listServices, createService, updateService,
   listBranches, createBranch, updateBranch,
   getSupplierTasks,
-  getBusinessCard, saveBusinessCard, publishBusinessCard,
-  listCategories, listStaff, createStaff, resetStaffPassword, uploadProductImport,
+  listCategories, listStaff, createStaff, resetStaffPassword,
+  listCities, parseTwoGisLink,
 } from "../../shared/api/askClient";
 import type {
   BrandProfileDto, BrandDropDto,
@@ -41,7 +42,6 @@ import { ROUTES } from "../../app/routes";
 type BusinessSection = "overview" | "products" | "services" | "branches" | "events" | "business-card" | "profile" | "import";
 type ProfileSubtab = "brand";
 type TaskFilter = "all" | "discussing" | "confirmed" | "declined";
-type TaskView = "cards" | "rows";
 
 interface CategoryInfo {
   id: string;
@@ -60,6 +60,8 @@ interface BranchInfo {
   address: string;
   onlineOnly: boolean;
   status: string;
+  latitude: number;
+  longitude: number;
 }
 
 
@@ -101,8 +103,9 @@ export function BusinessPage() {
   const [profile, setProfile] = useState<BrandProfileDto>(() => emptyProfile(businessId));
   const [drops, setDrops] = useState<BrandDropDto[]>([]);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
-  const [cardBlocks, setCardBlocks] = useState<CardBlock[]>([]);
-  const [cardPublishedAt, setCardPublishedAt] = useState<string | null>(null);
+  const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
+  const [gisLink, setGisLink] = useState("");
+  const [gisParsing, setGisParsing] = useState(false);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
 
@@ -112,7 +115,7 @@ export function BusinessPage() {
   const [productsTotal, setProductsTotal] = useState(0);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editProduct, setEditProduct] = useState<BusinessProductDto | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", categoryId: "" });
+  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", categoryId: "", imageUrl: "" });
   const [productsBusy, setProductsBusy] = useState(false);
 
   // Services
@@ -120,12 +123,14 @@ export function BusinessPage() {
   const [servicesBusy, setServicesBusy] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [editService, setEditService] = useState<BusinessServiceDto | null>(null);
-  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", durationMinutes: "", categoryId: "", scheduleType: "FIXED" as "FIXED" | "FLEXIBLE" | "APPOINTMENT" });
+  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", scheduleType: "FIXED" as "FIXED" | "FLEXIBLE" | "APPOINTMENT", imageUrl: "" });
 
   // Branches
   const [branchesBusy, setBranchesBusy] = useState(false);
   const [showBranchForm, setShowBranchForm] = useState(false);
-  const [branchForm, setBranchForm] = useState({ name: "", address: "", cityId: "" });
+  const [editBranchId, setEditBranchId] = useState<string | null>(null);
+  const [branchForm, setBranchForm] = useState({ name: "", address: "", cityId: "", latitude: null as number | null, longitude: null as number | null });
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [staffByBranch, setStaffByBranch] = useState<Record<string, StaffDto[]>>({});
   const [staffForms, setStaffForms] = useState<Record<string, { displayName: string; email: string }>>({});
   const [staffBusy, setStaffBusy] = useState("");
@@ -133,10 +138,6 @@ export function BusinessPage() {
   // Overview
   const [tasks, setTasks] = useState<SupplierTask[]>([]);
   const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
-  const [taskView, setTaskView] = useState<TaskView>("cards");
-  const [importFiles, setImportFiles] = useState<File[]>([]);
-  const [importStatus, setImportStatus] = useState("");
-  const [importBusy, setImportBusy] = useState(false);
   const [importBranchId, setImportBranchId] = useState("");
   const [quickRailOpen, setQuickRailOpen] = useState(false);
 
@@ -149,6 +150,7 @@ export function BusinessPage() {
     { key: "events", label: t("business.events"), icon: <Calendar size={18} /> },
     { key: "business-card", label: t("business.businessCard"), icon: <Sparkles size={18} /> },
     { key: "profile", label: t("business.profile"), icon: <UserRound size={18} /> },
+    { key: "branches", label: t("business.branches"), icon: <MapPin size={18} /> },
   ];
 
   const profileSubtabs: { key: ProfileSubtab; label: string; icon: React.ReactNode }[] = [
@@ -274,9 +276,12 @@ export function BusinessPage() {
 
   useEffect(() => { loadCoreData(); }, [loadCoreData]);
   useEffect(() => { loadCategories(); }, [loadCategories]);
+  useEffect(() => {
+    listCities().then(setCities).catch(() => setCities([]));
+  }, []);
   useEffect(() => { if (section === "products" || section === "overview") loadProducts(); }, [section, loadProducts]);
   useEffect(() => { if (section === "services" || section === "overview") loadServices(); }, [section, loadServices]);
-  useEffect(() => { if (section === "overview") loadTasks(); }, [section, loadTasks]);
+  useEffect(() => { if (section === "overview") { loadTasks(); } }, [section, loadTasks]);
 
   if (state.view !== "business" && state.view !== "staff") {
     return <Navigate to={ROUTES.home} replace />;
@@ -335,36 +340,9 @@ export function BusinessPage() {
     setDrops(drops.filter(d => d.id !== drop.id));
   };
 
-  const loadCard = useCallback(async () => {
-    if (!businessId) return;
-    try {
-      const res = await getBusinessCard(businessId);
-      setCardBlocks(res.blocks as unknown as CardBlock[]);
-      setCardPublishedAt(res.publishedAt || null);
-    } catch { /* card not created yet */ }
-  }, [businessId]);
-
-  const handleSaveCard = async (blocks: CardBlock[]) => {
-    if (!businessId) return;
-    const res = await saveBusinessCard(businessId, blocks as unknown as import("../../shared/api/dto").BusinessCardBlockDto[]);
-    setCardBlocks(res.blocks as unknown as CardBlock[]);
-    setCardPublishedAt(res.publishedAt || null);
-    toast.show(t("business.toast.cardSaved"), "success");
-  };
-
-  const handlePublishCard = async () => {
-    if (!businessId) return;
-    const res = await publishBusinessCard(businessId);
-    setCardBlocks(res.blocks as unknown as CardBlock[]);
-    setCardPublishedAt(res.publishedAt || null);
-    toast.show(t("business.toast.cardPublished"), "success");
-  };
-
-  useEffect(() => { if (section === "business-card") loadCard(); }, [section, loadCard]);
-
   // Product CRUD
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", price: "", categoryId: "" });
+    setProductForm({ name: "", description: "", price: "", categoryId: "", imageUrl: "" });
     setEditProduct(null);
     setShowProductForm(false);
   };
@@ -381,6 +359,7 @@ export function BusinessPage() {
         description: productForm.description || undefined,
         price: productForm.price ? Number(productForm.price) : undefined,
         categoryId: productForm.categoryId,
+        imageUrl: productForm.imageUrl || undefined,
       });
       resetProductForm();
       loadProducts();
@@ -397,6 +376,7 @@ export function BusinessPage() {
         name: productForm.name || undefined,
         description: productForm.description || undefined,
         price: productForm.price ? Number(productForm.price) : undefined,
+        imageUrl: productForm.imageUrl || undefined,
       });
       resetProductForm();
       loadProducts();
@@ -424,13 +404,14 @@ export function BusinessPage() {
       description: p.description || "",
       price: p.price ? String(p.price) : "",
       categoryId: p.categoryId || "",
+      imageUrl: p.imageUrl || "",
     });
     setShowProductForm(false);
   };
 
   // Service CRUD
   const resetServiceForm = () => {
-    setServiceForm({ name: "", description: "", basePrice: "", durationMinutes: "", categoryId: "", scheduleType: "FIXED" });
+    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", scheduleType: "FIXED", imageUrl: "" });
     setEditService(null);
     setShowServiceForm(false);
   };
@@ -447,8 +428,8 @@ export function BusinessPage() {
         name: serviceForm.name,
         description: serviceForm.description || undefined,
         basePrice: serviceForm.basePrice ? Number(serviceForm.basePrice) : undefined,
-        durationMinutes: serviceForm.durationMinutes ? Number(serviceForm.durationMinutes) : undefined,
         scheduleType: serviceForm.scheduleType,
+        imageUrl: serviceForm.imageUrl || undefined,
       } as any);
       resetServiceForm();
       loadServices();
@@ -465,8 +446,8 @@ export function BusinessPage() {
         name: serviceForm.name || undefined,
         description: serviceForm.description || undefined,
         basePrice: serviceForm.basePrice ? Number(serviceForm.basePrice) : undefined,
-        durationMinutes: serviceForm.durationMinutes ? Number(serviceForm.durationMinutes) : undefined,
         scheduleType: serviceForm.scheduleType,
+        imageUrl: serviceForm.imageUrl || undefined,
       } as any);
       resetServiceForm();
       loadServices();
@@ -482,11 +463,29 @@ export function BusinessPage() {
       name: s.name,
       description: s.description || "",
       basePrice: s.basePrice ? String(s.basePrice) : "",
-      durationMinutes: s.durationMinutes ? String(s.durationMinutes) : "",
       categoryId: s.categoryId || "",
       scheduleType: (s as any).scheduleType || "FIXED",
+      imageUrl: s.imageUrl || "",
     });
     setShowServiceForm(false);
+  };
+
+  const handleParseGisLink = async () => {
+    if (!gisLink.trim()) return;
+    setGisParsing(true);
+    try {
+      const result = await parseTwoGisLink(gisLink.trim());
+      if (result.found && result.latitude != null && result.longitude != null) {
+        setBranchForm(p => ({ ...p, latitude: result.latitude!, longitude: result.longitude! }));
+        toast.show(t("business.branch.2gisParsed"), "success");
+      } else {
+        toast.show(t("business.branch.2gisParseError"), "error");
+      }
+    } catch {
+      toast.show(t("business.branch.2gisParseError"), "error");
+    } finally {
+      setGisParsing(false);
+    }
   };
 
   // Branch CRUD
@@ -499,13 +498,20 @@ export function BusinessPage() {
       toast.show(t("business.toast.enterBranchName"), "error");
       return;
     }
+    if (branchForm.latitude == null || branchForm.longitude == null) {
+      toast.show(t("business.toast.branchLocationRequired"), "error");
+      return;
+    }
     try {
       const created = await createBranch(businessId, {
         name: branchForm.name.trim(),
         address: branchForm.address || undefined,
         cityId: branchForm.cityId || undefined,
+        latitude: branchForm.latitude,
+        longitude: branchForm.longitude,
       });
-      setBranchForm({ name: "", address: "", cityId: "" });
+      setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setGisLink("");
       setShowBranchForm(false);
       setSelectedBranchId(created.id);
       setImportBranchId(created.id);
@@ -513,6 +519,30 @@ export function BusinessPage() {
       toast.show(t("business.toast.branchCreated"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.branchCreateError"), "error");
+    }
+  };
+
+  const handleUpdateBranch = async () => {
+    if (!businessId || !editBranchId) return;
+    if (!branchForm.name.trim()) {
+      toast.show(t("business.toast.enterBranchName"), "error");
+      return;
+    }
+    try {
+      await updateBranch(businessId, editBranchId, {
+        name: branchForm.name.trim() || undefined,
+        address: branchForm.address || undefined,
+        cityId: branchForm.cityId || undefined,
+        latitude: branchForm.latitude ?? undefined,
+        longitude: branchForm.longitude ?? undefined,
+      });
+      setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setGisLink("");
+      setEditBranchId(null);
+      loadBranches();
+      toast.show(t("business.toast.branchUpdated"), "success");
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
     }
   };
 
@@ -548,32 +578,6 @@ export function BusinessPage() {
       setStaffBusy("");
     }
   };
-
-  const handleImportFiles = (files: FileList | File[]) => {
-    const nextFiles = Array.from(files);
-    const allowed = nextFiles.filter(file => /\.(xlsx|txt|md|pdf)$/i.test(file.name));
-    const rejected = nextFiles.filter(file => !allowed.includes(file));
-    setImportFiles(allowed);
-    setImportStatus(rejected.length > 0 ? t("business.importUnsupportedFormat") : "");
-  };
-
-  const handleUploadImport = async () => {
-    const branchId = importBranchId || activeBranchId;
-    if (!branchId || importFiles.length === 0) return;
-    setImportBusy(true);
-    setImportStatus("");
-    try {
-      for (const file of importFiles) {
-        await uploadProductImport(branchId, file);
-      }
-      setImportStatus(t("business.importFilesUploaded", { count: importFiles.length }));
-    } catch (e) {
-      setImportStatus(e instanceof ApiError ? e.message : t("business.importUploadError"));
-    } finally {
-      setImportBusy(false);
-    }
-  };
-
 
   const sidebar = (
     <nav style={{ display: "flex", flexDirection: "column", gap: "0.25rem", padding: "var(--fcw-space-sm)" }}>
@@ -784,99 +788,55 @@ export function BusinessPage() {
               >
                 {/* Overview */}
                 {section === "overview" && (
-                  <>
-                    <Card padding="lg" style={{ marginBottom: "var(--fcw-space-lg)" }}>
-                      <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "1rem", marginBottom: "var(--fcw-space-md)" }}>
-                        <div>
-                          <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                            <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.clientRequests")}</h2>
-                            <span className="fcw-label" style={{ color: "var(--fcw-color-primary)" }}>{filteredTasks.length}</span>
-                          </div>
-                          <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>
-                            {t("business.allRequests")}
-                          </p>
-                        </div>
-                        <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                          <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
-                            {([
-                              ["all", t("business.filter.all")],
-                              ["discussing", t("business.filter.discussing")],
-                              ["confirmed", t("business.filter.confirmed")],
-                              ["declined", t("business.filter.rejected")],
-                            ] as const).map(([key, label]) => (
-                              <button
-                                key={key}
-                                className={`fcw-btn fcw-btn-sm ${taskFilter === key ? "fcw-glassmorph-selected-seg" : ""}`}
-                                style={{ background: taskFilter === key ? undefined : "transparent", border: "none", boxShadow: "none" }}
-                                onClick={() => setTaskFilter(key)}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
-                            {([
-                              ["cards", <Grid3X3 size={14} />, t("business.cards")],
-                              ["rows", <List size={14} />, t("business.rows")],
-                            ] as const).map(([key, icon, label]) => (
-                              <button
-                                key={key}
-                                className={`fcw-btn fcw-btn-sm ${taskView === key ? "fcw-glassmorph-selected-seg" : ""}`}
-                                style={{ background: taskView === key ? undefined : "transparent", border: "none", boxShadow: "none", gap: "0.375rem" }}
-                                onClick={() => setTaskView(key)}
-                              >
-                                {icon}
-                                <span className="fcw-hidden-mobile">{label}</span>
-                              </button>
-                            ))}
-                          </div>
+                  <Card padding="lg" style={{ marginBottom: "var(--fcw-space-lg)" }}>
+                    <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "1rem", marginBottom: "var(--fcw-space-md)" }}>
+                      <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
+                        <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
+                          {([
+                            ["all", t("business.filter.all")],
+                            ["discussing", t("business.filter.discussing")],
+                            ["confirmed", t("business.filter.confirmed")],
+                            ["declined", t("business.filter.rejected")],
+                          ] as const).map(([key, label]) => (
+                            <button
+                              key={key}
+                              className={`fcw-btn fcw-btn-sm ${taskFilter === key ? "fcw-glassmorph-selected-seg" : ""}`}
+                              style={{ background: taskFilter === key ? undefined : "transparent", border: "none", boxShadow: "none" }}
+                              onClick={() => setTaskFilter(key)}
+                            >
+                              {label}
+                            </button>
+                          ))}
                         </div>
                       </div>
+                    </div>
 
-                      <div className="fcw-grid-4" style={{ gap: "0.5rem", marginBottom: "var(--fcw-space-md)" }}>
-                        {[
-                          { label: t("business.new"), value: discussingTasks.length },
-                          { label: t("business.needsReply"), value: replyTasks.length },
-                          { label: t("business.status.confirmed"), value: confirmedTasks.length },
-                          { label: t("business.filter.rejected"), value: declinedTasks.length },
-                        ].map(item => (
-                          <div key={item.label} style={{ padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)" }}>
-                            <span className="fcw-body-xs fcw-text-tertiary">{item.label}</span>
-                            <div className="fcw-h3" style={{ margin: 0 }}>{item.value}</div>
-                          </div>
-                        ))}
-                      </div>
+                    {/* Stats row */}
+                    <div className="fcw-grid-4" style={{ gap: "0.5rem", marginBottom: "var(--fcw-space-md)" }}>
+                      {[
+                        { label: t("business.new"), value: discussingTasks.length },
+                        { label: t("business.needsReply"), value: replyTasks.length },
+                        { label: t("business.status.confirmed"), value: confirmedTasks.length },
+                        { label: t("business.filter.rejected"), value: declinedTasks.length },
+                      ].map(item => (
+                        <div
+                          key={item.label}
+                          style={{ padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)", cursor: "pointer" }}
+                          onClick={() => setTaskFilter(item.label === t("business.new") ? "discussing" : item.label === t("business.needsReply") ? "discussing" : item.label === t("business.status.confirmed") ? "confirmed" : item.label === t("business.filter.rejected") ? "declined" : "all")}
+                        >
+                          <span className="fcw-body-xs fcw-text-tertiary">{item.label}</span>
+                          <div className="fcw-h3" style={{ margin: 0 }}>{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
 
+                    {/* Requests content */}
+                    <>
                       {filteredTasks.length === 0 && (
                         <EmptyState title={t("business.noRequests")} description={t("business.noRequestsDesc")} />
                       )}
 
-                      {filteredTasks.length > 0 && taskView === "cards" && (
-                        <div className="fcw-grid-2" style={{ gap: "0.75rem" }}>
-                          {filteredTasks.map(task => (
-                            <article key={task.id} className="fcw-card" style={{ padding: "1rem", borderRadius: "var(--fcw-radius-md)" }}>
-                              <div className="fcw-flex-between" style={{ gap: "0.5rem", marginBottom: "0.625rem" }}>
-                                <span className="fcw-label" style={{ color: task.status === "needs_reply" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)" }}>
-                                  {taskStatusLabel(task.status)}
-                                </span>
-                                <span className="fcw-body-xs fcw-text-tertiary">{task.ageLabel}</span>
-                              </div>
-                              <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0 }}>{task.query}</h3>
-                              <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.375rem 0" }}>{taskBudgetLabel(task)}</p>
-                              <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
-                                <span className="fcw-body-s fcw-text-tertiary">{t("business.client")} · {task.customerArea || t("business.areaUnspecified")}</span>
-                                <span className="fcw-body-s fcw-text-tertiary">{t("business.messagesCount")}</span>
-                              </div>
-                              <div className="fcw-flex" style={{ gap: "0.5rem", marginTop: "0.875rem" }}>
-                                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm"><MessageCircle size={14} />{t("business.open")}</button>
-                                <button className="fcw-btn fcw-btn-primary fcw-btn-sm"><Reply size={14} />{t("business.reply")}</button>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      )}
-
-                      {filteredTasks.length > 0 && taskView === "rows" && (
+                      {filteredTasks.length > 0 && (
                         <div className="fcw-flex-col" style={{ gap: "0.375rem" }}>
                           {filteredTasks.map(task => (
                             <div key={task.id} className="fcw-flex-between" style={{ gap: "0.75rem", padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)" }}>
@@ -889,9 +849,8 @@ export function BusinessPage() {
                           ))}
                         </div>
                       )}
-                    </Card>
-
-                                      </>
+                    </>
+                  </Card>
                 )}
 
                 {/* Products */}
@@ -951,33 +910,55 @@ export function BusinessPage() {
                                     <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
                                     {t("business.newProduct")}
                                   </h3>
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.product.namePlaceholder")}
-                                    value={productForm.name}
-                                    onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
-                                  />
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.product.descriptionPlaceholder")}
-                                    value={productForm.description}
-                                    onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
-                                  />
-                                  <Select
-                                    options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
-                                    value={productForm.categoryId}
-                                    onChange={v => setProductForm(p => ({ ...p, categoryId: v }))}
-                                    placeholder={t("business.product.categoryPlaceholder")}
-                                    style={{ maxWidth: "320px" }}
-                                  />
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.product.pricePlaceholder")}
-                                    type="number"
-                                    value={productForm.price}
-                                    onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))}
-                                    style={{ maxWidth: "200px" }}
-                                  />
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 240px", gap: "0.75rem" }}>
+                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                      <label className="fcw-label">{t("business.product.name")}</label>
+                                      <input
+                                        className="fcw-input"
+                                        placeholder={t("business.product.namePlaceholder")}
+                                        value={productForm.name}
+                                        onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
+                                      />
+                                    </div>
+                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                      <label className="fcw-label">{t("business.product.category")}</label>
+                                      <Select
+                                        options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
+                                        value={productForm.categoryId}
+                                        onChange={v => setProductForm(p => ({ ...p, categoryId: v }))}
+                                        placeholder={t("business.product.categoryPlaceholder")}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "200px" }}>
+                                    <label className="fcw-label">{t("business.product.price")}</label>
+                                    <input
+                                      className="fcw-input"
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder={t("business.product.pricePlaceholder")}
+                                      value={productForm.price}
+                                      onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.product.description")}</label>
+                                    <input
+                                      className="fcw-input"
+                                      placeholder={t("business.product.descriptionPlaceholder")}
+                                      value={productForm.description}
+                                      onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.product.imageUrlPlaceholder")}</label>
+                                    <input
+                                      className="fcw-input"
+                                      placeholder={t("business.product.imageUrlPlaceholder")}
+                                      value={productForm.imageUrl}
+                                      onChange={e => setProductForm(p => ({ ...p, imageUrl: e.target.value }))}
+                                    />
+                                  </div>
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                     <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateProduct}>
                                       <Check size={14} />{t("business.create")}
@@ -999,17 +980,36 @@ export function BusinessPage() {
                             borderRadius: "var(--fcw-radius-md)",
                           }}>
                             {editProduct?.productOfferId === p.productOfferId ? (
-                              <div className="fcw-flex-col" style={{ gap: "0.75rem", width: "100%" }}>
-                                <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(120px, 180px)", gap: "0.75rem" }}>
-                                  <input className="fcw-input" value={productForm.name} onChange={e => setProductForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.product.namePlaceholder")} />
-                                  <input className="fcw-input" type="number" value={productForm.price} onChange={e => setProductForm(v => ({ ...v, price: e.target.value }))} placeholder={t("business.product.pricePlaceholder")} />
+                              <Card padding="md" style={{ width: "100%" }}>
+                                <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
+                                  <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <Edit3 size={16} style={{ color: "var(--fcw-color-primary)" }} />
+                                    {t("business.product.editTitle")}
+                                  </h3>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: "0.75rem" }}>
+                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                      <label className="fcw-label">{t("business.product.name")}</label>
+                                      <input className="fcw-input" value={productForm.name} onChange={e => setProductForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.product.namePlaceholder")} />
+                                    </div>
+                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                      <label className="fcw-label">{t("business.product.price")}</label>
+                                      <input className="fcw-input" type="text" inputMode="decimal" value={productForm.price} onChange={e => setProductForm(v => ({ ...v, price: e.target.value }))} placeholder={t("business.product.pricePlaceholder")} />
+                                    </div>
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.product.description")}</label>
+                                    <input className="fcw-input" value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.product.descriptionPlaceholder")} />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.product.imageUrlPlaceholder")}</label>
+                                    <input className="fcw-input" value={productForm.imageUrl} onChange={e => setProductForm(v => ({ ...v, imageUrl: e.target.value }))} placeholder={t("business.product.imageUrlPlaceholder")} />
+                                  </div>
+                                  <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                                    <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateProduct}><Check size={14} />{t("business.save")}</button>
+                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>{t("business.cancel")}</button>
+                                  </div>
                                 </div>
-                                <input className="fcw-input" value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.product.descriptionPlaceholder")} />
-                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateProduct}><Check size={14} />{t("business.save")}</button>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>{t("business.cancel")}</button>
-                                </div>
-                              </div>
+                              </Card>
                             ) : (
                             <>
                               <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "120px" }}>
@@ -1096,67 +1096,70 @@ export function BusinessPage() {
                                     <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
                                     {t("business.newService")}
                                   </h3>
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.service.namePlaceholder")}
-                                    value={serviceForm.name}
-                                    onChange={e => setServiceForm(s => ({ ...s, name: e.target.value }))}
-                                  />
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.service.descriptionPlaceholder")}
-                                    value={serviceForm.description}
-                                    onChange={e => setServiceForm(s => ({ ...s, description: e.target.value }))}
-                                  />
-                                  <Select
-                                    options={[
-                                      { value: "FIXED", label: t("business.scheduleFixed") },
-                                      { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
-                                      { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
-                                    ]}
-                                    value={serviceForm.scheduleType}
-                                    onChange={v => setServiceForm(s => ({ ...s, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
-                                    style={{ maxWidth: "260px" }}
-                                  />
-                                  <div className="fcw-flex" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.service.name")}</label>
                                     <input
                                       className="fcw-input"
-                                      placeholder={t("business.service.pricePlaceholder")}
-                                      type="number"
-                                      value={serviceForm.basePrice}
-                                      onChange={e => setServiceForm(s => ({ ...s, basePrice: e.target.value }))}
-                                      style={{ maxWidth: "160px" }}
+                                      placeholder={t("business.service.namePlaceholder")}
+                                      value={serviceForm.name}
+                                      onChange={e => setServiceForm(s => ({ ...s, name: e.target.value }))}
                                     />
-                                    {serviceForm.scheduleType === "FIXED" && (
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.service.description")}</label>
+                                    <input
+                                      className="fcw-input"
+                                      placeholder={t("business.service.descriptionPlaceholder")}
+                                      value={serviceForm.description}
+                                      onChange={e => setServiceForm(s => ({ ...s, description: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "260px" }}>
+                                    <label className="fcw-label">{t("business.service.schedule")}</label>
+                                    <Select
+                                      options={[
+                                        { value: "FIXED", label: t("business.scheduleFixed") },
+                                        { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
+                                        { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
+                                      ]}
+                                      value={serviceForm.scheduleType}
+                                      onChange={v => setServiceForm(s => ({ ...s, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
+                                    />
+                                  </div>
+                                  <div className="fcw-flex" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
+                                    <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "160px" }}>
+                                      <label className="fcw-label">{t("business.service.price")}</label>
                                       <input
                                         className="fcw-input"
-                                        placeholder={t("business.service.durationPlaceholder")}
-                                        type="number"
-                                        value={serviceForm.durationMinutes}
-                                        onChange={e => setServiceForm(s => ({ ...s, durationMinutes: e.target.value }))}
-                                        style={{ maxWidth: "160px" }}
+                                        placeholder={t("business.service.pricePlaceholder")}
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={serviceForm.basePrice}
+                                        onChange={e => setServiceForm(s => ({ ...s, basePrice: e.target.value }))}
                                       />
-                                    )}
+                                    </div>
                                     {serviceForm.scheduleType === "FLEXIBLE" && (
                                       <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center", maxWidth: "160px" }}>{t("business.scheduleFlexibleHint")}</span>
                                     )}
-                                    {serviceForm.scheduleType === "APPOINTMENT" && (
-                                      <input
-                                        className="fcw-input"
-                                        placeholder={t("business.service.hoursPlaceholder")}
-                                        value={serviceForm.durationMinutes}
-                                        onChange={e => setServiceForm(s => ({ ...s, durationMinutes: e.target.value }))}
-                                        style={{ maxWidth: "260px" }}
-                                      />
-                                    )}
                                   </div>
-                                  <Select
-                                    options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
-                                    value={serviceForm.categoryId}
-                                    onChange={v => setServiceForm(s => ({ ...s, categoryId: v }))}
-                                    placeholder={t("business.service.categoryPlaceholder")}
-                                    style={{ maxWidth: "320px" }}
-                                  />
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "320px" }}>
+                                    <label className="fcw-label">{t("business.service.category")}</label>
+                                    <Select
+                                      options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
+                                      value={serviceForm.categoryId}
+                                      onChange={v => setServiceForm(s => ({ ...s, categoryId: v }))}
+                                      placeholder={t("business.service.categoryPlaceholder")}
+                                    />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.service.imageUrlPlaceholder")}</label>
+                                    <input
+                                      className="fcw-input"
+                                      placeholder={t("business.service.imageUrlPlaceholder")}
+                                      value={serviceForm.imageUrl}
+                                      onChange={e => setServiceForm(s => ({ ...s, imageUrl: e.target.value }))}
+                                    />
+                                  </div>
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                     <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateService}>
                                       <Check size={14} />{t("business.create")}
@@ -1179,30 +1182,39 @@ export function BusinessPage() {
                           }}>
                             {editService?.serviceBranchOfferId === s.serviceBranchOfferId ? (
                               <div className="fcw-flex-col" style={{ gap: "0.75rem", width: "100%" }}>
-                                <Select
-                                  options={[
-                                    { value: "FIXED", label: t("business.scheduleFixed") },
-                                    { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
-                                    { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
-                                  ]}
-                                  value={serviceForm.scheduleType}
-                                  onChange={v => setServiceForm(v2 => ({ ...v2, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
-                                  style={{ maxWidth: "260px" }}
-                                />
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "260px" }}>
+                                  <label className="fcw-label">{t("business.service.schedule")}</label>
+                                  <Select
+                                    options={[
+                                      { value: "FIXED", label: t("business.scheduleFixed") },
+                                      { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
+                                      { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
+                                    ]}
+                                    value={serviceForm.scheduleType}
+                                    onChange={v => setServiceForm(v2 => ({ ...v2, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
+                                  />
+                                </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(110px, 160px) minmax(110px, 160px)", gap: "0.75rem" }}>
-                                  <input className="fcw-input" value={serviceForm.name} onChange={e => setServiceForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.service.namePlaceholder")} />
-                                  <input className="fcw-input" type="number" value={serviceForm.basePrice} onChange={e => setServiceForm(v => ({ ...v, basePrice: e.target.value }))} placeholder={t("business.service.pricePlaceholder")} />
-                                  {serviceForm.scheduleType === "FIXED" && (
-                                    <input className="fcw-input" type="number" value={serviceForm.durationMinutes} onChange={e => setServiceForm(v => ({ ...v, durationMinutes: e.target.value }))} placeholder={t("business.service.minutesPlaceholder")} />
-                                  )}
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.service.name")}</label>
+                                    <input className="fcw-input" value={serviceForm.name} onChange={e => setServiceForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.service.namePlaceholder")} />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.service.price")}</label>
+                                    <input className="fcw-input" type="text" inputMode="decimal" value={serviceForm.basePrice} onChange={e => setServiceForm(v => ({ ...v, basePrice: e.target.value }))} placeholder={t("business.service.pricePlaceholder")} />
+                                  </div>
                                   {serviceForm.scheduleType === "FLEXIBLE" && (
                                     <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center" }}>{t("business.scheduleFlexibleHint")}</span>
                                   )}
-                                  {serviceForm.scheduleType === "APPOINTMENT" && (
-                                    <input className="fcw-input" value={serviceForm.durationMinutes} onChange={e => setServiceForm(v => ({ ...v, durationMinutes: e.target.value }))} placeholder={t("business.service.hoursPlaceholder")} />
-                                  )}
                                 </div>
-                                <input className="fcw-input" value={serviceForm.description} onChange={e => setServiceForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.service.descriptionPlaceholder")} />
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <label className="fcw-label">{t("business.service.description")}</label>
+                                  <input className="fcw-input" value={serviceForm.description} onChange={e => setServiceForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.service.descriptionPlaceholder")} />
+                                </div>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <label className="fcw-label">{t("business.service.imageUrlPlaceholder")}</label>
+                                  <input className="fcw-input" value={serviceForm.imageUrl} onChange={e => setServiceForm(v => ({ ...v, imageUrl: e.target.value }))} placeholder={t("business.service.imageUrlPlaceholder")} />
+                                </div>
                                 <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                   <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateService}><Check size={14} />{t("business.save")}</button>
                                   <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetServiceForm}>{t("business.cancel")}</button>
@@ -1216,11 +1228,6 @@ export function BusinessPage() {
                               {(s as any).scheduleType && (s as any).scheduleType !== "FIXED" && (
                                 <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>
                                   {(s as any).scheduleType === "FLEXIBLE" ? t("business.scheduleFlexibleLabel") : t("business.scheduleAppointmentLabel")}
-                                </span>
-                              )}
-                              {s.durationMinutes > 0 && (
-                                <span className="fcw-body-s fcw-text-secondary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
-                                  <Clock3 size={11} />{s.durationMinutes}{t("business.minutes")}
                                 </span>
                               )}
                               {!s.active && (
@@ -1247,6 +1254,304 @@ export function BusinessPage() {
                 )}
 
                 {/* Branches */}
+                {section === "branches" && (
+                  <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+                    <div className="fcw-flex" style={{ alignItems: "center", gap: "0.5rem" }}>
+                      <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.branches")}</h2>
+                      <div style={{ flex: 1 }} />
+                      {!isStaff && (
+                        <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => setShowBranchForm(v => !v)}>
+                          <Plus size={16} />{t("business.branch.add")}
+                        </button>
+                      )}
+                    </div>
+
+                    {branchesBusy && <Loading size="sm" />}
+
+                    {!branchesBusy && branches.length === 0 && !showBranchForm && (
+                      <EmptyState
+                        title={t("business.noBranches")}
+                        description={t("business.noBranchesDesc")}
+                      />
+                    )}
+
+                    <AnimatePresence>
+                      {showBranchForm && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          style={{ overflow: "hidden" }}
+                        >
+                          <Card padding="md">
+                            <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
+                              <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
+                                {t("business.branch.add")}
+                              </h3>
+                              <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                <label className="fcw-label">{t("business.branch.name")}</label>
+                                <input
+                                  className="fcw-input"
+                                  placeholder={t("business.branch.name")}
+                                  value={branchForm.name}
+                                  onChange={e => setBranchForm(p => ({ ...p, name: e.target.value }))}
+                                />
+                              </div>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <label className="fcw-label">{t("business.branch.address")}</label>
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.branch.address")}
+                                    value={branchForm.address}
+                                    onChange={e => setBranchForm(p => ({ ...p, address: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <label className="fcw-label">{t("business.branch.city")}</label>
+                                  <Select
+                                    options={cities.map(c => ({ value: c.id, label: c.name }))}
+                                    value={branchForm.cityId}
+                                    onChange={v => setBranchForm(p => ({ ...p, cityId: v }))}
+                                    placeholder={t("business.branch.city")}
+                                  />
+                                </div>
+                              </div>
+                              <div className="fcw-flex-col" style={{ gap: "0.375rem" }}>
+                                <span className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)" }}>
+                                  {t("business.branch.location")}
+                                </span>
+                                <span className="fcw-body-xs" style={{ color: "var(--fcw-color-text-tertiary)" }}>
+                                  {t("business.branch.2gisGuide")}
+                                </span>
+                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.branch.2gisLinkPlaceholder")}
+                                    value={gisLink}
+                                    onChange={e => setGisLink(e.target.value)}
+                                    onKeyDown={e => { if (e.key === "Enter") handleParseGisLink(); }}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button
+                                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                    onClick={handleParseGisLink}
+                                    disabled={gisParsing || !gisLink.trim()}
+                                  >
+                                    {gisParsing ? <Loader2 size={14} className="fcw-animate-spin" /> : <Link2 size={14} />}
+                                    {t("business.branch.extractCoords")}
+                                  </button>
+                                </div>
+                                {branchForm.latitude != null && branchForm.longitude != null && (
+                                  <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem" }}>
+                                    <span className="fcw-body-s" style={{ color: "var(--fcw-color-accent)" }}>
+                                      {branchForm.latitude.toFixed(6)}, {branchForm.longitude.toFixed(6)}
+                                    </span>
+                                    <a
+                                      className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                      style={{ textDecoration: "none" }}
+                                      href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <MapPin size={14} />{t("business.branch.openIn2gis")}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                onClick={() => setShowMapPicker(v => !v)}
+                                style={{ alignSelf: "flex-start", gap: "0.375rem" }}
+                              >
+                                <MapPin size={14} />
+                                {t("business.branch.pickOnMap")}
+                              </button>
+                              {showMapPicker && (
+                                <MapLocationPicker
+                                  initialLat={branchForm.latitude ?? undefined}
+                                  initialLng={branchForm.longitude ?? undefined}
+                                  onChange={(lat, lng) => setBranchForm(p => ({ ...p, latitude: lat, longitude: lng }))}
+                                />
+                              )}
+                              <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                                <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateBranch}>
+                                  <Check size={14} />{t("business.create")}
+                                </button>
+                                <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => {
+                                  setShowBranchForm(false);
+                                  setShowMapPicker(false);
+                                  setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setGisLink("");
+                                }}>{t("business.cancel")}</button>
+                              </div>
+                            </div>
+                          </Card>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {!branchesBusy && branches.map(b => (
+                      <div key={b.id}>
+                        {editBranchId === b.id ? (
+                          <Card padding="md">
+                            <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
+                              <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <MapPin size={18} style={{ color: "var(--fcw-color-primary)" }} />
+                                {t("business.branch.edit")}
+                              </h3>
+                              <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                <label className="fcw-label">{t("business.branch.name")}</label>
+                                <input
+                                  className="fcw-input"
+                                  placeholder={t("business.branch.name")}
+                                  value={branchForm.name}
+                                  onChange={e => setBranchForm(p => ({ ...p, name: e.target.value }))}
+                                />
+                              </div>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <label className="fcw-label">{t("business.branch.address")}</label>
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.branch.address")}
+                                    value={branchForm.address}
+                                    onChange={e => setBranchForm(p => ({ ...p, address: e.target.value }))}
+                                  />
+                                </div>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <label className="fcw-label">{t("business.branch.city")}</label>
+                                  <Select
+                                    options={cities.map(c => ({ value: c.id, label: c.name }))}
+                                    value={branchForm.cityId}
+                                    onChange={v => setBranchForm(p => ({ ...p, cityId: v }))}
+                                    placeholder={t("business.branch.city")}
+                                  />
+                                </div>
+                              </div>
+                              <div className="fcw-flex-col" style={{ gap: "0.375rem" }}>
+                                <span className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)" }}>
+                                  {t("business.branch.location")}
+                                </span>
+                                <span className="fcw-body-xs" style={{ color: "var(--fcw-color-text-tertiary)" }}>
+                                  {t("business.branch.2gisGuide")}
+                                </span>
+                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.branch.2gisLinkPlaceholder")}
+                                    value={gisLink}
+                                    onChange={e => setGisLink(e.target.value)}
+                                    onKeyDown={e => { if (e.key === "Enter") handleParseGisLink(); }}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button
+                                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                    onClick={handleParseGisLink}
+                                    disabled={gisParsing || !gisLink.trim()}
+                                  >
+                                    {gisParsing ? <Loader2 size={14} className="fcw-animate-spin" /> : <Link2 size={14} />}
+                                    {t("business.branch.extractCoords")}
+                                  </button>
+                                </div>
+                                {branchForm.latitude != null && branchForm.longitude != null && (
+                                  <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem" }}>
+                                    <span className="fcw-body-s" style={{ color: "var(--fcw-color-accent)" }}>
+                                      {branchForm.latitude.toFixed(6)}, {branchForm.longitude.toFixed(6)}
+                                    </span>
+                                    <a
+                                      className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                      style={{ textDecoration: "none" }}
+                                      href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <MapPin size={14} />{t("business.branch.openIn2gis")}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                onClick={() => setShowMapPicker(v => !v)}
+                                style={{ alignSelf: "flex-start", gap: "0.375rem" }}
+                              >
+                                <MapPin size={14} />
+                                {t("business.branch.pickOnMap")}
+                              </button>
+                              {showMapPicker && (
+                                <MapLocationPicker
+                                  initialLat={branchForm.latitude ?? undefined}
+                                  initialLng={branchForm.longitude ?? undefined}
+                                  onChange={(lat, lng) => setBranchForm(p => ({ ...p, latitude: lat, longitude: lng }))}
+                                />
+                              )}
+                              <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                                <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateBranch}>
+                                  <Check size={14} />{t("business.save")}
+                                </button>
+                                <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => {
+                                  setEditBranchId(null);
+                                  setShowMapPicker(false);
+                                  setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setGisLink("");
+                                }}>{t("business.cancel")}</button>
+                              </div>
+                            </div>
+                          </Card>
+                        ) : (
+                          <div style={{
+                            display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
+                            padding: "0.5rem 0.75rem",
+                            backgroundColor: "var(--fcw-color-surface)",
+                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                            borderRadius: "var(--fcw-radius-md)",
+                          }}>
+                            <MapPin size={16} style={{ color: "var(--fcw-color-primary)", flexShrink: 0 }} />
+                            <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "120px" }}>
+                              {b.name}
+                            </span>
+                            {b.address && (
+                              <span className="fcw-body-s fcw-text-tertiary" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {b.address}
+                              </span>
+                            )}
+                            {b.cityName && (
+                              <span className="fcw-label">{b.cityName}</span>
+                            )}
+                            {b.onlineOnly && (
+                              <span className="fcw-label">{t("business.branch.onlineOnly")}</span>
+                            )}
+                            <div style={{ flex: 1 }} />
+                            {!isStaff && (
+                              <button
+                                className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                onClick={() => {
+                                  setEditBranchId(b.id);
+                                  setBranchForm({
+                                    name: b.name,
+                                    address: b.address || "",
+                                    cityId: b.cityId || "",
+                                    latitude: b.latitude ?? null,
+                                    longitude: b.longitude ?? null,
+                                  });
+                                  setShowBranchForm(false);
+                                }}
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Events */}
                 {section === "events" && (
                   <DropsEditor
@@ -1261,143 +1566,18 @@ export function BusinessPage() {
 
                 {/* Import data */}
                 {section === "import" && (
-                  <div>
-                    <h2 className="fcw-h2" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>{t("business.importData")}</h2>
-                    <p className="fcw-body fcw-text-secondary" style={{ marginBottom: "var(--fcw-space-lg)" }}>
-                      {t("business.importDesc")}
-                    </p>
-                    <Card padding="lg">
-                      <div
-                        onDragOver={event => event.preventDefault()}
-                        onDrop={event => {
-                          event.preventDefault();
-                          handleImportFiles(event.dataTransfer.files);
-                        }}
-                        style={{
-                          border: "1px dashed var(--fcw-color-border-strong)",
-                          borderRadius: "var(--fcw-radius-lg)",
-                          padding: "2rem",
-                          backgroundColor: "var(--fcw-color-surface-secondary)",
-                          textAlign: "center",
-                        }}
-                      >
-                        <Upload size={28} style={{ color: "var(--fcw-color-primary)", marginBottom: "0.75rem" }} />
-                        <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0 }}>{t("business.importDragHere")}</h3>
-                        <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.35rem 0 1rem" }}>
-                          {t("business.importFormats")}
-                        </p>
-                        <label className="fcw-btn fcw-btn-primary fcw-btn-sm" style={{ display: "inline-flex" }}>
-                          <Upload size={14} />
-                          {t("business.importSelectFile")}
-                          <input
-                            type="file"
-                            multiple
-                            onChange={event => handleImportFiles(event.target.files || [])}
-                            style={{ display: "none" }}
-                          />
-                        </label>
-                      </div>
-
-                      {importFiles.length > 0 && (
-                        <div className="fcw-flex-col" style={{ gap: "0.5rem", marginTop: "var(--fcw-space-md)" }}>
-                          {importFiles.map(file => (
-                            <div key={`${file.name}-${file.size}`} className="fcw-flex-between" style={{ gap: "0.75rem", padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)" }}>
-                              <span className="fcw-body-s">{file.name}</span>
-                              <span className="fcw-body-xs fcw-text-tertiary">{Math.max(1, Math.round(file.size / 1024))} KB</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {importStatus && (
-                        <div className="fcw-body-s" style={{ marginTop: "var(--fcw-space-md)", color: "var(--fcw-color-text-secondary)" }}>
-                          {importStatus}
-                        </div>
-                      )}
-
-                      <div className="fcw-flex" style={{ gap: "0.75rem", marginTop: "var(--fcw-space-md)" }}>
-                        <button className="fcw-btn fcw-btn-primary" onClick={handleUploadImport} disabled={importBusy || importFiles.length === 0 || !branches.length}>
-                          {importBusy ? <Loader2 className="fcw-animate-spin" size={16} /> : <Upload size={16} />}
-                          {t("business.importUpload")}
-                        </button>
-                        <button className="fcw-btn fcw-btn-secondary" onClick={() => {
-                          setImportFiles([]);
-                          setImportStatus("");
-                        }} disabled={importBusy || importFiles.length === 0}>
-                          {t("business.importClear")}
-                        </button>
-                      </div>
-                    </Card>
-                    <div style={{ marginTop: "var(--fcw-space-lg)" }}>
-                      <Card padding="lg">
-                        <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>{t("business.importSettings")}</h3>
-                        <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-                          <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                            <label className="fcw-body-s fcw-weight-medium">{t("business.importBranch")}</label>
-                            <Select
-                              options={branches.map(b => ({ value: b.id, label: b.name }))}
-                              value={importBranchId || activeBranchId}
-                              onChange={v => setImportBranchId(v)}
-                              placeholder={branches.length === 0 ? t("business.noBranchesOption") : undefined}
-                              style={{ width: "100%", maxWidth: "320px" }}
-                            />
-                          </div>
-                          <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                            <label className="fcw-body-s fcw-weight-medium">{t("business.importLanguage")}</label>
-                            <Select
-                              options={[
-                                { value: "ru", label: t("business.russian") },
-                                { value: "kk", label: t("business.kazakh") },
-                              ]}
-                              value="ru"
-                              onChange={() => {}}
-                              style={{ width: "100%", maxWidth: "320px" }}
-                            />
-                          </div>
-                          <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                            <label className="fcw-body-s fcw-weight-medium">{t("business.importWhat")}</label>
-                            <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                              <button className="fcw-btn fcw-btn-primary fcw-btn-sm">{t("business.products")}</button>
-                              <button className="fcw-btn fcw-btn-secondary fcw-btn-sm">{t("business.services")}</button>
-                            </div>
-                          </div>
-                          <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", cursor: "pointer" }}>
-                            <input type="checkbox" defaultChecked />
-                            <span className="fcw-body-s">{t("business.importHasHeaders")}</span>
-                          </label>
-                          <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", cursor: "pointer" }}>
-                            <input type="checkbox" />
-                            <span className="fcw-body-s">{t("business.importUpdateExisting")}</span>
-                          </label>
-                        </div>
-                        <div
-                          className="fcw-body-s"
-                          style={{
-                            marginTop: "var(--fcw-space-md)",
-                            padding: "0.5rem 0.75rem",
-                            backgroundColor: "var(--fcw-color-surface-tertiary)",
-                            borderRadius: "var(--fcw-radius-md)",
-                            color: "var(--fcw-color-text-secondary)",
-                          }}
-                        >
-                          {t("business.importWarning")}
-                        </div>
-                      </Card>
-                    </div>
-                  </div>
+                  <ProductImportWizard
+                    branches={branches}
+                    activeBranchId={importBranchId || activeBranchId}
+                    onBranchChange={setImportBranchId}
+                    onBackToProducts={() => setSection("products")}
+                    onImported={loadProducts}
+                  />
                 )}
 
                 {/* Business Card Builder */}
                 {section === "business-card" && (
-                  <BusinessCardBuilder
-                    blocks={cardBlocks}
-                    businessId={businessId}
-                    brandColor={profile.brandColor || DEFAULT_BRAND_COLOR}
-                    onSave={handleSaveCard}
-                    onPublish={handlePublishCard}
-                    busy={busy}
-                    readOnly={isStaff}
-                  />
+                  <BusinessCardBuilder />
                 )}
 
                 {/* Profile */}

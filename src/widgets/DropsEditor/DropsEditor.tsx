@@ -17,10 +17,10 @@ function formatDateShort(value?: string | null): string {
 }
 
 const DROP_TYPE_CONFIG = {
-  COLLAB: { icon: "🤝", color: "#a78bfa" },
-  RESTOCK: { icon: "📦", color: "#60a5fa" },
+  NEW_COLLECTION: { icon: "✨", color: "#f59e0b" },
+  LIMITED_RELEASE: { icon: "💎", color: "#8b5cf6" },
   SEASONAL: { icon: "🌸", color: "#f472b6" },
-  PREORDER: { icon: "📋", color: "#34d399" },
+  PROMO: { icon: "🎯", color: "#ef4444" },
 } as const;
 
 const STATUS_LABELS: Record<string, string> = {
@@ -47,7 +47,7 @@ interface DropForm {
   tags: string;
 }
 
-const emptyForm: DropForm = { name: "", type: "COLLAB", description: "", startDate: "", endDate: "", tags: "" };
+const emptyForm: DropForm = { name: "", type: "NEW_COLLECTION", description: "", startDate: "", endDate: "", tags: "" };
 
 export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnly }: DropsEditorProps) {
   const { t } = useTranslation();
@@ -58,10 +58,10 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
   const update = (patch: Partial<DropForm>) => setForm(f => ({ ...f, ...patch }));
 
   const DROP_TYPES = [
-    { key: "COLLAB", label: t("drops.typeCollab"), desc: t("drops.typeCollabDesc") },
-    { key: "RESTOCK", label: t("drops.typeRestock"), desc: t("drops.typeRestockDesc") },
+    { key: "NEW_COLLECTION", label: t("drops.typeNewCollection"), desc: t("drops.typeNewCollectionDesc") },
+    { key: "LIMITED_RELEASE", label: t("drops.typeLimitedRelease"), desc: t("drops.typeLimitedReleaseDesc") },
     { key: "SEASONAL", label: t("drops.typeSeasonal"), desc: t("drops.typeSeasonalDesc") },
-    { key: "PREORDER", label: t("drops.typePreorder"), desc: t("drops.typePreorderDesc") },
+    { key: "PROMO", label: t("drops.typePromo"), desc: t("drops.typePromoDesc") },
   ];
 
   const resetForm = () => {
@@ -101,7 +101,7 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
 
   const hasActiveDrops = drops.some(d => d.status === "ACTIVE");
   const selectedType = DROP_TYPES.find(dt => dt.key === form.type);
-  const typeConfig = DROP_TYPE_CONFIG[form.type as keyof typeof DROP_TYPE_CONFIG] || DROP_TYPE_CONFIG.COLLAB;
+  const typeConfig = DROP_TYPE_CONFIG[form.type as keyof typeof DROP_TYPE_CONFIG] || DROP_TYPE_CONFIG.NEW_COLLECTION;
 
   return (
     <div>
@@ -133,7 +133,7 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
       ) : (
         <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
           {drops.map(drop => {
-            const tc = DROP_TYPE_CONFIG[drop.type as keyof typeof DROP_TYPE_CONFIG] || DROP_TYPE_CONFIG.COLLAB;
+            const tc = DROP_TYPE_CONFIG[drop.type as keyof typeof DROP_TYPE_CONFIG] || DROP_TYPE_CONFIG.NEW_COLLECTION;
             const dt = DROP_TYPES.find(dt => dt.key === drop.type);
             return (
               <div
@@ -211,18 +211,20 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
               onClick={resetForm}
             />
             <motion.aside
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 position: "fixed",
-                top: 0,
-                right: 0,
                 bottom: 0,
-                width: "min(480px, 100vw)",
+                left: 0,
+                right: 0,
+                maxHeight: "90vh",
+                width: "100%",
                 backgroundColor: "var(--fcw-color-surface)",
-                borderLeft: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                borderRadius: "var(--fcw-radius-lg) var(--fcw-radius-lg) 0 0",
                 zIndex: 91,
                 display: "flex",
                 flexDirection: "column",
@@ -236,7 +238,7 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
                 </button>
               </div>
 
-              <div className="fcw-flex-col" style={{ gap: "1rem", padding: "1.25rem", flex: 1 }}>
+              <div className="fcw-flex-col" style={{ gap: "1rem", padding: "1.25rem", flex: 1, minHeight: 0, overflowY: "auto" }}>
                 <div>
                   <span className="fcw-label" style={{ marginBottom: "0.5rem", display: "block" }}>{t("drops.type")}</span>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.375rem" }}>

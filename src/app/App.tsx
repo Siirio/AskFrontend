@@ -8,8 +8,8 @@ import { StorefrontPage } from "../pages/StorefrontPage/StorefrontPage";
 import { ProfilePage } from "../pages/ProfilePage/ProfilePage";
 import { BusinessPage } from "../pages/BusinessPage/BusinessPage";
 import { AuthPage } from "../pages/AuthPage/AuthPage";
-import { HistoryPage } from "../pages/HistoryPage/HistoryPage";
 import { ChatsPage } from "../pages/ChatsPage/ChatsPage";
+import { OAuthCallbackPage } from "../pages/OAuthCallbackPage/OAuthCallbackPage";
 
 import { ROUTES } from "./routes";
 
@@ -29,8 +29,8 @@ export function App() {
         <Route path={ROUTES.storefront} element={<StorefrontPage />} />
         <Route path={ROUTES.profile} element={<ProfilePage />} />
         <Route path={ROUTES.business} element={<BusinessPage />} />
-        <Route path={ROUTES.history} element={<HistoryPage />} />
         <Route path={ROUTES.chats} element={<ChatsPage />} />
+        <Route path={ROUTES.oauthCallback} element={<OAuthCallbackPage />} />
 
         <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
       </Routes>

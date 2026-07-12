@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, History, MessageCircle, UserRound, Sun, LogOut, Building2 } from "lucide-react";
+import { Home, MessageCircle, UserRound, Sun, LogOut, Building2 } from "lucide-react";
 import { ROUTES } from "../../../app/routes";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { useTheme } from "../../../app/providers/ThemeProvider";
@@ -13,14 +13,12 @@ export function Navigation() {
   const navigate = useNavigate();
 
   const consumerDesktopLinks = [
-    { to: ROUTES.home, label: t("nav.search"), icon: <Search size={18} /> },
-    { to: ROUTES.history, label: t("nav.history"), icon: <History size={18} /> },
+    { to: ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
     { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={18} /> },
   ];
 
   const consumerMobileLinks = [
-    { to: ROUTES.home, label: t("nav.search"), icon: <Search size={20} /> },
-    { to: ROUTES.history, label: t("nav.history"), icon: <History size={20} /> },
+    { to: ROUTES.home, label: t("nav.main"), icon: <Home size={20} /> },
     { to: ROUTES.profile, label: t("nav.profile"), icon: <UserRound size={20} /> },
   ];
 

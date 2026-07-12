@@ -13,7 +13,6 @@ export interface ResultCardData {
   brandName?: string;
   brandColor?: string;
   verified?: boolean;
-  intentReasons?: string[];
   matchScore?: number;
   type?: string;
   hasContactAction?: boolean;

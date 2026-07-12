@@ -44,7 +44,7 @@ export function SupplierWorkspace({ tasks, services }: { tasks: SupplierTask[]; 
               <div>
                 <strong>{service.title}</strong>
                 <span>
-                  {service.branch} · {service.duration} · {service.priceLabel}
+                  {service.branch} · {service.priceLabel}
                 </span>
               </div>
               <span>{t("supplier.manualConfirm")}</span>

@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@2gis/mapgl": "^1.75.1",
     "@vitejs/plugin-react": "^5.0.0",
     "framer-motion": "^12.42.2",
     "i18next": "^26.3.4",

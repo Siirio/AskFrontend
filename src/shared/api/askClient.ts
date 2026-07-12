@@ -6,6 +6,8 @@ import type {
   BusinessServiceDto, BusinessServiceListDto,
   BrandDropDto,
   BrandProfileDto,
+  ChatConversationDto, ChatConversationListResponse,
+  ChatMessageDto, ChatMessageListResponse,
   ContactResolveDto,
   CustomerRequestDetailDto, CustomerRequestHistoryDto,
   SearchResultDto,
@@ -16,6 +18,101 @@ import type {
   SupplierTaskDetailDto,
   SupplierTaskDto
 } from "./dto";
+
+export type ProductImportTargetField =
+  | "NAME"
+  | "CATEGORY_LABEL"
+  | "DESCRIPTION"
+  | "SKU"
+  | "PRICE"
+  | "TAGS"
+  | "IGNORE"
+  | "APPEND_TO_DESCRIPTION"
+  | "CHARACTERISTIC";
+
+export interface ProductImportColumnInfo {
+  sourceColumn: string;
+  suggestedTargetField: ProductImportTargetField;
+  confidence: number;
+}
+
+export interface ProductImportUploadResponse {
+  importId: string;
+  originalFileName: string;
+  status: string;
+  totalRows: number;
+  columns: ProductImportColumnInfo[];
+  sampleRows: Record<string, string>[];
+}
+
+export interface ProductImportMappingEntry {
+  sourceColumn: string;
+  targetField: ProductImportTargetField;
+  characteristicName?: string;
+}
+
+export interface ProductImportPreviewRow {
+  rowId: string;
+  rowNumber: number;
+  status: string;
+  normalizedData: Record<string, string>;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ProductImportPreviewResponse {
+  importId: string;
+  status: string;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  warningRows: number;
+  mappings: ProductImportMappingEntry[];
+  rows: ProductImportPreviewRow[];
+}
+
+export interface ProductImportApproveResponse {
+  importId: string;
+  status: string;
+  productsCreated: number;
+  offersCreated: number;
+  rowsSkipped: number;
+}
+
+export interface AutodumpDraftDto {
+  id: string;
+  itemType?: string;
+  status?: string;
+  title?: string;
+  normalizedTitle?: string;
+  categoryLabel?: string;
+  subcategoryLabel?: string;
+  description?: string;
+  price?: number;
+  priceText?: string;
+  brand?: string;
+  tagsJson?: string;
+  customAttributesJson?: string;
+  confidenceNotes?: string;
+  needsReview?: boolean;
+}
+
+export interface AutodumpSessionStatusResponse {
+  sessionId: string;
+  status: string;
+  totalDraftCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  errorCount: number;
+  drafts: AutodumpDraftDto[];
+}
+
+export interface AutodumpPublishResponse {
+  sessionId: string;
+  sessionStatus: string;
+  published: number;
+  skipped: number;
+}
 
 function getStoredUserLocation() {
   try {
@@ -54,7 +151,7 @@ export function searchAskV2(params: {
   selectedCategory?: string;
   sort?: "intent_match" | "price_asc" | "price_desc" | "distance" | "active_events";
 }) {
-  return apiRequest<SearchV2ResponseDto>("/api/v1/search/v2", {
+  return apiRequest<SearchV2ResponseDto>("/api/v1/search", {
     method: "POST",
     body: {
       rawQuery: params.rawQuery,
@@ -137,11 +234,11 @@ export function listProducts(branchId: string, params?: { categoryId?: string; e
   return apiRequest<BusinessProductListDto>(`/api/v1/business-admin/branches/${branchId}/products${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createProduct(branchId: string, data: { categoryId: string; name: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[] }) {
+export function createProduct(branchId: string, data: { categoryId: string; name: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[]; imageUrl?: string }) {
   return apiRequest<BusinessProductDto>(`/api/v1/business-admin/branches/${branchId}/products`, { method: "POST", auth: true, body: data });
 }
 
-export function updateProduct(branchId: string, productId: string, data: { categoryId?: string; name?: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[] }) {
+export function updateProduct(branchId: string, productId: string, data: { categoryId?: string; name?: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[]; imageUrl?: string }) {
   return apiRequest<BusinessProductDto>(`/api/v1/business-admin/branches/${branchId}/products/${productId}`, { method: "PATCH", auth: true, body: data });
 }
 
@@ -160,11 +257,11 @@ export function listServices(branchId: string, params?: { categoryId?: string; a
   return apiRequest<BusinessServiceListDto>(`/api/v1/business-admin/branches/${branchId}/services${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createService(branchId: string, data: { categoryId: string; name: string; description?: string; basePrice?: number; durationMinutes?: number; scheduleText?: string; active?: boolean }) {
+export function createService(branchId: string, data: { categoryId: string; name: string; description?: string; basePrice?: number; scheduleText?: string; active?: boolean; imageUrl?: string }) {
   return apiRequest<BusinessServiceDto>(`/api/v1/business-admin/branches/${branchId}/services`, { method: "POST", auth: true, body: data });
 }
 
-export function updateService(branchId: string, serviceOfferingId: string, data: { categoryId?: string; name?: string; description?: string; basePrice?: number; durationMinutes?: number; scheduleText?: string; active?: boolean }) {
+export function updateService(branchId: string, serviceOfferingId: string, data: { categoryId?: string; name?: string; description?: string; basePrice?: number; scheduleText?: string; active?: boolean; imageUrl?: string }) {
   return apiRequest<BusinessServiceDto>(`/api/v1/business-admin/branches/${branchId}/services/${serviceOfferingId}`, { method: "PATCH", auth: true, body: data });
 }
 
@@ -218,18 +315,73 @@ export async function uploadProductImport(branchId: string, file: File) {
     } catch {}
     throw new ApiError(response.status, message, errorCode);
   }
-  return transformKeys(await response.json()) as { importId?: string; catalogImportId?: string; sessionId?: string; status?: string; totalRows?: number; draftsCreated?: number };
+  return transformKeys(await response.json()) as ProductImportUploadResponse | { sessionId?: string; status?: string; draftsCreated?: number };
+}
+
+export function mapProductImport(branchId: string, importId: string, mappings: ProductImportMappingEntry[]) {
+  return apiRequest<ProductImportPreviewResponse>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/mapping`, {
+    method: "POST",
+    auth: true,
+    body: { mappings },
+  });
+}
+
+export function getProductImportPreview(branchId: string, importId: string) {
+  return apiRequest<ProductImportPreviewResponse>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/preview`, {
+    auth: true,
+  });
+}
+
+export function approveProductImport(branchId: string, importId: string) {
+  return apiRequest<ProductImportApproveResponse>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/approve`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function cancelProductImport(branchId: string, importId: string) {
+  return apiRequest<{ importId: string; status: string }>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/cancel`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function getAutodumpSession(branchId: string, sessionId: string) {
+  return apiRequest<AutodumpSessionStatusResponse>(`/api/v1/business-admin/branches/${branchId}/autodump-sessions/${sessionId}`, {
+    auth: true,
+  });
+}
+
+export function approveAutodumpDraft(branchId: string, sessionId: string, draftId: string) {
+  return apiRequest<void>(`/api/v1/business-admin/branches/${branchId}/autodump-sessions/${sessionId}/drafts/${draftId}/approve`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function rejectAutodumpDraft(branchId: string, sessionId: string, draftId: string) {
+  return apiRequest<void>(`/api/v1/business-admin/branches/${branchId}/autodump-sessions/${sessionId}/drafts/${draftId}/reject`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export function publishAutodumpSession(branchId: string, sessionId: string) {
+  return apiRequest<AutodumpPublishResponse>(`/api/v1/business-admin/branches/${branchId}/autodump-sessions/${sessionId}/publish`, {
+    method: "POST",
+    auth: true,
+  });
 }
 
 export function listBranches(businessId: string) {
-  return apiRequest<Array<{ id: string; businessId: string; cityId: string; cityName: string; name: string; address: string; onlineOnly: boolean; status: string }>>(`/api/v1/businesses/${businessId}/branches`, { auth: true });
+  return apiRequest<Array<{ id: string; businessId: string; cityId: string; cityName: string; name: string; address: string; onlineOnly: boolean; status: string; latitude: number; longitude: number }>>(`/api/v1/businesses/${businessId}/branches`, { auth: true });
 }
 
-export function createBranch(businessId: string, data: { name: string; address?: string; cityId?: string; onlineOnly?: boolean }) {
+export function createBranch(businessId: string, data: { name: string; address?: string; cityId?: string; onlineOnly?: boolean; latitude: number; longitude: number }) {
   return apiRequest<{ id: string; name: string }>(`/api/v1/businesses/${businessId}/branches`, { method: "POST", auth: true, body: data });
 }
 
-export function updateBranch(businessId: string, branchId: string, data: { name?: string; address?: string; cityId?: string; onlineOnly?: boolean }) {
+export function updateBranch(businessId: string, branchId: string, data: { name?: string; address?: string; cityId?: string; onlineOnly?: boolean; latitude?: number; longitude?: number }) {
   return apiRequest<{ id: string; name: string }>(`/api/v1/businesses/${businessId}/branches/${branchId}`, { method: "PATCH", auth: true, body: data });
 }
 
@@ -322,5 +474,95 @@ export function publishBusinessCard(businessId: string) {
   return apiRequest<import("./dto").BusinessCardDto>(`/api/v1/businesses/${businessId}/business-card/publish`, {
     method: "POST",
     auth: true,
+  });
+}
+
+export function startChatConversation(businessId: string, subject: string, searchQuery?: string) {
+  const qs = new URLSearchParams({ businessId, subject });
+  if (searchQuery) qs.set("searchQuery", searchQuery);
+  return apiRequest<ChatConversationDto>(`/api/v1/chat/conversations?${qs.toString()}`, { method: "POST", auth: true });
+}
+
+export function listChatConversations() {
+  return apiRequest<ChatConversationListResponse>("/api/v1/chat/conversations", { auth: true });
+}
+
+export function getChatMessages(conversationId: string) {
+  return apiRequest<ChatMessageListResponse>(`/api/v1/chat/conversations/${conversationId}/messages`, { auth: true });
+}
+
+export function sendChatMessage(conversationId: string, text: string, attachmentUrl?: string) {
+  return apiRequest<ChatMessageDto>(`/api/v1/chat/conversations/${conversationId}/messages`, {
+    method: "POST",
+    auth: true,
+    body: { text, attachmentUrl },
+  });
+}
+
+export async function uploadChatFile(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const headers: Record<string, string> = {};
+  const token = getStoredToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${API_BASE_URL}/api/v1/chat/upload`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    let message = text;
+    try {
+      const json = JSON.parse(text);
+      if (json.message) message = json.message;
+    } catch {}
+    throw new ApiError(response.status, message, null);
+  }
+  const data = await response.json();
+  return (data as { url: string }).url;
+}
+
+export function markChatRead(conversationId: string) {
+  return apiRequest<void>(`/api/v1/chat/conversations/${conversationId}/read`, { method: "POST", auth: true });
+}
+
+export function listBusinessChats(businessId: string) {
+  return apiRequest<ChatConversationListResponse>(`/api/v1/business-admin/chats?businessId=${encodeURIComponent(businessId)}`, { auth: true });
+}
+
+export function getBusinessChatMessages(conversationId: string, businessId: string) {
+  return apiRequest<ChatMessageListResponse>(`/api/v1/business-admin/chats/${conversationId}/messages?businessId=${encodeURIComponent(businessId)}`, { auth: true });
+}
+
+export function sendBusinessChatMessage(conversationId: string, businessId: string, text: string) {
+  return apiRequest<ChatMessageDto>(`/api/v1/business-admin/chats/${conversationId}/messages?businessId=${encodeURIComponent(businessId)}`, {
+    method: "POST",
+    auth: true,
+    body: { text },
+  });
+}
+
+export function markBusinessChatRead(conversationId: string, businessId: string) {
+  return apiRequest<void>(`/api/v1/business-admin/chats/${conversationId}/read?businessId=${encodeURIComponent(businessId)}`, { method: "POST", auth: true });
+}
+
+export function updateChatStatus(conversationId: string, businessId: string, status: string) {
+  return apiRequest<void>(`/api/v1/business-admin/chats/${conversationId}/status?businessId=${encodeURIComponent(businessId)}&status=${encodeURIComponent(status)}`, { method: "PATCH", auth: true });
+}
+
+export function notifyBusinesses(searchQuery: string, businessIds: string[]) {
+  return apiRequest<void>("/api/v1/chat/system-notify", {
+    method: "POST",
+    auth: true,
+    body: { searchQuery, businessIds },
+  });
+}
+
+export function parseTwoGisLink(link: string) {
+  return apiRequest<{ found: boolean; latitude?: number; longitude?: number }>("/api/v1/geo/parse-2gis-link", {
+    method: "POST",
+    auth: true,
+    body: { link },
   });
 }

@@ -36,7 +36,7 @@ export function HomePage() {
     }
     setBusy(true);
     navigate(buildRoute(ROUTES.results, {}, { query, mode, city }));
-    setTimeout(() => setBusy(false), 100);
+    setBusy(false);
   };
 
   const modeOptions: SegmentedOption<SearchMode>[] = [
