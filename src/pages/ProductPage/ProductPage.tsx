@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, MapPin, Phone, MessageCircle, ShieldCheck, Clock3, Store, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, MessageCircle, Clock3, Store, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
 import { BrandBadge } from "../../shared/ui/BrandBadge/BrandBadge";
@@ -46,7 +46,6 @@ export function ProductPage() {
   }
 
   const typeLabel = card.type === "ServiceCard" ? t("product.type.service") : t("product.type.product");
-  const reasons = card.intentReasons?.slice(0, 3) || [];
 
   const handleRequestContact = async () => {
     if (!authState.session) {
@@ -180,19 +179,6 @@ export function ProductPage() {
               </div>
             </Card>
 
-            {reasons.length > 0 && (
-              <Card padding="lg">
-                <h2 className="fcw-h3" style={{ margin: "0 0 0.75rem 0" }}>{t("product.whyMatch")}</h2>
-                <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
-                  {reasons.map((reason, index) => (
-                    <div key={index} className="fcw-body-s fcw-flex" style={{ gap: "0.5rem", alignItems: "flex-start" }}>
-                      <ShieldCheck size={14} style={{ color: "var(--fcw-color-accent)", flexShrink: 0, marginTop: 2 }} />
-                      <span>{reason}</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
           </aside>
         </motion.div>
 

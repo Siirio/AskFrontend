@@ -157,7 +157,7 @@ export type BlockShape = "rectangle" | "rounded" | "full-width" | "split";
 
 export interface DropItem { localId: string; name: string; image?: string; price?: string; status?: string; }
 export interface BranchItem { localId: string; name: string; address: string; city: string; hours?: string; }
-export interface ServiceItem { localId: string; name: string; description?: string; price?: string; duration?: string; }
+export interface ServiceItem { localId: string; name: string; description?: string; price?: string; }
 export interface ContactItem { localId: string; provider: string; url: string; label: string; }
 
 export interface CardBlockConfig {

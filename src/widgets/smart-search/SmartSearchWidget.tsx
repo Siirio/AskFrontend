@@ -21,17 +21,6 @@ export function SmartSearchWidget({ results, isLoading }: { results: SearchResul
     return labels[value] ?? value;
   }
 
-  function reasonLabel(value: string): string {
-    const labels: Record<string, string> = {
-      "matches by title": t("smartSearch.reasonTitle"),
-      "pickup available": t("smartSearch.reasonPickup"),
-      "within budget": t("smartSearch.reasonBudget"),
-      "brand matches this intent": t("smartSearch.reasonBrand"),
-    };
-    if (value.startsWith("category:")) return `${t("smartSearch.reasonCategory")}: ${value.replace("category:", "")}`;
-    return labels[value] ?? value;
-  }
-
   function decisionStatusLabel(result: SearchResult): string {
     if (result.confirmationStatus === "BUSINESS_CONFIRMED") return t("smartSearch.statusConfirmed");
     if (result.confirmationStatus === "DATA_UPDATED") return t("smartSearch.statusUpdated");
@@ -82,9 +71,6 @@ export function SmartSearchWidget({ results, isLoading }: { results: SearchResul
             <div className="supplier-line">
               <span>{result.category}</span>
               <span>{decisionStatusLabel(result)}</span>
-            </div>
-            <div className="match-reasons">
-              {(result.matchReasons ?? []).slice(0, 4).map(reason => <span key={reason}>{reasonLabel(reason)}</span>)}
             </div>
             {result.note ? <p>{result.note}</p> : null}
             <div className="result-meta">

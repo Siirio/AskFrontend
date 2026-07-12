@@ -6,8 +6,8 @@ export const ROUTES = {
   storefront: "/storefront/:businessId",
   profile: "/profile",
   business: "/business",
-  history: "/history",
   chats: "/chats",
+  oauthCallback: "/oauth/callback",
 } as const;
 
 export function buildRoute(route: string, params: Record<string, string> = {}, query?: Record<string, string>): string {

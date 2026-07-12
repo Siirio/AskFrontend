@@ -24,7 +24,6 @@ export type SearchResult = {
   confidence: Confidence;
   section?: SearchSection;
   score?: number;
-  matchReasons?: string[];
   badges: string[];
   warnings?: string[];
   sourceLabel: string;

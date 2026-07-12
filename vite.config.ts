@@ -7,7 +7,15 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:9090",
+        target: "http://localhost:2020",
+        changeOrigin: true,
+      },
+      "/oauth2": {
+        target: "http://localhost:2020",
+        changeOrigin: true,
+      },
+      "/login/oauth2": {
+        target: "http://localhost:2020",
         changeOrigin: true,
       },
     },

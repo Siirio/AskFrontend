@@ -42,8 +42,6 @@ export type SearchResultDto = {
   section_type?: "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
   sectionType?: "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
   score?: number;
-  match_reasons?: string[];
-  matchReasons?: string[];
   badges?: string[];
   warnings?: string[];
   requires_supplier_check?: boolean;
@@ -80,7 +78,6 @@ export type SearchV2CardDto = {
   title: string;
   price?: number | null;
   availability?: "IN_STOCK" | "NEEDS_CONFIRMATION" | "UNKNOWN" | string;
-  matchReasons?: string[];
   badges?: string[];
   distanceMeters?: number | null;
   branchName?: string | null;
@@ -241,6 +238,7 @@ export type BusinessProductDto = {
   tags: string[];
   price: number;
   enabled: boolean;
+  imageUrl: string;
   updatedAt: string;
 };
 
@@ -261,9 +259,9 @@ export type BusinessServiceDto = {
   name: string;
   description: string;
   basePrice: number;
-  durationMinutes: number;
   scheduleText: string;
   active: boolean;
+  imageUrl: string;
   updatedAt: string;
 };
 
@@ -296,4 +294,34 @@ export type BusinessCardDto = {
   businessId: string;
   blocks: BusinessCardBlockDto[];
   publishedAt?: string | null;
+};
+
+export type ChatConversationDto = {
+  conversationId: string;
+  businessId: string;
+  customerId: string | null;
+  subject: string;
+  status: "NEW_REQUEST" | "IN_PROGRESS" | "DEAL_CLOSED";
+  source: "CUSTOMER" | "SYSTEM";
+  searchQuery?: string;
+  lastMessageAt: string;
+  createdAt: string;
+};
+
+export type ChatMessageDto = {
+  messageId: string;
+  conversationId: string;
+  senderType: "SYSTEM" | "CUSTOMER" | "BUSINESS";
+  text: string;
+  attachmentUrl?: string;
+  readAt?: string;
+  createdAt: string;
+};
+
+export type ChatConversationListResponse = {
+  items: ChatConversationDto[];
+};
+
+export type ChatMessageListResponse = {
+  items: ChatMessageDto[];
 };

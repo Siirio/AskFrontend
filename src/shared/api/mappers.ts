@@ -52,7 +52,6 @@ export function mapSearchResult(dto: SearchResultDto): SearchResult {
     confidence: confidenceMap[confidenceCode],
     section: dto.section_type ?? dto.sectionType,
     score: dto.score,
-    matchReasons: dto.match_reasons ?? dto.matchReasons ?? [],
     badges: dto.badges ?? [],
     warnings: dto.warnings ?? [],
     sourceLabel: sourceLabel(dto.source) ?? "",
