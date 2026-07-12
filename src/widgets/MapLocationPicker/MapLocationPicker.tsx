@@ -32,7 +32,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     initialLat && initialLng ? { lat: initialLat, lng: initialLng } : null
   );
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const center: [number, number] = selected
     ? [selected.lat, selected.lng]
