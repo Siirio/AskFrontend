@@ -30,7 +30,7 @@ ls -d ../*/CLAUDE.md 2>/dev/null
 For each found: read its first project line. If `ASK Backend` is missing from `../Ask_Backend/CLAUDE.md` → flag it. If present → note its features and locks.
 
 ### 3. Knowledge scan
-Read the 3 CORE files (`AI_Knowledge/PRODUCT_VISION.md`, `AI_Knowledge/ARCHITECTURE_PATTERN_FRONTEND.md`, `AI_Knowledge/DESIGN_PATTERNS_FRONTEND.md`) and `AI_Knowledge/Locks.md`. Scan `AI_Knowledge/features/` directories. Report: "{N} slices tracked, {M} locks active."
+Read the 3 CORE files (`AI_Knowledge/PRODUCT_VISION.md`, `AI_Knowledge/ARCHITECTURE_PATTERN_FRONTEND.md`, `AI_Knowledge/DESIGN_PATTERNS_FRONTEND.md`), plus `AI_Knowledge/Locks.md` and `AI_Knowledge/ROADMAP.md`. Scan `AI_Knowledge/features/` directories. Report: "Phase {N}. {N} slices tracked, {M} locks active, {G} gates open."
 
 ### 4. Self-maintenance
 Run system-maintainer protocol: compress bloated docs, migrate misplaced content, archive dead slices, flag stale docs, deduplicate locks. NEVER compress the CORE files or Locks.md.
@@ -87,10 +87,13 @@ AI_Knowledge/
   PRODUCT_VISION.md                 ┐
   ARCHITECTURE_PATTERN_FRONTEND.md  ├─ CORE authorities (never compressed)
   DESIGN_PATTERNS_FRONTEND.md       ┘
+  ROADMAP.md                        ─  what to build next, and the open gates
   Locks.md                          ─  invariants
   Changelog.md                      ─  dated decisions
   features/{slice}/                 ─  Tier 2, one folder per slice
 ```
+
+The four authorities in one line: the vision says WHAT, the architecture says WHERE, the design patterns say HOW, the roadmap says WHEN.
 
 ### CORE — the authorities (Tier 1, always loaded, NEVER compressed, NEVER auto-edited)
 | File | Purpose |
@@ -105,6 +108,7 @@ The second data authority is **the ASK Backend API** (`../Ask_Backend/AI_Knowled
 | File | Max | Purpose |
 |------|-----|---------|
 | `AI_Knowledge/Locks.md` | 40 | Frontend invariants. If violated → STOP and ASK |
+| `AI_Knowledge/ROADMAP.md` | 150 | Current phase, the DONE definition for a slice, open gates. A gate blocking the work → STOP and ASK. Completed phases move to Changelog.md and leave this file. |
 
 ### Domain touch (Tier 2 — loaded when a slice is touched, cached for session)
 | File | Purpose |
@@ -125,9 +129,10 @@ The second data authority is **the ASK Backend API** (`../Ask_Backend/AI_Knowled
 ## Before ANY Code Change
 1. Load `AI_Knowledge/Locks.md` + `AI_Knowledge/features/{slice}/locks.md`
 2. If ANY lock would be violated → STOP. ASK the user. Do not proceed until answered.
-3. Confirm the screen/flow/control exists in `AI_Knowledge/PRODUCT_VISION.md` (P9.1). Not there → STOP and ASK. Never invent UI.
-4. Writing `api.ts`? Read `AI_Knowledge/features/{slice}/contracts.md` AND the backend's `../Ask_Backend/AI_Knowledge/features/{module}/contracts.md`. Never guess a DTO.
-5. Search the codebase for existing patterns that solve the same problem. Reuse via the ownership test (architecture §5, D8).
+3. Check `AI_Knowledge/ROADMAP.md`: is an open **gate** blocking this work? → STOP and ASK. Building past a gate means guessing at a contract someone else owns.
+4. Confirm the screen/flow/control exists in `AI_Knowledge/PRODUCT_VISION.md` (P9.1). Not there → STOP and ASK. Never invent UI.
+5. Writing `api.ts`? Read `AI_Knowledge/features/{slice}/contracts.md` AND the backend's `../Ask_Backend/AI_Knowledge/features/{module}/contracts.md`. Never guess a DTO.
+6. Search the codebase for existing patterns that solve the same problem. Reuse via the ownership test (architecture §5, D8).
 
 ## After ANY Code Change
 1. Slice behavior or a key decision changed? → Update `AI_Knowledge/features/{slice}/README.md`

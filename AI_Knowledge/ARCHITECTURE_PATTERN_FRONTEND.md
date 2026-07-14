@@ -13,14 +13,14 @@ This file lives in `AI_Knowledge/` — the repo's one knowledge home. Its siblin
 
 **The living layer** (built on top of the CORE, grows with the code):
 
+- `ROADMAP.md` — phase plan, the DONE definition for a slice, and the open decision gates. It answers *when and in what order*; this file only answers *where*.
 - `Locks.md` — invariants. A violation means STOP and ASK; breaking one needs explicit approval.
 - `Changelog.md` — dated decisions and their rationale.
 - `features/{slice}/` — one folder per slice (`README.md`, `contracts.md`, `ux-ui-flow.md`, `locks.md`), mirroring the AskBackend knowledge system. A **feature folder == a slice, 1:1**; adding a slice means adding its folder in the same commit as §2 and the §8 ESLint pattern.
 
 **Protocol** (at the repo root, read first):
 
-- `../CLAUDE.md` / `../AGENTS.md` — session start, knowledge tiers, before/after-change checklists, lock system, tool routing.
-- `../../ROADMAP.md` (workspace root) — phase plan and decision gates.
+- `../CLAUDE.md` / `../AGENTS.md` — session start, knowledge tiers, before/after-change checklists, lock system, tool routing, commit rules.
 
 References (background, not authority — this file is the authority for this repo):
 
