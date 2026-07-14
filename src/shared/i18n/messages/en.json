@@ -1,0 +1,24 @@
+{
+  "marketing": {
+    "title": "ASK",
+    "openApp": "Open the app"
+  },
+  "app": {
+    "nav": {
+      "home": "Home",
+      "chats": "Chats",
+      "profile": "Profile",
+      "business": "Business"
+    },
+    "pages": {
+      "home": "Home",
+      "auth": "Sign in",
+      "catalog": "Catalog",
+      "product": "Product card",
+      "chats": "Chats",
+      "profile": "Profile",
+      "business": "Business cabinet"
+    },
+    "placeholder": "Section under construction"
+  }
+}
