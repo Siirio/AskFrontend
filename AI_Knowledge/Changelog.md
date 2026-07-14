@@ -1,0 +1,9 @@
+# ASK Frontend — Changelog
+
+Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
+
+## 2026-07-14 | The 3 CORE files moved from the repo root into AI_Knowledge/ — ONE knowledge home. Root now holds protocol only (CLAUDE.md/AGENTS.md), mirroring the backend's split. Names kept (they stay siblings, so their cross-references still resolve). Restores the location ROADMAP.md already pointed at | AI_Knowledge/{PRODUCT_VISION,ARCHITECTURE_PATTERN_FRONTEND,DESIGN_PATTERNS_FRONTEND}.md, CLAUDE.md, AGENTS.md, .claude/skills/*
+2026-07-14 | Backend cross-repo lookups fixed: its Feature Index gained a Frontend slice column (messaging→chats, service→services, request→requests, identity→auth+profile, offers/import→business-cabinet/catalog); paths corrected to ../Ask_Frontend | ../Ask_Backend/CLAUDE.md, ../Ask_Backend/AGENTS.md
+2026-07-14 | AI knowledge system installed, mirroring Ask_Backend: self-bootstrapping CLAUDE.md/AGENTS.md orchestrator, .claude/skills (code-rules-checker, documentation-updater, system-maintainer), AI_Knowledge/{Locks,Changelog,features}. The CORE files are compress-exempt — the maintainer protocol may never rewrite them | CLAUDE.md, AGENTS.md, .claude/skills/*, AI_Knowledge/*
+2026-07-14 | Feature folders == slices, 1:1 (8 slices mirroring backend modules identity/search/catalog/service/chat/request/business+offers). autodump, contact, shipping have no V1 surface → no slice. Marketing is app-level wiring, not a slice | AI_Knowledge/features/*, CLAUDE.md Feature Index
+2026-07-14 | Greenfield rebuild from two sources of truth: PRODUCT_VISION.md (product authority, D9) + the AskBackend API (data authority). VSA on Next.js App Router with ESLint-enforced boundaries; decisions D1–D10 | ARCHITECTURE_PATTERN_FRONTEND.md, DESIGN_PATTERNS_FRONTEND.md, PRODUCT_VISION.md

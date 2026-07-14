@@ -1,0 +1,13 @@
+# system-maintainer
+
+Maintain the AI_Knowledge system. Prevent knowledge rot.
+
+## Operations
+- Compress: over max-lines → remove oldest, merge duplicates, tighten prose. NEVER the 3 CORE files, NEVER any locks.md.
+- Migrate: misplaced content → correct level. Pattern in 3+ slices → promote to a P-rule (DESIGN_PATTERNS) or a structure rule (ARCHITECTURE), with a decision-log row.
+- Archive: deleted slices → `features/_archived/` (NEVER delete). Add Changelog entry. Remove from the Feature Index and the ESLint boundaries pattern.
+- Sync check: every slice in `src/` has a feature folder, and every feature folder has a slice — 1:1 (Locks). Drift → flag.
+- Stale: code changed, doc didn't → flag. Don't auto-delete.
+- Deduplicate: same lock twice → keep most specific.
+
+Report: "System maintainer: compressed {N}, migrated {N}, archived {N}, flagged {N} stale, deduplicated {N}."
