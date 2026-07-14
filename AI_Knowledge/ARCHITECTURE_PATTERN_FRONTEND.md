@@ -291,6 +291,8 @@ The slice list in the `boundaries/elements` pattern MUST stay in sync with §2; 
 
 CI/verification: `next build` (includes tsc) and `eslint src` MUST pass before any commit; lint is wired into the build pipeline, not left to convention. An import-rule violation is a build failure, not a review comment.
 
+**§8 correction — 2026-07-14 (appended at scaffold time; the excerpt above is kept for the rule INTENT):** the installed `eslint-plugin-boundaries` v7 renamed the enforcement surface the excerpt was written against: `element-types` and `entry-point` are folded into the one canonical `boundaries/dependencies` rule (`entry-point` is deleted in v8), `no-unknown` is now `no-unknown-dependencies`, and options use `policies` with object selectors. `eslint.config.mjs` therefore expresses R1+R2+R3 as `boundaries/dependencies` policies — R2 via `fileInternalPath: "index.ts"` on the slice target — and keeps `boundaries/no-unknown-files`, `boundaries/no-unknown-dependencies`, `import/no-cycle` as written. Element patterns are anchored `**/src/…` so the identical config also governs the `lint-fixtures/src/` proof tree. The laws R1–R5 are unchanged; `npm run lint:fixtures` (a mandatory stage of `npm run build`) proves each law still fails its fixture and that legal imports stay clean. Justification: founding the repo on rules the plugin deletes in its next major would violate the spirit of §8 (enforcement as law); the config is proven by fixtures, not assumed from this excerpt.
+
 ## 9. Sources of Truth (D9)
 
 The frontend is built from exactly **two sources of truth**:
