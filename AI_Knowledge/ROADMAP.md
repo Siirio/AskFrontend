@@ -18,10 +18,10 @@ Phase 0 splits in two, and **the halves run in PARALLEL**. Only 0b needs the des
 
 ### Phase 0a — Infrastructure (needs no design, start immediately)
 
-- [ ] Scaffold Next.js: App Router, TypeScript, `src/` directory, `@/*` alias (architecture §8)
-- [ ] **The FIRST commit, before any slice:** ESLint + `eslint-plugin-boundaries` + `eslint-plugin-import` per §8 — element types, `entry-point`, `no-unknown`, `no-unknown-files`, `import/no-cycle`. Ship a `lint-fixtures/` set of deliberately-bad imports (one per rule: R1, R2, R3, R5, unknown folder) with a CI step asserting ESLint **fails** on each. The config must be proven, not assumed.
-- [ ] Wire `eslint src` + `next build` into the build pipeline — an import violation is a build failure, not a review comment
-- [ ] `shared/api/httpClient.ts`: one wrapper, callable from server AND client (D7). Key transforms, `ApiError`, token storage helpers behind an interface (P5.2, D5). No domain endpoints.
+- [x] Scaffold Next.js: App Router, TypeScript, `src/` directory, `@/*` alias (architecture §8)
+- [x] **The FIRST commit, before any slice:** ESLint + `eslint-plugin-boundaries` + `eslint-plugin-import` per §8 — element types, `entry-point`, `no-unknown`, `no-unknown-files`, `import/no-cycle` (plugin v7 folds the first two into `boundaries/dependencies` — see the dated §8 note). Shipped `lint-fixtures/` with one deliberately-bad import per rule (R1, R2, R3, R5, unknown folder); `npm run lint:fixtures` asserts ESLint **fails** on each. Proven, not assumed.
+- [x] Wire `eslint src` + `next build` into the build pipeline — `npm run build` chains lint → fixture proof → `next build`
+- [x] `shared/api/httpClient.ts`: one wrapper, callable from server AND client (D7). `ApiError` mirrors the backend's `ErrorResponse`; token storage behind `TokenStorage` (P5.2, D5). No domain endpoints. (No key-transform layer: the backend speaks camelCase JSON — a transform would be dead code, P8.1.)
 - [ ] `shared/i18n/`: next-intl plumbing + `messages/{ru,kk,en}.json`, keyed per slice namespace
 - [ ] App skeleton: root layout, `app/providers/`, `app/_components/` chrome, the `(marketing)` route group and the `/app/*` tree (D6). Structure only — unstyled.
 - [ ] Playwright e2e harness running against `next build && next start`
