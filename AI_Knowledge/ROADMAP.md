@@ -14,19 +14,28 @@ This is the **frontend** roadmap. It answers *when and in what order* — the on
 
 Goal: a Next.js app where the boundaries are compile-time laws before a single slice exists. **Tooling before code — this order is not negotiable.**
 
+Phase 0 splits in two, and **the halves run in PARALLEL**. Only 0b needs the design; 0a needs nothing from anyone.
+
+### Phase 0a — Infrastructure (needs no design, start immediately)
+
 - [ ] Scaffold Next.js: App Router, TypeScript, `src/` directory, `@/*` alias (architecture §8)
 - [ ] **The FIRST commit, before any slice:** ESLint + `eslint-plugin-boundaries` + `eslint-plugin-import` per §8 — element types, `entry-point`, `no-unknown`, `no-unknown-files`, `import/no-cycle`. Ship a `lint-fixtures/` set of deliberately-bad imports (one per rule: R1, R2, R3, R5, unknown folder) with a CI step asserting ESLint **fails** on each. The config must be proven, not assumed.
 - [ ] Wire `eslint src` + `next build` into the build pipeline — an import violation is a build failure, not a review comment
-- [ ] `design-system/`: define the tokens (colors, type scale, spacing, radii) and map them into the Tailwind v4 theme (D3). **The one open decision in Phase 0** — no design file exists, so the vision and the backend (the two sources of truth, D9) say nothing about what the app LOOKS like. → **`DESIGN_BRIEF.md` is the brief; §9 holds the ready-to-paste prompts for claude.ai/design.** When the tokens land, they become the visual source and the architecture decision log gains a row. This decision blocks nothing else in Phase 0 — scaffold, ESLint, httpClient, i18n and the app skeleton all proceed without it.
 - [ ] `shared/api/httpClient.ts`: one wrapper, callable from server AND client (D7). Key transforms, `ApiError`, token storage helpers behind an interface (P5.2, D5). No domain endpoints.
 - [ ] `shared/i18n/`: next-intl plumbing + `messages/{ru,kk,en}.json`, keyed per slice namespace
-- [ ] `shared/motion.ts`: the framer-motion variants (D4 — LazyMotion + `m.`, `useReducedMotion()`)
-- [ ] `shared/ui/`: the primitives the states in §P9.3 require — Button, Input, Modal, Toast, Loading, EmptyState
-- [ ] App skeleton: root layout, `app/providers/`, `app/_components/` chrome, the `(marketing)` route group and the `/app/*` tree (D6)
+- [ ] App skeleton: root layout, `app/providers/`, `app/_components/` chrome, the `(marketing)` route group and the `/app/*` tree (D6). Structure only — unstyled.
 - [ ] Playwright e2e harness running against `next build && next start`
 - [ ] Confirm the deploy target and wire a preview deploy
 
-Depends on: nothing. **Blocks: everything below.**
+### Phase 0b — The visual layer (needs the tokens)
+
+**The one open decision in the whole phase.** No design file exists — the two sources of truth (the vision, the backend) say nothing about what the app LOOKS like. → **`DESIGN_BRIEF.md` is the brief; §9 holds the ready-to-paste prompts for claude.ai/design. Prompt 1 is the only one that blocks anything.**
+
+- [ ] `design-system/`: the tokens (colors light+dark, type scale, spacing, radii, shadows, motion) mapped into the Tailwind v4 theme (D3). When they land they become the visual source and the architecture decision log gains a row.
+- [ ] `shared/motion.ts`: the framer-motion variants (D4 — LazyMotion + `m.`, `useReducedMotion()`). Durations and easings are tokens.
+- [ ] `shared/ui/`: the primitives the P9.3 states require — Button, Input, Select, Card, Modal, Toast, Badge, Loading/skeleton, EmptyState. These cannot be built before the tokens: P9.2 forbids a raw hex or px value in a component.
+
+Depends on: nothing (0a) · Prompt 1 of the design brief (0b). **Blocks: everything below.**
 
 ## Phase 1 — Slice by Slice
 
