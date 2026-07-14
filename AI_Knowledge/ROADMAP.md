@@ -24,7 +24,7 @@ Phase 0 splits in two, and **the halves run in PARALLEL**. Only 0b needs the des
 - [x] `shared/api/httpClient.ts`: one wrapper, callable from server AND client (D7). `ApiError` mirrors the backend's `ErrorResponse`; token storage behind `TokenStorage` (P5.2, D5). No domain endpoints. (No key-transform layer: the backend speaks camelCase JSON — a transform would be dead code, P8.1.)
 - [x] `shared/i18n/`: next-intl plumbing + `messages/{ru,kk,en}.json`, keyed per slice namespace (locale fixed to `ru` until the profile settings screen exists — a request-time cookie read would break the static marketing page, D6)
 - [x] App skeleton: root layout, `app/providers/`, `app/_components/` chrome (NavigationMenu), the `(marketing)` route group and the `/app/*` tree (D6). Structure only — unstyled; every string is an i18n key; `/` and `/app/*` prerender static, `product/[id]` dynamic.
-- [ ] Playwright e2e harness running against `next build && next start`
+- [x] Playwright e2e harness running against `next build && next start` (e2e/smoke.spec.ts: landing, platform shell, every V1 route)
 - [ ] Confirm the deploy target and wire a preview deploy
 
 ### Phase 0b — The visual layer (needs the tokens)
