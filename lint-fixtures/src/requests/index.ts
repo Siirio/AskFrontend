@@ -2,4 +2,6 @@
 // Expected error: import/no-cycle.
 import { chatsThing } from "@/chats";
 
-export const requestsThing = `requests needs ${chatsThing}`;
+export function requestsThing(): string {
+  return "requests needs " + chatsThing();
+}
