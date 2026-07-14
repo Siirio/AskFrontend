@@ -127,6 +127,8 @@ Backend modules with **no V1 surface** (`autodump`, `contact`) get no slice yet 
 
 **Platform boundary (D6):** marketing pages are content-only: they import `shared/` and `design-system/` but never a slice, and have no `api/model/store`. Marketing is the ONLY copy of the marketing content. Logged-in visitors on `/` are redirected to `/app/` by a client-side check of the `ask.accessToken` storage key, suppressed by `?from=app`. The `/app/*` prefix preserves a future `app.` subdomain split without breaking a single URL.
 
+**§2 note — 2026-07-14 (providers):** the tree comment above says `providers/` holds "client components MOUNTING contexts". Precision, learned at scaffold time: the *mounting file itself may be a server component* — `AppProviders` reads next-intl config via `next-intl/server` and renders `NextIntlClientProvider`, which is the client boundary. Do NOT add `'use client'` to a provider-mounting file just to match that comment: it is unnecessary (a client component receiving `children` as props keeps those children server-rendered) and here it would break outright — the file is async and imports server-only APIs. The rule that matters is unchanged: providers are MOUNTED in `app/providers`, DEFINED in their owning slice (R6, P5.3).
+
 Adding a **new slice** requires: (1) a matching backend module or an approved product area, (2) an entry added to this file, and (3) the slice name added to the ESLint boundaries pattern in §8 — all in the same commit.
 
 ## 3. Slice Anatomy

@@ -6,11 +6,11 @@ Breaking requires: (1) explicit user approval, (2) proof surrounding extension i
 
 ## Structure Locks
 LOCKED | Slices mirror AskBackend module names; a feature folder exists per slice, 1:1 | One mental map across the product; 1:1 mapping if backend modules ever become services | src/*, AI_Knowledge/features/*
-LOCKED | No layer folders — entities/, features/, widgets/, or global components/services/utils | Code is cut by domain, not by technical layer (VSA) | src/ top level, boundaries/no-unknown
-LOCKED | Cross-slice imports only through the slice's index.ts | The door rule (R2) — deep imports couple internals and freeze them | boundaries/entry-point
-LOCKED | shared/, design-system/, lib/ never import a slice or app/ | One-way dependency (R1) — the toolbox knows nothing about the business | boundaries/element-types
+LOCKED | No layer folders — entities/, features/, widgets/, or global components/services/utils | Code is cut by domain, not by technical layer (VSA) | src/ top level, boundaries/no-unknown-files + boundaries/no-unknown-dependencies
+LOCKED | Cross-slice imports only through the slice's index.ts | The door rule (R2) — deep imports couple internals and freeze them | boundaries/dependencies (fileInternalPath "index.ts" policy)
+LOCKED | shared/, design-system/, lib/ never import a slice or app/ | One-way dependency (R1) — the toolbox knows nothing about the business | boundaries/dependencies
 LOCKED | No business words in shared/ — translations are the one sanctioned exception | Domain-aware code belongs to its slice (§5 litmus test) | src/shared/*
-LOCKED | ESLint boundary rules are never disabled or weakened to make a change pass | Boundaries are compile-time laws, not conventions | eslint.config.js, CI
+LOCKED | ESLint boundary rules are never disabled or weakened to make a change pass | Boundaries are compile-time laws, not conventions | eslint.config.mjs, the npm run build chain
 
 ## Rendering & State Locks
 LOCKED | Route files and layouts stay server components; 'use client' only at interactive components | Public surfaces must server-render — SEO is a core requirement (D7) | src/app/**/page.tsx, layout.tsx

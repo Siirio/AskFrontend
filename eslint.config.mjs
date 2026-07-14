@@ -10,7 +10,7 @@ import importPlugin from "eslint-plugin-import";
  * (`lint-fixtures/src/…`). §8: the config must be proven, not assumed —
  * `npm run lint:fixtures` asserts ESLint FAILS on every fixture.
  *
- * The slice list MUST stay in sync with architecture §2; `boundaries/no-unknown`
+ * The slice list MUST stay in sync with architecture §2; `boundaries/no-unknown-dependencies`
  * and `boundaries/no-unknown-files` turn a forgotten sync into a lint error.
  */
 const SLICES = "auth|search|catalog|services|chats|requests|profile|business-cabinet";
