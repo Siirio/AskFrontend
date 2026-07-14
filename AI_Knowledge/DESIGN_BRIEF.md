@@ -153,6 +153,20 @@ at once. If ASK's own chrome is loud, it fights them. So ASK's UI must be QUIET:
 a neutral, confident canvas that lets other people's brands sing. Reserve
 saturation for exactly one accent — the search action. Everything else recedes.
 
+BUT QUIET IS NOT THE SAME AS GENERIC.
+Linear, Stripe and Vercel are all quiet and all instantly recognizable. Default
+gray shadcn is quiet and instantly forgettable. Do not hand me the safe default.
+Have a point of view. Make one or two decisions someone could disagree with — an
+unusual neutral temperature, a specific typeface, a distinctive radius, an accent
+nobody else is using. Then justify them.
+
+HOW IT SHOULD FEEL
+The mission is to SAVE TIME. The principles are RASE — Reliability, Accuracy,
+Speed, Easy. So the product should feel FAST, CERTAIN, CALM and PRECISE. Like a
+good tool in the hand: it answers you and gets out of the way.
+It should NOT feel playful, luxurious, corporate, or like it is trying to sell
+you something. Nobody comes to ASK to browse. They come to decide and leave.
+
 TRUST SIGNALS ARE BADGES, NOT RATINGS
 The visible signals are: data freshness, confirmation speed, card quality,
 business activity. Design them to read as metadata — facts about a listing.
