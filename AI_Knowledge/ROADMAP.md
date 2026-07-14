@@ -17,7 +17,7 @@ Goal: a Next.js app where the boundaries are compile-time laws before a single s
 - [ ] Scaffold Next.js: App Router, TypeScript, `src/` directory, `@/*` alias (architecture §8)
 - [ ] **The FIRST commit, before any slice:** ESLint + `eslint-plugin-boundaries` + `eslint-plugin-import` per §8 — element types, `entry-point`, `no-unknown`, `no-unknown-files`, `import/no-cycle`. Ship a `lint-fixtures/` set of deliberately-bad imports (one per rule: R1, R2, R3, R5, unknown folder) with a CI step asserting ESLint **fails** on each. The config must be proven, not assumed.
 - [ ] Wire `eslint src` + `next build` into the build pipeline — an import violation is a build failure, not a review comment
-- [ ] `design-system/`: define the tokens (colors, type scale, spacing, radii) and map them into the Tailwind v4 theme (D3). This is the single visual source — there is no external design file to import from.
+- [ ] `design-system/`: define the tokens (colors, type scale, spacing, radii) and map them into the Tailwind v4 theme (D3). **The one open decision in Phase 0** — no design file exists, so the vision and the backend (the two sources of truth, D9) say nothing about what the app LOOKS like. Someone picks the palette and scale, once, here. After that P9.2 is enforceable and no component may carry a raw hex or px value again. This decision does not block anything else in Phase 0 — scaffold, ESLint, httpClient, i18n and the app skeleton all proceed without it.
 - [ ] `shared/api/httpClient.ts`: one wrapper, callable from server AND client (D7). Key transforms, `ApiError`, token storage helpers behind an interface (P5.2, D5). No domain endpoints.
 - [ ] `shared/i18n/`: next-intl plumbing + `messages/{ru,kk,en}.json`, keyed per slice namespace
 - [ ] `shared/motion.ts`: the framer-motion variants (D4 — LazyMotion + `m.`, `useReducedMotion()`)
@@ -102,12 +102,14 @@ Do NOT build these early. Recorded so today's decisions don't block them.
 
 ## Decision Gates
 
-| Gate | Question | Blocks | Status |
+**A gate blocks a CONTROL, not a phase.** Nothing here blocks Phase 0. Nothing here stops a slice from being built — each gate parks one widget or one button until someone answers it, and the rest of the slice ships. Build up to the gate, leave the parked piece out, keep moving.
+
+| Gate | Question | Parks (everything else in that slice still ships) | Status |
 |---|---|---|---|
-| **G1** | **Search sort & filter contract.** The vision (§4) promises sorting by relevance / distance / cost / unique offers, and filters for price / companies / location (100 km · city · map area). `UnifiedSearchRequest` accepts only `query`, `cityId`, `limit`. The backend must extend the contract — a lock forbids faking it by re-sorting a loaded page client-side. | Phase 1 · `search` (the Catalog Page's full control set) | **OPEN — raise with backend** |
-| **G2** | **Company Profile scope.** The vision marks it "coming in a future update"; no backend endpoints exist. Placeholder ships until the vision describes the screen. | Phase 1 · `business-cabinet` tab 6 | **OPEN — needs a vision entry** |
-| **G3** | **What does "Proceed to Purchase" do?** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. Likely candidate: the backend's `contact` module (`ContactActionController`, the `contactActionId` privacy pattern). If so, a `contact` slice must be registered per §2. | Phase 1 · `catalog` (the card cannot be finished without it) | **OPEN — raise with backend + product** |
-| **G4** | World-wide domain/brand choice (ask.kz is KZ-branded) | Phase 4 | Open, not urgent |
+| **G1** | **Search sort & filter contract.** The vision (§4) promises sorting by relevance / distance / cost / unique offers, and filters for price / companies / location (100 km · city · map area). `UnifiedSearchRequest` accepts only `query`, `cityId`, `limit`. The backend must extend the contract — a lock forbids faking it by re-sorting a loaded page client-side. | The extra sort tabs and filter controls on the Catalog Page. **Ships anyway:** Home, the search form, the Catalog Page, result cards, relevance sort (the backend default) and the city filter — both already supported. | **OPEN — raise with backend** |
+| **G2** | **Company Profile scope.** The vision marks it "coming in a future update"; no backend endpoints exist. | Nothing. The placeholder IS the spec — ship it and move on. Re-open when the vision describes a screen. | Open, not blocking |
+| **G3** | **What does "Proceed to Purchase" do?** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. Likely candidate: the backend's `contact` module (`ContactActionController`, the `contactActionId` privacy pattern). If so, a `contact` slice must be registered per §2. | One button's click handler. **Ships anyway:** the whole Product Card — every field, the modal, the `/app/product/:id` page, SEO, and the chat button. | **OPEN — raise with backend + product** |
+| **G4** | World-wide domain/brand choice (ask.kz is KZ-branded) | Nothing before Phase 4 | Open, not urgent |
 
 ## Cross-Repo Dependencies
 
