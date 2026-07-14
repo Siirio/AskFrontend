@@ -10,6 +10,12 @@ export type AuthChallenge = {
   code?: string;
 };
 
+export type RoleOption = {
+  userId: string;
+  role: string;
+  displayName: string;
+};
+
 export type AuthSession = {
   accessToken: string;
   tokenType: string;
@@ -20,6 +26,12 @@ export type AuthSession = {
   startRoute?: string;
   user?: { userId: string; displayName: string; email?: string; phone?: string; status?: string };
   business?: { businessId: string; businessName: string; branchId?: string; branchName?: string };
+  requiresRoleSelection?: boolean;
+  availableRoles?: RoleOption[];
+  allRoles?: string[];
+  requiresTwoFactor?: boolean;
+  authChallengeId?: string;
+  suggestRoleExpansion?: boolean;
 };
 
 function persistSession(session: AuthSession): AuthSession {
@@ -32,6 +44,36 @@ export function loginWithPassword(email: string, password: string) {
     method: "POST",
     body: { email, password },
   }).then(persistSession);
+}
+
+export function selectRole(email: string, password: string, role: string) {
+  return apiRequest<AuthSession>("/api/v1/auth/select-role", {
+    method: "POST",
+    body: { email, password, role },
+  }).then(persistSession);
+}
+
+export function switchRole(role: string) {
+  return apiRequest<AuthSession>("/api/v1/auth/switch-role", {
+    method: "POST",
+    auth: true,
+    body: { role },
+  }).then(persistSession);
+}
+
+export type EmailAccountInfo = {
+  role: string;
+  status: string;
+  businessName?: string;
+};
+
+export type EmailInfoResponse = {
+  exists: boolean;
+  accounts: EmailAccountInfo[];
+};
+
+export function fetchEmailInfo(email: string) {
+  return apiRequest<EmailInfoResponse>(`/api/v1/auth/email-info?email=${encodeURIComponent(email)}`);
 }
 
 export function registerCustomer(displayName: string, email: string, password: string) {
@@ -80,6 +122,13 @@ export function verifyCode(authChallengeId: string, code: string) {
   }).then(persistSession);
 }
 
+export function verifyTwoFactor(authChallengeId: string, code: string) {
+  return apiRequest<AuthSession>("/api/v1/auth/verify", {
+    method: "POST",
+    body: { authChallengeId, code },
+  }).then(persistSession);
+}
+
 export function resolveCity(name: string) {
   return apiRequest<{ id: string; name: string }>(`/api/v1/cities/resolve?name=${encodeURIComponent(name)}`);
 }
@@ -100,5 +149,13 @@ export function updateProfile(data: { displayName?: string; email?: string; phon
     method: "POST",
     auth: true,
     body: data,
+  });
+}
+
+export function changePassword(currentPassword: string, newPassword: string) {
+  return apiRequest<{ success: boolean }>("/api/v1/auth/change-password", {
+    method: "POST",
+    auth: true,
+    body: { currentPassword, newPassword },
   });
 }

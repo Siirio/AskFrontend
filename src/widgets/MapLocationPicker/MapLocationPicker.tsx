@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { MapPin, Search, Loader2 } from "lucide-react";
+import { load } from "@2gis/mapgl";
 
 interface MapLocationPickerProps {
   initialLat?: number;
   initialLng?: number;
-  onChange: (lat: number, lng: number) => void;
+  onChange: (lat: number, lng: number, address?: string) => void;
   readOnly?: boolean;
 }
 
@@ -22,8 +23,9 @@ interface GeocodingSuggestion {
 export default function MapLocationPicker({ initialLat, initialLng, onChange, readOnly }: MapLocationPickerProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<{ destroy(): void } | null>(null);
-  const markerRef = useRef<{ setCoordinates(coords: [number, number]): void; destroy(): void } | null>(null);
+  const mapRef = useRef<any>(null);
+  const mapglRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,17 +34,19 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     initialLat && initialLng ? { lat: initialLat, lng: initialLng } : null
   );
+  const internalChangeRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const center: [number, number] = selected
     ? [selected.lat, selected.lng]
     : ALMATY_CENTER;
 
-  const placeMarker = useCallback(async (lat: number, lng: number, mapgl: any, map: any) => {
+  const placeMarker = useCallback((lat: number, lng: number) => {
+    if (!mapglRef.current || !mapRef.current) return;
     if (markerRef.current) {
       markerRef.current.destroy();
     }
-    const marker = new mapgl.Marker(map, {
+    const marker = new mapglRef.current.Marker(mapRef.current, {
       coordinates: [lng, lat],
       draggable: !readOnly,
     });
@@ -51,6 +55,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
     if (!readOnly) {
       marker.on("dragend", () => {
         const coords = marker.getCoordinates();
+        internalChangeRef.current = true;
         setSelected({ lat: coords[1], lng: coords[0] });
         onChange(coords[1], coords[0]);
       });
@@ -64,24 +69,26 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
       setLoading(true);
       setError("");
       try {
-        const mapgl = await import("@2gis/mapgl");
+        const mapgl = await load();
         if (cancelled || !containerRef.current) return;
+        mapglRef.current = mapgl;
 
-        const map = new (mapgl as any).Map(containerRef.current, {
+        const map = new mapgl.Map(containerRef.current, {
           center: [center[1], center[0]],
           zoom: 15,
           key: API_KEY,
         });
         mapRef.current = map;
 
-        await placeMarker(center[0], center[1], mapgl, map);
+        placeMarker(center[0], center[1]);
 
         if (!readOnly) {
           map.on("click", (e: { lngLat: [number, number] }) => {
             const [lng, lat] = e.lngLat;
+            internalChangeRef.current = true;
             setSelected({ lat, lng });
             onChange(lat, lng);
-            placeMarker(lat, lng, mapgl, map);
+            placeMarker(lat, lng);
           });
         }
       } catch (e: any) {
@@ -100,6 +107,20 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
       mapRef.current?.destroy();
     };
   }, []);
+
+  useEffect(() => {
+    if (internalChangeRef.current) {
+      internalChangeRef.current = false;
+      return;
+    }
+    if (!mapRef.current || !mapglRef.current) return;
+    if (initialLat == null || initialLng == null) return;
+    const lat = initialLat;
+    const lng = initialLng;
+    setSelected({ lat, lng });
+    mapRef.current.setCenter([lng, lat]);
+    placeMarker(lat, lng);
+  }, [initialLat, initialLng]);
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim() || !API_KEY) {
@@ -135,19 +156,16 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
     debounceRef.current = setTimeout(() => handleSearch(value), 400);
   };
 
-  const selectSuggestion = async (s: GeocodingSuggestion) => {
+  const selectSuggestion = (s: GeocodingSuggestion) => {
+    internalChangeRef.current = true;
     setSelected({ lat: s.lat, lng: s.lng });
-    onChange(s.lat, s.lng);
+    onChange(s.lat, s.lng, s.fullName);
     setSearchQuery(s.fullName);
     setSuggestions([]);
 
     if (mapRef.current) {
-      try {
-        const mapgl = await import("@2gis/mapgl");
-        const map = mapRef.current as any;
-        map.setCenter([s.lng, s.lat]);
-        await placeMarker(s.lat, s.lng, mapgl, map);
-      } catch { /* map not ready */ }
+      mapRef.current.setCenter([s.lng, s.lat]);
+      placeMarker(s.lat, s.lng);
     }
   };
 

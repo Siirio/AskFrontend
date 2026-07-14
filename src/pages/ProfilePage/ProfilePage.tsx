@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, ArrowRightLeft } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
@@ -200,6 +200,41 @@ export function ProfilePage() {
                   {state.view === "staff" ? t("profile.role.staff") : t("profile.role.business")}
                 </span>
               )}
+              {!isBusiness && (
+                <span className="fcw-label" style={{ color: "var(--fcw-color-primary)" }}>
+                  {t("profile.role.customer")}
+                </span>
+              )}
+            </div>
+
+            <div style={{ marginTop: "var(--fcw-space-md)", paddingTop: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}>
+              <p className="fcw-body-s fcw-text-secondary" style={{ marginBottom: "var(--fcw-space-sm)" }}>
+                <ArrowRightLeft size={14} style={{ marginRight: "0.375rem", verticalAlign: "middle" }} />
+                {t("profile.roleSwitcher.title")}
+              </p>
+              <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
+                {(() => {
+                  const coreRoles = state.view === "business" || state.view === "staff"
+                    ? ["BUSINESS_OWNER", "BUSINESS_MANAGER", "BUSINESS_WORKER", "CUSTOMER"]
+                    : ["CUSTOMER", "BUSINESS_OWNER"];
+                  const backendRoles = (state.session?.allRoles || []).map(r => r.replace("ROLE_", ""));
+                  const merged = [...new Set([...coreRoles, ...backendRoles])];
+                  const currentRole = (state.session?.role || "").toUpperCase();
+                  return merged.map(roleKey => {
+                    const isCurrent = currentRole === roleKey;
+                    return (
+                      <button
+                        key={roleKey}
+                        className={isCurrent ? "fcw-btn fcw-btn-primary fcw-btn-sm" : "fcw-btn fcw-btn-secondary fcw-btn-sm"}
+                        disabled={isCurrent || state.busy}
+                        onClick={() => actions.switchRole(roleKey).catch(() => {})}
+                      >
+                        {t(`auth.role.${roleKey}`)}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
             </div>
           </Card>
 

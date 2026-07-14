@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,7 +7,7 @@ import {
   Package, Briefcase, Building2, UserRound,
   Sparkles, Plus, RefreshCw, Loader2,
   ChevronDown, Menu, X, MapPin, Trash2, Edit3, Check, Layout,
-  Calendar, Upload, MessageCircle, Reply, Link2
+  Calendar, Upload, Reply, ChevronLeft, ChevronRight, MessageCircle
 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
@@ -27,21 +27,21 @@ import {
   listProducts, createProduct, updateProduct, deleteProduct,
   listServices, createService, updateService,
   listBranches, createBranch, updateBranch,
-  getSupplierTasks,
-  listCategories, listStaff, createStaff, resetStaffPassword,
-  listCities, parseTwoGisLink,
+  listCategories, listStaff, createStaff, updateStaff, resetStaffPassword,
+  listCities,
+  listBusinessChats, getBusinessChatMessages, sendBusinessChatMessage, markBusinessChatRead,
 } from "../../shared/api/askClient";
 import type {
   BrandProfileDto, BrandDropDto,
   BusinessProductDto, BusinessServiceDto, StaffDto,
+  ChatConversationDto, ChatMessageDto,
 } from "../../shared/api/dto";
-import type { SupplierTask } from "../../entities/supplier/model";
+
 import { ApiError } from "../../shared/api/httpClient";
+import { isValidEmail } from "../../shared/utils/validation";
 import { ROUTES } from "../../app/routes";
 
-type BusinessSection = "overview" | "products" | "services" | "branches" | "events" | "business-card" | "profile" | "import";
-type ProfileSubtab = "brand";
-type TaskFilter = "all" | "discussing" | "confirmed" | "declined";
+type BusinessSection = "overview" | "products" | "services" | "branches" | "events" | "business-card" | "import";
 
 interface CategoryInfo {
   id: string;
@@ -91,7 +91,6 @@ export function BusinessPage() {
   const { reduced } = useMotion();
   const { t } = useTranslation();
   const [section, setSection] = useState<BusinessSection>("overview");
-  const [profileSubtab, setProfileSubtab] = useState<ProfileSubtab>("brand");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const businessId = state.session?.business?.businessId || "";
@@ -104,8 +103,6 @@ export function BusinessPage() {
   const [drops, setDrops] = useState<BrandDropDto[]>([]);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
-  const [gisLink, setGisLink] = useState("");
-  const [gisParsing, setGisParsing] = useState(false);
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
 
@@ -117,6 +114,14 @@ export function BusinessPage() {
   const [editProduct, setEditProduct] = useState<BusinessProductDto | null>(null);
   const [productForm, setProductForm] = useState({ name: "", description: "", price: "", categoryId: "", imageUrl: "" });
   const [productsBusy, setProductsBusy] = useState(false);
+  const [productsLoadingPage, setProductsLoadingPage] = useState(false);
+  const [newProductIds, setNewProductIds] = useState<Set<string>>(new Set());
+  const prevProductIdsRef = useRef<Set<string>>(new Set());
+  const productsCacheRef = useRef<Map<number, { items: BusinessProductDto[]; totalElements: number }>>(new Map());
+
+  useEffect(() => {
+    prevProductIdsRef.current = new Set(products.map(p => p.productOfferId));
+  }, [products]);
 
   // Services
   const [services, setServices] = useState<BusinessServiceDto[]>([]);
@@ -132,14 +137,23 @@ export function BusinessPage() {
   const [branchForm, setBranchForm] = useState({ name: "", address: "", cityId: "", latitude: null as number | null, longitude: null as number | null });
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [staffByBranch, setStaffByBranch] = useState<Record<string, StaffDto[]>>({});
-  const [staffForms, setStaffForms] = useState<Record<string, { displayName: string; email: string }>>({});
+  const [staffForms, setStaffForms] = useState<Record<string, { displayName: string; email: string; role: string }>>({});
   const [staffBusy, setStaffBusy] = useState("");
+  const [selectedStaffBranchId, setSelectedStaffBranchId] = useState<string | null>(null);
+  const [staffEditingId, setStaffEditingId] = useState<string | null>(null);
 
   // Overview
-  const [tasks, setTasks] = useState<SupplierTask[]>([]);
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>("all");
   const [importBranchId, setImportBranchId] = useState("");
+  const [importMode, setImportMode] = useState<"PRODUCT" | "SERVICE">("PRODUCT");
   const [quickRailOpen, setQuickRailOpen] = useState(false);
+
+  // Chats
+  const [chatConversations, setChatConversations] = useState<ChatConversationDto[]>([]);
+  const [chatsBusy, setChatsBusy] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessageDto[]>([]);
+  const [messagesBusy, setMessagesBusy] = useState(false);
+  const [replyText, setReplyText] = useState("");
 
   const activeBranchId = selectedBranchId || branches[0]?.id || "";
 
@@ -149,23 +163,8 @@ export function BusinessPage() {
     { key: "services", label: t("business.services"), icon: <Briefcase size={18} /> },
     { key: "events", label: t("business.events"), icon: <Calendar size={18} /> },
     { key: "business-card", label: t("business.businessCard"), icon: <Sparkles size={18} /> },
-    { key: "profile", label: t("business.profile"), icon: <UserRound size={18} /> },
     { key: "branches", label: t("business.branches"), icon: <MapPin size={18} /> },
   ];
-
-  const profileSubtabs: { key: ProfileSubtab; label: string; icon: React.ReactNode }[] = [
-    { key: "brand", label: t("business.brand"), icon: <UserRound size={14} /> },
-  ];
-
-  function taskStatusLabel(status: SupplierTask["status"]) {
-    if (status === "answered") return t("business.status.confirmed");
-    if (status === "needs_reply") return t("business.status.needsReply");
-    return t("business.status.discussing");
-  }
-
-  function taskBudgetLabel(task: SupplierTask) {
-    return task.category ? task.category : t("business.budgetUnspecified");
-  }
 
   function formatStaffStatus(status: string) {
     if (status === "PENDING_ACTIVATION") return t("business.staffStatus.pendingActivation");
@@ -175,11 +174,29 @@ export function BusinessPage() {
     return status;
   }
 
+  function convStatusLabel(status: string) {
+    if (status === "NEW_REQUEST") return t("business.chats.status.NEW_REQUEST");
+    if (status === "IN_PROGRESS") return t("business.chats.status.IN_PROGRESS");
+    if (status === "DEAL_CLOSED") return t("business.chats.status.DEAL_CLOSED");
+    return status;
+  }
+
+  function formatChatTime(iso: string) {
+    if (!iso) return "";
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("business.chats.justNow");
+    if (mins < 60) return t("business.chats.minAgo", { n: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t("business.chats.hoursAgo", { n: hours });
+    const days = Math.floor(hours / 24);
+    return t("business.chats.daysAgo", { n: days });
+  }
+
   const quickActions = [
     { label: t("business.product.add"), icon: <Package size={16} />, onClick: () => setSection("products") },
     { label: t("business.service.add"), icon: <Briefcase size={16} />, onClick: () => setSection("services") },
     { label: t("business.importData"), icon: <Upload size={16} />, onClick: () => setSection("import") },
-    { label: t("business.profile"), icon: <UserRound size={16} />, onClick: () => setSection("profile") },
     { label: t("business.businessCard"), icon: <Sparkles size={16} />, onClick: () => setSection("business-card") },
   ];
 
@@ -222,15 +239,46 @@ export function BusinessPage() {
 
   const loadProducts = useCallback(async () => {
     if (!activeBranchId) return;
-    setProductsBusy(true);
+    const cached = productsCacheRef.current.get(productsPage);
+    if (cached) {
+      setProducts(cached.items);
+      setProductsTotal(cached.totalElements);
+      return;
+    }
+    setProductsLoadingPage(true);
     try {
-      const res = await listProducts(activeBranchId, { page: productsPage, size: 20 });
+      const res = await listProducts(activeBranchId, { page: productsPage, size: 10 });
+      productsCacheRef.current.set(productsPage, { items: res.items, totalElements: res.totalElements });
       setProducts(res.items);
       setProductsTotal(res.totalElements);
     } catch { /* empty */ } finally {
-      setProductsBusy(false);
+      setProductsLoadingPage(false);
     }
   }, [activeBranchId, productsPage]);
+
+  const handleImportCompleted = useCallback(async () => {
+    const targetBranchId = importBranchId || activeBranchId;
+    if (!targetBranchId) return;
+    if (targetBranchId !== selectedBranchId) {
+      setSelectedBranchId(targetBranchId);
+    }
+    productsCacheRef.current.clear();
+    setProductsLoadingPage(true);
+    try {
+      const res = await listProducts(targetBranchId, { page: 0, size: 10 });
+      const newItems = res.items.filter(p => !prevProductIdsRef.current.has(p.productOfferId));
+      setProducts(res.items);
+      setProductsTotal(res.totalElements);
+      setProductsPage(0);
+      if (newItems.length > 0) {
+        setNewProductIds(new Set(newItems.map(p => p.productOfferId)));
+        setTimeout(() => setNewProductIds(new Set()), 5000);
+      }
+      setSection("products");
+    } catch { /* empty */ } finally {
+      setProductsLoadingPage(false);
+    }
+  }, [activeBranchId, importBranchId, selectedBranchId]);
 
   const loadServices = useCallback(async () => {
     if (!activeBranchId) return;
@@ -256,14 +304,6 @@ export function BusinessPage() {
     }
   }, [businessId]);
 
-  const loadTasks = useCallback(async () => {
-    if (!activeBranchId) return;
-    try {
-      const loadedTasks = await getSupplierTasks(activeBranchId);
-      setTasks(loadedTasks);
-    } catch { setTasks([]); }
-  }, [activeBranchId]);
-
   const loadStaffForBranch = useCallback(async (branchId: string) => {
     if (!businessId || !branchId || isStaff) return;
     try {
@@ -279,25 +319,52 @@ export function BusinessPage() {
   useEffect(() => {
     listCities().then(setCities).catch(() => setCities([]));
   }, []);
+  useEffect(() => { productsCacheRef.current.clear(); setProductsPage(0); }, [activeBranchId]);
   useEffect(() => { if (section === "products" || section === "overview") loadProducts(); }, [section, loadProducts]);
   useEffect(() => { if (section === "services" || section === "overview") loadServices(); }, [section, loadServices]);
-  useEffect(() => { if (section === "overview") { loadTasks(); } }, [section, loadTasks]);
+  const loadChats = useCallback(async () => {
+    if (!businessId) return;
+    setChatsBusy(true);
+    try {
+      const res = await listBusinessChats(businessId);
+      setChatConversations(res.items);
+    } catch { setChatConversations([]); } finally {
+      setChatsBusy(false);
+    }
+  }, [businessId]);
+
+  const loadMessages = useCallback(async (conversationId: string) => {
+    if (!businessId) return;
+    setMessagesBusy(true);
+    try {
+      const res = await getBusinessChatMessages(conversationId, businessId);
+      setChatMessages(res.items);
+    } catch { setChatMessages([]); } finally {
+      setMessagesBusy(false);
+    }
+  }, [businessId]);
+
+  const handleSelectConversation = useCallback((conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    loadMessages(conversationId);
+    if (businessId) markBusinessChatRead(conversationId, businessId).catch(() => {});
+  }, [businessId, loadMessages]);
+
+  const handleSendReply = useCallback(async () => {
+    if (!businessId || !selectedConversationId || !replyText.trim()) return;
+    try {
+      await sendBusinessChatMessage(selectedConversationId, businessId, replyText.trim());
+      setReplyText("");
+      loadMessages(selectedConversationId);
+      loadChats();
+    } catch { /* empty */ }
+  }, [businessId, selectedConversationId, replyText, loadMessages, loadChats]);
+
+  useEffect(() => { if (section === "overview") { loadChats(); } }, [section, loadChats]);
 
   if (state.view !== "business" && state.view !== "staff") {
     return <Navigate to={ROUTES.home} replace />;
   }
-
-  const discussingTasks = tasks.filter(task => task.status === "new");
-  const replyTasks = tasks.filter(task => task.status === "needs_reply");
-  const confirmedTasks = tasks.filter(task => task.status === "answered");
-  const declinedTasks: SupplierTask[] = [];
-  const filteredTasks = taskFilter === "confirmed"
-    ? confirmedTasks
-    : taskFilter === "declined"
-      ? declinedTasks
-      : taskFilter === "discussing"
-        ? [...discussingTasks, ...replyTasks]
-        : tasks;
 
   const handleSaveProfile = async () => {
     if (!businessId) return;
@@ -361,6 +428,7 @@ export function BusinessPage() {
         categoryId: productForm.categoryId,
         imageUrl: productForm.imageUrl || undefined,
       });
+      productsCacheRef.current.clear();
       resetProductForm();
       loadProducts();
       toast.show(t("business.toast.productCreated"), "success");
@@ -378,6 +446,7 @@ export function BusinessPage() {
         price: productForm.price ? Number(productForm.price) : undefined,
         imageUrl: productForm.imageUrl || undefined,
       });
+      productsCacheRef.current.clear();
       resetProductForm();
       loadProducts();
       toast.show(t("business.toast.productUpdated"), "success");
@@ -387,9 +456,11 @@ export function BusinessPage() {
   };
 
   const handleDeleteProduct = async (product: BusinessProductDto) => {
-    if (!activeBranchId) return;
+    const branchId = product.branchId || activeBranchId;
+    if (!branchId) return;
     try {
-      await deleteProduct(activeBranchId, product.productOfferId);
+      productsCacheRef.current.clear();
+      await deleteProduct(branchId, product.productOfferId);
       loadProducts();
       toast.show(t("business.toast.productDeleted"), "success");
     } catch (e) {
@@ -470,24 +541,6 @@ export function BusinessPage() {
     setShowServiceForm(false);
   };
 
-  const handleParseGisLink = async () => {
-    if (!gisLink.trim()) return;
-    setGisParsing(true);
-    try {
-      const result = await parseTwoGisLink(gisLink.trim());
-      if (result.found && result.latitude != null && result.longitude != null) {
-        setBranchForm(p => ({ ...p, latitude: result.latitude!, longitude: result.longitude! }));
-        toast.show(t("business.branch.2gisParsed"), "success");
-      } else {
-        toast.show(t("business.branch.2gisParseError"), "error");
-      }
-    } catch {
-      toast.show(t("business.branch.2gisParseError"), "error");
-    } finally {
-      setGisParsing(false);
-    }
-  };
-
   // Branch CRUD
   const handleCreateBranch = async () => {
     if (!businessId) {
@@ -507,11 +560,11 @@ export function BusinessPage() {
         name: branchForm.name.trim(),
         address: branchForm.address || undefined,
         cityId: branchForm.cityId || undefined,
+        onlineOnly: false,
         latitude: branchForm.latitude,
         longitude: branchForm.longitude,
       });
       setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
-      setGisLink("");
       setShowBranchForm(false);
       setSelectedBranchId(created.id);
       setImportBranchId(created.id);
@@ -537,7 +590,6 @@ export function BusinessPage() {
         longitude: branchForm.longitude ?? undefined,
       });
       setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
-      setGisLink("");
       setEditBranchId(null);
       loadBranches();
       toast.show(t("business.toast.branchUpdated"), "success");
@@ -549,11 +601,15 @@ export function BusinessPage() {
   const handleCreateStaff = async (branchId: string) => {
     const form = staffForms[branchId];
     if (!businessId || !branchId || !form?.displayName || !form?.email) return;
+    if (!isValidEmail(form.email)) {
+      toast.show(t("business.validation.emailInvalid"), "error");
+      return;
+    }
     setStaffBusy(branchId);
     try {
-      const created = await createStaff(businessId, branchId, form);
+      const created = await createStaff(businessId, branchId, { email: form.email, displayName: form.displayName, role: form.role || undefined });
       setStaffByBranch(current => ({ ...current, [branchId]: [created, ...(current[branchId] || [])] }));
-      setStaffForms(current => ({ ...current, [branchId]: { displayName: "", email: "" } }));
+      setStaffForms(current => ({ ...current, [branchId]: { displayName: "", email: "", role: "WORKER" } }));
       toast.show(t("business.toast.staffAdded"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.staffAddError"), "error");
@@ -781,76 +837,126 @@ export function BusinessPage() {
               </div>
 
               <motion.div
-                key={section + (section === "profile" ? profileSubtab : "")}
+                key={section}
                 initial={reduced ? {} : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
                 {/* Overview */}
                 {section === "overview" && (
-                  <Card padding="lg" style={{ marginBottom: "var(--fcw-space-lg)" }}>
-                    <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "1rem", marginBottom: "var(--fcw-space-md)" }}>
-                      <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                        <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
-                          {([
-                            ["all", t("business.filter.all")],
-                            ["discussing", t("business.filter.discussing")],
-                            ["confirmed", t("business.filter.confirmed")],
-                            ["declined", t("business.filter.rejected")],
-                          ] as const).map(([key, label]) => (
-                            <button
-                              key={key}
-                              className={`fcw-btn fcw-btn-sm ${taskFilter === key ? "fcw-glassmorph-selected-seg" : ""}`}
-                              style={{ background: taskFilter === key ? undefined : "transparent", border: "none", boxShadow: "none" }}
-                              onClick={() => setTaskFilter(key)}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
+                    <div className="fcw-flex-between fcw-items-center">
+                      <h2 className="fcw-h3" style={{ margin: 0 }}>{t("business.overview.activity")}</h2>
+                      {branches.length > 0 && (
+                        <Select
+                          size="sm"
+                          options={[{ value: "", label: t("business.allBranches") }, ...branches.map(b => ({ value: b.id, label: b.name }))]}
+                          value={selectedBranchId}
+                          onChange={(v) => setSelectedBranchId(v)}
+                        />
+                      )}
                     </div>
-
-                    {/* Stats row */}
-                    <div className="fcw-grid-4" style={{ gap: "0.5rem", marginBottom: "var(--fcw-space-md)" }}>
-                      {[
-                        { label: t("business.new"), value: discussingTasks.length },
-                        { label: t("business.needsReply"), value: replyTasks.length },
-                        { label: t("business.status.confirmed"), value: confirmedTasks.length },
-                        { label: t("business.filter.rejected"), value: declinedTasks.length },
-                      ].map(item => (
-                        <div
-                          key={item.label}
-                          style={{ padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)", cursor: "pointer" }}
-                          onClick={() => setTaskFilter(item.label === t("business.new") ? "discussing" : item.label === t("business.needsReply") ? "discussing" : item.label === t("business.status.confirmed") ? "confirmed" : item.label === t("business.filter.rejected") ? "declined" : "all")}
-                        >
-                          <span className="fcw-body-xs fcw-text-tertiary">{item.label}</span>
-                          <div className="fcw-h3" style={{ margin: 0 }}>{item.value}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Requests content */}
-                    <>
-                      {filteredTasks.length === 0 && (
-                        <EmptyState title={t("business.noRequests")} description={t("business.noRequestsDesc")} />
+                    <div style={{ display: "flex", gap: "var(--fcw-space-md)", alignItems: "flex-start" }}>
+                    <Card padding="lg" style={{ flex: 1, minWidth: 0 }}>
+                      {chatConversations.length === 0 && (
+                        <EmptyState title={t("business.chats.empty")} description={t("business.chats.emptyDesc")} />
                       )}
 
-                      {filteredTasks.length > 0 && (
+                      {chatConversations.length > 0 && (
                         <div className="fcw-flex-col" style={{ gap: "0.375rem" }}>
-                          {filteredTasks.map(task => (
-                            <div key={task.id} className="fcw-flex-between" style={{ gap: "0.75rem", padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)" }}>
-                              <div style={{ minWidth: 0 }}>
-                                <span className="fcw-body fcw-weight-medium" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.query}</span>
-                                <span className="fcw-body-s fcw-text-tertiary">{taskStatusLabel(task.status)} · {task.ageLabel}</span>
+                          {chatConversations.map(conv => (
+                            <div
+                              key={conv.conversationId}
+                              className="fcw-flex-between fcw-items-center"
+                              style={{ gap: "0.75rem", padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: selectedConversationId === conv.conversationId ? "color-mix(in srgb, var(--fcw-color-primary) 10%, var(--fcw-color-surface-secondary))" : "var(--fcw-color-surface-secondary)", cursor: "pointer" }}
+                              onClick={() => handleSelectConversation(conv.conversationId)}
+                            >
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <span className="fcw-body fcw-weight-medium" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.subject || t("business.chats.status.NEW_REQUEST")}</span>
+                                <span className="fcw-body-s fcw-text-tertiary">{conv.customerName} · {formatChatTime(conv.lastMessageAt)}</span>
                               </div>
-                              <button className="fcw-btn fcw-btn-primary fcw-btn-sm"><Reply size={14} />{t("business.reply")}</button>
+                              {conv.businessUnreadCount > 0 && (
+                                <span className="fcw-label" style={{ backgroundColor: "var(--fcw-color-primary)", color: "#fff", borderRadius: "var(--fcw-radius-full)", padding: "0.125rem 0.5rem", fontSize: "var(--fcw-font-size-body-xs)" }}>
+                                  {conv.businessUnreadCount}
+                                </span>
+                              )}
+                              <button
+                                className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm"
+                                style={{ flexShrink: 0 }}
+                                onClick={(e) => { e.stopPropagation(); handleSelectConversation(conv.conversationId); }}
+                              >
+                                <MessageCircle size={16} style={{ color: "var(--fcw-color-primary)" }} />
+                              </button>
                             </div>
                           ))}
                         </div>
                       )}
-                    </>
-                  </Card>
+                    </Card>
+
+                    {selectedConversationId && (
+                      <motion.div
+                        initial={{ width: 0, opacity: 0 }}
+                        animate={{ width: 380, opacity: 1 }}
+                        exit={{ width: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        style={{
+                          flexShrink: 0,
+                          borderRadius: "var(--fcw-radius-lg)",
+                          border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                          backgroundColor: "var(--fcw-color-surface)",
+                          overflow: "hidden",
+                          display: "flex",
+                          flexDirection: "column",
+                          height: "calc(100vh - 180px)",
+                          minHeight: 400,
+                        }}
+                      >
+                        <div className="fcw-flex-between" style={{ padding: "0.75rem 1rem", borderBottom: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", flexShrink: 0 }}>
+                          <span className="fcw-body fcw-weight-semibold" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {chatConversations.find(c => c.conversationId === selectedConversationId)?.subject || t("business.chats.title")}
+                          </span>
+                          <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => setSelectedConversationId(null)}>
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <div style={{ flex: 1, overflow: "auto", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                          {messagesBusy && <Loading size="sm" />}
+                          {!messagesBusy && chatMessages.length === 0 && (
+                            <span className="fcw-body-s fcw-text-tertiary" style={{ textAlign: "center", padding: "var(--fcw-space-lg) 0" }}>{t("business.chats.noMessages")}</span>
+                          )}
+                          {!messagesBusy && chatMessages.map(msg => (
+                            <div key={msg.messageId} style={{
+                              alignSelf: msg.senderType === "BUSINESS" ? "flex-end" : "flex-start",
+                              maxWidth: "85%",
+                              padding: "0.5rem 0.75rem",
+                              borderRadius: "var(--fcw-radius-md)",
+                              backgroundColor: msg.senderType === "BUSINESS" ? "color-mix(in srgb, var(--fcw-color-primary) 12%, var(--fcw-color-surface))" : "var(--fcw-color-surface-secondary)",
+                              border: msg.senderType === "BUSINESS" ? "var(--fcw-border-width-thin) solid color-mix(in srgb, var(--fcw-color-primary) 25%, transparent)" : "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                            }}>
+                              <span className="fcw-body-s" style={{ wordBreak: "break-word" }}>{msg.text}</span>
+                              <span className="fcw-body-xs fcw-text-tertiary" style={{ display: "block", marginTop: "0.25rem" }}>
+                                {new Date(msg.createdAt).toLocaleTimeString("ru-KZ", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", flexShrink: 0 }}>
+                          <input
+                            className="fcw-input fcw-input-sm"
+                            placeholder={t("business.chats.replyPlaceholder")}
+                            value={replyText}
+                            onChange={e => setReplyText(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") handleSendReply(); }}
+                            style={{ flex: 1 }}
+                          />
+                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleSendReply} disabled={!replyText.trim()}>
+                            <Reply size={14} />
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                  </div>
                 )}
 
                 {/* Products */}
@@ -865,7 +971,7 @@ export function BusinessPage() {
                       </div>
                       {!isStaff && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                          <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setSection("import")}>
+                          <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("PRODUCT"); setSection("import"); }}>
                             <Upload size={16} />{t("business.import.title")}
                           </button>
                           <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { resetProductForm(); setShowProductForm(true); }}>
@@ -879,9 +985,9 @@ export function BusinessPage() {
                       <EmptyState title={t("business.noBranches")} description={t("business.noBranchesDesc")} />
                     )}
 
-                    {activeBranchId && productsBusy && <Loading size="sm" text={t("business.loadingProducts")} />}
+                    {activeBranchId && products.length === 0 && productsLoadingPage && <Loading size="sm" text={t("business.loadingProducts")} />}
 
-                    {activeBranchId && !productsBusy && products.length === 0 && !showProductForm && (
+                    {activeBranchId && !productsLoadingPage && products.length === 0 && !showProductForm && (
                       <EmptyState
                         title={t("business.noProducts")}
                         description={t("business.noProductsDesc")}
@@ -893,8 +999,8 @@ export function BusinessPage() {
                       />
                     )}
 
-                    {activeBranchId && !productsBusy && (
-                      <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                    {activeBranchId && products.length > 0 && (
+                      <div className="fcw-flex-col" style={{ gap: "0.25rem", minHeight: 440, opacity: productsLoadingPage ? 0.6 : 1, transition: "opacity 150ms" }}>
                         <AnimatePresence>
                           {showProductForm && !editProduct && (
                             <motion.div
@@ -972,13 +1078,17 @@ export function BusinessPage() {
                         </AnimatePresence>
 
                         {products.map(p => (
-                          <div key={p.productOfferId} style={{
-                            display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
-                            padding: "0.5rem 0.75rem",
-                            backgroundColor: "var(--fcw-color-surface)",
-                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                            borderRadius: "var(--fcw-radius-md)",
-                          }}>
+                          <div key={p.productOfferId}
+                            className={newProductIds.has(p.productOfferId) ? "fcw-animate-glass-highlight" : ""}
+                            style={{
+                              display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
+                              padding: "0.5rem 0.75rem",
+                              backgroundColor: "var(--fcw-color-surface)",
+                              border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                              borderRadius: "var(--fcw-radius-md)",
+                              position: "relative",
+                              overflow: "hidden",
+                            }}>
                             {editProduct?.productOfferId === p.productOfferId ? (
                               <Card padding="md" style={{ width: "100%" }}>
                                 <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
@@ -1039,6 +1149,41 @@ export function BusinessPage() {
                             )}
                           </div>
                         ))}
+
+                        {productsTotal > 10 && (
+                          <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", justifyContent: "center", paddingTop: "0.5rem" }}>
+                            <button
+                              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                              onClick={() => setProductsPage(p => Math.max(0, p - 1))}
+                              disabled={productsPage === 0}
+                            >
+                              <ChevronLeft size={16} />
+                            </button>
+                            {Array.from({ length: Math.ceil(productsTotal / 10) }, (_, i) => (
+                              <button
+                                key={i}
+                                className="fcw-btn fcw-btn-sm"
+                                style={{
+                                  minWidth: 32,
+                                  justifyContent: "center",
+                                  backgroundColor: i === productsPage ? "var(--fcw-color-primary)" : "transparent",
+                                  color: i === productsPage ? "#fff" : "var(--fcw-color-text-secondary)",
+                                  border: i === productsPage ? "none" : "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                                }}
+                                onClick={() => setProductsPage(i)}
+                              >
+                                {i + 1}
+                              </button>
+                            ))}
+                            <button
+                              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                              onClick={() => setProductsPage(p => Math.min(Math.ceil(productsTotal / 10) - 1, p + 1))}
+                              disabled={productsPage >= Math.ceil(productsTotal / 10) - 1}
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1051,8 +1196,8 @@ export function BusinessPage() {
                       <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.services")}</h2>
                       {!isStaff && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                          <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setSection("import")}>
-                            <Upload size={16} />{t("business.import.title")}
+                          <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("SERVICE"); setSection("import"); }}>
+                            <Upload size={16} />{t("business.import.titleServices")}
                           </button>
                           <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { resetServiceForm(); setShowServiceForm(true); }}>
                             <Plus size={16} />{t("business.service.add")}
@@ -1260,11 +1405,13 @@ export function BusinessPage() {
                       <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.branches")}</h2>
                       <div style={{ flex: 1 }} />
                       {!isStaff && (
-                        <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => setShowBranchForm(v => !v)}>
+                        <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { setEditBranchId(null); setShowMapPicker(false); setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null }); setShowBranchForm(v => !v); }}>
                           <Plus size={16} />{t("business.branch.add")}
                         </button>
                       )}
                     </div>
+                    <div style={{ display: "flex", gap: "var(--fcw-space-md)", alignItems: "flex-start" }}>
+                    <div className="fcw-flex-col" style={{ gap: "0.5rem", flex: 1, minWidth: 0 }}>
 
                     {branchesBusy && <Loading size="sm" />}
 
@@ -1276,7 +1423,7 @@ export function BusinessPage() {
                     )}
 
                     <AnimatePresence>
-                      {showBranchForm && (
+                      {showBranchForm && !editBranchId && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -1323,60 +1470,39 @@ export function BusinessPage() {
                                 <span className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)" }}>
                                   {t("business.branch.location")}
                                 </span>
-                                <span className="fcw-body-xs" style={{ color: "var(--fcw-color-text-tertiary)" }}>
-                                  {t("business.branch.2gisGuide")}
-                                </span>
-                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.branch.2gisLinkPlaceholder")}
-                                    value={gisLink}
-                                    onChange={e => setGisLink(e.target.value)}
-                                    onKeyDown={e => { if (e.key === "Enter") handleParseGisLink(); }}
-                                    style={{ flex: 1 }}
+                                <button
+                                  type="button"
+                                  className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                  onClick={() => setShowMapPicker(v => !v)}
+                                  style={{ alignSelf: "flex-start", gap: "0.375rem" }}
+                                >
+                                  <MapPin size={14} />
+                                  {showMapPicker ? t("business.cancel") : t("business.branch.pickOnMap")}
+                                </button>
+                                {showMapPicker && (
+                                  <MapLocationPicker
+                                    initialLat={branchForm.latitude ?? undefined}
+                                    initialLng={branchForm.longitude ?? undefined}
+                                    onChange={(lat, lng, address) => setBranchForm(p => ({
+                                      ...p,
+                                      latitude: lat,
+                                      longitude: lng,
+                                      ...(address ? { address } : {}),
+                                    }))}
                                   />
-                                  <button
-                                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                    onClick={handleParseGisLink}
-                                    disabled={gisParsing || !gisLink.trim()}
-                                  >
-                                    {gisParsing ? <Loader2 size={14} className="fcw-animate-spin" /> : <Link2 size={14} />}
-                                    {t("business.branch.extractCoords")}
-                                  </button>
-                                </div>
+                                )}
                                 {branchForm.latitude != null && branchForm.longitude != null && (
-                                  <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem" }}>
-                                    <span className="fcw-body-s" style={{ color: "var(--fcw-color-accent)" }}>
-                                      {branchForm.latitude.toFixed(6)}, {branchForm.longitude.toFixed(6)}
-                                    </span>
-                                    <a
-                                      className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-                                      style={{ textDecoration: "none" }}
-                                      href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <MapPin size={14} />{t("business.branch.openIn2gis")}
-                                    </a>
-                                  </div>
+                                  <a
+                                    className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                    style={{ textDecoration: "none", alignSelf: "flex-start" }}
+                                    href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <MapPin size={14} />{t("business.branch.openIn2gis")}
+                                  </a>
                                 )}
                               </div>
-                              <button
-                                type="button"
-                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                onClick={() => setShowMapPicker(v => !v)}
-                                style={{ alignSelf: "flex-start", gap: "0.375rem" }}
-                              >
-                                <MapPin size={14} />
-                                {t("business.branch.pickOnMap")}
-                              </button>
-                              {showMapPicker && (
-                                <MapLocationPicker
-                                  initialLat={branchForm.latitude ?? undefined}
-                                  initialLng={branchForm.longitude ?? undefined}
-                                  onChange={(lat, lng) => setBranchForm(p => ({ ...p, latitude: lat, longitude: lng }))}
-                                />
-                              )}
                               <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                 <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateBranch}>
                                   <Check size={14} />{t("business.create")}
@@ -1385,7 +1511,6 @@ export function BusinessPage() {
                                   setShowBranchForm(false);
                                   setShowMapPicker(false);
                                   setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
-      setGisLink("");
                                 }}>{t("business.cancel")}</button>
                               </div>
                             </div>
@@ -1436,60 +1561,39 @@ export function BusinessPage() {
                                 <span className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)" }}>
                                   {t("business.branch.location")}
                                 </span>
-                                <span className="fcw-body-xs" style={{ color: "var(--fcw-color-text-tertiary)" }}>
-                                  {t("business.branch.2gisGuide")}
-                                </span>
-                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.branch.2gisLinkPlaceholder")}
-                                    value={gisLink}
-                                    onChange={e => setGisLink(e.target.value)}
-                                    onKeyDown={e => { if (e.key === "Enter") handleParseGisLink(); }}
-                                    style={{ flex: 1 }}
+                                <button
+                                  type="button"
+                                  className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                  onClick={() => setShowMapPicker(v => !v)}
+                                  style={{ alignSelf: "flex-start", gap: "0.375rem" }}
+                                >
+                                  <MapPin size={14} />
+                                  {showMapPicker ? t("business.cancel") : t("business.branch.pickOnMap")}
+                                </button>
+                                {showMapPicker && (
+                                  <MapLocationPicker
+                                    initialLat={branchForm.latitude ?? undefined}
+                                    initialLng={branchForm.longitude ?? undefined}
+                                    onChange={(lat, lng, address) => setBranchForm(p => ({
+                                      ...p,
+                                      latitude: lat,
+                                      longitude: lng,
+                                      ...(address ? { address } : {}),
+                                    }))}
                                   />
-                                  <button
-                                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                    onClick={handleParseGisLink}
-                                    disabled={gisParsing || !gisLink.trim()}
-                                  >
-                                    {gisParsing ? <Loader2 size={14} className="fcw-animate-spin" /> : <Link2 size={14} />}
-                                    {t("business.branch.extractCoords")}
-                                  </button>
-                                </div>
+                                )}
                                 {branchForm.latitude != null && branchForm.longitude != null && (
-                                  <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem" }}>
-                                    <span className="fcw-body-s" style={{ color: "var(--fcw-color-accent)" }}>
-                                      {branchForm.latitude.toFixed(6)}, {branchForm.longitude.toFixed(6)}
-                                    </span>
-                                    <a
-                                      className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-                                      style={{ textDecoration: "none" }}
-                                      href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <MapPin size={14} />{t("business.branch.openIn2gis")}
-                                    </a>
-                                  </div>
+                                  <a
+                                    className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                    style={{ textDecoration: "none", alignSelf: "flex-start" }}
+                                    href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <MapPin size={14} />{t("business.branch.openIn2gis")}
+                                  </a>
                                 )}
                               </div>
-                              <button
-                                type="button"
-                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                onClick={() => setShowMapPicker(v => !v)}
-                                style={{ alignSelf: "flex-start", gap: "0.375rem" }}
-                              >
-                                <MapPin size={14} />
-                                {t("business.branch.pickOnMap")}
-                              </button>
-                              {showMapPicker && (
-                                <MapLocationPicker
-                                  initialLat={branchForm.latitude ?? undefined}
-                                  initialLng={branchForm.longitude ?? undefined}
-                                  onChange={(lat, lng) => setBranchForm(p => ({ ...p, latitude: lat, longitude: lng }))}
-                                />
-                              )}
                               <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                 <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateBranch}>
                                   <Check size={14} />{t("business.save")}
@@ -1498,7 +1602,6 @@ export function BusinessPage() {
                                   setEditBranchId(null);
                                   setShowMapPicker(false);
                                   setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
-      setGisLink("");
                                 }}>{t("business.cancel")}</button>
                               </div>
                             </div>
@@ -1530,8 +1633,30 @@ export function BusinessPage() {
                             {!isStaff && (
                               <button
                                 className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                style={{ gap: "0.25rem", flexShrink: 0 }}
+                                onClick={() => {
+                                  if (selectedStaffBranchId === b.id) {
+                                    setSelectedStaffBranchId(null);
+                                    setStaffEditingId(null);
+                                  } else {
+                                    setSelectedStaffBranchId(b.id);
+                                    setStaffEditingId(null);
+                                    if (!staffByBranch[b.id]) {
+                                      loadStaffForBranch(b.id);
+                                    }
+                                  }
+                                }}
+                              >
+                                <UserRound size={14} />
+                                <span className="fcw-label">{(staffByBranch[b.id] || []).length}</span>
+                              </button>
+                            )}
+                            {!isStaff && (
+                              <button
+                                className="fcw-btn fcw-btn-ghost fcw-btn-sm"
                                 onClick={() => {
                                   setEditBranchId(b.id);
+                                  setShowMapPicker(false);
                                   setBranchForm({
                                     name: b.name,
                                     address: b.address || "",
@@ -1547,8 +1672,162 @@ export function BusinessPage() {
                             )}
                           </div>
                         )}
+
+                        {/* Staff dropdown below branch row */}
+                        {selectedStaffBranchId === b.id && !isStaff && (
+                          <div style={{
+                            marginTop: "-1px",
+                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                            borderTop: "none",
+                            borderRadius: "0 0 var(--fcw-radius-md) var(--fcw-radius-md)",
+                            backgroundColor: "var(--fcw-color-surface-secondary)",
+                            padding: "0.75rem",
+                          }}>
+                            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
+                              <div className="fcw-flex fcw-items-end fcw-flex-wrap" style={{ gap: "0.5rem" }}>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: "1 1 140px", minWidth: 0 }}>
+                                  <label className="fcw-label">{t("business.staff.name")}</label>
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.staff.name")}
+                                    value={(staffForms[b.id] || { displayName: "", email: "", role: "WORKER" }).displayName}
+                                    onChange={e => setStaffForms(prev => ({ ...prev, [b.id]: { ...(prev[b.id] || { displayName: "", email: "", role: "WORKER" }), displayName: e.target.value } }))}
+                                  />
+                                </div>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: "1 1 180px", minWidth: 0 }}>
+                                  <label className="fcw-label">{t("business.staff.email")}</label>
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.staff.email")}
+                                    value={(staffForms[b.id] || { displayName: "", email: "", role: "WORKER" }).email}
+                                    onChange={e => setStaffForms(prev => ({ ...prev, [b.id]: { ...(prev[b.id] || { displayName: "", email: "", role: "WORKER" }), email: e.target.value } }))}
+                                  />
+                                </div>
+                                <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: "0 0 110px" }}>
+                                  <label className="fcw-label">{t("business.staff.role")}</label>
+                                  <Select
+                                    size="sm"
+                                    options={(() => {
+                                      const items = [{ value: "WORKER", label: t("auth.role.BUSINESS_WORKER") }];
+                                      const currentRole = (state.session?.role || "").toUpperCase().replace("ROLE_", "");
+                                      if (currentRole === "BUSINESS_OWNER") {
+                                        items.push({ value: "MANAGER", label: t("auth.role.BUSINESS_MANAGER") });
+                                      }
+                                      return items;
+                                    })()}
+                                    value={(staffForms[b.id] || { displayName: "", email: "", role: "WORKER" }).role}
+                                    onChange={v => setStaffForms(prev => ({ ...prev, [b.id]: { ...(prev[b.id] || { displayName: "", email: "", role: "WORKER" }), role: v } }))}
+                                  />
+                                </div>
+                                <button
+                                  className="fcw-btn fcw-btn-primary fcw-btn-sm"
+                                  style={{ flexShrink: 0 }}
+                                  onClick={() => handleCreateStaff(b.id)}
+                                  disabled={staffBusy === b.id}
+                                >
+                                  {staffBusy === b.id ? <Loader2 size={14} className="fcw-animate-spin" /> : <Plus size={14} />}
+                                  {t("business.staff.add")}
+                                </button>
+                              </div>
+
+                              {(staffByBranch[b.id] || []).length === 0 && (
+                                <span className="fcw-body-s fcw-text-tertiary">{t("business.staff.empty")}</span>
+                              )}
+
+                              {(staffByBranch[b.id] || []).map(member => (
+                                <div key={member.id} className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <div
+                                    className="fcw-flex fcw-items-center fcw-flex-wrap"
+                                    style={{
+                                      gap: "0.5rem",
+                                      padding: "0.5rem 0.75rem",
+                                      backgroundColor: staffEditingId === member.id ? "var(--fcw-color-surface)" : "var(--fcw-color-surface)",
+                                      borderRadius: "var(--fcw-radius-md)",
+                                      border: staffEditingId === member.id ? "var(--fcw-border-width-thin) solid var(--fcw-color-primary)" : "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                                      cursor: "pointer",
+                                    }}
+                                    onClick={() => setStaffEditingId(staffEditingId === member.id ? null : member.id)}
+                                  >
+                                    <UserRound size={16} style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }} />
+                                    <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                      {member.displayName}
+                                    </span>
+                                    <span className="fcw-label" style={{ flexShrink: 0 }}>{t(`auth.role.BUSINESS_${member.role}`)}</span>
+                                    <span className="fcw-label" style={{ flexShrink: 0, color: member.status === "ACTIVE" ? "var(--fcw-color-accent)" : "var(--fcw-color-text-tertiary)" }}>
+                                      {formatStaffStatus(member.status)}
+                                    </span>
+                                    <span className="fcw-body-s fcw-text-tertiary" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.email}</span>
+                                    {member.tempPassword && (
+                                      <span className="fcw-label" style={{ color: "var(--fcw-color-primary)", backgroundColor: "color-mix(in srgb, var(--fcw-color-primary) 10%, transparent)", padding: "0.125rem 0.5rem", borderRadius: "var(--fcw-radius-full)", fontSize: "0.75rem" }}>
+                                        {t("business.staff.tempPassword")}: {member.tempPassword}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Edit staff block */}
+                                  {staffEditingId === member.id && (
+                                    <div style={{
+                                      padding: "0.75rem",
+                                      backgroundColor: "var(--fcw-color-surface)",
+                                      border: "var(--fcw-border-width-thin) solid var(--fcw-color-primary)",
+                                      borderRadius: "var(--fcw-radius-md)",
+                                      borderTop: "none",
+                                      borderTopLeftRadius: 0,
+                                      borderTopRightRadius: 0,
+                                      marginTop: "-1px",
+                                    }}>
+                                      <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "0.5rem" }}>
+                                        <button
+                                          className="fcw-btn fcw-btn-sm"
+                                          style={{
+                                            backgroundColor: member.status === "ACTIVE" ? "var(--fcw-color-error)" : "var(--fcw-color-accent)",
+                                            color: "#fff",
+                                            flexShrink: 0,
+                                          }}
+                                          onClick={async () => {
+                                            if (!businessId || !b.id) return;
+                                            setStaffBusy(member.id);
+                                            try {
+                                              const updated = await updateStaff(businessId, b.id, member.id, {
+                                                status: member.status === "ACTIVE" ? "DISABLED" : "ACTIVE",
+                                              });
+                                              setStaffByBranch(current => ({
+                                                ...current,
+                                                [b.id]: (current[b.id] || []).map(item => item.id === member.id ? updated : item),
+                                              }));
+                                            } catch (e) {
+                                              toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
+                                            } finally {
+                                              setStaffBusy("");
+                                            }
+                                          }}
+                                          disabled={staffBusy === member.id}
+                                        >
+                                          {staffBusy === member.id ? <Loader2 size={14} className="fcw-animate-spin" /> : null}
+                                          {member.status === "ACTIVE" ? t("business.staff.deactivate") : t("business.staff.activate")}
+                                        </button>
+                                        <button
+                                          className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                          onClick={() => handleResetStaffPassword(b.id, member.id)}
+                                          disabled={staffBusy === member.id}
+                                          style={{ flexShrink: 0 }}
+                                        >
+                                          {staffBusy === member.id ? <Loader2 size={14} className="fcw-animate-spin" /> : <RefreshCw size={14} />}
+                                          {t("business.staff.resetPassword")}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
+                    </div>
+
+                    </div>
                   </div>
                 )}
 
@@ -1570,8 +1849,9 @@ export function BusinessPage() {
                     branches={branches}
                     activeBranchId={importBranchId || activeBranchId}
                     onBranchChange={setImportBranchId}
-                    onBackToProducts={() => setSection("products")}
-                    onImported={loadProducts}
+                    onBackToProducts={() => setSection(importMode === "SERVICE" ? "services" : "products")}
+                    onImported={handleImportCompleted}
+                    importMode={importMode}
                   />
                 )}
 
@@ -1580,19 +1860,6 @@ export function BusinessPage() {
                   <BusinessCardBuilder />
                 )}
 
-                {/* Profile */}
-                {section === "profile" && (
-                  <div>
-                    <h2 className="fcw-h2" style={{ margin: "0 0 var(--fcw-space-md) 0" }}>{t("business.companyCabinet")}</h2>
-                    <ProfileEditor
-                      profile={profile}
-                      onChange={setProfile}
-                      onSave={handleSaveProfile}
-                      busy={busy}
-                      readOnly={isStaff}
-                    />
-                  </div>
-                )}
               </motion.div>
             </motion.div>
           </div>

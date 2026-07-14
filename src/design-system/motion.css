@@ -106,6 +106,36 @@
   100% { background-position: 200% 0; }
 }
 
+@keyframes fcw-glass-highlight {
+  0% {
+    background-position: -200% 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 200% 0;
+    opacity: 0;
+  }
+}
+
+.fcw-animate-glass-highlight {
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: fcw-glass-highlight 5s var(--fcw-ease-out) forwards;
+}
+
 @keyframes fcw-shake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-4px); }

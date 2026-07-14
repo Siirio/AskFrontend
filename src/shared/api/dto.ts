@@ -278,6 +278,7 @@ export type StaffDto = {
   email: string;
   displayName: string;
   role: string;
+  branchName: string;
   status: string;
   tempPassword: string;
   activatedAt: string;
@@ -300,10 +301,10 @@ export type ChatConversationDto = {
   conversationId: string;
   businessId: string;
   customerId: string | null;
+  customerName?: string;
   subject: string;
-  status: "NEW_REQUEST" | "IN_PROGRESS" | "DEAL_CLOSED";
-  source: "CUSTOMER" | "SYSTEM";
-  searchQuery?: string;
+  customerUnreadCount: number;
+  businessUnreadCount: number;
   lastMessageAt: string;
   createdAt: string;
 };

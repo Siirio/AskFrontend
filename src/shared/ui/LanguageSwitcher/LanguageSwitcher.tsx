@@ -29,7 +29,7 @@ export function LanguageSwitcher() {
             className="fcw-label"
             role="radio"
             aria-checked={active}
-            onClick={() => i18n.changeLanguage(code)}
+            onClick={() => { i18n.changeLanguage(code); localStorage.setItem("ask.lang", code); }}
             style={{
               background: active ? "var(--fcw-color-surface)" : "transparent",
               color: active ? "var(--fcw-color-primary)" : "var(--fcw-color-text-tertiary)",

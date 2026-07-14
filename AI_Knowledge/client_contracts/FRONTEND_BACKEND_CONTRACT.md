@@ -90,14 +90,15 @@ The old statuses `AVAILABLE`, `UNAVAILABLE`, `NEEDS_CONFIRMATION`, and `ALTERNAT
 
 ## Staff Roles
 
-Business-facing roles are only:
+Business-facing roles:
 
 - `OWNER`: business-level owner. Can create branches, manage branch list, create/remove Staff accounts for branches, and enter any owned branch workspace.
-- `STAFF`: branch-level worker. Can use assigned branch workspace screens such as dashboard/activity, products, services, and other documented working sections. Cannot create branches or manage accounts.
+- `MANAGER`: branch-level manager. Can manage staff for assigned branches. Created by OWNER.
+- `WORKER`: branch-level worker. Can use assigned branch workspace screens such as dashboard/activity, products, services, and other documented working sections. Cannot create branches or manage accounts.
 
-There is no `MANAGER` role and no `OPERATOR` role.
+There is no `OPERATOR` role.
 
-Staff management endpoints require `OWNER` authority. Staff cannot create, update, disable, reset, or invite other Staff accounts.
+Staff management endpoints require `OWNER` or `MANAGER` authority. Workers cannot create, update, disable, reset, or invite other Staff accounts.
 
 ## Authority Strings (in auth_session.authority)
 
@@ -167,7 +168,7 @@ API responses should support:
 
 ## Search V2 / Generative UI
 
-`POST /api/v1/search/v2` replaces the current search with a structured three-layer pipeline: raw query → AI intent structurer (SearchPlan JSON) → Meilisearch → PostgreSQL hydration → SearchResponse with sections.
+`POST /api/v1/search` replaces the current search with a structured pipeline: raw query → AI intent structurer (SearchPlan JSON) → PostgreSQL in-memory scoring → SearchResponse with sections. Meilisearch integration is under investigation — evaluating whether it improves query understanding and guessing. Current search uses PostgreSQL as both source of truth and search engine.
 
 ### SearchPlan Contract
 
@@ -205,17 +206,16 @@ The AI intent structurer returns a SearchPlan JSON. Backend validates and execut
 | `title` | String | Card title |
 | `price` | Decimal | Price (nullable for drops) |
 | `availability` | String | `IN_STOCK`, `NEEDS_CONFIRMATION`, `UNKNOWN` |
-| `matchReasons` | [String] | Why this result matches (max 4) |
 | `badges` | [String] | Quality badges |
 | `distanceMeters` | Integer | Distance (nullable) |
 | `branchName` | String | Branch display name |
 | `hasActiveDrop` | Boolean | Brand has active drop |
+| `contactActions` | [ContactActionSummary] | Available contact actions (Telegram, WhatsApp, Chat, etc.) |
 
 ### Generative UI Rules
 
 - Frontend renders only whitelisted components: ProductCard, ServiceCard, DropCard, BusinessCandidateCard.
 - Frontend never renders arbitrary HTML or inv invents UI from backend text.
-- MatchReasons come from backend, never invented by frontend.
 - Badges are backend-controlled; frontend maps badge strings to visual treatments.
 - Default sort is `intent_match` (relevance). `price_asc`/`price_desc` available as user choice, not default.
 

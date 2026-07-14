@@ -269,7 +269,7 @@ export function listStaff(businessId: string, branchId: string) {
   return apiRequest<StaffDto[]>(`/api/v1/businesses/${businessId}/branches/${branchId}/staff`, { auth: true });
 }
 
-export function createStaff(businessId: string, branchId: string, data: { email: string; displayName: string }) {
+export function createStaff(businessId: string, branchId: string, data: { email: string; displayName: string; role?: string }) {
   return apiRequest<StaffDto>(`/api/v1/businesses/${businessId}/branches/${branchId}/staff`, { method: "POST", auth: true, body: data });
 }
 
@@ -289,9 +289,10 @@ export function listCategories() {
   return apiRequest<Array<{ id: string; name: string; slug: string; parentId: string | null; children: Array<{ id: string; name: string; slug: string; parentId: string | null }> }>>("/api/v1/categories");
 }
 
-export async function uploadProductImport(branchId: string, file: File) {
+export async function uploadProductImport(branchId: string, file: File, mode: "PRODUCT" | "SERVICE" = "PRODUCT") {
   const form = new FormData();
   form.append("file", file);
+  form.append("type", mode);
   const headers: Record<string, string> = {};
   const token = getStoredToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -556,13 +557,5 @@ export function notifyBusinesses(searchQuery: string, businessIds: string[]) {
     method: "POST",
     auth: true,
     body: { searchQuery, businessIds },
-  });
-}
-
-export function parseTwoGisLink(link: string) {
-  return apiRequest<{ found: boolean; latitude?: number; longitude?: number }>("/api/v1/geo/parse-2gis-link", {
-    method: "POST",
-    auth: true,
-    body: { link },
   });
 }

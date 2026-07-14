@@ -32,9 +32,10 @@ interface ProductImportWizardProps {
   onBranchChange: (branchId: string) => void;
   onBackToProducts: () => void;
   onImported: () => void;
+  importMode: "PRODUCT" | "SERVICE";
 }
 
-const FIELD_OPTIONS: { value: ProductImportTargetField; label: string }[] = [
+const PRODUCT_FIELD_OPTIONS: { value: ProductImportTargetField; label: string }[] = [
   { value: "IGNORE", label: "Игнорировать" },
   { value: "NAME", label: "Название товара" },
   { value: "CATEGORY_LABEL", label: "Категория" },
@@ -46,7 +47,18 @@ const FIELD_OPTIONS: { value: ProductImportTargetField; label: string }[] = [
   { value: "CHARACTERISTIC", label: "Сделать характеристикой" },
 ];
 
-const RECOMMENDED_COLUMNS = [
+const SERVICE_FIELD_OPTIONS: { value: ProductImportTargetField; label: string }[] = [
+  { value: "IGNORE", label: "Игнорировать" },
+  { value: "NAME", label: "Название услуги" },
+  { value: "CATEGORY_LABEL", label: "Категория" },
+  { value: "PRICE", label: "Базовая цена" },
+  { value: "DESCRIPTION", label: "Описание" },
+  { value: "TAGS", label: "Теги" },
+  { value: "APPEND_TO_DESCRIPTION", label: "Добавить в описание" },
+  { value: "CHARACTERISTIC", label: "Сделать характеристикой" },
+];
+
+const PRODUCT_RECOMMENDED_COLUMNS = [
   ["Название товара", "Наименование, Название, Товар, Name, Product"],
   ["Категория", "Категория товара, Группа, Category"],
   ["Артикул / код товара", "SKU, ШК, Код, Арт, Article, Barcode"],
@@ -55,27 +67,67 @@ const RECOMMENDED_COLUMNS = [
   ["Теги", "Метки, Tags"],
 ];
 
-const DEMO_CSV = [
+const SERVICE_RECOMMENDED_COLUMNS = [
+  ["Название услуги", "Наименование, Название, Услуга, Name, Service"],
+  ["Категория", "Категория услуги, Группа, Category"],
+  ["Базовая цена", "Цена, Стоимость, Base Price, Price"],
+  ["Длительность", "Время выполнения, Длительность, Duration, Minutes"],
+  ["Описание", "Описание услуги, Сценарий, Description"],
+  ["Теги", "Метки, Tags"],
+];
+
+const PRODUCT_DEMO_CSV = [
   "Код товара,Название,Категория,Бренд,Вкус,Вес,Остаток,Розничная цена,Описание,Теги",
   "ON-001,Optimum Nutrition Предтреник 60 капсул,Спортивное питание,Optimum Nutrition,Шоколад,60 капсул,12,15900,Энергия перед тренировкой,спорт; предтрен",
   "MX-014,Maxler Whey Protein 900 г,Спортивное питание,Maxler,Ваниль,900 г,4,24900,Сывороточный протеин,протеин; фитнес",
   "BSN-020,BSN Amino X 435 г,Спортивное питание,BSN,Фруктовый пунш,435 г,8,18900,BCAA комплекс,аминокислоты; восстановление",
 ].join("\n");
 
+const SERVICE_DEMO_CSV = [
+  "Название,Категория,Длительность,Базовая цена,Описание,Теги",
+  "Стрижка мужская,Парикмахерские услуги,30 мин,5000,Классическая мужская стрижка с мытьём головы,стрижка; мужской зал",
+  "Маникюр с покрытием,Ногтевой сервис,90 мин,12000,Аппаратный маникюр + гель-лак,маникюр; гель-лак",
+  "Диагностика двигателя,Автосервис,60 мин,8000,Компьютерная диагностика + проверка ошибок,авто; диагностика",
+].join("\n");
+
+const PRODUCT_DEMO_TABLE_ROWS = [
+  ["Optimum Nutrition Предтреник 60 капсул", "Спортивное питание", "ON-001", "15 900", "Энергия перед тренировкой, 60 капсул", "спорт; предтрен"],
+  ["Maxler Whey Protein 900 г", "Спортивное питание", "MX-014", "24 900", "Сывороточный протеин, ваниль", "протеин; фитнес"],
+];
+
+const SERVICE_DEMO_TABLE_ROWS = [
+  ["Стрижка мужская", "Парикмахерские услуги", "5 000", "30 мин", "Классическая мужская стрижка с мытьём головы", "стрижка; мужской зал"],
+  ["Маникюр с покрытием", "Ногтевой сервис", "12 000", "90 мин", "Аппаратный маникюр + гель-лак", "маникюр; гель-лак"],
+];
+
+function getDemoTableRows(mode: "PRODUCT" | "SERVICE") {
+  return mode === "PRODUCT" ? PRODUCT_DEMO_TABLE_ROWS : SERVICE_DEMO_TABLE_ROWS;
+}
+
 function isAutodumpFile(file: File) {
   return /\.(txt|md|pdf)$/i.test(file.name);
 }
 
-function createDemoFile() {
-  return new File([DEMO_CSV], "ask-demo-products.csv", { type: "text/csv" });
+function getFieldOptions(mode: "PRODUCT" | "SERVICE") {
+  return mode === "PRODUCT" ? PRODUCT_FIELD_OPTIONS : SERVICE_FIELD_OPTIONS;
+}
+
+function getRecommendedColumns(mode: "PRODUCT" | "SERVICE") {
+  return mode === "PRODUCT" ? PRODUCT_RECOMMENDED_COLUMNS : SERVICE_RECOMMENDED_COLUMNS;
+}
+
+function createDemoFile(mode: "PRODUCT" | "SERVICE") {
+  const csv = mode === "PRODUCT" ? PRODUCT_DEMO_CSV : SERVICE_DEMO_CSV;
+  const name = mode === "PRODUCT" ? "ask-demo-products.csv" : "ask-demo-services.csv";
+  return new File([csv], name, { type: "text/csv" });
 }
 
 function normalizeUploadResponse(value: ProductImportUploadResponse | { sessionId?: string; status?: string; draftsCreated?: number }) {
   return value as ProductImportUploadResponse & { sessionId?: string };
 }
 
-function fieldLabel(field: ProductImportTargetField) {
-  return FIELD_OPTIONS.find(option => option.value === field)?.label || field;
+function fieldLabel(field: ProductImportTargetField, mode: "PRODUCT" | "SERVICE") {
+  return getFieldOptions(mode).find(option => option.value === field)?.label || field;
 }
 
 function rowTitle(row: ProductImportPreviewResponse["rows"][number]) {
@@ -86,9 +138,9 @@ function draftTitle(draft: AutodumpDraftDto) {
   return draft.normalizedTitle || draft.title || "Без названия";
 }
 
-export function ProductImportWizard({ branches, activeBranchId, onBranchChange, onBackToProducts, onImported }: ProductImportWizardProps) {
+export function ProductImportWizard({ branches, activeBranchId, onBranchChange, onBackToProducts, onImported, importMode }: ProductImportWizardProps) {
   const [step, setStep] = useState<ImportStep>("upload");
-  const [mode, setMode] = useState<ImportMode>("table");
+  const [fileMode, setFileMode] = useState<ImportMode>("table");
   const [file, setFile] = useState<File | null>(null);
   const [upload, setUpload] = useState<ProductImportUploadResponse | null>(null);
   const [mappings, setMappings] = useState<ProductImportMappingEntry[]>([]);
@@ -98,6 +150,10 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
+  const isProduct = importMode === "PRODUCT";
+  const itemLabel = isProduct ? "товар" : "услуга";
+  const itemLabelPlural = isProduct ? "товаров" : "услуг";
+  const itemLabelAccusative = isProduct ? "товары" : "услуги";
   const branchName = branches.find(branch => branch.id === activeBranchId)?.name || "Филиал";
   const nameMapped = mappings.some(mapping => mapping.targetField === "NAME");
   const characteristics = mappings.filter(mapping => mapping.targetField === "CHARACTERISTIC");
@@ -116,7 +172,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
 
   const reset = () => {
     setStep("upload");
-    setMode("table");
+    setFileMode("table");
     setFile(null);
     setUpload(null);
     setMappings([]);
@@ -129,7 +185,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   const setSelectedFile = (nextFile: File) => {
     setFile(nextFile);
     setMessage("");
-    setMode(isAutodumpFile(nextFile) ? "autodump" : "table");
+    setFileMode(isAutodumpFile(nextFile) ? "autodump" : "table");
   };
 
   const uploadFile = async (nextFile = file) => {
@@ -137,10 +193,10 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
     setBusy(true);
     setMessage("");
     try {
-      const response = normalizeUploadResponse(await uploadProductImport(activeBranchId, nextFile));
+      const response = normalizeUploadResponse(await uploadProductImport(activeBranchId, nextFile, importMode));
       if (isAutodumpFile(nextFile)) {
         const nextSessionId = response.sessionId || "";
-        setMode("autodump");
+        setFileMode("autodump");
         setSessionId(nextSessionId);
         if (nextSessionId) {
           const session = await getAutodumpSession(activeBranchId, nextSessionId);
@@ -153,7 +209,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
           targetField: column.suggestedTargetField || "IGNORE",
           characteristicName: column.suggestedTargetField === "CHARACTERISTIC" ? column.sourceColumn : undefined,
         }));
-        setMode("table");
+        setFileMode("table");
         setUpload(response);
         setMappings(nextMappings);
         setStep("mapping");
@@ -186,7 +242,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
     setMessage("");
     try {
       const result = await approveProductImport(activeBranchId, upload.importId);
-      setMessage(`Импортировано товаров: ${result.productsCreated}`);
+      setMessage(`Импортировано ${itemLabelPlural}: ${result.productsCreated}`);
       onImported();
     } catch (error) {
       setMessage(error instanceof ApiError ? error.message : "Не удалось импортировать товары");
@@ -200,12 +256,14 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
     setBusy(true);
     setMessage("");
     try {
-      const productDrafts = drafts.filter(draft => (draft.itemType || "PRODUCT").toUpperCase() !== "SERVICE");
-      const serviceDrafts = drafts.filter(draft => (draft.itemType || "").toUpperCase() === "SERVICE");
-      await Promise.all(productDrafts.map(draft => approveAutodumpDraft(activeBranchId, sessionId, draft.id)));
-      await Promise.all(serviceDrafts.map(draft => rejectAutodumpDraft(activeBranchId, sessionId, draft.id)));
+      const keepType = isProduct ? "PRODUCT" : "SERVICE";
+      const skipType = isProduct ? "SERVICE" : "PRODUCT";
+      const keepDrafts = drafts.filter(draft => (draft.itemType || "PRODUCT").toUpperCase() === keepType);
+      const skipDrafts = drafts.filter(draft => (draft.itemType || "").toUpperCase() === skipType);
+      await Promise.all(keepDrafts.map(draft => approveAutodumpDraft(activeBranchId, sessionId, draft.id)));
+      await Promise.all(skipDrafts.map(draft => rejectAutodumpDraft(activeBranchId, sessionId, draft.id)));
       const result = await publishAutodumpSession(activeBranchId, sessionId);
-      setMessage(`Опубликовано товаров: ${result.published}`);
+      setMessage(`Опубликовано ${itemLabelPlural}: ${result.published}`);
       onImported();
     } catch (error) {
       setMessage(error instanceof ApiError ? error.message : "Не удалось опубликовать AI draft");
@@ -225,7 +283,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   };
 
   const useDemo = () => {
-    const demo = createDemoFile();
+    const demo = createDemoFile(importMode);
     setSelectedFile(demo);
     uploadFile(demo);
   };
@@ -234,7 +292,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
     <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
       <div className="fcw-flex-between" style={{ gap: "1rem", flexWrap: "wrap" }}>
         <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={onBackToProducts}>
-          <ArrowLeft size={16} />Назад к товарам
+          <ArrowLeft size={16} />Назад к {itemLabelPlural}
         </button>
         <div className="fcw-glassmorph-segmented" style={{ display: "inline-flex", gap: 0 }}>
           {["Загрузка", "Сопоставление", "Превью"].map((label, index) => {
@@ -262,7 +320,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
         <Card padding="lg">
           <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
             <div>
-              <h2 className="fcw-h2" style={{ margin: 0 }}>Импорт товаров из Excel</h2>
+              <h2 className="fcw-h2" style={{ margin: 0 }}>Импорт {itemLabelPlural} из Excel</h2>
               <p className="fcw-body fcw-text-secondary" style={{ margin: "0.35rem 0 0" }}>
                 Импорт применяется к текущему филиалу: {branchName}
               </p>
@@ -282,12 +340,12 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
                 textAlign: "center",
               }}
             >
-              {mode === "autodump" ? <FileText size={32} style={{ color: "var(--fcw-color-primary)" }} /> : <FileSpreadsheet size={32} style={{ color: "var(--fcw-color-primary)" }} />}
+              {fileMode === "autodump" ? <FileText size={32} style={{ color: "var(--fcw-color-primary)" }} /> : <FileSpreadsheet size={32} style={{ color: "var(--fcw-color-primary)" }} />}
               <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: "0.75rem 0 0" }}>
-                Загрузите файл Excel (.xlsx), CSV или текстовый файл с товарами
+                Загрузите файл Excel (.xlsx), CSV или текстовый файл с {itemLabelPlural}
               </h3>
               <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.35rem 0 1rem" }}>
-                Таблицы идут через сопоставление колонок. TXT, MD и PDF проходят через AI Dumping и превращаются в черновики товаров.
+                Таблицы идут через сопоставление колонок. TXT, MD и PDF проходят через AI Dumping и превращаются в черновики {itemLabelPlural}.
               </p>
               <label className="fcw-btn fcw-btn-primary fcw-btn-sm" style={{ display: "inline-flex" }}>
                 <Upload size={14} />
@@ -308,16 +366,14 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
                 </div>
               )}
             </div>
-            <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
-              <span className="fcw-body-s fcw-text-tertiary" style={{ textAlign: "center" }}>или</span>
-              <button className="fcw-btn fcw-btn-primary" onClick={useDemo} disabled={busy || !activeBranchId} style={{ width: "100%" }}>
-                {busy ? <Loader2 className="fcw-animate-spin" size={16} /> : <FileSpreadsheet size={16} />}
-                Использовать пример Excel
+
+            {file && (
+              <button className="fcw-btn fcw-btn-primary" onClick={() => uploadFile()} disabled={busy || !activeBranchId} style={{ width: "100%" }}>
+                {busy ? <Loader2 className="fcw-animate-spin" size={16} /> : <PackageCheck size={16} />}
+                Превратить в {itemLabelAccusative}
               </button>
-              <span className="fcw-body-s fcw-text-tertiary" style={{ textAlign: "center" }}>
-                Демо-набор: спортивное питание, 3 товара
-              </span>
-            </div>
+            )}
+
             <div
               className="fcw-body-s"
               style={{
@@ -332,29 +388,50 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
               <AlertTriangle size={18} style={{ flexShrink: 0, color: "var(--fcw-color-warning)" }} />
               <span>Вы заполняете данные для витрины. Не включайте остатки, закупочные цены, поставщиков, маржинальность и другие внутренние данные бизнеса.</span>
             </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  {RECOMMENDED_COLUMNS.map(([name, examples]) => (
-                    <tr key={name}>
-                      <td className="fcw-body-s fcw-weight-semibold" style={{ padding: "0.55rem", borderBottom: "1px solid var(--fcw-color-border)" }}>{name}</td>
-                      <td className="fcw-body-s fcw-text-secondary" style={{ padding: "0.55rem", borderBottom: "1px solid var(--fcw-color-border)" }}>{examples}</td>
+
+            <details style={{ cursor: "pointer" }}>
+              <summary className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)", marginBottom: "0.5rem" }}>
+                Посмотреть пример идеального Excel
+              </summary>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--fcw-font-size-body-s)" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "var(--fcw-color-surface-secondary)" }}>
+                      {getRecommendedColumns(importMode).map(([name]) => (
+                        <th key={name} className="fcw-label" style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "2px solid var(--fcw-color-border)", whiteSpace: "nowrap" }}>{name}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="fcw-flex-between" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
+                  </thead>
+                  <tbody>
+                    {getDemoTableRows(importMode).map((row, i) => (
+                      <tr key={i}>
+                        {row.map((cell, j) => (
+                          <td key={j} style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid var(--fcw-color-border)", whiteSpace: j === 3 ? "nowrap" : undefined }}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="fcw-flex" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
+                <span className="fcw-body-s fcw-text-tertiary">
+                  Каждая колонка принимает разные названия заголовков: {getRecommendedColumns(importMode).map(([name, examples]) => `${name} → ${examples}`).join("; ")}
+                </span>
+              </div>
+              <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={useDemo} disabled={busy || !activeBranchId} style={{ marginTop: "0.5rem" }}>
+                <FileSpreadsheet size={14} />
+                Попробовать демо-набор
+              </button>
+              <span className="fcw-body-xs fcw-text-tertiary" style={{ marginLeft: "0.5rem" }}>{isProduct ? "Спортивное питание" : "Услуги салона и автосервиса"}, 3 {itemLabelPlural}</span>
+            </details>
+
+            <div className="fcw-flex" style={{ gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
               <Select
                 options={branches.map(branch => ({ value: branch.id, label: branch.name }))}
                 value={activeBranchId}
                 onChange={onBranchChange}
                 style={{ width: "min(100%, 320px)" }}
               />
-              <button className="fcw-btn fcw-btn-primary" onClick={() => uploadFile()} disabled={busy || !file || !activeBranchId}>
-                {busy ? <Loader2 className="fcw-animate-spin" size={16} /> : <PackageCheck size={16} />}
-                Превратить в товары
-              </button>
             </div>
           </div>
         </Card>
@@ -366,7 +443,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
             <div>
               <h2 className="fcw-h2" style={{ margin: 0 }}>Сопоставление колонок</h2>
               <p className="fcw-body fcw-text-secondary" style={{ margin: "0.35rem 0 0" }}>
-                Сопоставьте Excel-колонки с полями товаров. Название товара обязательно.
+                Сопоставьте Excel-колонки с полями {itemLabelPlural}. Название {itemLabel} обязательно.
               </p>
             </div>
             <div style={{ overflowX: "auto" }}>
@@ -395,7 +472,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
                             background: mapping.targetField !== "IGNORE" ? "color-mix(in srgb, var(--fcw-color-primary) 8%, var(--fcw-color-surface))" : undefined,
                           }}
                         >
-                          {FIELD_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          {getFieldOptions(importMode).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                         </select>
                         {mapping.targetField === "CHARACTERISTIC" && (
                           <input
@@ -414,7 +491,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
                 </tbody>
               </table>
             </div>
-            {!nameMapped && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)", margin: 0 }}>Нужно выбрать колонку с названием товара.</p>}
+            {!nameMapped && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)", margin: 0 }}>Нужно выбрать колонку с названием {itemLabel}.</p>}
             <div className="fcw-flex-between" style={{ gap: "0.75rem" }}>
               <button className="fcw-btn fcw-btn-secondary" onClick={() => setStep("upload")}>Назад</button>
               <button className="fcw-btn fcw-btn-primary" onClick={continueToPreview} disabled={busy || !nameMapped}>
@@ -426,7 +503,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
         </Card>
       )}
 
-      {step === "preview" && mode === "table" && preview && (
+      {step === "preview" && fileMode === "table" && preview && (
         <Card padding="lg">
           <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
             <div>
@@ -478,20 +555,20 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
         </Card>
       )}
 
-      {step === "preview" && mode === "autodump" && (
+      {step === "preview" && fileMode === "autodump" && (
         <Card padding="lg">
           <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
             <div>
               <h2 className="fcw-h2" style={{ margin: 0 }}>AI Dumping превью</h2>
               <p className="fcw-body fcw-text-secondary" style={{ margin: "0.35rem 0 0" }}>
-                AI превратил файл в черновики товаров. Услуги из этого сценария не публикуются.
+                AI превратил файл в черновики {itemLabelPlural}. {isProduct ? "Услуги" : "Товары"} из этого сценария не публикуются.
               </p>
             </div>
             <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
               {drafts.map(draft => (
                 <div key={draft.id} className="fcw-flex-between" style={{ gap: "1rem", padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: "var(--fcw-color-surface-secondary)" }}>
                   <div>
-                    <div className="fcw-label">{(draft.itemType || "PRODUCT").toUpperCase() === "SERVICE" ? "Услуга пропущена" : "Товар"}</div>
+                    <div className="fcw-label">{(draft.itemType || "PRODUCT").toUpperCase() === (isProduct ? "SERVICE" : "PRODUCT") ? (isProduct ? "Услуга пропущена" : "Товар пропущен") : (isProduct ? "Товар" : "Услуга")}</div>
                     <div className="fcw-body-s fcw-weight-semibold">{draftTitle(draft)}</div>
                     <div className="fcw-body-s fcw-text-secondary">{draft.categoryLabel || draft.subcategoryLabel || draft.description || "Без описания"}</div>
                   </div>
@@ -503,7 +580,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
               <button className="fcw-btn fcw-btn-secondary" onClick={reset}>Назад</button>
               <button className="fcw-btn fcw-btn-primary" onClick={importDrafts} disabled={busy || drafts.length === 0}>
                 {busy ? <Loader2 className="fcw-animate-spin" size={16} /> : <PackageCheck size={16} />}
-                Импортировать товары
+                Импортировать {itemLabelAccusative}
               </button>
             </div>
           </div>
