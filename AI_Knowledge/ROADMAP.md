@@ -25,7 +25,7 @@ Phase 0 splits in two, and **the halves run in PARALLEL**. Only 0b needs the des
 - [x] `shared/i18n/`: next-intl plumbing + `messages/{ru,kk,en}.json`, keyed per slice namespace (locale fixed to `ru` until the profile settings screen exists — a request-time cookie read would break the static marketing page, D6)
 - [x] App skeleton: root layout, `app/providers/`, `app/_components/` chrome (NavigationMenu), the `(marketing)` route group and the `/app/*` tree (D6). Structure only — unstyled; every string is an i18n key; `/` and `/app/*` prerender static, `product/[id]` dynamic.
 - [x] Playwright e2e harness running against `next build && next start` (e2e/smoke.spec.ts: landing, platform shell, every V1 route)
-- [ ] Confirm the deploy target and wire a preview deploy
+- [ ] Confirm the deploy target and wire a preview deploy, plus a CI check running `npm run build` — an import violation must fail in CI, not only on the machine that chose to build (§8). If Vercel: pin `buildCommand` to `npm run build`, or its default `next build` silently skips the lint chain.
 
 ### Phase 0b — The visual layer (needs the tokens)
 
@@ -72,6 +72,11 @@ Goal: the V1 product from `PRODUCT_VISION.md`, one vertical slice at a time. Not
 | 12 | — | **Launch:** e2e suite green → deploy (marketing `/` + platform `/app/*`, one app) | |
 
 Slices 7–9 are one product surface but three slices: the cabinet **composes**, it does not own other domains' data (R2, D8).
+
+### Parked fixes (2026-07-14 audit) — attach to the item that triggers them
+
+- [ ] **With slice #1:** R4 teeth — enforcement for a relative import escaping its element to a *legal* target (illegal targets are already caught by `boundaries/dependencies`). Evaluate plugin options or a small custom rule; until then R4 is review-enforced (see the §4 note in the architecture doc).
+- [ ] **With item 10 (the landing):** the smoke test locates the `/app` link via bare `getByRole("link")` — it breaks on ambiguity the moment the landing gains a second link. Scope it by `href`, not by accessible name (name would couple the test to translated copy).
 
 Depends on: Phase 0.
 
