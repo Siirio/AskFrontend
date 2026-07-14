@@ -47,6 +47,16 @@ Every visual instinct trained on Wildberries, Ozon, Amazon or Yandex Market is w
 
 If ASK's own brand color is loud, it fights the twenty brand logos and brand colors on screen at once. **ASK's chrome must be quiet** — a neutral, confident canvas that lets *other people's brands* sing. Save saturation for a single accent (the search action) and let everything else recede.
 
+### The accent is ORANGE (decided, 2026-07-14)
+
+One accent, and it is orange. That fits the rule above — everything else recedes. But orange drags in three traps, and they must be solved deliberately:
+
+1. **The discount collision.** Orange/red *is* the sale colour in every marketplace on earth. ASK has Unique Offers rendering as `−30%` / `−5000 ₸` labels. If orange is both the primary action *and* the discount signal, they fight — and the product starts looking like the thing it refuses to be. The offer label and the search button must not compete.
+2. **Contrast.** Orange is the hardest accent to make WCAG AA compliant. Most attractive oranges fail with white text. The chosen shade must pass on light *and* dark surfaces, with a stated foreground colour.
+3. **Amazon.** Amazon's accent is orange. We are explicitly not a marketplace. A saturated consumer orange puts us in exactly the wrong company.
+
+The neutral should run **warm** — a cold blue-grey fights orange. And remember the feel: *fast, certain, calm, precise*. That means a **controlled** orange, not a shouty one.
+
 ### Badges are information, not judgment
 
 The visible trust signals are **data freshness · confirmation speed · card quality · business activity**. These are facts about a listing, not opinions about a business. Design them to read as *metadata* — never a score, never a green/amber/red traffic light, never anything mistakable for a rating.
@@ -153,12 +163,32 @@ at once. If ASK's own chrome is loud, it fights them. So ASK's UI must be QUIET:
 a neutral, confident canvas that lets other people's brands sing. Reserve
 saturation for exactly one accent — the search action. Everything else recedes.
 
+THE ACCENT IS ORANGE. This is decided — do not propose a different hue.
+One accent, and it is orange. Everything else recedes. But orange brings three
+traps, and I want each one solved deliberately, not ignored:
+
+1. THE DISCOUNT COLLISION. Orange/red is the sale colour in every marketplace on
+   earth. ASK shows "Unique Offers" as labels like "−30%" and "−5000 ₸". If
+   orange is BOTH the primary action AND the discount signal, they fight — and
+   the product starts looking like the exact thing it refuses to be. Solve this:
+   how does an offer label read as a brand signal without competing with the
+   search button? Show me both on the same card.
+2. CONTRAST. Orange is the hardest accent to make WCAG AA compliant — most
+   attractive oranges fail with white text. Give me a shade that passes on BOTH
+   light and dark surfaces, and state the foreground colour that goes on it.
+3. AMAZON. Amazon's accent is orange. We are explicitly not a marketplace. Do
+   not hand me a saturated consumer orange — that puts us in exactly the wrong
+   company. Tell me why YOUR orange is not a marketplace orange.
+
+The neutral should run WARM — a cold blue-grey fights orange. And given the feel
+below, it should be a CONTROLLED orange, not a shouty one.
+
 BUT QUIET IS NOT THE SAME AS GENERIC.
 Linear, Stripe and Vercel are all quiet and all instantly recognizable. Default
 gray shadcn is quiet and instantly forgettable. Do not hand me the safe default.
 Have a point of view. Make one or two decisions someone could disagree with — an
-unusual neutral temperature, a specific typeface, a distinctive radius, an accent
-nobody else is using. Then justify them.
+unusual neutral temperature, a specific typeface, a distinctive radius, a
+specific orange nobody else is using. Then justify them.
 
 HOW IT SHOULD FEEL
 The mission is to SAVE TIME. The principles are RASE — Reliability, Accuracy,
@@ -175,8 +205,9 @@ could mistake for a rating.
 
 DELIVER
 1. Color tokens — light AND dark, both designed, not derived by inversion:
-   surface, foreground, muted, border, accent (ONE, for the search/primary
-   action), destructive, success, warning. Neutral-forward.
+   surface, foreground, muted, border, accent (ONE — the orange, for the
+   search/primary action), destructive, success, warning, and the offer/discount
+   label colour that does NOT collide with the accent. Warm neutrals.
 2. Typography — a typeface supporting CYRILLIC including Kazakh (ә ғ қ ң ө ұ ү
    һ і). Russian text runs ~30% longer than English, so the scale must tolerate
    that. Give size + line-height pairs.
