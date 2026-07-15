@@ -61,7 +61,9 @@ let broken = 0;
 
 for (const { file, rule, law } of BAD_FIXTURES) {
   const [result] = await eslint.lintFiles([file]);
-  const hit = result.messages.some((m) => m.ruleId === rule && m.severity === 2);
+  const hit = result.messages.some(
+    (m) => m.ruleId === rule && m.severity === 2,
+  );
   console.log(`${hit ? "PROVEN" : "MISSED"}  ${law}`);
   console.log(`          ${file} → ${rule}`);
   if (!hit) {
@@ -97,4 +99,6 @@ if (broken > 0) {
   process.exit(1);
 }
 
-console.log("\nAll fixtures behave as required — boundary enforcement is proven.");
+console.log(
+  "\nAll fixtures behave as required — boundary enforcement is proven.",
+);

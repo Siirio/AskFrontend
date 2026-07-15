@@ -1,3 +1,8 @@
+---
+name: code-rules-checker
+description: Validate completed code changes against the DESIGN_PATTERNS_FRONTEND P-rules and ARCHITECTURE R-rules (boundaries, single-implementation, rendering policy). Use after any code change is complete, before reporting it done.
+---
+
 # code-rules-checker
 
 Validate recent code changes against `AI_Knowledge/DESIGN_PATTERNS_FRONTEND.md` (P-rules) and `AI_Knowledge/ARCHITECTURE_PATTERN_FRONTEND.md` (R-rules, §7 single-implementation).

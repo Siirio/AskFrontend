@@ -1,0 +1,82 @@
+name: CI
+
+# The boundaries are compile-time laws (architecture §8), but a law only holds
+# if it is enforced where merges happen — not just on the machine that chose to
+# run the build. This workflow makes an import/boundary violation, a lint error,
+# a type error, or a broken fixture fail the PR, and runs the Playwright harness
+# against the real production build.
+
+on:
+  push:
+    branches: [master, dev, new_frontend]
+  pull_request:
+
+# Least privilege: CI only needs to read the code.
+permissions:
+  contents: read
+
+# A newer push to the same ref cancels the older in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & boundaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      # Fail fast on formatting before the heavier build. .gitattributes pins LF
+      # so this agrees with a Windows working copy.
+      - name: Check formatting
+        run: npm run format:check
+
+      # The full chain (package.json): eslint src → lint:fixtures proof → next
+      # build (which runs tsc). A boundary violation, a stale rule fixture, a
+      # type error, or a build failure each fails the job.
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: E2E (production build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      # Only the chromium project is configured (playwright.config.ts).
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # GitHub Actions sets CI=true, which activates the config's CI branch:
+      # forbidOnly, retries=2, reuseExistingServer=false. The webServer builds
+      # and starts the real production app, so this tests what ships.
+      - name: Run e2e
+        run: npm run test:e2e
+
+      # Traces are written on the first retry (playwright.config.ts). Upload them
+      # only when the run fails, so a red check comes with something to open.
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -5,9 +5,11 @@ Web client for the ASK platform — local product/service search with an anti-ma
 ## Tech Stack
 - Next.js (App Router), TypeScript, React server components by default
 - Tailwind v4 on `design-system/` tokens (single visual source)
-- zustand (store factories via context providers), framer-motion (LazyMotion + `m.`)
-- next-intl (ru/kk/en), lucide-react, `next/image`, Playwright (e2e)
-- Vertical Slice Architecture — slices mirror AskBackend module names, ESLint-enforced boundaries
+- zustand (store factories via context providers), GSAP (`useGSAP()` + `ScrollTrigger`, D11)
+- `shared/ui` primitives scaffolded via shadcn CLI + Radix, restyled to `design-system/` tokens before use (D12). Import GSAP from `shared/motion.ts`, never `gsap` directly (D14)
+- next-intl (ru/kk/en), lucide-react, sonner (Toast, `theme="system"` — NO next-themes), `next/image`, Playwright (e2e)
+- Prettier + `prettier-plugin-tailwindcss` the one formatter (D15, `npm run format`); Vercel the deploy host (D16, `vercel.json` pins `buildCommand`)
+- Vertical Slice Architecture — slices mirror AskBackend module names, ESLint-enforced boundaries; CI (GitHub Actions) gates format + build + e2e
 
 ## Runtime Constraints
 - Never commit or push unless the user explicitly asks. When they do → follow **Commit Rules** below, exactly.
@@ -207,18 +209,30 @@ Slice-level: `AI_Knowledge/features/{slice}/locks.md`
 Breaking a lock requires: (1) explicit user approval, (2) proof that surrounding extension is insufficient.
 
 ## Tool Routing
+
+Skills live at `.claude/skills/{name}/SKILL.md` and are **committed** — every developer and agent inherits them on clone, with no install step and nothing to bootstrap. Third-party skills are **vendored and pinned**, never installed per-machine: see `.claude/skills/VENDORED.md` (upstream, commit, license, update procedure). Vendored files stay pristine — ASK's overrides live in the two design skills, which route to them.
+
 | When | Use | Missing? |
 |------|-----|----------|
 | Code change complete | `code-rules-checker` skill | Manual check against P-rules + `eslint src` |
 | Docs need update | `documentation-updater` skill | Direct file edit |
 | Knowledge cleanup | `system-maintainer` skill | Manual maintenance |
+| Building/styling `app/(marketing)/`, or generating the `design-system/` tokens | `marketing-ui-design` skill | Manual check against D11/D12 + the design locks |
+| Building/styling `/app/*` (any slice `ui/`) | `platform-ui-design` skill | Manual check against D8 ownership test + D12 |
+| Any animation (GSAP is the one system, D11) | `gsap-core` · `gsap-scrolltrigger` · `gsap-react` (vendored) | Never recall the API from memory — read the vendored SKILL.md |
+| Scaffolding a `shared/ui` primitive (D12) | `shadcn` skill (vendored; CLI-driven, needs no MCP) | `npx shadcn@latest` by hand — then restyle to tokens before first use |
 | Next.js/React/Tailwind docs needed | context7 MCP | `claude mcp add context7` |
-| Need to verify a screen in the browser | playwright MCP | `claude mcp add playwright` |
+| Need to verify a screen in the browser | playwright MCP, or this repo's own Playwright e2e harness | `claude mcp add playwright` |
 | Large reference docs | NotebookLM MCP | `claude mcp add notebooklm` |
 | Cross-slice discovery | graphify | Comes with superpowers |
 | Task tracking | dashboard MCP | `claude mcp add dashboard` |
 
 If a tool is missing AND install fails: do the work manually. Never skip.
+
+### The UI work loop
+Every UI change runs this loop — it is how a design decision survives contact with an agent:
+
+**invoke the design skill** (`marketing-ui-design` or `platform-ui-design`, per surface) → **build** → **verify visually** (drive the real screen: the Playwright harness against `next build && next start`, or the playwright MCP — never "it should render") → **self-review against the skill's Definition of done** (light *and* dark · ru/kk/en with real strings · every value a token · reduced-motion path · nothing from the Never table) → **`code-rules-checker`** → **update `features/{slice}/ux-ui-flow.md` in the same commit**.
 
 ## Self-Maintenance
 

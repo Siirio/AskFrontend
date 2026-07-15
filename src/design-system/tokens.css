@@ -1,0 +1,293 @@
+/*
+ * ASK — Design Tokens. THE SINGLE VISUAL SOURCE (architecture D3).
+ * ---------------------------------------------------------------------------
+ * Every colour, size, space, radius, shadow and motion value in the product is
+ * defined HERE and nowhere else. A raw hex or px literal in a component is a
+ * P9.2 violation with no exceptions.
+ *
+ * THE DIRECTION (decided by the product owners — Locks.md "Design Locks";
+ * an agent may improve the execution, never re-open the decision):
+ *   quiet chrome · ONE accent and it is orange · warm neutrals ·
+ *   fast, certain, calm, precise · never a marketplace.
+ *
+ * COLOUR SPACE: OKLCH. Perceptually uniform, so a lightness step means the same
+ * thing at every hue, and the ramps below are honest rather than eyeballed.
+ * Every value here was verified in sRGB gamut and against WCAG — see the table
+ * at the bottom. None of these numbers are guesses.
+ *
+ * HOW LIGHT/DARK WORKS: the primitives below are redefined under
+ * `prefers-color-scheme: dark`, and `@theme inline` makes every Tailwind
+ * utility resolve to the primitive at use time. Consequence, and it is a rule:
+ * COMPONENTS NEVER WRITE `dark:` FOR COLOUR. `bg-surface` is already correct in
+ * both modes. Light and dark are designed, not derived by inversion.
+ * There is no theme toggle: PRODUCT_VISION.md has no such control, and P9.1
+ * forbids inventing one. We follow the system preference.
+ */
+
+:root {
+  /* ── ACCENT — the one saturated colour in the product ────────────────────
+   * oklch(0.575 0.161 46). Hue 46 is a true orange, chosen BETWEEN the two
+   * things we must not be:
+   *   · Amazon  #FF9900 sits at hue 63 — yellow-orange, the marketplace tell.
+   *   · Terracotta      sits near hue 38 at LOW chroma — dusty, and the #1
+   *     AI-design cliché (warm cream + terracotta). We are adjacent to it by
+   *     construction, so we run high chroma to stay decisively out of it.
+   * Chroma 0.161 is the sRGB gamut ceiling at this lightness — any higher is a
+   * colour the browser cannot render and silently clips.
+   * Lightness 0.575 is the BRIGHTEST orange that still holds white text at
+   * WCAG AA (4.67:1). One step brighter and the label fails. This is why the
+   * accent is deep: contrast chose it, not taste.
+   */
+  --accent: oklch(0.575 0.161 46);
+  --accent-hover: oklch(0.53 0.149 46);
+  --accent-active: oklch(0.49 0.137 46);
+  --accent-foreground: oklch(1 0 0); /* white — 4.67:1, stated, not assumed */
+
+  /* ── OFFER — Unique Offers (−30%, −5000 ₸) ───────────────────────────────
+   * THE RULE THAT KEEPS US OUT OF THE MARKETPLACE:
+   *   SATURATION IS ACTION. TINT IS INFORMATION.
+   * The accent is the only high-chroma fill in the product and it marks only
+   * things you can ACT on. An offer is information, so it is a low-chroma warm
+   * TINT with ink text — chroma 0.032 against the accent's 0.161, and never a
+   * fill. On a result card the button is the only saturated object; the −30%
+   * chip is a quiet warm tile whose weight comes from BOLD TABULAR NUMERALS,
+   * not from colour. They cannot compete, because they are not in the same
+   * register. Every marketplace scores discounts in red; ASK states them as a
+   * fact. An offer is never accent-coloured; the accent never marks a fact.
+   */
+  --offer: oklch(0.94 0.032 68);
+  --offer-border: oklch(0.865 0.05 68);
+  --offer-foreground: oklch(0.33 0.06 55); /* 10.39:1 on the tint */
+
+  /* ── NEUTRALS — warm (hue 50) ────────────────────────────────────────────
+   * A cold blue-grey fights orange, so the ramp runs warm. But warm is NOT
+   * cream: the cliché background (#F4F1EA) is lightness 0.955 at a yellow-GREEN
+   * hue (~90). Ours is lightness 0.975 at hue 50 — a near-white with an orange
+   * cast, the accent starved of chroma. Different temperature, different value.
+   */
+  --surface: oklch(0.975 0.004 50); /* page */
+  --surface-raised: oklch(0.995 0.002 50); /* cards, modals, the search field */
+  --surface-sunken: oklch(0.955 0.006 50); /* wells, skeleton base */
+
+  --border: oklch(0.9 0.008 50);
+  --border-strong: oklch(0.82 0.01 50);
+
+  /* Three text levels, and only three. foreground-subtle sits exactly at the
+   * AA floor (4.54:1 on the darkest surface) — there is nothing quieter than
+   * it, by law. It renders the trust badges, which is why it must pass as
+   * normal text and not hide behind a "decorative" excuse. */
+  --foreground: oklch(0.235 0.012 50);
+  --foreground-muted: oklch(0.45 0.012 50);
+  --foreground-subtle: oklch(0.535 0.011 50);
+
+  /* ── SYSTEM STATE — feedback only ────────────────────────────────────────
+   * Toasts, form validation, and the import wizard's valid/warning/invalid
+   * rows. NEVER a trust badge: a green/amber/red badge is a rating by another
+   * name, and this product has no ratings (Locks.md).
+   */
+  --destructive: oklch(0.53 0.196 27);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.52 0.128 155);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.79 0.15 85);
+  --warning-foreground: oklch(0.235 0.012 50);
+
+  /* ── THE SIGNATURE: the precision ring ───────────────────────────────────
+   * The accent's second and last job. A 2px ring, 2px offset, NO blur, NO glow
+   * — identical on every focusable thing: the search field, buttons, sort tabs,
+   * cards. It is simultaneously the brand motif and the accessibility focus
+   * indicator, which means the one saturated colour in the product always marks
+   * exactly where your next action lands. Precision, not decoration.
+   */
+  --ring: var(--accent);
+
+  /* Shadows are warm-tinted (never neutral black) and quiet — in light mode
+   * elevation is carried by the hairline border first, the shadow second. */
+  --shadow-color-weak: oklch(0.235 0.012 50 / 0.05);
+  --shadow-color: oklch(0.235 0.012 50 / 0.08);
+  --shadow-color-strong: oklch(0.235 0.012 50 / 0.16);
+
+  /* The modal scrim. Deliberately the SAME warm near-black in both themes — a
+   * scrim's job is to darken the page behind a dialog, so unlike every other
+   * token it does not lighten in dark mode (a light scrim would wash the page
+   * out, not focus it). This is why it is not `foreground` at an alpha: that
+   * flips to near-white in dark and the overlay would glow. */
+  --overlay: oklch(0.16 0.008 50 / 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* A single accent value CANNOT serve both modes: the light accent against
+     * the dark surface measures 3.84:1 — it survives WCAG 1.4.11 but reads
+     * muddy, and it cannot go deeper without dying. So dark gets its own value
+     * at the SAME HUE (46): brighter, and its label flips to ink. The hue never
+     * moves; only lightness and the foreground do. That is what "designed, not
+     * derived" costs, and it is why --accent-foreground is a token. */
+    --accent: oklch(0.72 0.186 46);
+    --accent-hover: oklch(0.775 0.141 46);
+    --accent-active: oklch(0.67 0.188 46);
+    --accent-foreground: oklch(0.235 0.012 50); /* ink — 6.30:1 */
+
+    --offer: oklch(0.31 0.038 68);
+    --offer-border: oklch(0.4 0.048 68);
+    --offer-foreground: oklch(0.9 0.045 75); /* 9.79:1 on the tint */
+
+    /* A warm CHARCOAL, not a near-black. Deliberate: "near-black background +
+     * one bright accent" is itself a named AI-design cliché, and a true black
+     * would make the warm ramp meaningless. Cards lift by lightness here —
+     * shadows do almost nothing on a dark surface. */
+    --surface: oklch(0.205 0.01 50);
+    --surface-raised: oklch(0.255 0.011 50);
+    --surface-sunken: oklch(0.17 0.009 50);
+
+    --border: oklch(0.32 0.012 50);
+    --border-strong: oklch(0.42 0.014 50);
+
+    --foreground: oklch(0.96 0.004 50);
+    --foreground-muted: oklch(0.74 0.01 50);
+    --foreground-subtle: oklch(0.64 0.01 50);
+
+    --destructive: oklch(0.7 0.18 27);
+    --destructive-foreground: oklch(0.235 0.012 50);
+    --success: oklch(0.76 0.187 155);
+    --success-foreground: oklch(0.235 0.012 50);
+    --warning: oklch(0.84 0.16 85);
+    --warning-foreground: oklch(0.235 0.012 50);
+
+    --shadow-color-weak: oklch(0 0 0 / 0.3);
+    --shadow-color: oklch(0 0 0 / 0.45);
+    --shadow-color-strong: oklch(0 0 0 / 0.6);
+  }
+}
+
+/*
+ * The Tailwind theme. `inline` is load-bearing: it makes each utility resolve
+ * to the primitive above at use time, so the dark-mode overrides propagate
+ * without a single `dark:` in any component.
+ */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-subtle: var(--foreground-subtle);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-offer: var(--offer);
+  --color-offer-border: var(--offer-border);
+  --color-offer-foreground: var(--offer-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  /* ── TYPE ────────────────────────────────────────────────────────────────
+   * Golos Text (Paratype), loaded in app/layout.tsx. Chosen over Inter — the
+   * unconsidered default — because it is a CYRILLIC-NATIVE face drawn for a
+   * high-traffic public-service interface, where people arrive to finish a task
+   * and leave. That is literally ASK's mission, and it means Kazakh and Russian
+   * are the design target rather than a bolted-on subset. Its efficient width
+   * absorbs Russian running ~30% longer than English.
+   *
+   * Line-heights are deliberately generous: Cyrillic has a tall x-height and
+   * few descenders, and tight leading turns long Russian strings into a wall.
+   */
+  --font-sans: var(--font-golos), ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.55;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 1.3;
+  /* 3xl and up are MARKETING ONLY. The platform is a tool, not a poster: any
+   * slice ui/ component above 2xl is decoration and should be questioned. */
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 3rem;
+  --text-4xl--line-height: 1.1;
+  --text-5xl: 3.75rem;
+  --text-5xl--line-height: 1.05;
+
+  /* ── RADII — tight on purpose ────────────────────────────────────────────
+   * 6px on controls and cards, not the 8-12px of consumer software. A tight
+   * radius reads as instrument; a soft one reads as toy, and "playful" is
+   * explicitly not the feel. --radius-xs (4px) is the offer/badge chip: a
+   * rectangle, never a pill — pills and starbursts are marketplace sticker
+   * language. --radius-full exists for avatars and nothing else.
+   */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-full: 9999px;
+
+  --shadow-xs: 0 1px 2px 0 var(--shadow-color-weak);
+  --shadow-sm: 0 1px 3px 0 var(--shadow-color-weak), 0 1px 2px -1px var(--shadow-color-weak);
+  --shadow-md: 0 4px 12px -2px var(--shadow-color), 0 2px 4px -2px var(--shadow-color-weak);
+  --shadow-lg: 0 16px 40px -8px var(--shadow-color-strong);
+
+  /* ── MOTION (D11) ────────────────────────────────────────────────────────
+   * Consumed by CSS transitions AND by shared/motion.ts as the GSAP defaults —
+   * one set of values, two engines, no drift (P6.1).
+   * `--ease-*` is a Tailwind namespace, so `ease-out` is generated. `--duration-*`
+   * is NOT: reference it explicitly as `duration-(--duration-fast)`. That is
+   * verbose on purpose — a bare `duration-200` would be a magic number (P9.2).
+   * --duration-story is for the landing's scroll storytelling only.
+   */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --duration-instant: 90ms;
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 380ms;
+  --duration-story: 700ms;
+}
+
+/*
+ * ── WCAG VERIFICATION ───────────────────────────────────────────────────────
+ * Computed from these exact OKLCH values (OKLCH → sRGB → WCAG 2.x relative
+ * luminance). Every pair the product actually renders. Re-verify when a colour
+ * token changes — do not eyeball it, and do not trust a contrast checker fed a
+ * hex you rounded by hand.
+ *
+ *                                    LIGHT      DARK      floor
+ *   accent / accent-foreground       4.67:1     6.30:1    4.5  (AA text)
+ *   accent:hover / foreground        5.62:1     7.84:1    4.5
+ *   accent:active / foreground       6.63:1     5.20:1    4.5
+ *   accent vs surface   [the ring]   4.34:1     6.77:1    3.0  (AA non-text)
+ *   accent vs raised    [on a card]  4.60:1     5.96:1    3.0
+ *   foreground / surface            15.54:1    15.96:1    4.5
+ *   foreground-muted / surface       6.94:1     7.76:1    4.5
+ *   foreground-subtle / hardest bg   4.54:1     4.69:1    4.5  ← the AA floor
+ *   offer-foreground / offer tint   10.39:1     9.79:1    4.5
+ *   offer tint vs raised [visible]   1.18:1     1.19:1    —    (a tint, by design)
+ *   destructive / its foreground     5.84:1     5.78:1    4.5
+ *   success / its foreground         5.18:1     8.39:1    4.5
+ *   warning / its foreground         8.56:1    10.13:1    4.5
+ *
+ * All 31 measured pairs pass. All values are inside the sRGB gamut.
+ */

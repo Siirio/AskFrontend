@@ -9,7 +9,9 @@ test("the marketing landing renders at /", async ({ page }) => {
   await expect(page.getByRole("link")).toHaveAttribute("href", "/app");
 });
 
-test("the platform shell renders at /app with the navigation menu", async ({ page }) => {
+test("the platform shell renders at /app with the navigation menu", async ({
+  page,
+}) => {
   await page.goto("/app");
   await expect(page.getByRole("navigation")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

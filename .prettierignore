@@ -1,0 +1,21 @@
+# Generated / installed — never authored by hand
+node_modules
+.next
+build
+package-lock.json
+playwright-report
+test-results
+
+# Vendored skills stay byte-identical to upstream (VENDORED.md); our own skill
+# prose is authored, not reflowed. Nothing under .claude/ is Prettier's to touch.
+.claude
+
+# Normative, authored documentation. The CORE files change only by human append +
+# date + justification — a formatter is a silent rewrite, which they forbid.
+AI_Knowledge
+CLAUDE.md
+AGENTS.md
+
+# The single visual source (D3): hand-tuned comments and the WCAG contrast table.
+# It changes by intent, not by reflow.
+src/design-system

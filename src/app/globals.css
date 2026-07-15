@@ -1,5 +1,60 @@
 /*
- * Global styles entry. Populated in Phase 0b: Tailwind v4 on design-system
- * tokens (D3) — the single visual source. Until the tokens exist, P9.2
- * forbids styling anything, so this file is deliberately empty.
+ * Global styles entry. Tailwind v4 on the design-system tokens (D3).
+ * The tokens are the visual source; this file only wires them to the document.
+ * Nothing here may introduce a value — every value lives in tokens.css (P9.2).
  */
+@import "tailwindcss";
+@import "../design-system/tokens.css";
+
+/*
+ * THE SIGNATURE, as one utility. The precision ring — 2px solid, 2px offset, no
+ * blur, no glow — is defined ONCE here and applied via `focus-ring` on every
+ * focusable primitive, so it is provably identical across the product (P6.1).
+ * `border-radius: inherit` makes it hug whatever it is wrapping. Do not hand-
+ * write focus outlines in components; use this class.
+ */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+}
+
+@layer base {
+  html {
+    /* Makes native UI — scrollbars, form controls, the caret — follow the
+     * system theme alongside our tokens. Without it, dark mode ships a white
+     * scrollbar. */
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--surface);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Money is data. Tabular figures keep ₸ prices and −30% offer chips aligned
+   * column-to-column so a list of results can be scanned rather than read —
+   * the result card must be decidable in under two seconds. */
+  :where(output, [data-numeric]) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The reduced-motion gate for CSS. GSAP's gate lives in shared/motion.ts and
+   * checks the same media query — two engines, one rule, checked once each
+   * (P6.1, D11). Motion degrades to nothing; the page still reads. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

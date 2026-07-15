@@ -1,0 +1,16 @@
+# Editor defaults for every file, so the baseline is consistent even for file
+# types and editors Prettier does not cover. Prettier owns code formatting;
+# this owns the universal basics.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Markdown: a trailing double-space is a hard line break, so keep it.
+[*.md]
+trim_trailing_whitespace = false

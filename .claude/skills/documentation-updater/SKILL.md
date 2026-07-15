@@ -1,3 +1,8 @@
+---
+name: documentation-updater
+description: Sync AI_Knowledge docs with a code change — contracts, README, ux-ui-flow, locks, changelog, architecture. Use after any code change that alters slice behavior, consumed endpoints, screens, or structure; docs ship in the same commit as the code.
+---
+
 # documentation-updater
 
 Sync AI_Knowledge with code changes. Docs are part of the change.

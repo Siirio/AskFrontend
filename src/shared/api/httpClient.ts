@@ -40,7 +40,9 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   return url.toString();
 }
 
-async function readErrorBody(response: Response): Promise<ApiErrorBody | undefined> {
+async function readErrorBody(
+  response: Response,
+): Promise<ApiErrorBody | undefined> {
   try {
     return (await response.json()) as ApiErrorBody;
   } catch {
@@ -48,7 +50,11 @@ async function readErrorBody(response: Response): Promise<ApiErrorBody | undefin
   }
 }
 
-async function request<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const headers = new Headers(options.headers);
   if (!headers.has("Accept")) headers.set("Accept", "application/json");
 
@@ -82,9 +88,14 @@ async function request<T>(method: string, path: string, options: RequestOptions 
 }
 
 export const httpClient = {
-  get: <T>(path: string, options?: RequestOptions) => request<T>("GET", path, options),
-  post: <T>(path: string, options?: RequestOptions) => request<T>("POST", path, options),
-  put: <T>(path: string, options?: RequestOptions) => request<T>("PUT", path, options),
-  patch: <T>(path: string, options?: RequestOptions) => request<T>("PATCH", path, options),
-  delete: <T>(path: string, options?: RequestOptions) => request<T>("DELETE", path, options),
+  get: <T>(path: string, options?: RequestOptions) =>
+    request<T>("GET", path, options),
+  post: <T>(path: string, options?: RequestOptions) =>
+    request<T>("POST", path, options),
+  put: <T>(path: string, options?: RequestOptions) =>
+    request<T>("PUT", path, options),
+  patch: <T>(path: string, options?: RequestOptions) =>
+    request<T>("PATCH", path, options),
+  delete: <T>(path: string, options?: RequestOptions) =>
+    request<T>("DELETE", path, options),
 };

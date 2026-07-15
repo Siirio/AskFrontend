@@ -27,7 +27,7 @@ Add behavior with new code, not by editing working code — but ONLY where varia
 
 ## P3. Liskov Substitution — ★☆☆☆☆ (one rule, no ceremony)
 
-- **P3.1** A component that wraps another (Button wrapping `motion.button`) MUST forward the base props unchanged — same names, same semantics, `...rest` spread. Never rename `disabled` to `isDisabled` in a wrapper.
+- **P3.1** A component that wraps another (Button wrapping a native `<button>`, or a `shared/ui` primitive wrapping its scaffolded Radix element, D12) MUST forward the base props unchanged — same names, same semantics, `...rest` spread. Never rename `disabled` to `isDisabled` in a wrapper.
 
 Nothing else from LSP applies to this codebase. Do not invent hierarchies to apply it to.
 

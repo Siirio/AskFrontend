@@ -29,13 +29,25 @@ Phase 0 splits in two, and **the halves run in PARALLEL**. Only 0b needs the des
 
 ### Phase 0b — The visual layer (needs the tokens)
 
-**The one open decision in the whole phase.** No design file exists — the two sources of truth (the vision, the backend) say nothing about what the app LOOKS like. → **`DESIGN_BRIEF.md` is the brief; §9 holds the ready-to-paste prompts for claude.ai/design. Prompt 1 is the only one that blocks anything.**
+**The one open decision in the whole phase.** No design file exists — the two sources of truth (the vision, the backend) say nothing about what the app LOOKS like. → **`.claude/skills/marketing-ui-design/SKILL.md` and `.claude/skills/platform-ui-design/SKILL.md` carry the direction now** (D11 GSAP, D12 shadcn scaffolding); the invariants inside it are `Locks.md` "Design Locks". Token generation is the first thing that invokes them.
 
-- [ ] `design-system/`: the tokens (colors light+dark, type scale, spacing, radii, shadows, motion) mapped into the Tailwind v4 theme (D3). When they land they become the visual source and the architecture decision log gains a row.
-- [ ] `shared/motion.ts`: the framer-motion variants (D4 — LazyMotion + `m.`, `useReducedMotion()`). Durations and easings are tokens.
-- [ ] `shared/ui/`: the primitives the P9.3 states require — Button, Input, Select, Card, Modal, Toast, Badge, Loading/skeleton, EmptyState. These cannot be built before the tokens: P9.2 forbids a raw hex or px value in a component.
+- [x] `design-system/tokens.css`: the tokens (colors light+dark, type scale, spacing, radii, shadows, motion) mapped into the Tailwind v4 theme. **It is now the visual source — decision log D13.** The three problems the inherited direction left open are closed by measurement, not taste: the accent is the brightest orange at hue 46 that still holds white text at AA (4.67:1), with a *different* value in dark at the same hue because one value provably cannot serve both; the offer/accent collision is solved by register — **saturation is action, tint is information** (a lock); and the typeface is Golos Text, whose subset list must include `latin-ext` because ₸ (U+20B8) is in no Cyrillic range (a lock). 31/31 contrast pairs pass, all in sRGB gamut.
+  - [x] **Build-verified 2026-07-15.** `npm run build` green end to end (lint → boundary fixtures → tsc → 9 routes, static/dynamic split intact). Driven in a real browser: the body paints from the tokens in BOTH grounds, `--accent-foreground` flips white→ink across them, and ₸ + the Kazakh letters resolve from Golos rather than falling back. `e2e/design-system.spec.ts` now gives the Design Locks **teeth** — it asserts the wiring (body renders on the token; dark redefines it; the webfont covers ₸), so a token may be retuned freely but the system cannot be silently unwired. Full suite: 5/5.
+- [x] Motion tokens (`--duration-*`, `--ease-*`) landed in `design-system/tokens.css`; the CSS reduced-motion gate is in `globals.css`; **`shared/motion.ts` (D14) is the GSAP door** — registers plugins, adopts the motion tokens as GSAP defaults (a CustomEase built from `--ease-out` so the JS curve equals the CSS curve), gates reduced motion once via `gsap.matchMedia()`, never runs on the server (D7). Import GSAP from this module, never from `gsap` directly. Note `--duration-*` is not a Tailwind namespace: reference it as `duration-(--duration-fast)`, never a bare `duration-200` (P9.2).
+- [x] `shared/ui/` — all 9 primitives (D14), scaffolded via shadcn CLI and restyled to tokens before first use (D12): Button, Input, Select, Card, Dialog (Modal), Badge, Skeleton (+ own-code Spinner), EmptyState (own-code), Toast (sonner, `theme="system"`, no `next-themes`). Build + e2e green, both themes screenshot-verified.
 
-Depends on: nothing (0a) · Prompt 1 of the design brief (0b). **Blocks: everything below.**
+**Phase 0b is COMPLETE.** The visual layer exists and is proven. Two threads deliberately deferred to their first real consumer (YAGNI): mounting `<Toaster>` in `app/providers`, and any GSAP-driven micro-motion on the primitives.
+
+### Phase 0a — the last box
+- [x] **CI landed (2026-07-15).** `.github/workflows/ci.yml` — GitHub Actions, since the repo is `Siirio/AskFrontend`. Two jobs on push (master/dev/new_frontend) and every PR: **build** (`npm ci` → `npm run build` = eslint → the boundary-fixture proof → tsc → `next build`, so an import/boundary violation, a stale rule fixture, a type error, or a build break fails the PR) and **e2e** (installs chromium, runs the Playwright harness — GitHub sets `CI=true`, which finally activates the config's CI branch: `forbidOnly`, `retries=2`, `reuseExistingServer=false`; traces upload on failure). Node pinned via `.nvmrc` (single source, read by `node-version-file`). `npm ci` sync verified locally. **The boundaries are now enforced where merges happen, not only on the machine that chose to build (§8).**
+- [x] **Deploy host: Vercel (D16), wired 2026-07-15.** `vercel.json` pins `buildCommand: npm run build` so the deploy runs the SAME lint + boundary-fixture gate as CI (the default bare `next build` would skip it — the documented trap, avoided). `framework: nextjs`; Node pinned via `engines.node: 22.x` (Vercel reads that, not `.nvmrc`). **One human step remains** (not an agent's to do): connect the repo in the Vercel dashboard — per-PR preview deploys are automatic after that.
+
+**Phase 0 is COMPLETE** — every box that does not require a human dashboard click is done. Phase 1 (the auth slice) is unblocked.
+
+### Tooling added alongside (not a phase item)
+- Prettier + `prettier-plugin-tailwindcss` (D15): `npm run format`, gated in CI by `format:check`. LF pinned via `.gitattributes`. Authored docs and the D3 token source are excluded (`.prettierignore`).
+
+Depends on: nothing (0a) · the token set landing (0b). **Phase 1 is now unblocked.**
 
 ## Phase 1 — Slice by Slice
 
@@ -98,7 +110,7 @@ Trigger: mobile development actually starting. **Do not pre-build** (YAGNI, P8.2
 
 - [ ] Monorepo (pnpm workspaces or Turborepo): `apps/web`, `apps/mobile`, `packages/*`
 - [ ] Extract `packages/api-client` (httpClient, transforms, `ApiError`, `TokenStorage` interface), `packages/models`, `packages/i18n`, `packages/stores` — the slice `api.ts`/`model.ts`/`store.ts` files lift mechanically **if D5 platform-neutrality held**. That is the whole payoff of D5; if a browser API leaked into those files, this phase gets expensive.
-- [ ] Expo app: customer search flow first, seller second. Expo Router; NativeWind (Tailwind knowledge transfers); Moti/Reanimated (the `shared/motion.ts` variant values port).
+- [ ] Expo app: customer search flow first, seller second. Expo Router; NativeWind (Tailwind knowledge transfers); the motion TOKEN values (durations/easings) port to Reanimated — GSAP itself (D11) is web-only and does not lift.
 - [ ] `TokenStorage` implementations: web `localStorage`, mobile `SecureStore`
 - [ ] Interim: a PWA can be added to the Next app instead — requires a decision-log row first (P7.2)
 

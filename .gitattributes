@@ -1,0 +1,7 @@
+# Store text as LF in the repo and check it out as LF on every platform, so a
+# Windows working copy and the Linux CI runner agree — otherwise `format:check`
+# fails in CI on line endings that look identical locally.
+* text=auto eol=lf
+
+# Generated: collapse in diffs, and keep it out of language statistics.
+package-lock.json linguist-generated=true

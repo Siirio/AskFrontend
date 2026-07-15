@@ -1,0 +1,16 @@
+{
+  // Tailwind IntelliSense scans class strings wherever it finds them, including
+  // markdown code fences. .claude/ holds SKILL docs — the vendored shadcn skill
+  // (kept pristine per VENDORED.md) and our own design skills — not Tailwind
+  // source. Linting them produces false positives (e.g. the deliberately
+  // "Incorrect:" shimmer example in the shadcn styling rules). Exclude .claude/
+  // so only real src/ components are validated. The defaults are repeated
+  // because this setting replaces, rather than extends, the built-in list.
+  "tailwindCSS.files.exclude": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.hg/**",
+    "**/.svn/**",
+    "**/.claude/**"
+  ]
+}
