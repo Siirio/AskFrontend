@@ -79,12 +79,13 @@ The routes implement the V1 user flows from `PRODUCT_VISION.md` (UF 1, UF 2.1–
 ```text
 Ask_Frontend/                    # ONE Next.js app: marketing at `/`, platform at `/app/*` (D6)
   e2e/                           # Playwright end-to-end tests — drives the built app; never imported by src/
-  public/                        # static assets served as-is (favicons, og images, videos)
+  public/                        # static assets served as-is (logo, og images, videos) — NOT the favicon (see §2 note 2026-07-15)
   next.config.ts
   src/
     app/                         # Next.js App Router = the composition root (R3).
                                  # Wiring + content-only marketing pages. ZERO business logic.
       layout.tsx                 #   root layout: <html>, fonts, providers
+      icon.svg                   #   favicon — App Router metadata file, auto-injected as <link rel="icon">
       globals.css                #   global styles entry (Tailwind v4 + design-system tokens)
       providers/                 #   client components MOUNTING contexts; logic/hooks live in slices (R6)
       _components/               #   app chrome: navigation menu, profile card, footer — used only by layouts here
@@ -128,6 +129,8 @@ Backend modules with **no V1 surface** (`autodump`, `contact`) get no slice yet 
 **Platform boundary (D6):** marketing pages are content-only: they import `shared/` and `design-system/` but never a slice, and have no `api/model/store`. Marketing is the ONLY copy of the marketing content. Logged-in visitors on `/` are redirected to `/app/` by a client-side check of the `ask.accessToken` storage key, suppressed by `?from=app`. The `/app/*` prefix preserves a future `app.` subdomain split without breaking a single URL.
 
 **§2 note — 2026-07-14 (providers):** the tree comment above says `providers/` holds "client components MOUNTING contexts". Precision, learned at scaffold time: the *mounting file itself may be a server component* — `AppProviders` reads next-intl config via `next-intl/server` and renders `NextIntlClientProvider`, which is the client boundary. Do NOT add `'use client'` to a provider-mounting file just to match that comment: it is unnecessary (a client component receiving `children` as props keeps those children server-rendered) and here it would break outright — the file is async and imports server-only APIs. The rule that matters is unchanged: providers are MOUNTED in `app/providers`, DEFINED in their owning slice (R6, P5.3).
+
+**§2 note — 2026-07-15 (favicon placement):** the tree once listed favicons under `public/`. Refined: the FAVICON lives at `src/app/icon.svg` — an App Router *metadata file* Next auto-detects and injects as `<link rel="icon">` (hashed, cached), zero hand-wiring, and it sits in `app/` (the composition root). `public/` stays the home for every OTHER static asset (logo, OG images, videos), referenced by URL. Only the exact names `favicon.ico` / `icon.*` are auto-wired — a file literally named `favicon.svg` is not. Justification: an idiomatic Next.js metadata file beats a hand-written `<link>`, and it keeps asset wiring in `app/` where wiring belongs.
 
 Adding a **new slice** requires: (1) a matching backend module or an approved product area, (2) an entry added to this file, and (3) the slice name added to the ESLint boundaries pattern in §8 — all in the same commit.
 
