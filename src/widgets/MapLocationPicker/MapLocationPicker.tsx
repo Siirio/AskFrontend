@@ -83,7 +83,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
         placeMarker(center[0], center[1]);
 
         if (!readOnly) {
-          map.on("click", (e: { lngLat: [number, number] }) => {
+          map.on("click", (e: { lngLat: number[] }) => {
             const [lng, lat] = e.lngLat;
             internalChangeRef.current = true;
             setSelected({ lat, lng });
