@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { AuthSession, AuthChallenge, RoleOption } from "../../shared/api/authClient";
-import { loginWithPassword, selectRole as selectRoleApi, switchRole as switchRoleApi, registerCustomer, registerBusiness, fetchEmailInfo, verifyCode, resolveCity, logout as clearSession, logoutRemote, updateProfile as updateProfileRequest } from "../../shared/api/authClient";
+import { loginWithPassword, selectRole as selectRoleApi, switchRole as switchRoleApi, registerCustomer, registerBusiness, fetchEmailInfo, verifyCode, resolveCity, logout as clearSession, logoutRemote, updateProfile as updateProfileRequest, changeTemporaryPassword } from "../../shared/api/authClient";
 import { ApiError } from "../../shared/api/httpClient";
 import { reverseGeocodeCity } from "../../shared/geo/reverseGeocode";
 import { ROUTES } from "../routes";
@@ -66,6 +66,7 @@ interface AuthState {
   suggestRoleExpansion: boolean;
   registeredEmail: string;
   registeredPassword: string;
+  activationRequired: boolean;
 }
 
 interface AuthActions {
@@ -82,6 +83,7 @@ interface AuthActions {
   updateProfile: (data: { displayName?: string; email?: string; phone?: string }) => Promise<void>;
   clearError: () => void;
   backToLogin: () => void;
+  activateStaffAccount: (newPassword: string, passwordConfirmation: string) => Promise<void>;
 }
 
 const AuthContext = createContext<{ state: AuthState; actions: AuthActions } | null>(null);
@@ -105,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [suggestRoleExpansion, setSuggestRoleExpansion] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [registeredPassword, setRegisteredPassword] = useState("");
+  const [activationRequired, setActivationRequired] = useState(false);
 
   useEffect(() => {
     writeSession(session);
@@ -135,6 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (result.activationRequired) {
+        setSession(result);
+        setActivationRequired(true);
+        setBusy(false);
+        return;
+      }
+
       setSession(result);
       setView(resolveView(result));
       setChallenge(null);
@@ -161,6 +171,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.requiresTwoFactor && result.authChallengeId) {
         setRequiresTwoFactor(true);
         setTwoFactorChallengeId(result.authChallengeId);
+        setBusy(false);
+        return;
+      }
+
+      if (result.activationRequired) {
+        setSession(result);
+        setActivationRequired(true);
+        setRequiresRoleSelection(false);
+        setAvailableRoles([]);
         setBusy(false);
         return;
       }
@@ -250,6 +269,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (nextSession.requiresRoleSelection && nextSession.availableRoles) {
         setRequiresRoleSelection(true);
         setAvailableRoles(nextSession.availableRoles);
+        setChallenge(null);
+        setBusy(false);
+        return;
+      }
+
+      if (nextSession.activationRequired) {
+        setSession(nextSession);
+        setActivationRequired(true);
         setChallenge(null);
         setBusy(false);
         return;
@@ -356,6 +383,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSuggestRoleExpansion(false);
   }, [session]);
 
+  const activateStaffAccount = useCallback(async (newPassword: string, passwordConfirmation: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await changeTemporaryPassword(newPassword, passwordConfirmation);
+      setSession(result);
+      setActivationRequired(false);
+      setView(resolveView(result));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : t("auth.activation.error"));
+    } finally {
+      setBusy(false);
+    }
+  }, [t]);
+
   const logout = useCallback(async () => {
     try {
       await logoutRemote();
@@ -371,6 +413,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAvailableRoles([]);
     setRequiresTwoFactor(false);
     setTwoFactorChallengeId(null);
+    setActivationRequired(false);
   }, []);
 
   const updateProfile = useCallback(async (data: { displayName?: string; email?: string; phone?: string }) => {
@@ -401,6 +444,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTwoFactorChallengeId(null);
     setChallenge(null);
     setSuggestRoleExpansion(false);
+    setActivationRequired(false);
     setError("");
   }, []);
 
@@ -410,12 +454,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     requiresTwoFactor, twoFactorChallengeId,
     loginEmail, loginPassword,
     suggestRoleExpansion, registeredEmail, registeredPassword,
+    activationRequired,
   };
 
   const actions: AuthActions = {
     setMode, login, register, selectRole, verify, verifyTwoFactor,
     switchRole, expandRole, skipRoleExpansion,
     logout, updateProfile, clearError: () => setError(""), backToLogin,
+    activateStaffAccount,
   };
 
   return (

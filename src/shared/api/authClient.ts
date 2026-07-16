@@ -25,7 +25,7 @@ export type AuthSession = {
   role: string;
   startRoute?: string;
   user?: { userId: string; displayName: string; email?: string; phone?: string; status?: string };
-  business?: { businessId: string; businessName: string; branchId?: string; branchName?: string };
+  business?: { businessId: string; businessName: string; membershipId?: string; memberRole?: string; branchId?: string; branchName?: string };
   requiresRoleSelection?: boolean;
   availableRoles?: RoleOption[];
   allRoles?: string[];
@@ -158,4 +158,12 @@ export function changePassword(currentPassword: string, newPassword: string) {
     auth: true,
     body: { currentPassword, newPassword },
   });
+}
+
+export function changeTemporaryPassword(newPassword: string, passwordConfirmation: string) {
+  return apiRequest<AuthSession>("/api/v1/auth/change-temporary-password", {
+    method: "POST",
+    auth: true,
+    body: { newPassword, passwordConfirmation },
+  }).then(persistSession);
 }

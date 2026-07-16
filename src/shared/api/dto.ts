@@ -78,26 +78,39 @@ export type SearchV2CardDto = {
   title: string;
   price?: number | null;
   availability?: "IN_STOCK" | "NEEDS_CONFIRMATION" | "UNKNOWN" | string;
+  availabilityWarning?: string | null;
+  matchReasons?: string[];
   badges?: string[];
   distanceMeters?: number | null;
   branchName?: string | null;
-  hasActiveDrop?: boolean;
   contactActions?: ContactActionDto[];
 };
 
 export type SearchV2SectionDto = {
-  type: "exact_products" | "similar_products" | "fresh_drops" | "suitable_storefronts" | "over_budget" | "needs_confirmation";
+  type: "exact" | "alternatives" | string;
   title: string;
+  kind: "EXACT" | "ALTERNATIVE" | string;
+  relaxedConstraints?: string[];
+  reason?: string | null;
   cards: SearchV2CardDto[];
 };
 
+export type SearchConstraintDto = {
+  key: string;
+  value: string;
+  source: string;
+};
+
 export type SearchV2ResponseDto = {
-  searchSessionId?: string | null;
   rawQuery: string;
   scope: string;
   understoodQuery: string;
   sections: SearchV2SectionDto[];
-  supplierCheckCount: number;
+  interpretedConstraints: SearchConstraintDto[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNext: boolean;
 };
 
 export type BrandProfileDto = {
@@ -278,10 +291,12 @@ export type StaffDto = {
   email: string;
   displayName: string;
   role: string;
-  branchName: string;
+  branchName?: string;
   status: string;
-  tempPassword: string;
-  activatedAt: string;
+  tempPassword?: string;
+  activatedAt?: string;
+  businessName?: string;
+  businessId?: string;
 };
 
 export type BusinessCardBlockDto = {

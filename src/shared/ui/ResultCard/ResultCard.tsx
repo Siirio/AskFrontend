@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { MapPin, MessageCircle } from "lucide-react";
+import { AlertTriangle, MapPin, MessageCircle } from "lucide-react";
 
 export interface ResultCardData {
   id: string;
@@ -18,6 +18,8 @@ export interface ResultCardData {
   hasContactAction?: boolean;
   contactActionId?: string;
   businessId?: string | null;
+  availabilityWarning?: string;
+  matchReasons: string[];
 }
 
 interface ResultCardProps {
@@ -43,7 +45,6 @@ export function ResultCard({ data, index, onClick, onChat, reduced }: ResultCard
       style={{ padding: "0.75rem 1rem" }}
     >
       <div className="fcw-flex fcw-items-center" style={{ gap: "0.75rem" }}>
-        {/* Company logo */}
         <div
           style={{
             width: 48,
@@ -58,7 +59,6 @@ export function ResultCard({ data, index, onClick, onChat, reduced }: ResultCard
           aria-hidden="true"
         />
 
-        {/* Main content */}
         <div className="fcw-flex-col fcw-flex-1" style={{ gap: "0.25rem", minWidth: 0 }}>
           <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
             {data.brandName && (
@@ -81,16 +81,28 @@ export function ResultCard({ data, index, onClick, onChat, reduced }: ResultCard
               {data.location}
             </span>
           )}
+          {data.matchReasons.length > 0 && (
+            <div className="fcw-flex-col" style={{ gap: "0.125rem", marginTop: "0.25rem" }}>
+              <span className="fcw-body-xs fcw-weight-medium">{t("resultCard.matchReason")}</span>
+              {data.matchReasons.map(reason => (
+                <span key={reason} className="fcw-body-xs fcw-text-secondary">{reason}</span>
+              ))}
+            </div>
+          )}
+          {data.availabilityWarning && (
+            <span className="fcw-body-xs fcw-flex fcw-items-center" style={{ gap: "0.25rem", color: "var(--fcw-color-warning)" }}>
+              <AlertTriangle size={12} />
+              {data.availabilityWarning}
+            </span>
+          )}
         </div>
 
-        {/* Price */}
         {data.price && (
           <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap", flexShrink: 0 }}>
             {data.price}
           </span>
         )}
 
-        {/* Chat button */}
         <button
           className="fcw-btn fcw-btn-primary fcw-btn-sm"
           style={{ flexShrink: 0, gap: "0.375rem" }}

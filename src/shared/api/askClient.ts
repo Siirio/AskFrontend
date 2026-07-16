@@ -149,7 +149,23 @@ export function searchAskV2(params: {
   scope: "all" | "product" | "service";
   city?: string;
   selectedCategory?: string;
-  sort?: "intent_match" | "price_asc" | "price_desc" | "distance" | "active_events";
+  sort?: "intent_match" | "price_asc" | "distance";
+  page?: number;
+  pageSize?: number;
+  filters?: {
+    scope?: string;
+    category?: string;
+    city?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  };
+  overrides?: {
+    scope?: string;
+    category?: string;
+    city?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  };
 }) {
   return apiRequest<SearchV2ResponseDto>("/api/v1/search", {
     method: "POST",
@@ -159,6 +175,10 @@ export function searchAskV2(params: {
       selectedCategory: params.selectedCategory || "",
       city: params.city || "Астана",
       sort: params.sort || "intent_match",
+      page: params.page || 0,
+      pageSize: params.pageSize,
+      filters: params.filters,
+      overrides: params.overrides,
       userLocation: getStoredUserLocation(),
       language: i18n.language || "ru",
     },
@@ -279,6 +299,14 @@ export function updateStaff(businessId: string, branchId: string, staffId: strin
 
 export function resetStaffPassword(businessId: string, branchId: string, staffId: string) {
   return apiRequest<StaffDto>(`/api/v1/businesses/${businessId}/branches/${branchId}/staff/${staffId}/reset-password`, { method: "POST", auth: true });
+}
+
+export function createEmployee(businessId: string, data: { email: string; displayName: string; role?: string; branchId?: string }) {
+  return apiRequest<StaffDto>(`/api/v1/businesses/${businessId}/staff`, { method: "POST", auth: true, body: data });
+}
+
+export function listEmployees(businessId: string) {
+  return apiRequest<StaffDto[]>(`/api/v1/businesses/${businessId}/staff`, { auth: true });
 }
 
 export function listCities() {

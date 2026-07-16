@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowDownNarrowWide, ArrowLeft, CircleDollarSign, Navigation, Plus, Sparkles, Tags } from "lucide-react";
+import { ArrowDownNarrowWide, ArrowLeft, ChevronLeft, ChevronRight, Navigation, Plus, Sparkles } from "lucide-react";
 import { SearchBar } from "../../shared/ui/SearchBar/SearchBar";
 import { SegmentedControl, type SegmentedOption } from "../../shared/ui/SegmentedControl/SegmentedControl";
 import { ResultCard, type ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
@@ -11,11 +11,15 @@ import { Loading } from "../../shared/ui/Loading/Loading";
 import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { searchAskV2 } from "../../shared/api/askClient";
-import type { SearchV2CardDto } from "../../shared/api/dto";
+import type { SearchConstraintDto, SearchV2CardDto, SearchV2SectionDto } from "../../shared/api/dto";
 import { buildRoute, ROUTES } from "../../app/routes";
 
 type SearchMode = "products" | "services";
-type SortKey = "intent_match" | "distance" | "active_events" | "price_asc" | "price_desc";
+type SortKey = "intent_match" | "distance" | "price_asc";
+
+type ResultSection = Omit<SearchV2SectionDto, "cards"> & { cards: ResultCardData[] };
+
+const SEARCH_PAGE_SIZE = 20;
 
 export function ResultsPage() {
   const [searchParams] = useSearchParams();
@@ -26,13 +30,13 @@ export function ResultsPage() {
   const mode = (searchParams.get("mode") || "products") as SearchMode;
   const city = searchParams.get("city") || t("citySelector.almaty");
 
-  const [results, setResults] = useState<ResultCardData[]>(() => {
+  const [sections, setSections] = useState<ResultSection[]>(() => {
     try {
       const stored = sessionStorage.getItem("ask.lastResults");
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.query === query && parsed.mode === mode && parsed.city === city) {
-          return parsed.results || [];
+          return parsed.sections || [];
         }
       }
     } catch { /* ignore corrupt session storage */ }
@@ -41,14 +45,16 @@ export function ResultsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sort, setSort] = useState<SortKey>("intent_match");
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [constraints, setConstraints] = useState<SearchConstraintDto[]>([]);
   const [overlayCard, setOverlayCard] = useState<ResultCardData | null>(null);
 
   const sortOptions: SegmentedOption<SortKey>[] = [
     { key: "intent_match", label: t("results.sort.relevance"), icon: <Sparkles size={16} /> },
     { key: "distance", label: t("results.sort.distance"), icon: <Navigation size={16} /> },
-    { key: "active_events", label: t("results.sort.activeEvents"), icon: <Tags size={16} /> },
     { key: "price_asc", label: t("results.sort.priceAsc"), icon: <ArrowDownNarrowWide size={16} /> },
-    { key: "price_desc", label: t("results.sort.priceDesc"), icon: <CircleDollarSign size={16} /> },
   ];
 
   function mapCard(card: SearchV2CardDto): ResultCardData {
@@ -69,7 +75,20 @@ export function ResultsPage() {
       hasContactAction: Boolean(contactAction),
       contactActionId: contactAction?.contactActionId,
       businessId: card.businessId,
+      availabilityWarning: card.availabilityWarning ?? undefined,
+      matchReasons: card.matchReasons || [],
     };
+  }
+
+  function constraintLabel(constraint: SearchConstraintDto) {
+    return t(`results.constraints.${constraint.key}`, { defaultValue: constraint.key });
+  }
+
+  function constraintValue(constraint: SearchConstraintDto) {
+    if (constraint.key === "scope") {
+      return t(`results.constraints.scope.${constraint.value.toLowerCase()}`, { defaultValue: constraint.value });
+    }
+    return constraint.value;
   }
 
   const scopeKey = mode === "products" ? "product" : "service";
@@ -78,24 +97,28 @@ export function ResultsPage() {
     if (!query) return;
     setBusy(true);
     setError("");
-    searchAskV2({ rawQuery: query, scope: scopeKey, city, sort })
+    searchAskV2({ rawQuery: query, scope: scopeKey, city, sort, page, pageSize: SEARCH_PAGE_SIZE })
       .then(res => {
-        const cards = res.sections.flatMap(s => s.cards.map(mapCard));
-        setResults(cards);
+        const nextSections = res.sections.map(section => ({ ...section, cards: section.cards.map(mapCard) }));
+        setSections(nextSections);
+        setConstraints(res.interpretedConstraints || []);
+        setTotal(res.total);
+        setHasNext(res.hasNext);
         try {
-          sessionStorage.setItem("ask.lastResults", JSON.stringify({ query, mode, city, results: cards, sort }));
+          sessionStorage.setItem("ask.lastResults", JSON.stringify({ query, mode, city, sections: nextSections, sort, page }));
         } catch { /* ignore quota */ }
       })
       .catch(e => setError(e instanceof Error ? e.message : t("results.error.title")))
       .finally(() => setBusy(false));
-  }, [query, scopeKey, city, sort]);
+  }, [query, scopeKey, city, sort, page]);
 
   const handleSearch = (newQuery: string) => {
     try { sessionStorage.removeItem("ask.lastResults"); } catch { /* ignore */ }
     navigate(buildRoute(ROUTES.results, {}, { query: newQuery, mode, city }));
   };
 
-  const isEmpty = !busy && !error && results.length === 0 && query;
+  const resultCount = sections.reduce((count, section) => count + section.cards.length, 0);
+  const isEmpty = !busy && !error && resultCount === 0 && query;
 
   return (
     <main id="main-content">
@@ -164,7 +187,7 @@ export function ResultsPage() {
                 />
               )}
 
-              {!busy && !error && results.length > 0 && (
+              {!busy && !error && resultCount > 0 && (
             <motion.div
               className="fcw-flex-col"
               style={{ gap: "0.75rem" }}
@@ -172,16 +195,52 @@ export function ResultsPage() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
-              {results.map((card, i) => (
-                <ResultCard
-                  key={card.id}
-                  data={card}
-                  index={i}
-                  reduced={reduced}
-                  onClick={() => setOverlayCard(card)}
-                  onChat={() => setOverlayCard(card)}
-                />
+              {constraints.length > 0 && (
+                <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.375rem" }} aria-label={t("results.constraints.label")}>
+                  {constraints.map(constraint => (
+                    <span key={`${constraint.key}-${constraint.value}`} className="fcw-badge fcw-badge-neutral">
+                      {constraintLabel(constraint)}: {constraintValue(constraint)}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {sections.map((section, sectionIndex) => (
+                <section key={`${section.kind}-${section.type}`} className="fcw-flex-col" style={{ gap: "0.75rem" }}>
+                  <div>
+                    <h2 className="fcw-heading-sm">
+                      {section.kind === "EXACT" ? t("results.sections.exact") : t("results.sections.alternatives")}
+                    </h2>
+                    {section.kind === "ALTERNATIVE" && (
+                      <p className="fcw-body-s fcw-text-secondary" style={{ marginTop: "0.25rem" }}>
+                        {section.reason || t("results.sections.alternativeReason")}
+                      </p>
+                    )}
+                  </div>
+                  {section.cards.map((card, cardIndex) => (
+                    <ResultCard
+                      key={card.id}
+                      data={card}
+                      index={sectionIndex * SEARCH_PAGE_SIZE + cardIndex}
+                      reduced={reduced}
+                      onClick={() => setOverlayCard(card)}
+                      onChat={() => setOverlayCard(card)}
+                    />
+                  ))}
+                </section>
               ))}
+              <div className="fcw-flex fcw-items-center fcw-justify-between" style={{ gap: "0.75rem", marginTop: "0.5rem" }}>
+                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={page === 0} onClick={() => setPage(current => current - 1)}>
+                  <ChevronLeft size={16} />
+                  {t("results.pagination.previous")}
+                </button>
+                <span className="fcw-body-s fcw-text-secondary">
+                  {t("results.pagination.summary", { page: page + 1, total })}
+                </span>
+                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={!hasNext} onClick={() => setPage(current => current + 1)}>
+                  {t("results.pagination.next")}
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </motion.div>
               )}
 
@@ -192,7 +251,7 @@ export function ResultsPage() {
               <SegmentedControl
                 options={sortOptions}
                 value={sort}
-                onChange={setSort}
+                onChange={nextSort => { setPage(0); setSort(nextSort); }}
                 layoutId="resultsSortPill"
                 ariaLabel={t("results.sort.ariaLabel")}
                 vertical

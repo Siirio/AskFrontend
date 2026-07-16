@@ -30,7 +30,7 @@ export function Navigation() {
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [accountTab, setAccountTab] = useState<"profile" | "security" | "roles">("profile");
+  const [accountTab, setAccountTab] = useState<"brand" | "security">("brand");
 
   // Profile
   const DEFAULT_BRAND_COLOR = "#e8824e";
@@ -253,14 +253,14 @@ export function Navigation() {
             <button
               className="fcw-btn fcw-btn-ghost fcw-btn-sm"
               style={{
-                color: accountTab === "profile" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                borderBottom: accountTab === "profile" ? "2px solid var(--fcw-color-primary)" : "2px solid transparent",
+                color: accountTab === "brand" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
+                borderBottom: accountTab === "brand" ? "2px solid var(--fcw-color-primary)" : "2px solid transparent",
                 borderRadius: 0,
                 marginBottom: -1,
               }}
-              onClick={() => setAccountTab("profile")}
+              onClick={() => setAccountTab("brand")}
             >
-              <UserRound size={14} />{t("business.brand")}
+              <Building2 size={14} />{t("business.brand")}
             </button>
             <button
               className="fcw-btn fcw-btn-ghost fcw-btn-sm"
@@ -274,21 +274,9 @@ export function Navigation() {
             >
               <Shield size={14} />{t("business.security")}
             </button>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{
-                color: accountTab === "roles" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                borderBottom: accountTab === "roles" ? "2px solid var(--fcw-color-primary)" : "2px solid transparent",
-                borderRadius: 0,
-                marginBottom: -1,
-              }}
-              onClick={() => setAccountTab("roles")}
-            >
-              <ArrowRightLeft size={14} />{t("business.roles")}
-            </button>
           </div>
 
-          {accountTab === "profile" && (
+          {accountTab === "brand" && (
             <ProfileEditor
               profile={profile}
               onChange={setProfile}
@@ -300,6 +288,39 @@ export function Navigation() {
 
           {accountTab === "security" && (
             <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
+              <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
+                <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <ArrowRightLeft size={16} style={{ color: "var(--fcw-color-primary)" }} />
+                  {t("profile.roleSwitcher.title")}
+                </h3>
+                <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+                  <span className="fcw-body-s fcw-text-secondary">
+                    {t("business.currentRole")}: <strong>{t(`auth.role.${(state.session?.business?.memberRole || state.session?.role || "").toUpperCase().replace("ROLE_", "")}`)}</strong>
+                    {state.session?.business?.businessName ? ` (${state.session.business.businessName})` : ""}
+                  </span>
+                  <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
+                    {(() => {
+                      const allRoles = (state.session?.allRoles || []).map(r => r.replace("ROLE_", ""));
+                      const currentRole = (state.session?.role || "").toUpperCase().replace("ROLE_", "");
+                      const merged = [...new Set([...allRoles])];
+                      return merged.map(roleKey => {
+                        const isCurrent = currentRole === roleKey;
+                        return (
+                          <button
+                            key={roleKey}
+                            className={isCurrent ? "fcw-btn fcw-btn-primary fcw-btn-sm" : "fcw-btn fcw-btn-secondary fcw-btn-sm"}
+                            disabled={isCurrent || state.busy}
+                            onClick={() => { actions.switchRole(roleKey).catch(() => {}); setAccountModalOpen(false); }}
+                          >
+                            {t(`auth.role.${roleKey}`)}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              </div>
+
               <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
                 <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <Key size={16} style={{ color: "var(--fcw-color-primary)" }} />
@@ -357,32 +378,6 @@ export function Navigation() {
               </div>
             </div>
           )}
-
-          {accountTab === "roles" && (
-            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-              <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0 }}>{t("profile.roleSwitcher.title")}</p>
-              <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                {(() => {
-                  const allRoles = (state.session?.allRoles || []).map(r => r.replace("ROLE_", ""));
-                  const currentRole = (state.session?.role || "").toUpperCase().replace("ROLE_", "");
-                  const merged = [...new Set([...allRoles])];
-                  return merged.map(roleKey => {
-                    const isCurrent = currentRole === roleKey;
-                    return (
-                      <button
-                        key={roleKey}
-                        className={isCurrent ? "fcw-btn fcw-btn-primary fcw-btn-sm" : "fcw-btn fcw-btn-secondary fcw-btn-sm"}
-                        disabled={isCurrent || state.busy}
-                        onClick={() => { actions.switchRole(roleKey).catch(() => {}); setAccountModalOpen(false); }}
-                      >
-                        {t(`auth.role.${roleKey}`)}
-                      </button>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-          )}
         </div>
       </Modal>
 
@@ -411,7 +406,7 @@ export function Navigation() {
             <button
               className="fcw-btn fcw-btn-ghost fcw-btn-sm"
               style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
-              onClick={() => { setAccountModalOpen(true); setUserMenuOpen(false); setAccountTab("profile"); loadProfile(); }}
+              onClick={() => { setAccountModalOpen(true); setUserMenuOpen(false); setAccountTab("brand"); loadProfile(); }}
             >
               <UserRound size={14} />{t("business.account")}
             </button>

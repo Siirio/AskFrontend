@@ -101,6 +101,40 @@ Implementation must include:
 - Modals/drawers: custom accessible premium surfaces with keyboard and focus handling.
 - Global states: loading, empty, error, disabled, offline, reduced motion, long text, small mobile, wide desktop.
 
+## Organization Page Design (2026-07-16)
+
+Emil Kowalsky design applied to BusinessPage branches + employees — merged into a single `organization` sidebar tab.
+
+### Design Principles Applied
+- **Editorial typography hierarchy**: h3 section headers, body-s subtitles with counts, minimal decoration
+- **Thin borders over heavy cards**: `var(--fcw-border-width-thin)` borders on `var(--fcw-radius-lg)` containers, no card wrappers
+- **Generous whitespace**: `var(--fcw-space-xl)` gap between branches and team sections, separated by 1px divider
+- **Status through dots**: 6px colored dots + monochrome text instead of heavy status badges
+- **Outlined tags**: role/badge tags use `border` + transparent background instead of filled backgrounds
+- **Content-first density**: operational feel — dense enough to scan, spaced enough to breathe
+- **One interaction per element**: clickable staff rows get subtle border transition on selection, not hover elevation
+
+### Layout Structure
+```
+organization/
+├── Branches section
+│   ├── Header (title + count + Add Branch CTA)
+│   ├── Add/Edit branch form (AnimatePresence, Card)
+│   └── Branch list
+│       ├── Branch row (name, address, city/online tags, staff toggle, edit)
+│       └── Staff panel (expandable: add form, member rows, edit controls)
+├── 1px divider
+└── Team section (business-level employees)
+    ├── Header (title + count + Add Employee CTA)
+    ├── Add employee form (AnimatePresence, Card)
+    └── Employee list (minimal rows with dot-status)
+```
+
+### Role Visibility
+- **Owner**: sees branches + staff + team, can add/edit branches/staff/employees
+- **Manager**: sees branches + staff + team, can add staff + employees (no branch add/edit)
+- **Worker**: sees nothing (organization tab hidden from sidebar entirely)
+
 ## Final Verification Before Shipping
 
 - `npm run build`

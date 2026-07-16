@@ -1,5 +1,15 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-16 — Organization Page Redesign: Branches + Team, Emil Kowalsky Design
+
+Merged dead `branches`/`employees` sections (not in BusinessSection type, unreachable) into single `organization` section on BusinessPage. Applied Emil Kowalsky editorial-minimalist design: thin-border cards, dot-status indicators, outlined tags, generous whitespace, editorial typography.
+
+- `BusinessPage.tsx`: replaced ~570 lines of unreachable branches + employees JSX with combined organization section
+- Branches section: refined card layout with expandable staff panels, dot-status on staff rows
+- Team section: clean employee list with outlined role tags, dot-status indicators
+- Role gating preserved: Worker sees no organization tab, Manager sees staff + employees without branch CRUD
+- Updated FRONTEND_REDESIGN_REFERENCE_STACK.md with Organization Page Design section
+
 ## 2026-07-04 — Freshness Audit: Generative UI, Contact Actions, Storefront Builder, Visual Direction
 
 Deep audit of all MD files against the current Ask product direction. Frontend AGENTS.md and ARCHITECTURE_NARRATIVE_FRONTEND.md updated with Generative UI Renderer, Contact Actions, Storefront Builder. Visual style direction corrected from old light/teal to dark graphite/ivory/orange.

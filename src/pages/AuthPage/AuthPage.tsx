@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
+import { fetchEmailInfo } from "../../shared/api/authClient";
 import { Input } from "../../shared/ui/Input/Input";
 import { ROUTES } from "../../app/routes";
 
@@ -18,8 +19,10 @@ export function AuthPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [code, setCode] = useState("");
+  const [staffEmailHint, setStaffEmailHint] = useState<{ role: string; businessName: string } | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
-  if (state.view !== "auth" && !state.challenge && !state.requiresRoleSelection && !state.requiresTwoFactor) {
+  if (state.view !== "auth" && !state.challenge && !state.requiresRoleSelection && !state.requiresTwoFactor && !state.activationRequired) {
     const target = state.view === "business" || state.view === "staff" ? ROUTES.business : ROUTES.home;
     return <Navigate to={target} replace />;
   }
@@ -44,9 +47,93 @@ export function AuthPage() {
     await actions.verifyTwoFactor(code);
   };
 
+  const handleEmailBlur = async () => {
+    if (!email || email.length < 5) return;
+    setCheckingEmail(true);
+    try {
+      const info = await fetchEmailInfo(email);
+      const staffAccount = info.accounts?.find(a =>
+        (a.role === "BUSINESS_MANAGER" || a.role === "BUSINESS_WORKER")
+        && a.status === "PENDING_ACTIVATION"
+      );
+      if (staffAccount) {
+        setStaffEmailHint({
+          role: staffAccount.role,
+          businessName: staffAccount.businessName || "",
+        });
+        if (state.mode === "register") {
+          actions.setMode("login");
+        }
+      } else {
+        setStaffEmailHint(null);
+      }
+    } catch {
+      setStaffEmailHint(null);
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const cardContent = renderCard();
 
   function renderCard() {
+    // Activation password change (unskippable)
+    if (state.activationRequired) {
+      return (
+        <>
+          <h2 className="fcw-h3" style={{ marginBottom: "var(--fcw-space-sm)", textAlign: "center" }}>
+            {t("auth.activation.title")}
+          </h2>
+          <p className="fcw-body-s fcw-text-secondary" style={{ marginBottom: "var(--fcw-space-md)", textAlign: "center" }}>
+            {t("auth.activation.description")}
+          </p>
+
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const newPass = (e.currentTarget.elements.namedItem("newPassword") as HTMLInputElement).value;
+            const confirmPass = (e.currentTarget.elements.namedItem("confirmPassword") as HTMLInputElement).value;
+            if (newPass !== confirmPass) {
+              actions.clearError();
+              return;
+            }
+            await actions.activateStaffAccount(newPass, confirmPass);
+          }}>
+            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
+              <Input
+                label={t("auth.activation.newPassword")}
+                name="newPassword"
+                type="password"
+                placeholder="••••••••"
+                required
+                autoFocus
+                autoComplete="new-password"
+              />
+              <Input
+                label={t("auth.activation.confirmPassword")}
+                name="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                required
+                autoComplete="new-password"
+              />
+              {state.error && (
+                <div className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>
+                  {state.error}
+                </div>
+              )}
+              <button
+                type="submit"
+                className="fcw-btn fcw-btn-primary fcw-btn-full fcw-btn-lg"
+                disabled={state.busy}
+              >
+                {state.busy ? "..." : t("auth.activation.submit")}
+              </button>
+            </div>
+          </form>
+        </>
+      );
+    }
+
     // Role selection screen
     if (state.requiresRoleSelection && state.availableRoles.length > 0) {
       return (
@@ -273,11 +360,30 @@ export function AuthPage() {
               label={t("auth.label.email")}
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => { setEmail(e.target.value); setStaffEmailHint(null); }}
+              onBlur={handleEmailBlur}
               placeholder="you@example.com"
               required
               autoComplete="email"
             />
+            {checkingEmail && (
+              <div className="fcw-body-xs fcw-text-tertiary" style={{ textAlign: "center" }}>
+                ...
+              </div>
+            )}
+            {staffEmailHint && (
+              <div className="fcw-card fcw-p-sm" style={{ background: "var(--fcw-color-surface-info, #e8f0fe)", borderRadius: "var(--fcw-radius-md)" }}>
+                <p className="fcw-body-xs fcw-font-medium" style={{ color: "var(--fcw-color-primary)" }}>
+                  {t("auth.staffEmail.title")}
+                </p>
+                <p className="fcw-body-xs fcw-text-secondary">
+                  {staffEmailHint.role === "BUSINESS_MANAGER"
+                    ? t("auth.staffEmail.managerHint", { businessName: staffEmailHint.businessName })
+                    : t("auth.staffEmail.workerHint", { businessName: staffEmailHint.businessName })
+                  }
+                </p>
+              </div>
+            )}
             <Input
               label={t("auth.label.password")}
               type="password"
