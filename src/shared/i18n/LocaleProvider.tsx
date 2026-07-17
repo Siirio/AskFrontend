@@ -42,8 +42,11 @@ import {
 const MESSAGES: Record<Locale, typeof ru> = { ru, kk, en };
 const STORAGE_KEY = LOCALE_STORAGE_KEY;
 
-function getStoredLocale(): Locale {
-  return parseLocale(storage.get(STORAGE_KEY)) ?? defaultLocale;
+/** The client-stored locale, or undefined when absent/invalid/unavailable —
+ *  the provider then falls back to the server-seeded cookie value, so a
+ *  missing localStorage entry can never override a real stored preference. */
+function getStoredLocale(): Locale | undefined {
+  return parseLocale(storage.get(STORAGE_KEY));
 }
 
 const listeners = new Set<() => void>();
@@ -80,20 +83,26 @@ export function LocaleProvider({
   initialLocale?: Locale;
   children: ReactNode;
 }) {
-  const locale = useSyncExternalStore(
+  // The stored client value wins when it exists; otherwise the server-seeded
+  // cookie value (initialLocale) — NOT bare defaultLocale, or an empty/blocked
+  // localStorage would flip a cookie-remembered language back to the default
+  // after hydration and then stomp the cookie below.
+  const stored = useSyncExternalStore(
     subscribeLocale,
     getStoredLocale,
-    () => initialLocale,
+    () => undefined,
   );
+  const locale = stored ?? initialLocale;
   const setLocale = useCallback((next: Locale) => setStoredLocale(next), []);
 
-  // Keep <html lang> AND the ask.locale cookie in step with the client locale
-  // — on mount as well as on switch. lang: the root layout renders the default
-  // (D6), and screen readers + hyphenation follow the attribute. Cookie: the
-  // server's copy for the next request (D19); writing it here, keyed on the
-  // resolved locale, also reconciles a stale/missing cookie.
+  // Keep <html lang>, localStorage AND the ask.locale cookie in step with the
+  // resolved locale — on mount as well as on switch. lang: the root layout
+  // renders the default (D6), and screen readers + hyphenation follow the
+  // attribute. The two stores (client localStorage, server cookie — D19) are
+  // reconciled here in BOTH directions, keyed on the resolved value.
   useEffect(() => {
     document.documentElement.lang = locale;
+    storage.set(STORAGE_KEY, locale);
     document.cookie = `${STORAGE_KEY}=${locale}; path=/; max-age=31536000; samesite=lax`;
   }, [locale]);
 

@@ -131,8 +131,9 @@ export function RoleSelectionModal() {
         className="py-8 sm:max-w-md"
       >
         <DialogHeader>
-          {/* max-xs (the 480px token step): the header compacts at the same
-              point the two-card grid collapses to one column. */}
+          {/* Two token steps: max-xxs (384px) steps the header type down on the
+              narrowest phones; max-xs (480px, below) collapses the two-card
+              grid to one column. */}
           <DialogTitle className="text-center max-xxs:text-base">
             {t("roleModal.title")}
           </DialogTitle>

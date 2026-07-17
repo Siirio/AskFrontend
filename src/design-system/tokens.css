@@ -181,11 +181,14 @@
  */
 @theme inline {
   /* ── BREAKPOINTS ─────────────────────────────────────────────────────────
-   * Tailwind's default scale (sm 640px+) plus ONE addition: xs (480px), the
-   * compact-phone step that compound controls collapse under (first consumer:
-   * the role modal's two-card grid). A viewport step is a design decision and
-   * lives HERE — arbitrary max-[NNNpx] variants in components are the same
-   * magic values P9.2 bans for colour and spacing (2026-07-17 audit).
+   * Tailwind's default scale (sm 640px+) plus TWO additions below it:
+   *   xs  (30rem / 480px) — the compact-phone step compound controls collapse
+   *       under (first consumer: the role modal's two-card grid);
+   *   xxs (24rem / 384px) — the narrowest-phone step where header type steps
+   *       down one size (first consumer: the role modal's title/description).
+   * A viewport step is a design decision and lives HERE — arbitrary
+   * max-[NNNpx] variants in components are the same magic values P9.2 bans
+   * for colour and spacing (2026-07-17 audit).
    */
   --breakpoint-xxs: 24rem;
   --breakpoint-xs: 30rem;
