@@ -82,7 +82,7 @@
     },
     "roleModal": {
       "title": "Where would you like to start?",
-      "description": "You can search for products and services, or set up your business on ASK.",
+      "description": "You can search for products and services, or set up your business on ASK",
       "customer": "Start searching",
       "business": "Set up your business",
       "customerHint": "Find products and services nearby",
