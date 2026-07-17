@@ -42,16 +42,24 @@ import {
 const MESSAGES: Record<Locale, typeof ru> = { ru, kk, en };
 const STORAGE_KEY = LOCALE_STORAGE_KEY;
 
-/** The client-stored locale, or undefined when absent/invalid/unavailable —
- *  the provider then falls back to the server-seeded cookie value, so a
- *  missing localStorage entry can never override a real stored preference. */
+/** The locale chosen IN THIS SESSION — the source the snapshot prefers, so a
+ *  switch stays active even when persistence is unavailable (storage.set is a
+ *  silent no-op there; without this copy the snapshot would re-read nothing
+ *  and snap back to the server seed). */
+let sessionLocale: Locale | undefined;
+
+/** The active client locale: this session's choice, else the persisted value;
+ *  undefined when neither exists — the provider then falls back to the
+ *  server-seeded cookie value, so a missing localStorage entry can never
+ *  override a real stored preference. */
 function getStoredLocale(): Locale | undefined {
-  return parseLocale(storage.get(STORAGE_KEY));
+  return sessionLocale ?? parseLocale(storage.get(STORAGE_KEY));
 }
 
 const listeners = new Set<() => void>();
 
 function setStoredLocale(locale: Locale): void {
+  sessionLocale = locale;
   storage.set(STORAGE_KEY, locale);
   listeners.forEach((listener) => listener());
 }
