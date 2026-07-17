@@ -9,8 +9,8 @@ import * as api from "../api";
 import {
   AuthStoreContext,
   applySessionTo,
+  persistPendingRoleSelection,
   readPendingRoleSelection,
-  writePendingRoleSelection,
 } from "../hooks";
 import { createAuthStore, type AuthStore } from "../store";
 
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) {
       // No session → any unanswered role choice belongs to a session that no
       // longer exists; drop it with the session.
-      writePendingRoleSelection(false);
+      persistPendingRoleSelection(store, false);
       store.getState().clearSession();
       return;
     }
@@ -54,8 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (error.status === 401 || error.status === 403)
         ) {
           tokenStorage.clear();
-          writePendingRoleSelection(false);
-          store.getState().setPendingRoleSelection(false);
+          persistPendingRoleSelection(store, false);
         }
         store.getState().clearSession();
       });

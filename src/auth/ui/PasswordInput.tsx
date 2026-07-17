@@ -15,6 +15,10 @@ import { Input } from "@/shared/ui/input";
  * The toggle is a full-height 44px hit area inside the field (platform §7
  * touch floor); the input pads end-side so text never runs under it. The
  * label flips show/hide (no aria-pressed — WAI pattern for flipping labels).
+ *
+ * The change prop is `onValueChange` (a string), NOT `onChange`: reusing the
+ * native name with different semantics is the trap P3.1 warns about — a
+ * caller would reasonably expect an event.
  */
 export function PasswordInput({
   id,
@@ -24,7 +28,7 @@ export function PasswordInput({
   invalid,
   visible,
   onToggleVisible,
-  onChange,
+  onValueChange,
 }: {
   id: string;
   value: string;
@@ -33,7 +37,7 @@ export function PasswordInput({
   invalid: boolean;
   visible: boolean;
   onToggleVisible: () => void;
-  onChange: (value: string) => void;
+  onValueChange: (value: string) => void;
 }) {
   const t = useTranslations("auth");
   const label = visible ? t("fields.hidePassword") : t("fields.showPassword");
@@ -48,7 +52,7 @@ export function PasswordInput({
         value={value}
         aria-invalid={invalid}
         placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onValueChange(e.target.value)}
       />
       <button
         type="button"

@@ -13,15 +13,27 @@
  * paint (it cannot import a module), so there is no flash of the wrong theme.
  * Keep the two in sync — both read `ask.theme` and resolve the same way.
  */
+import { storage } from "@/shared/api/storage";
+
 export type ThemePreference = "light" | "dark" | "system";
 
 /** localStorage key for the theme preference. */
 export const THEME_STORAGE_KEY = "ask.theme";
 
-export function getThemePreference(): ThemePreference {
-  if (typeof window === "undefined") return "system";
-  const value = window.localStorage.getItem(THEME_STORAGE_KEY);
+/**
+ * Validate a stored preference value (localStorage or the `ask.theme` cookie,
+ * D19) — one representation of "what counts as a theme preference" (P6.2).
+ * Anything unknown means "system". The pre-paint script in app/layout.tsx
+ * inlines the same check, a documented sanctioned duplicate (it cannot import).
+ */
+export function parseThemePreference(
+  value: string | null | undefined,
+): ThemePreference {
   return value === "light" || value === "dark" ? value : "system";
+}
+
+export function getThemePreference(): ThemePreference {
+  return parseThemePreference(storage.get(THEME_STORAGE_KEY));
 }
 
 function systemPrefersDark(): boolean {
@@ -32,6 +44,20 @@ function systemPrefersDark(): boolean {
 function resolve(preference: ThemePreference): "light" | "dark" {
   if (preference === "light" || preference === "dark") return preference;
   return systemPrefersDark() ? "dark" : "light";
+}
+
+/**
+ * The concrete theme currently applied to <html> — read back from the
+ * `data-theme` attribute (written by the pre-paint script and by apply()), so
+ * chrome that needs a resolved value (e.g. the Toaster) reads the ONE switch
+ * instead of re-resolving the OS itself (§7: no second theme mechanism).
+ * Subscribe via `subscribeTheme`; every writer notifies after applying.
+ */
+export function getResolvedTheme(): "light" | "dark" {
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.getAttribute("data-theme") === "dark"
+    ? "dark"
+    : "light";
 }
 
 function apply(preference: ThemePreference): void {
@@ -77,9 +103,9 @@ export function syncThemeCookie(preference: ThemePreference): void {
 export function setThemePreference(preference: ThemePreference): void {
   if (typeof window === "undefined") return;
   if (preference === "system") {
-    window.localStorage.removeItem(THEME_STORAGE_KEY);
+    storage.remove(THEME_STORAGE_KEY);
   } else {
-    window.localStorage.setItem(THEME_STORAGE_KEY, preference);
+    storage.set(THEME_STORAGE_KEY, preference);
   }
   syncThemeCookie(preference);
   apply(preference);

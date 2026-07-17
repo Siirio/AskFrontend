@@ -7,7 +7,7 @@ Web client for the ASK platform — local product/service search with an anti-ma
 - Tailwind v4 on `design-system/` tokens (single visual source)
 - zustand (store factories via context providers), GSAP (`useGSAP()` + `ScrollTrigger`, D11)
 - `shared/ui` primitives scaffolded via shadcn CLI + Radix, restyled to `design-system/` tokens before use (D12). Import GSAP from `shared/motion.ts`, never `gsap` directly (D14)
-- next-intl (ru/kk/en), lucide-react, sonner (Toast, `theme="system"` — NO next-themes), `next/image`, Playwright (e2e)
+- next-intl (ru/kk/en), lucide-react, sonner (Toast, follows the resolved `data-theme` per D21 — NO next-themes), `next/image`, Playwright (e2e)
 - Prettier + `prettier-plugin-tailwindcss` the one formatter (D15, `npm run format`); Vercel the deploy host (D16, `vercel.json` pins `buildCommand`)
 - Vertical Slice Architecture — slices mirror AskBackend module names, ESLint-enforced boundaries; CI (GitHub Actions) gates format + build + e2e
 

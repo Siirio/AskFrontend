@@ -1,6 +1,6 @@
 import { getRequestConfig } from "next-intl/server";
 
-import { defaultLocale, locales } from "./locales";
+import { defaultLocale, parseLocale } from "./locales";
 
 /**
  * next-intl server config — the ONE i18n mechanism (§7, D2).
@@ -19,10 +19,7 @@ import { defaultLocale, locales } from "./locales";
  * the eventual home for the control.
  */
 export default getRequestConfig(async ({ requestLocale }) => {
-  const requested = await requestLocale;
-  const locale = (locales as readonly string[]).includes(requested ?? "")
-    ? (requested as (typeof locales)[number])
-    : defaultLocale;
+  const locale = parseLocale(await requestLocale) ?? defaultLocale;
 
   return {
     locale,

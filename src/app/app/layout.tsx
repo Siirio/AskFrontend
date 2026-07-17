@@ -2,12 +2,8 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 
 import { LocaleProvider } from "@/shared/i18n/LocaleProvider";
-import {
-  LOCALE_STORAGE_KEY,
-  locales,
-  type Locale,
-} from "@/shared/i18n/locales";
-import { THEME_STORAGE_KEY, type ThemePreference } from "@/shared/theme";
+import { localeFromCookies } from "@/shared/i18n/serverLocale";
+import { parseThemePreference, THEME_STORAGE_KEY } from "@/shared/theme";
 import { ThemePreferenceSeed } from "@/shared/ui/theme-toggle";
 
 /**
@@ -28,16 +24,10 @@ export default async function PlatformLayout({
 }: {
   children: ReactNode;
 }) {
-  const jar = await cookies();
-
-  const rawLocale = jar.get(LOCALE_STORAGE_KEY)?.value ?? "";
-  const locale = (locales as readonly string[]).includes(rawLocale)
-    ? (rawLocale as Locale)
-    : undefined;
-
-  const rawTheme = jar.get(THEME_STORAGE_KEY)?.value;
-  const theme: ThemePreference =
-    rawTheme === "light" || rawTheme === "dark" ? rawTheme : "system";
+  const locale = await localeFromCookies();
+  const theme = parseThemePreference(
+    (await cookies()).get(THEME_STORAGE_KEY)?.value,
+  );
 
   return (
     <LocaleProvider initialLocale={locale}>

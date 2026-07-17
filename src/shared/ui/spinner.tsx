@@ -7,6 +7,10 @@ import { cn } from "@/lib/utils";
  * The Loading primitive's active form (its passive form is Skeleton). Own code,
  * not a shadcn scaffold — it is one lucide icon and one Tailwind class.
  *
+ * `label` is REQUIRED and the caller translates it: shared/ui chrome carries no
+ * hardcoded copy (§7 i18n), and Spinner stays server-safe by not reading i18n
+ * itself — the consuming component already has `useTranslations`.
+ *
  * `animate-spin` is a built-in transform (rotate), so it is exempt from the
  * transform/opacity animation lock — it never touches layout — and needs no
  * GSAP. It freezes under the global prefers-reduced-motion gate. `currentColor`
@@ -15,9 +19,9 @@ import { cn } from "@/lib/utils";
  */
 function Spinner({
   className,
-  label = "Загрузка…",
+  label,
   ...props
-}: React.ComponentProps<"span"> & { label?: string }) {
+}: React.ComponentProps<"span"> & { label: string }) {
   return (
     <span
       data-slot="spinner"

@@ -10,13 +10,15 @@ import {
 } from "react";
 import { NextIntlClientProvider } from "next-intl";
 
+import { storage } from "@/shared/api/storage";
+
 import en from "./messages/en.json";
 import kk from "./messages/kk.json";
 import ru from "./messages/ru.json";
 import {
   defaultLocale,
   LOCALE_STORAGE_KEY,
-  locales,
+  parseLocale,
   type Locale,
 } from "./locales";
 
@@ -41,18 +43,13 @@ const MESSAGES: Record<Locale, typeof ru> = { ru, kk, en };
 const STORAGE_KEY = LOCALE_STORAGE_KEY;
 
 function getStoredLocale(): Locale {
-  if (typeof window === "undefined") return defaultLocale;
-  const value = window.localStorage.getItem(STORAGE_KEY);
-  return (locales as readonly string[]).includes(value ?? "")
-    ? (value as Locale)
-    : defaultLocale;
+  return parseLocale(storage.get(STORAGE_KEY)) ?? defaultLocale;
 }
 
 const listeners = new Set<() => void>();
 
 function setStoredLocale(locale: Locale): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, locale);
+  storage.set(STORAGE_KEY, locale);
   listeners.forEach((listener) => listener());
 }
 

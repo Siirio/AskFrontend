@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { formatPageTitle } from "@/shared/config/site";
 import { useLocale } from "@/shared/i18n/LocaleProvider";
 
 import type { VerifyResult } from "../hooks";
@@ -23,10 +24,10 @@ export function LoginPage() {
 
   // At load the tab title comes from the route's generateMetadata, resolved
   // from the ask.locale cookie (D19) — this effect exists for the IN-SESSION
-  // locale switch, which the server never sees. Both writers produce the same
-  // string ("{pageTitle} - Ask", the root title template).
+  // locale switch, which the server never sees. Both writers derive from the
+  // one template in shared/config/site.ts (P6.2).
   useEffect(() => {
-    document.title = `${t("login.pageTitle")} - Ask`;
+    document.title = formatPageTitle(t("login.pageTitle"));
   }, [t, locale]);
 
   const handleAuthenticated = useCallback(

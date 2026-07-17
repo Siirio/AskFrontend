@@ -4,6 +4,7 @@ import { Golos_Text } from "next/font/google";
 import { getLocale } from "next-intl/server";
 
 import { AppProviders } from "@/app/providers/AppProviders";
+import { SITE_NAME, TITLE_TEMPLATE } from "@/shared/config/site";
 
 import "./globals.css";
 
@@ -25,8 +26,10 @@ const golos = Golos_Text({
 
 export const metadata: Metadata = {
   // Pages set a bare title; the template brands it ("Log in — Ask"). Routes
-  // without one (the landing) fall back to the default.
-  title: { template: "%s - Ask", default: "Ask" },
+  // without one (the landing) fall back to the default. The template string
+  // lives in shared/config/site.ts — the client title writers derive from the
+  // same source (P6.2).
+  title: { template: TITLE_TEMPLATE, default: SITE_NAME },
 };
 
 /*

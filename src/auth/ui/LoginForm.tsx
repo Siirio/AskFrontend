@@ -92,7 +92,7 @@ export function LoginForm({
           placeholder={t("placeholders.passwordLogin")}
           visible={showPassword}
           onToggleVisible={() => setShowPassword((v) => !v)}
-          onChange={setPassword}
+          onValueChange={setPassword}
         />
       </Field>
       {formError ? (

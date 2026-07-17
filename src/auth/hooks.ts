@@ -16,6 +16,7 @@ import { useStore } from "zustand";
 import { useTranslations } from "next-intl";
 
 import { ApiError } from "@/shared/api/apiError";
+import { storage } from "@/shared/api/storage";
 import { tokenStorage } from "@/shared/api/tokenStorage";
 import { toast } from "@/shared/ui/sonner";
 
@@ -41,22 +42,28 @@ function useAuthStoreApi(): AuthStore {
 
 // ── Pending role selection (survives navigation and reload) ─────────────────
 
-/** localStorage key marking an unanswered role choice after a fresh signup.
- *  Same pattern as the token: hooks (client) own the side effect, the store
- *  holds the render-facing copy, and the flag is cleared ONLY by an explicit
- *  choice or by the session ending — never by dismissal, which the modal does
- *  not offer. */
+/** Storage key marking an unanswered role choice after a fresh signup. Same
+ *  pattern as the token: hooks (client) own the side effect via the shared
+ *  storage door (P5.2), the store holds the render-facing copy, and the flag
+ *  is cleared ONLY by an explicit choice or by the session ending — never by
+ *  dismissal, which the modal does not offer. */
 const PENDING_ROLE_SELECTION_KEY = "ask.roleSelectionPending";
 
 export function readPendingRoleSelection(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(PENDING_ROLE_SELECTION_KEY) === "1";
+  return storage.get(PENDING_ROLE_SELECTION_KEY) === "1";
 }
 
-export function writePendingRoleSelection(pending: boolean) {
-  if (typeof window === "undefined") return;
-  if (pending) window.localStorage.setItem(PENDING_ROLE_SELECTION_KEY, "1");
-  else window.localStorage.removeItem(PENDING_ROLE_SELECTION_KEY);
+/**
+ * The flag has TWO copies — storage (survives navigation and reload) and the
+ * store (renders). They change together, through this one place (P6.2).
+ */
+export function persistPendingRoleSelection(
+  store: AuthStore,
+  pending: boolean,
+) {
+  if (pending) storage.set(PENDING_ROLE_SELECTION_KEY, "1");
+  else storage.remove(PENDING_ROLE_SELECTION_KEY);
+  store.getState().setPendingRoleSelection(pending);
 }
 
 /**
@@ -99,8 +106,7 @@ export function useAuth(): Auth {
       // Best effort — the local session is cleared regardless of the response.
     }
     tokenStorage.clear();
-    writePendingRoleSelection(false);
-    store.getState().setPendingRoleSelection(false);
+    persistPendingRoleSelection(store, false);
     store.getState().clearSession();
   }, [store]);
 
@@ -118,8 +124,7 @@ export function useRoleSelection() {
   const status = useStore(store, (s) => s.status);
 
   const resolve = useCallback(() => {
-    writePendingRoleSelection(false);
-    store.getState().setPendingRoleSelection(false);
+    persistPendingRoleSelection(store, false);
   }, [store]);
 
   return { open: pending && status === "authenticated", resolve };
@@ -193,8 +198,7 @@ export function useVerifyStep(authChallengeId: string) {
         // Arm the role-choosing modal BEFORE the page navigates to /app: the
         // flag lives in storage + store, so it survives the navigation (and a
         // reload) until the user actually answers.
-        writePendingRoleSelection(true);
-        store.getState().setPendingRoleSelection(true);
+        persistPendingRoleSelection(store, true);
       }
       setResult({ targetPath: startRouteToPath(session.startRoute) });
     } catch (e) {

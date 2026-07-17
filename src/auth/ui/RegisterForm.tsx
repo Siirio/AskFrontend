@@ -97,7 +97,7 @@ export function RegisterForm({
           placeholder={t("placeholders.password")}
           visible={showPassword}
           onToggleVisible={() => setShowPassword((v) => !v)}
-          onChange={(value) => setField("password", value)}
+          onValueChange={(value) => setField("password", value)}
         />
       </Field>
       <Field
@@ -112,7 +112,7 @@ export function RegisterForm({
           invalid={Boolean(errors.passwordConfirmation)}
           visible={showPassword}
           onToggleVisible={() => setShowPassword((v) => !v)}
-          onChange={(value) => setField("passwordConfirmation", value)}
+          onValueChange={(value) => setField("passwordConfirmation", value)}
         />
       </Field>
 
@@ -144,8 +144,6 @@ export function RegisterForm({
               className="pointer-events-none absolute inset-0 m-auto size-3.5 scale-50 text-accent-foreground opacity-0 transition peer-checked:scale-100 peer-checked:opacity-100"
             />
           </label>
-          {/* text-balance evens the two lines — a centred sentence that wraps
-              goes ragged (a long first line + an orphan) without it. */}
           <span className="text-start text-sm text-foreground-muted">
             {t.rich("fields.agreement", {
               terms: (chunks) => (

@@ -1,7 +1,11 @@
 /*
  * Global styles entry. Tailwind v4 on the design-system tokens (D3).
  * The tokens are the visual source; this file only wires them to the document.
- * Nothing here may introduce a value — every value lives in tokens.css (P9.2).
+ * Nothing here may introduce a value — every value lives in tokens.css (P9.2)
+ * — with ONE stated exception: the focus signature's geometry (the 2px ring /
+ * 2px offset / 3px halo below). It is the signature itself, defined once
+ * beside the two utilities that ARE it (P6.1), never repeated anywhere else;
+ * its colour still comes from the --ring token.
  */
 @import "tailwindcss";
 @import "../design-system/tokens.css";

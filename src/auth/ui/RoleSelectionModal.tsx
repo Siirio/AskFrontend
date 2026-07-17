@@ -128,16 +128,22 @@ export function RoleSelectionModal() {
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
-        className="sm:max-w-md py-8"
+        className="py-8 sm:max-w-md"
       >
         <DialogHeader>
-          <DialogTitle className="text-center max-[400px]:text-base">{t("roleModal.title")}</DialogTitle>
-          <DialogDescription className="text-center max-[400px]:text-xs">{t("roleModal.description")}</DialogDescription>
+          {/* max-xs (the 480px token step): the header compacts at the same
+              point the two-card grid collapses to one column. */}
+          <DialogTitle className="text-center max-xxs:text-base">
+            {t("roleModal.title")}
+          </DialogTitle>
+          <DialogDescription className="text-center max-xxs:text-xs">
+            {t("roleModal.description")}
+          </DialogDescription>
         </DialogHeader>
         <div
           role="radiogroup"
           aria-label={t("roleModal.title")}
-          className="grid grid-cols-2 gap-3 max-[480px]:grid-cols-1"
+          className="grid grid-cols-2 gap-3 max-xs:grid-cols-1"
         >
           <RoleCard
             selected={choice === "customer"}
