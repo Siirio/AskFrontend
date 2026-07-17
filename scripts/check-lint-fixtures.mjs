@@ -27,6 +27,11 @@ const BAD_FIXTURES = [
     law: "R3 — no slice imports from app/",
   },
   {
+    file: "lint-fixtures/src/auth/bad-r4-relative-escape.ts",
+    rule: "local/no-cross-element-relative-import",
+    law: "R4 — cross-element imports use the @/ alias, not a relative escape to a legal target",
+  },
+  {
     file: "lint-fixtures/src/chats/index.ts",
     rule: "import/no-cycle",
     law: "R5 — cycles between slices are forbidden",
@@ -53,6 +58,10 @@ const CLEAN_FIXTURES = [
   {
     file: "lint-fixtures/src/auth/index.ts",
     law: "a slice's public API itself is legal",
+  },
+  {
+    file: "lint-fixtures/src/auth/ui/legal-relative-import.ts",
+    law: "a relative import within a slice (ui/ → model) is legal (R4)",
   },
 ];
 

@@ -21,7 +21,7 @@ Phase 0 splits in two, and **the halves run in PARALLEL**. Only 0b needs the des
 - [x] Scaffold Next.js: App Router, TypeScript, `src/` directory, `@/*` alias (architecture §8)
 - [x] **The FIRST commit, before any slice:** ESLint + `eslint-plugin-boundaries` + `eslint-plugin-import` per §8 — element types, `entry-point`, `no-unknown`, `no-unknown-files`, `import/no-cycle` (plugin v7 folds the first two into `boundaries/dependencies` — see the dated §8 note). Shipped `lint-fixtures/` with one deliberately-bad import per rule (R1, R2, R3, R5, unknown folder); `npm run lint:fixtures` asserts ESLint **fails** on each. Proven, not assumed.
 - [x] Wire `eslint src` + `next build` into the build pipeline — `npm run build` chains lint → fixture proof → `next build`
-- [x] `shared/api/httpClient.ts`: one wrapper, callable from server AND client (D7). `ApiError` mirrors the backend's `ErrorResponse`; token storage behind `TokenStorage` (P5.2, D5). No domain endpoints. (No key-transform layer: the backend speaks camelCase JSON — a transform would be dead code, P8.1.)
+- [x] `shared/api/httpClient.ts`: one wrapper, callable from server AND client (D7). `ApiError` mirrors the backend's `ErrorResponse`; token storage behind `TokenStorage` (P5.2, D5). No domain endpoints. (The original "no key-transform layer — the backend speaks camelCase" note proved WRONG on live integration 2026-07-17: the wire is snake_case; `shared/api/caseTransform.ts` now converts at the transport boundary — D20.)
 - [x] `shared/i18n/`: next-intl plumbing + `messages/{ru,kk,en}.json`, keyed per slice namespace (locale fixed to `ru` until the profile settings screen exists — a request-time cookie read would break the static marketing page, D6)
 - [x] App skeleton: root layout, `app/providers/`, `app/_components/` chrome (NavigationMenu), the `(marketing)` route group and the `/app/*` tree (D6). Structure only — unstyled; every string is an i18n key; `/` and `/app/*` prerender static, `product/[id]` dynamic.
 - [x] Playwright e2e harness running against `next build && next start` (e2e/smoke.spec.ts: landing, platform shell, every V1 route)
@@ -87,8 +87,10 @@ Slices 7–9 are one product surface but three slices: the cabinet **composes**,
 
 ### Parked fixes (2026-07-14 audit) — attach to the item that triggers them
 
-- [ ] **With slice #1:** R4 teeth — enforcement for a relative import escaping its element to a *legal* target (illegal targets are already caught by `boundaries/dependencies`). Evaluate plugin options or a small custom rule; until then R4 is review-enforced (see the §4 note in the architecture doc).
+- [x] **With slice #1 (landed 2026-07-15):** R4 teeth — a small custom flat-config rule `local/no-cross-element-relative-import` catches a relative import escaping its element to a *legal* target (illegal targets were already caught by `boundaries/dependencies`). Proven by `lint-fixtures/src/auth/bad-r4-relative-escape.ts` + a clean within-slice fixture (see the dated §4 note in the architecture doc). All of R1–R5 now carry ESLint teeth.
 - [ ] **With item 10 (the landing):** the smoke test locates the `/app` link via bare `getByRole("link")` — it breaks on ambiguity the moment the landing gains a second link. Scope it by `href`, not by accessible name (name would couple the test to translated copy).
+- [ ] **With item 10 (the landing): `public/logo_vertical.svg` has no consumer yet** (2026-07-16 audit, P8.1). The asset was exported with `logo_horizontal.svg` but nothing in `src/` references it; the landing is its expected first consumer. If the landing ships without it, delete it then.
+- [ ] **With item 10 (the landing): `/terms` and `/privacy` do not exist.** The register agreement ("I agree to the Terms of Service and Privacy Policy") links to both, so **both links 404 today** — a known, owner-accepted gap (2026-07-15), not an oversight: the legal copy is the owner's to write and is never invented client-side (P9.1). Build the two static, SEO-ready routes under `app/(marketing)/` with the landing, then the links resolve with no change to `auth`.
 
 Depends on: Phase 0.
 
@@ -145,6 +147,7 @@ What the frontend needs FROM `../Ask_Backend` — tracked here because a missing
 |---|---|---|
 | Sort & filter params on `UnifiedSearchRequest` | G1 → the Catalog Page | Not requested yet |
 | The "Proceed to Purchase" contract | G3 → the Product Card | Not requested yet |
+| CORS origin for THIS client — every backend profile allows only Vite ports (5173/5174); `http://localhost:3000` (dev) + the deploy domain must be added to `ask.cors.allowed-origins`. Interim dev workaround: run Next on 5173 (`npm run dev -- -p 5173`) | Any browser call to the real backend | Not requested yet |
 | `AUTH_VERIFICATION_TEST_MODE=false`, real secrets, prod CORS origins | Phase 1 · Launch | Backend-owned |
 
 Architecture decisions D1–D10 live in `ARCHITECTURE_PATTERN_FRONTEND.md` §11 — that is the decision log. This file plans; it does not decide.

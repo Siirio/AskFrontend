@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
@@ -64,6 +65,8 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
 }) {
+  const t = useTranslations("common");
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -76,13 +79,17 @@ function DialogContent({
         {...props}
       >
         {children}
+        {/* size-11 = the 44px touch floor (platform-ui-design §7); the icon
+            stays 16px and the button sits so the icon lands where top-4/right-4
+            used to put it. Label from the `common` namespace — shared/ui chrome
+            is never hardcoded copy (§7 i18n). */}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 focus-ring rounded-xs opacity-70 transition-opacity hover:opacity-100 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-0.5 right-0.5 inline-flex size-11 items-center justify-center rounded-xs opacity-70 focus-ring transition hover:opacity-100 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
-            <span className="sr-only">Закрыть</span>
+            <span className="sr-only">{t("close")}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>

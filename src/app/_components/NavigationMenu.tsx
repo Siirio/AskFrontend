@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 
 /**
  * App chrome (§2): the navigation menu from PRODUCT_VISION UF 2.1–2.3.
- * Structure only — visual styling arrives with the design-system tokens
- * (Phase 0b); P9.2 forbids visual values before then.
+ * Structure only — visual styling arrives with a later slice.
+ *
+ * Client component so it re-renders when the platform locale is switched (the
+ * LocaleProvider in the platform layout). A server component would stay frozen
+ * on the server locale while the page content switched — an inconsistent mix.
  */
-export async function NavigationMenu() {
-  const t = await getTranslations("app.nav");
+export function NavigationMenu() {
+  const t = useTranslations("app.nav");
 
   return (
     <nav>

@@ -20,5 +20,86 @@
       "business": "Business cabinet"
     },
     "placeholder": "Section under construction"
+  },
+  "auth": {
+    "login": {
+      "pageTitle": "Sign in",
+      "title": "Welcome back",
+      "subtitle": "Sign in to your ASK account",
+      "noAccount": "Don't have an account?",
+      "createAccount": "Create account"
+    },
+    "register": {
+      "pageTitle": "Sign up",
+      "title": "Create your account",
+      "subtitle": "Join thousands of ASK users",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "passwordConfirmation": "Confirm password",
+      "agreement": "I agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>",
+      "agreementAria": "I agree to the Terms of Service and Privacy Policy",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
+    },
+    "placeholders": {
+      "name": "How should we address you",
+      "email": "you@example.com",
+      "password": "At least 8 characters",
+      "passwordLogin": "Your password"
+    },
+    "actions": {
+      "signIn": "Sign in",
+      "createAccount": "Create account",
+      "verify": "Confirm",
+      "sending": "Sending…",
+      "verifying": "Verifying…",
+      "changeEmail": "Change email"
+    },
+    "verify": {
+      "sentTo": "We sent a 6-digit code to {destination}.",
+      "codeLabel": "Verification code"
+    },
+    "errors": {
+      "emailInvalid": "Enter a valid email address.",
+      "passwordLength": "Password must be at least 8 characters.",
+      "passwordMismatch": "Passwords do not match.",
+      "agreementRequired": "Accept the user agreement to continue.",
+      "codeLength": "Enter the 6-digit code.",
+      "codeInvalid": "The code is invalid or expired. Try again.",
+      "emailTaken": "This email is already registered. Log in instead.",
+      "userNotFound": "No account was found for this email.",
+      "network": "Something went wrong. Check your connection and try again.",
+      "passwordRequired": "Enter your password",
+      "invalidCredentials": "Incorrect email or password",
+      "accountNotActive": "This account is not active",
+      "nameRequired": "Enter your name",
+      "roleSelection": "This email is linked to several roles. Choosing a role at sign-in is not available yet."
+    },
+    "roleModal": {
+      "title": "Where would you like to start?",
+      "description": "You can search for products and services, or set up your business on ASK.",
+      "customer": "Start searching",
+      "business": "Set up your business",
+      "customerHint": "Find products and services nearby",
+      "businessHint": "Present your company to customers",
+      "continue": "Continue"
+    }
+  },
+  "common": {
+    "theme": {
+      "label": "Theme",
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": {
+      "label": "Language"
+    },
+    "close": "Close"
   }
 }

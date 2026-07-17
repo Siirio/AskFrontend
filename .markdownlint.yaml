@@ -1,0 +1,38 @@
+# markdownlint config — EDITOR ONLY.
+#
+# markdownlint is not a project dependency and is not in CI; nothing in
+# `npm run build` reads this. It exists so the editor extension stops flagging
+# the house style of the AUTHORED docs (AI_Knowledge/, CLAUDE.md, AGENTS.md) —
+# the same docs .prettierignore excludes, and for the same reason: the CORE files
+# change by human append + date + justification, never by a silent rewrite.
+#
+# Every rule below is off because the docs intentionally do the thing it forbids,
+# NOT because the docs are sloppy. Anything not listed here stays ON.
+#
+# YAML, not .jsonc, on purpose: Prettier appends a trailing comma to JSONC, which
+# not every JSONC parser accepts — that would silently break this config.
+
+# Changelog/ROADMAP entries are ONE long line by format:
+# `date | decision | affected files`. Wrapping them would break the format.
+MD013: false
+
+# The docs put a list directly under its heading (the ROADMAP phases) — a
+# deliberate density choice that renders correctly either way.
+MD022: false
+MD032: false
+
+# The docs quote tag-like syntax as prose: next-intl rich-text tags (<terms>,
+# <privacy>), <link rel="icon">, <html>, 'use client'.
+MD033: false
+
+# The docs cite bare URLs (http://localhost:2020, upstream repo links).
+MD034: false
+
+# FALSE POSITIVE on our path globs: `src/auth/*` … `ui/*` on one line reads as an
+# emphasis span with spaces inside. The globs are the Changelog's file-list
+# convention.
+MD037: false
+
+# The tables throughout the CORE docs use a compact pipe style. Satisfying this
+# rule would mean reformatting every table in the normative authorities.
+MD060: false

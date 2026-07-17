@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  * badges in the product are `metadata` or `offer`.
  */
 const badgeVariants = cva(
-  "focus-ring inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-xs border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3",
+  "focus-ring inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-xs border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {

@@ -1,5 +1,6 @@
 import { env } from "@/shared/config/env";
 import { ApiError, type ApiErrorBody } from "./apiError";
+import { camelizeKeys, snakifyKeys } from "./caseTransform";
 import { tokenStorage } from "./tokenStorage";
 
 /**
@@ -10,9 +11,11 @@ import { tokenStorage } from "./tokenStorage";
  * the only browser API (localStorage) sits behind tokenStorage, which no-ops
  * on the server. Platform-neutral by design (D5).
  *
- * NO domain endpoints live here. The backend speaks camelCase JSON
- * (kz.ask.shared.api.dto), so no key transforms are needed — adding one would
- * be dead code (P8.1).
+ * NO domain endpoints live here. The backend's WIRE format is snake_case
+ * (D20 — proven on live integration 2026-07-17); this client is the one place
+ * that knows it: request bodies snakify, response bodies camelize, and every
+ * slice speaks camelCase only. Query params are never transformed (Spring
+ * binds them by Java parameter name).
  */
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -44,7 +47,7 @@ async function readErrorBody(
   response: Response,
 ): Promise<ApiErrorBody | undefined> {
   try {
-    return (await response.json()) as ApiErrorBody;
+    return camelizeKeys(await response.json()) as ApiErrorBody;
   } catch {
     return undefined; // non-JSON error body — the status still tells the story
   }
@@ -66,7 +69,7 @@ async function request<T>(
   let body: string | undefined;
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
-    body = JSON.stringify(options.body);
+    body = JSON.stringify(snakifyKeys(options.body));
   }
 
   const response = await fetch(buildUrl(path, options.query), {
@@ -84,7 +87,7 @@ async function request<T>(
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  return camelizeKeys(await response.json()) as T;
 }
 
 export const httpClient = {

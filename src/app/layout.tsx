@@ -24,8 +24,20 @@ const golos = Golos_Text({
 });
 
 export const metadata: Metadata = {
-  title: "Ask",
+  // Pages set a bare title; the template brands it ("Log in — Ask"). Routes
+  // without one (the landing) fall back to the default.
+  title: { template: "%s - Ask", default: "Ask" },
 };
+
+/*
+ * Applies the stored theme to <html> BEFORE first paint, so there is no flash of
+ * the wrong theme. Mirrors shared/theme.ts (an inline script cannot import it):
+ * read `ask.theme`; "system" (or absent) resolves the OS preference into a
+ * concrete light/dark attribute. `data-theme` is what design-system/tokens.css
+ * reads. `suppressHydrationWarning` on <html> is required because this mutates
+ * the attribute before React hydrates.
+ */
+const THEME_SCRIPT = `(function(){try{var p=localStorage.getItem('ask.theme');var t=(p==='light'||p==='dark')?p:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
 export default async function RootLayout({
   children,
@@ -35,7 +47,10 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={golos.variable}>
+    <html lang={locale} className={golos.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>

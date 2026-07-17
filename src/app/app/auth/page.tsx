@@ -1,13 +1,7 @@
-import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
 
-/** /app/auth → renders @/auth AuthPage when the auth slice lands (roadmap Phase 1 #1). [client page behind this server route file, D7] */
-export default async function AuthRoute() {
-  const t = await getTranslations("app");
-
-  return (
-    <main>
-      <h1>{t("pages.auth")}</h1>
-      <p>{t("placeholder")}</p>
-    </main>
-  );
+/** /app/auth → the auth surface is two pages now (login / register); default to
+ *  login. Kept so the /app/auth URL (architecture §2, the smoke test) resolves. */
+export default function AuthRoute() {
+  redirect("/app/auth/login");
 }

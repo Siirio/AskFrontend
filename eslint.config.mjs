@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import tsParser from "@typescript-eslint/parser";
 import boundaries from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
@@ -15,6 +17,74 @@ import importPlugin from "eslint-plugin-import";
  */
 const SLICES =
   "auth|search|catalog|services|chats|requests|profile|business-cabinet";
+const SLICE_SET = new Set(SLICES.split("|"));
+const TOOLBOX = new Set(["shared", "design-system", "lib"]);
+
+/**
+ * The R4 "element" a path belongs to — one slice, `app/`, or one toolbox folder
+ * — taken from the segment after the LAST `/src/` (so the identical logic maps
+ * both the real tree and the `lint-fixtures/src/` proof tree). null = outside
+ * every known element.
+ */
+function elementOf(absPath) {
+  const norm = absPath.replace(/\\/g, "/");
+  const idx = norm.lastIndexOf("/src/");
+  if (idx === -1) return null;
+  const seg = norm.slice(idx + "/src/".length).split("/")[0];
+  if (!seg) return null;
+  if (seg === "app") return "app";
+  if (SLICE_SET.has(seg) || TOOLBOX.has(seg)) return seg;
+  return null;
+}
+
+/**
+ * R4 teeth (§4). A relative import may stay WITHIN an element, but crossing
+ * elements MUST use the `@/` alias. Off-the-shelf rules cannot express this — a
+ * `../` inside a slice is legal — and a relative escape to a *legal* target
+ * slips past `boundaries/dependencies`, which classifies by resolved path, not
+ * by how the import is written. This custom rule closes exactly that gap, and
+ * is proven, not assumed (lint-fixtures/src/auth/bad-r4-relative-escape.ts).
+ */
+const noCrossElementRelativeImport = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "Cross-element imports must use the @/ alias, not a relative path (R4)",
+    },
+    schema: [],
+    messages: {
+      crossElement:
+        "R4: cross-element import must use the '@/' alias, not a relative path — '{{source}}' reaches from '{{fromEl}}' into '{{toEl}}'.",
+    },
+  },
+  create(context) {
+    const filename = context.filename ?? context.getFilename();
+    const fromEl = elementOf(filename);
+    if (!fromEl) return {};
+
+    function check(source) {
+      const value = source && source.value;
+      if (typeof value !== "string" || !value.startsWith(".")) return;
+      const toEl = elementOf(path.resolve(path.dirname(filename), value));
+      if (toEl && toEl !== fromEl) {
+        context.report({
+          node: source,
+          messageId: "crossElement",
+          data: { source: value, fromEl, toEl },
+        });
+      }
+    }
+
+    return {
+      ImportDeclaration: (node) => check(node.source),
+      ExportNamedDeclaration: (node) => node.source && check(node.source),
+      ExportAllDeclaration: (node) => node.source && check(node.source),
+      ImportExpression: (node) =>
+        node.source && node.source.type === "Literal" && check(node.source),
+    };
+  },
+};
 
 export default [
   {
@@ -27,6 +97,11 @@ export default [
     plugins: {
       boundaries,
       import: importPlugin,
+      local: {
+        rules: {
+          "no-cross-element-relative-import": noCrossElementRelativeImport,
+        },
+      },
     },
     settings: {
       "import/resolver": {
@@ -89,6 +164,9 @@ export default [
       "boundaries/no-unknown-dependencies": "error",
       // R5 teeth — boundaries cannot detect cycles
       "import/no-cycle": ["error", { maxDepth: 4 }],
+      // R4 teeth — a relative import that escapes its element to a LEGAL target
+      // is invisible to boundaries/dependencies; this catches it (custom rule).
+      "local/no-cross-element-relative-import": "error",
     },
   },
 ];

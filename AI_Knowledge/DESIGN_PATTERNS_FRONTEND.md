@@ -55,7 +55,7 @@ One piece of knowledge = one representation. The classic drift in AI-built codeb
 
 - **P6.1** One implementation per concern — the binding list is architecture doc §7 (HTTP, routing, rendering, state, animation, styling, i18n, icons, images). Adding a parallel mechanism is an architecture violation.
 - **P6.2** Business rules, validation regexes, and constants exist in exactly one exported place. Copy-pasting a validation rule into a second file is a bug.
-- **P6.3** **Wrong-abstraction guard:** a shared helper MUST NOT accept a "caller type" parameter (`if (formType === "signup")`...). The moment a shared function needs to know who is calling it, inline it back into the callers and let them diverge. Duplication is cheaper than the wrong abstraction.
+- **P6.3** **Wrong-abstraction guard:** a shared helper MUST NOT accept a "caller type" parameter (`if (formType === "register")`...). The moment a shared function needs to know who is calling it, inline it back into the callers and let them diverge. Duplication is cheaper than the wrong abstraction.
 - **P6.4** Rule of three (architecture doc §5): duplicate for the second consumer; abstract only at the third, and only if the code is genuinely the same knowledge, not coincidentally similar.
 - **P6.5** Tests are NOT DRY: each test shows its own inputs and expectations inline. Helpers may remove boilerplate (rendering setup) but must never hide what is being tested.
 

@@ -20,6 +20,12 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // The customer flow is mobile-first (platform-ui-design §7) — proven, not
+    // asserted: every spec also runs in a phone viewport with touch enabled.
+    {
+      name: "mobile-chromium",
+      use: { ...devices["Pixel 7"] },
+    },
   ],
   webServer: {
     command: "next build && next start",

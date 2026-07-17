@@ -16,15 +16,29 @@
  * at the bottom. None of these numbers are guesses.
  *
  * HOW LIGHT/DARK WORKS: the primitives below are redefined under
- * `prefers-color-scheme: dark`, and `@theme inline` makes every Tailwind
- * utility resolve to the primitive at use time. Consequence, and it is a rule:
+ * `:root[data-theme="dark"]`, and `@theme inline` makes every Tailwind utility
+ * resolve to the primitive at use time. Consequence, and it is a rule:
  * COMPONENTS NEVER WRITE `dark:` FOR COLOUR. `bg-surface` is already correct in
- * both modes. Light and dark are designed, not derived by inversion.
- * There is no theme toggle: PRODUCT_VISION.md has no such control, and P9.1
- * forbids inventing one. We follow the system preference.
+ * both themes. Light and dark are designed, not derived by inversion.
+ *
+ * The `data-theme` attribute on <html> is set before first paint by a tiny
+ * inline script in app/layout.tsx, from the stored preference (`ask.theme`);
+ * "system" resolves the OS `prefers-color-scheme` into a concrete light/dark
+ * attribute (and re-resolves on OS change). The dark palette therefore lives in
+ * exactly ONE place — the measured values are never duplicated across a media
+ * query and an attribute selector.
+ *
+ * §note — 2026-07-15: this REVERSES the original "no theme toggle, follow the
+ * system preference only" stance (D13) at the product owner's request — see
+ * decision log D17. The toggle is `shared/ui/theme-toggle`, the store is
+ * `shared/theme.ts`. The measured values and the 31 verified contrast pairs are
+ * unchanged; only HOW a theme is selected changed (media query → attribute +
+ * script). No `dark:` in components still holds.
  */
 
 :root {
+  color-scheme: light;
+
   /* ── ACCENT — the one saturated colour in the product ────────────────────
    * oklch(0.575 0.161 46). Hue 46 is a true orange, chosen BETWEEN the two
    * things we must not be:
@@ -115,49 +129,49 @@
   --overlay: oklch(0.16 0.008 50 / 0.55);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* A single accent value CANNOT serve both modes: the light accent against
-     * the dark surface measures 3.84:1 — it survives WCAG 1.4.11 but reads
-     * muddy, and it cannot go deeper without dying. So dark gets its own value
-     * at the SAME HUE (46): brighter, and its label flips to ink. The hue never
-     * moves; only lightness and the foreground do. That is what "designed, not
-     * derived" costs, and it is why --accent-foreground is a token. */
-    --accent: oklch(0.72 0.186 46);
-    --accent-hover: oklch(0.775 0.141 46);
-    --accent-active: oklch(0.67 0.188 46);
-    --accent-foreground: oklch(0.235 0.012 50); /* ink — 6.30:1 */
+:root[data-theme="dark"] {
+  color-scheme: dark;
 
-    --offer: oklch(0.31 0.038 68);
-    --offer-border: oklch(0.4 0.048 68);
-    --offer-foreground: oklch(0.9 0.045 75); /* 9.79:1 on the tint */
+  /* A single accent value CANNOT serve both modes: the light accent against
+   * the dark surface measures 3.84:1 — it survives WCAG 1.4.11 but reads
+   * muddy, and it cannot go deeper without dying. So dark gets its own value
+   * at the SAME HUE (46): brighter, and its label flips to ink. The hue never
+   * moves; only lightness and the foreground do. That is what "designed, not
+   * derived" costs, and it is why --accent-foreground is a token. */
+  --accent: oklch(0.72 0.186 46);
+  --accent-hover: oklch(0.775 0.141 46);
+  --accent-active: oklch(0.67 0.188 46);
+  --accent-foreground: oklch(0.235 0.012 50); /* ink — 6.30:1 */
 
-    /* A warm CHARCOAL, not a near-black. Deliberate: "near-black background +
-     * one bright accent" is itself a named AI-design cliché, and a true black
-     * would make the warm ramp meaningless. Cards lift by lightness here —
-     * shadows do almost nothing on a dark surface. */
-    --surface: oklch(0.205 0.01 50);
-    --surface-raised: oklch(0.255 0.011 50);
-    --surface-sunken: oklch(0.17 0.009 50);
+  --offer: oklch(0.31 0.038 68);
+  --offer-border: oklch(0.4 0.048 68);
+  --offer-foreground: oklch(0.9 0.045 75); /* 9.79:1 on the tint */
 
-    --border: oklch(0.32 0.012 50);
-    --border-strong: oklch(0.42 0.014 50);
+  /* A warm CHARCOAL, not a near-black. Deliberate: "near-black background +
+   * one bright accent" is itself a named AI-design cliché, and a true black
+   * would make the warm ramp meaningless. Cards lift by lightness here —
+   * shadows do almost nothing on a dark surface. */
+  --surface: oklch(0.205 0.01 50);
+  --surface-raised: oklch(0.255 0.011 50);
+  --surface-sunken: oklch(0.17 0.009 50);
 
-    --foreground: oklch(0.96 0.004 50);
-    --foreground-muted: oklch(0.74 0.01 50);
-    --foreground-subtle: oklch(0.64 0.01 50);
+  --border: oklch(0.32 0.012 50);
+  --border-strong: oklch(0.42 0.014 50);
 
-    --destructive: oklch(0.7 0.18 27);
-    --destructive-foreground: oklch(0.235 0.012 50);
-    --success: oklch(0.76 0.187 155);
-    --success-foreground: oklch(0.235 0.012 50);
-    --warning: oklch(0.84 0.16 85);
-    --warning-foreground: oklch(0.235 0.012 50);
+  --foreground: oklch(0.96 0.004 50);
+  --foreground-muted: oklch(0.74 0.01 50);
+  --foreground-subtle: oklch(0.64 0.01 50);
 
-    --shadow-color-weak: oklch(0 0 0 / 0.3);
-    --shadow-color: oklch(0 0 0 / 0.45);
-    --shadow-color-strong: oklch(0 0 0 / 0.6);
-  }
+  --destructive: oklch(0.7 0.18 27);
+  --destructive-foreground: oklch(0.235 0.012 50);
+  --success: oklch(0.76 0.187 155);
+  --success-foreground: oklch(0.235 0.012 50);
+  --warning: oklch(0.84 0.16 85);
+  --warning-foreground: oklch(0.235 0.012 50);
+
+  --shadow-color-weak: oklch(0 0 0 / 0.3);
+  --shadow-color: oklch(0 0 0 / 0.45);
+  --shadow-color-strong: oklch(0 0 0 / 0.6);
 }
 
 /*
