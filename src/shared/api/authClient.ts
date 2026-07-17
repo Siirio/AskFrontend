@@ -1,4 +1,4 @@
-import { apiRequest, setStoredToken } from "./httpClient";
+import { API_BASE_URL, apiRequest, setStoredToken } from "./httpClient";
 
 export type AuthChallenge = {
   authChallengeId: string;
@@ -37,6 +37,10 @@ export type AuthSession = {
 function persistSession(session: AuthSession): AuthSession {
   setStoredToken(session.accessToken);
   return session;
+}
+
+export function getGoogleOAuthUrl() {
+  return `${API_BASE_URL}/oauth2/authorization/google`;
 }
 
 export function loginWithPassword(email: string, password: string) {

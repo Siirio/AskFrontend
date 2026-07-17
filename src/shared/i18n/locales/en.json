@@ -34,6 +34,7 @@
   "auth.button.back": "Back",
   "auth.button.verifying": "Verifying...",
   "auth.oauth.google": "Sign in with Google",
+  "auth.oauth.googleRegister": "Register with Google",
   "auth.oauth.separator": "or",
   "auth.testMode": "Test mode — code:",
   "auth.codeSent": "Verification code sent to {{destination}}",

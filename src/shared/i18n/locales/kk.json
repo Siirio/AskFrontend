@@ -34,6 +34,7 @@
   "auth.button.back": "Артқа",
   "auth.button.verifying": "Тексеру...",
   "auth.oauth.google": "Google арқылы кіру",
+  "auth.oauth.googleRegister": "Google арқылы тіркелу",
   "auth.oauth.separator": "немесе",
   "auth.testMode": "Тест режимі — код:",
   "auth.codeSent": "Растау коды {{destination}} мекенжайына жіберілді",

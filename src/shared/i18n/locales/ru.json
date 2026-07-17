@@ -34,6 +34,7 @@
   "auth.button.back": "Назад",
   "auth.button.verifying": "Проверка...",
   "auth.oauth.google": "Войти через Google",
+  "auth.oauth.googleRegister": "Зарегистрироваться через Google",
   "auth.oauth.separator": "или",
   "auth.testMode": "Тестовый режим — код:",
   "auth.codeSent": "Код подтверждения отправлен на {{destination}}",

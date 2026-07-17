@@ -34,6 +34,7 @@ There are three distinct entry paths into the system. They are not three equal "
 | Path | Who | How | Endpoint |
 |------|-----|-----|----------|
 | Customer registration | End-user searching | Self-registers | `POST /auth/customer/register` |
+| Google customer registration/login | End-user searching | Google-verified email creates or reuses CUSTOMER | `GET {API_BASE_URL}/oauth2/authorization/google` |
 | Business owner registration | Person creating a business | Self-registers | `POST /auth/business/register` |
 | Staff activation | Staff | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
 
