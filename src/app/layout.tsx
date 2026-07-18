@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Golos_Text } from "next/font/google";
-import { getLocale } from "next-intl/server";
+import { getLocale, setRequestLocale } from "next-intl/server";
 
 import { AppProviders } from "@/app/providers/AppProviders";
 import { SITE_NAME, TITLE_TEMPLATE } from "@/shared/config/site";
+import { defaultLocale } from "@/shared/i18n/locales";
 
 import "./globals.css";
 
@@ -47,6 +48,16 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
+  // Seed next-intl's request locale so the marketing landing at `/` renders
+  // STATICALLY (D6). getLocale/getMessages/getTranslations are treated as
+  // dynamic until the locale is seeded; without this the whole tree — the
+  // landing included — is opted into dynamic rendering, which is what defeated
+  // the D6 static-landing lock (2026-07-18 review: `/` shipped as ƒ, not ○).
+  // The server always serves defaultLocale; the /app locale switch is
+  // client-side (D18) and the platform layout still reads cookies, so /app/*
+  // stays dynamic as D19 intends.
+  setRequestLocale(defaultLocale);
+
   const locale = await getLocale();
 
   return (

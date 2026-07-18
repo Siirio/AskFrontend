@@ -7,11 +7,16 @@ import { defaultLocale, parseLocale } from "./locales";
  *
  * No cookie or header is read HERE, deliberately: that would force dynamic
  * rendering everywhere and break the static, SEO-first marketing landing (D6).
- * `requestLocale` resolves only when a caller passes an explicit locale —
- * e.g. `getTranslations({ locale })` in the auth routes' generateMetadata,
- * which resolves it from the ask.locale cookie (D19). Without an explicit
- * locale (the landing, the platform shell) it is undefined and the default
- * serves — so the landing stays static.
+ * `requestLocale` resolves from whatever the caller seeded — `setRequestLocale`
+ * at a static entry point (root layout + the landing page), or an explicit
+ * locale like `getTranslations({ locale })` in the auth routes'
+ * generateMetadata, which resolves it from the ask.locale cookie (D19).
+ *
+ * Not reading a cookie here is NECESSARY for a static landing but not
+ * SUFFICIENT: next-intl still treats getLocale/getMessages/getTranslations as
+ * dynamic until a request locale is seeded. `setRequestLocale(defaultLocale)`
+ * at the static entry points is what actually keeps `/` static (added
+ * 2026-07-18 after the build shipped `/` as ƒ despite this care).
  *
  * The CLIENT locale switch (ru/kk/en) scoped to `/app` lives in
  * `shared/i18n/LocaleProvider` (D18/D19) and re-provides messages client-side;
