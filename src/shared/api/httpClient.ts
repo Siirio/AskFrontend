@@ -98,7 +98,7 @@ async function request<T>(
   } catch {
     throw new ApiError(response.status, {
       message:
-        text === ""
+        text.trim() === ""
           ? "Empty body on a non-204 success response"
           : "Response body was not valid JSON",
     });

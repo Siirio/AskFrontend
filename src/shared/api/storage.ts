@@ -66,9 +66,11 @@ export const storage = {
       // key === null means localStorage.clear() — every key may have changed.
       if (event.key === key || event.key === null) {
         // The event proves localStorage changed and is now the fresher truth —
-        // drop any in-session fallback so listeners don't re-read a stale
-        // value this tab failed to persist.
-        memoryFallback.delete(key);
+        // drop the in-session fallback so reads don't resurrect a stale value
+        // this tab failed to persist. A clear() invalidates EVERY key, so it
+        // empties the whole fallback (including keys with no subscriber).
+        if (event.key === null) memoryFallback.clear();
+        else memoryFallback.delete(key);
         listener();
       }
     };
