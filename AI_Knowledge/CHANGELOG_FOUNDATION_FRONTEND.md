@@ -277,3 +277,23 @@ Updated the frontend product architecture idea:
 - Add-branch city dropdown is disabled when reference cities are unavailable instead of silently showing an empty selectable dropdown.
 - Frontend error handling now maps backend `errorCode` values such as `INVALID_CREDENTIALS`, `VALIDATION_ERROR`, `ACCESS_DENIED`, and `CITY_NOT_FOUND` to user-facing messages.
 - Login with a missing or wrong account should show invalid credentials instead of a generic server error when backend returns the shared `ErrorResponse` contract.
+
+## 2026-07-18 - Unified Chat, Platform Workspace, Compliance UI
+
+Completed the frontend part of the identity/onboarding/managed-import/compliance spec:
+
+- ChatsPage now lists real chat conversations (GENERAL_SUPPORT / MANAGED_IMPORT) with statuses (PENDING / IN_CHAT / CLOSED), unread counts, an inline thread with sender badges, file upload, and a `?conversation=` URL parameter for cross-page navigation.
+- PlatformPage replaced static cards with permission-gated functional sections: managed imports, support conversations (list + thread + close via platform chat endpoints), platform users CRUD with role/permission editing, and moderation (open reports with resolve/reject, hide product, suspend/ban business).
+- BusinessPage shows a catalog setup deadline banner (remaining days for IN_PROGRESS, restricted warning for RESTRICTED) with a complete-setup action for owner/manager/platform.
+- New `ReportDialog` widget (reason code + details) wired into chat messages (MESSAGE), ProductPage (PRODUCT), and CompanyCard (BUSINESS); reports POST to `/api/v1/reports`.
+- `uploadChatFile` now sends the required `conversationId` form field; ChatPanel and CompanyCard auto-start a conversation before uploading so files are never orphaned.
+- New API clients: `platformClient.ts` (platform chat, users, reports, moderation) and `reportClient.ts`.
+- i18n: added platform/support/users/moderation/report/conversation/catalog-setup keys to en/ru/kk; removed 78 dead `cardBuilder.*` keys from ru; fixed kk duplicate `time.*` keys and added missing plural forms (kk `_one/_other`, ru `_other`).
+
+## 2026-07-18 - Frontend Test Infrastructure (spec section 26)
+
+- Added vitest + @testing-library/react + jest-dom + user-event + jsdom; `npm test` runs `vitest run`; config in `vitest.config.ts`, shared setup in `src/test/setup.ts` (jsdom polyfills, en locale, cleanup).
+- `Navigation.test.tsx`: common navigation identical for customer/business/platform users, conditional business and platform cabinet links, no global role switcher, hidden for unauthenticated visitors.
+- `BusinessInvitationModal.test.tsx`: pending invitation rendering (business/role/inviter), accept calls API + refreshes session, decline calls API without session refresh, nothing rendered without invitations.
+- `SellerOnboardingPage.test.tsx`: wizard renders for authenticated (existing) users, unauthenticated (new) users are redirected to auth first, no country selector rendered while submit defaults `countryCode: "KZ"`, full wizard walk lands in the business cabinet.
+- `ProfilePage.test.tsx`: multiple business selector lists every membership; clicking one calls `selectBusiness` and opens that business cabinet.

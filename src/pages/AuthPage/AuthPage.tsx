@@ -5,12 +5,12 @@ import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
-import { fetchEmailInfo, getGoogleOAuthUrl } from "../../shared/api/authClient";
+import { getGoogleOAuthUrl } from "../../shared/api/authClient";
 import { Input } from "../../shared/ui/Input/Input";
 import { ROUTES } from "../../app/routes";
 
 export function AuthPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { state, actions } = useAuth();
   const { reduced } = useMotion();
   const navigate = useNavigate();
@@ -19,12 +19,10 @@ export function AuthPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [code, setCode] = useState("");
-  const [staffEmailHint, setStaffEmailHint] = useState<{ role: string; businessName: string } | null>(null);
-  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [acceptedUserAgreement, setAcceptedUserAgreement] = useState(false);
 
-  if (state.view !== "auth" && !state.challenge && !state.requiresRoleSelection && !state.requiresTwoFactor && !state.activationRequired) {
-    const target = state.view === "business" || state.view === "staff" ? ROUTES.business : ROUTES.home;
-    return <Navigate to={target} replace />;
+  if (state.authenticated && !state.challenge && !state.requiresTwoFactor && !state.activationRequired) {
+    return <Navigate to={sessionStorage.getItem("ask.sellerOnboardingDraft") ? ROUTES.sellerOnboarding : ROUTES.home} replace />;
   }
 
   const handleLogin = async (e: FormEvent) => {
@@ -34,7 +32,13 @@ export function AuthPage() {
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
-    await actions.register({ email, password, displayName });
+    await actions.register({
+      email,
+      password,
+      displayName,
+      acceptedUserAgreement,
+      locale: i18n.resolvedLanguage ?? "ru",
+    });
   };
 
   const handleVerify = async (e: FormEvent) => {
@@ -45,33 +49,6 @@ export function AuthPage() {
   const handleTwoFactor = async (e: FormEvent) => {
     e.preventDefault();
     await actions.verifyTwoFactor(code);
-  };
-
-  const handleEmailBlur = async () => {
-    if (!email || email.length < 5) return;
-    setCheckingEmail(true);
-    try {
-      const info = await fetchEmailInfo(email);
-      const staffAccount = info.accounts?.find(a =>
-        (a.role === "BUSINESS_MANAGER" || a.role === "BUSINESS_WORKER")
-        && a.status === "PENDING_ACTIVATION"
-      );
-      if (staffAccount) {
-        setStaffEmailHint({
-          role: staffAccount.role,
-          businessName: staffAccount.businessName || "",
-        });
-        if (state.mode === "register") {
-          actions.setMode("login");
-        }
-      } else {
-        setStaffEmailHint(null);
-      }
-    } catch {
-      setStaffEmailHint(null);
-    } finally {
-      setCheckingEmail(false);
-    }
   };
 
   const cardContent = renderCard();
@@ -130,50 +107,6 @@ export function AuthPage() {
               </button>
             </div>
           </form>
-        </>
-      );
-    }
-
-    // Role selection screen
-    if (state.requiresRoleSelection && state.availableRoles.length > 0) {
-      return (
-        <>
-          <h2 className="fcw-h3" style={{ marginBottom: "var(--fcw-space-sm)", textAlign: "center" }}>
-            {t("auth.roleSelection.title")}
-          </h2>
-          <p className="fcw-body-s fcw-text-secondary" style={{ marginBottom: "var(--fcw-space-md)", textAlign: "center" }}>
-            {t("auth.roleSelection.description")}
-          </p>
-
-          {state.error && (
-            <div className="fcw-body-s" style={{ color: "var(--fcw-color-error)", marginBottom: "var(--fcw-space-sm)", textAlign: "center" }}>
-              {state.error}
-            </div>
-          )}
-
-          <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)", marginBottom: "var(--fcw-space-md)" }}>
-            {state.availableRoles.map(role => (
-              <button
-                key={role.userId}
-                className="fcw-card fcw-card-clickable fcw-p-md"
-                style={{ width: "100%", textAlign: "left", border: "none", cursor: "pointer" }}
-                onClick={() => actions.selectRole(role.role)}
-                disabled={state.busy}
-              >
-                <p className="fcw-body fcw-font-medium">{role.displayName || role.role}</p>
-                <p className="fcw-body-xs fcw-text-tertiary">{t(`auth.role.${role.role}`)}</p>
-              </button>
-            ))}
-          </div>
-
-          <button
-            className="fcw-btn fcw-btn-ghost fcw-btn-sm fcw-mx-auto"
-            style={{ display: "flex" }}
-            onClick={actions.backToLogin}
-          >
-            <ArrowLeft size={14} />
-            {t("auth.button.back")}
-          </button>
         </>
       );
     }
@@ -281,45 +214,6 @@ export function AuthPage() {
     }
 
     // Role expansion — suggest adding another role after first registration
-    if (state.suggestRoleExpansion) {
-      const currentRole = state.session?.role || "";
-      const isCustomer = currentRole.includes("CUSTOMER");
-
-      return (
-        <>
-          <h2 className="fcw-h3" style={{ marginBottom: "var(--fcw-space-sm)", textAlign: "center" }}>
-            {t("auth.roleExpansion.title")}
-          </h2>
-          <p className="fcw-body-s fcw-text-secondary" style={{ marginBottom: "var(--fcw-space-md)", textAlign: "center" }}>
-            {isCustomer ? t("auth.roleExpansion.customerDescription") : t("auth.roleExpansion.businessDescription")}
-          </p>
-
-          {state.error && (
-            <div className="fcw-body-s" style={{ color: "var(--fcw-color-error)", marginBottom: "var(--fcw-space-sm)", textAlign: "center" }}>
-              {state.error}
-            </div>
-          )}
-
-          <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
-            <button
-              className="fcw-btn fcw-btn-primary fcw-btn-lg"
-              onClick={actions.expandRole}
-              disabled={state.busy}
-            >
-              {isCustomer ? t("auth.roleExpansion.addBusiness") : t("auth.roleExpansion.addCustomer")}
-            </button>
-            <button
-              className="fcw-btn fcw-btn-secondary fcw-btn-lg"
-              onClick={actions.skipRoleExpansion}
-              disabled={state.busy}
-            >
-              {t("auth.roleExpansion.skip")}
-            </button>
-          </div>
-        </>
-      );
-    }
-
     // Login / Register forms
     return (
       <>
@@ -360,30 +254,11 @@ export function AuthPage() {
               label={t("auth.label.email")}
               type="email"
               value={email}
-              onChange={e => { setEmail(e.target.value); setStaffEmailHint(null); }}
-              onBlur={handleEmailBlur}
+              onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
               autoComplete="email"
             />
-            {checkingEmail && (
-              <div className="fcw-body-xs fcw-text-tertiary" style={{ textAlign: "center" }}>
-                ...
-              </div>
-            )}
-            {staffEmailHint && (
-              <div className="fcw-card fcw-p-sm" style={{ background: "var(--fcw-color-surface-info, #e8f0fe)", borderRadius: "var(--fcw-radius-md)" }}>
-                <p className="fcw-body-xs fcw-font-medium" style={{ color: "var(--fcw-color-primary)" }}>
-                  {t("auth.staffEmail.title")}
-                </p>
-                <p className="fcw-body-xs fcw-text-secondary">
-                  {staffEmailHint.role === "BUSINESS_MANAGER"
-                    ? t("auth.staffEmail.managerHint", { businessName: staffEmailHint.businessName })
-                    : t("auth.staffEmail.workerHint", { businessName: staffEmailHint.businessName })
-                  }
-                </p>
-              </div>
-            )}
             <Input
               label={t("auth.label.password")}
               type="password"
@@ -394,13 +269,29 @@ export function AuthPage() {
               autoComplete={state.mode === "login" ? "current-password" : "new-password"}
             />
             {state.mode === "register" && (
-              <Input
-                label={t("auth.label.name")}
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                placeholder={t("auth.placeholder.name")}
-                required
-              />
+              <>
+                <Input
+                  label={t("auth.label.name")}
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  placeholder={t("auth.placeholder.name")}
+                  required
+                />
+                <label className="fcw-flex fcw-items-start" style={{ gap: "0.5rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptedUserAgreement}
+                    onChange={event => setAcceptedUserAgreement(event.target.checked)}
+                    required
+                  />
+                  <span className="fcw-body-s">
+                    {t("auth.legal.accept")}{" "}
+                    <a href="/legal/user-terms">{t("auth.legal.userTerms")}</a>
+                    {" "}{t("auth.legal.and")}{" "}
+                    <a href="/legal/privacy">{t("auth.legal.privacy")}</a>
+                  </span>
+                </label>
+              </>
             )}
 
             {state.error && (

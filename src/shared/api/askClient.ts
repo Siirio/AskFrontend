@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest, getStoredToken, transformKeys, ApiError } from "./httpClient";
+import { API_BASE_URL, apiRequest, getCsrfHeaders, transformKeys, ApiError } from "./httpClient";
 import i18n from "../i18n/i18n";
 import { mapSearchResult, mapSupplierTask } from "./mappers";
 import type {
@@ -321,9 +321,7 @@ export async function uploadProductImport(branchId: string, file: File, mode: "P
   const form = new FormData();
   form.append("file", file);
   form.append("type", mode);
-  const headers: Record<string, string> = {};
-  const token = getStoredToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers = getCsrfHeaders();
   const isAutodumpFile = /\.(txt|md|pdf)$/i.test(file.name);
   const path = isAutodumpFile
     ? `/api/v1/business-admin/branches/${branchId}/autodump-sessions/files`
@@ -332,6 +330,7 @@ export async function uploadProductImport(branchId: string, file: File, mode: "P
     method: "POST",
     headers,
     body: form,
+    credentials: "include",
   });
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -528,16 +527,16 @@ export function sendChatMessage(conversationId: string, text: string, attachment
   });
 }
 
-export async function uploadChatFile(file: File) {
+export async function uploadChatFile(conversationId: string, file: File) {
   const form = new FormData();
+  form.append("conversationId", conversationId);
   form.append("file", file);
-  const headers: Record<string, string> = {};
-  const token = getStoredToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers = getCsrfHeaders();
   const response = await fetch(`${API_BASE_URL}/api/v1/chat/upload`, {
     method: "POST",
     headers,
     body: form,
+    credentials: "include",
   });
   if (!response.ok) {
     const text = await response.text().catch(() => "");

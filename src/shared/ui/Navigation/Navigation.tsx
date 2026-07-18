@@ -2,8 +2,8 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Home, MessageCircle, UserRound, Sun, Moon, LogOut, Building2, Settings, Shield, Key, Check, Loader2, ArrowRightLeft } from "lucide-react";
-import { ROUTES } from "../../../app/routes";
+import { Home, MessageCircle, UserRound, Sun, Moon, LogOut, Building2, Settings, Shield, Key, Check, Loader2 } from "lucide-react";
+import { buildRoute, ROUTES } from "../../../app/routes";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { useTheme } from "../../../app/providers/ThemeProvider";
 import { LanguageSwitcher } from "../LanguageSwitcher/LanguageSwitcher";
@@ -23,7 +23,12 @@ export function Navigation() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const businessId = state.session?.business?.businessId || "";
+  const businessMemberships = state.session?.businessMemberships ?? [];
+  const selectedMembership = businessMemberships.find(
+    membership => membership.businessId === state.activeBusinessId,
+  ) ?? businessMemberships[0];
+  const businessId = selectedMembership?.businessId ?? "";
+  const hasPlatformAccess = Boolean(state.session?.platformMembership);
 
   // User menu
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -98,21 +103,35 @@ export function Navigation() {
   const consumerDesktopLinks = [
     { to: ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
     { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={18} /> },
+    ...(selectedMembership ? [{
+      to: buildRoute(ROUTES.business, { businessId: selectedMembership.businessId }),
+      label: t("nav.business"),
+      icon: <Building2 size={18} />,
+    }] : []),
+    ...(hasPlatformAccess ? [{
+      to: ROUTES.platform,
+      label: t("nav.platform"),
+      icon: <Shield size={18} />,
+    }] : []),
   ];
 
   const consumerMobileLinks = [
     { to: ROUTES.home, label: t("nav.main"), icon: <Home size={20} /> },
+    { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={20} /> },
+    ...(selectedMembership ? [{
+      to: buildRoute(ROUTES.business, { businessId: selectedMembership.businessId }),
+      label: t("nav.business"),
+      icon: <Building2 size={20} />,
+    }] : []),
+    ...(hasPlatformAccess ? [{
+      to: ROUTES.platform,
+      label: t("nav.platform"),
+      icon: <Shield size={20} />,
+    }] : []),
     { to: ROUTES.profile, label: t("nav.profile"), icon: <UserRound size={20} /> },
   ];
 
-  const businessMobileLinks = [
-    { to: ROUTES.business, label: t("nav.overview"), icon: <Building2 size={20} /> },
-    { to: ROUTES.profile, label: t("nav.profile"), icon: <UserRound size={20} /> },
-  ];
-
-  if (state.view === "auth") return null;
-
-  const isBusiness = state.view === "business" || state.view === "staff";
+  if (!state.authenticated) return null;
   const handleLogout = async () => {
     await actions.logout();
     navigate(ROUTES.auth, { replace: true });
@@ -135,11 +154,11 @@ export function Navigation() {
             <button
               className="fcw-btn fcw-btn-ghost fcw-weight-bold"
               style={{ fontSize: "var(--fcw-font-size-body-l)", color: "var(--fcw-color-primary)", padding: "0 0.5rem" }}
-              onClick={() => navigate(isBusiness ? ROUTES.business : ROUTES.home)}
+              onClick={() => navigate(ROUTES.home)}
             >
               ASK
             </button>
-            {!isBusiness && consumerDesktopLinks.map(link => (
+            {consumerDesktopLinks.map(link => (
               <NavLink
                 key={link.label}
                 to={link.to}
@@ -188,7 +207,7 @@ export function Navigation() {
         }}
       >
         <div className="fcw-flex fcw-h-full" style={{ gap: 0 }}>
-          {(isBusiness ? businessMobileLinks : consumerMobileLinks).map(link => (
+          {consumerMobileLinks.map(link => (
             <NavLink
               key={link.label}
               to={link.to}
@@ -282,45 +301,12 @@ export function Navigation() {
               onChange={setProfile}
               onSave={handleSaveProfile}
               busy={profileBusy}
-              readOnly={state.view === "staff"}
+              readOnly={selectedMembership?.role === "WORKER"}
             />
           )}
 
           {accountTab === "security" && (
             <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
-              <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-                <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <ArrowRightLeft size={16} style={{ color: "var(--fcw-color-primary)" }} />
-                  {t("profile.roleSwitcher.title")}
-                </h3>
-                <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
-                  <span className="fcw-body-s fcw-text-secondary">
-                    {t("business.currentRole")}: <strong>{t(`auth.role.${(state.session?.business?.memberRole || state.session?.role || "").toUpperCase().replace("ROLE_", "")}`)}</strong>
-                    {state.session?.business?.businessName ? ` (${state.session.business.businessName})` : ""}
-                  </span>
-                  <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                    {(() => {
-                      const allRoles = (state.session?.allRoles || []).map(r => r.replace("ROLE_", ""));
-                      const currentRole = (state.session?.role || "").toUpperCase().replace("ROLE_", "");
-                      const merged = [...new Set([...allRoles])];
-                      return merged.map(roleKey => {
-                        const isCurrent = currentRole === roleKey;
-                        return (
-                          <button
-                            key={roleKey}
-                            className={isCurrent ? "fcw-btn fcw-btn-primary fcw-btn-sm" : "fcw-btn fcw-btn-secondary fcw-btn-sm"}
-                            disabled={isCurrent || state.busy}
-                            onClick={() => { actions.switchRole(roleKey).catch(() => {}); setAccountModalOpen(false); }}
-                          >
-                            {t(`auth.role.${roleKey}`)}
-                          </button>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
-              </div>
-
               <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
                 <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <Key size={16} style={{ color: "var(--fcw-color-primary)" }} />

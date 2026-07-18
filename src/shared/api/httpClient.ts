@@ -17,8 +17,6 @@ export function transformKeys(obj: unknown): unknown {
   return obj;
 }
 
-const TOKEN_STORAGE_KEY = "ask.accessToken";
-
 function camelToSnake(key: string): string {
   return key.replace(/([A-Z])/g, (_, c) => "_" + c.toLowerCase());
 }
@@ -36,16 +34,17 @@ export function camelToSnakeKeys(obj: unknown): unknown {
   return obj;
 }
 
-export function getStoredToken(): string | null {
-  return window.localStorage.getItem(TOKEN_STORAGE_KEY);
+function getCookie(name: string): string | null {
+  const prefix = `${encodeURIComponent(name)}=`;
+  const cookie = document.cookie
+    .split("; ")
+    .find(item => item.startsWith(prefix));
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
 }
 
-export function setStoredToken(token: string | null) {
-  if (token) {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
-  } else {
-    window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-  }
+export function getCsrfHeaders(): Record<string, string> {
+  const token = getCookie("XSRF-TOKEN");
+  return token ? { "X-XSRF-TOKEN": token } : {};
 }
 
 export class ApiError extends Error {
@@ -68,17 +67,15 @@ type RequestOptions = {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-  if (options.auth) {
-    const token = getStoredToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  if (options.method && options.method !== "GET") {
+    Object.assign(headers, getCsrfHeaders());
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     headers,
     body: options.body ? JSON.stringify(camelToSnakeKeys(options.body)) : undefined,
+    credentials: "include",
   });
 
   if (!response.ok) {

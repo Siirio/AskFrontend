@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, ArrowRightLeft } from "lucide-react";
+import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, Download, Trash2 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
 import { buildRoute, ROUTES } from "../../app/routes";
+import { confirmEmailChange, deleteAccount, exportAccount, requestEmailChange } from "../../shared/api/authClient";
 
 type GeoStatus = "active" | "off" | "expired" | "denied" | "requesting" | "notGranted" | "unavailable";
 
@@ -60,14 +61,21 @@ export function ProfilePage() {
     notGranted: t("profile.geo.notGranted"),
   };
   const user = state.session?.user;
-  const business = state.session?.business;
-  const isBusiness = state.view === "business" || state.view === "staff";
+  const businessMemberships = state.session?.businessMemberships ?? [];
+  const activeBusiness = businessMemberships.find(
+    membership => membership.businessId === state.activeBusinessId,
+  ) ?? businessMemberships[0];
+  const isBusiness = businessMemberships.length > 0;
   const [editForm, setEditForm] = useState({
     displayName: user?.displayName || "",
     email: user?.email || "",
     phone: user?.phone || "",
   });
   const [formErrors, setFormErrors] = useState<{ email?: string; phone?: string }>({});
+  const [emailChallengeId, setEmailChallengeId] = useState("");
+  const [emailCode, setEmailCode] = useState("");
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [accountActionError, setAccountActionError] = useState("");
 
   function validateEmail(email: string) {
     if (!email) return undefined;
@@ -103,7 +111,7 @@ export function ProfilePage() {
     }).catch(() => {});
   }, []);
 
-  if (state.view === "auth") {
+  if (!state.authenticated) {
     return <Navigate to={ROUTES.auth} replace />;
   }
 
@@ -126,9 +134,44 @@ export function ProfilePage() {
 
     await actions.updateProfile({
       displayName: editForm.displayName,
-      email: editForm.email,
       phone: editForm.phone,
     });
+    if (editForm.email && editForm.email !== user?.email) {
+      const challenge = await requestEmailChange(editForm.email);
+      setEmailChallengeId(challenge.authChallengeId);
+    }
+  };
+
+  const handleConfirmEmail = async () => {
+    if (!emailChallengeId || emailCode.length !== 6) return;
+    await confirmEmailChange(emailChallengeId, emailCode);
+    setEmailChallengeId("");
+    setEmailCode("");
+    await actions.refreshSession();
+  };
+
+  const handleExportAccount = async () => {
+    const data = await exportAccount();
+    const url = URL.createObjectURL(new Blob(
+      [JSON.stringify(data, null, 2)],
+      { type: "application/json" },
+    ));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "ask-account-export.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteAccount = async () => {
+    setAccountActionError("");
+    try {
+      await deleteAccount();
+      await actions.logout();
+      navigate(ROUTES.auth, { replace: true });
+    } catch (cause) {
+      setAccountActionError(cause instanceof Error ? cause.message : t("profile.account.deleteError"));
+    }
   };
 
   const requestLocation = () => {
@@ -197,7 +240,7 @@ export function ProfilePage() {
 
               {isBusiness && (
                 <span className="fcw-label" style={{ color: "var(--fcw-color-primary)" }}>
-                  {state.view === "staff" ? t("profile.role.staff") : t("profile.role.business")}
+                  {t("profile.role.business")}
                 </span>
               )}
               {!isBusiness && (
@@ -205,36 +248,6 @@ export function ProfilePage() {
                   {t("profile.role.customer")}
                 </span>
               )}
-            </div>
-
-            <div style={{ marginTop: "var(--fcw-space-md)", paddingTop: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}>
-              <p className="fcw-body-s fcw-text-secondary" style={{ marginBottom: "var(--fcw-space-sm)" }}>
-                <ArrowRightLeft size={14} style={{ marginRight: "0.375rem", verticalAlign: "middle" }} />
-                {t("profile.roleSwitcher.title")}
-              </p>
-              <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                {(() => {
-                  const coreRoles = state.view === "business" || state.view === "staff"
-                    ? ["BUSINESS_OWNER", "BUSINESS_MANAGER", "BUSINESS_WORKER", "CUSTOMER"]
-                    : ["CUSTOMER", "BUSINESS_OWNER"];
-                  const backendRoles = (state.session?.allRoles || []).map(r => r.replace("ROLE_", ""));
-                  const merged = [...new Set([...coreRoles, ...backendRoles])];
-                  const currentRole = (state.session?.role || "").toUpperCase();
-                  return merged.map(roleKey => {
-                    const isCurrent = currentRole === roleKey;
-                    return (
-                      <button
-                        key={roleKey}
-                        className={isCurrent ? "fcw-btn fcw-btn-primary fcw-btn-sm" : "fcw-btn fcw-btn-secondary fcw-btn-sm"}
-                        disabled={isCurrent || state.busy}
-                        onClick={() => actions.switchRole(roleKey).catch(() => {})}
-                      >
-                        {t(`auth.role.${roleKey}`)}
-                      </button>
-                    );
-                  });
-                })()}
-              </div>
             </div>
           </Card>
 
@@ -260,6 +273,26 @@ export function ProfilePage() {
                     style={formErrors.email ? { borderColor: "var(--fcw-color-error)" } : undefined}
                   />
                   {formErrors.email && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{formErrors.email}</span>}
+                  {emailChallengeId && (
+                    <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                      <input
+                        className="fcw-input"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={emailCode}
+                        onChange={event => setEmailCode(event.target.value.replace(/\D/g, ""))}
+                        placeholder={t("profile.emailChange.code")}
+                      />
+                      <button
+                        className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                        type="button"
+                        onClick={handleConfirmEmail}
+                        disabled={emailCode.length !== 6}
+                      >
+                        {t("profile.emailChange.confirm")}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
                   <input
@@ -314,15 +347,32 @@ export function ProfilePage() {
               </span>
             </button>
 
-            {business && (
-              <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={() => navigate(buildRoute(ROUTES.business))}>
-                <Building2 size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                <span className="fcw-flex-1 fcw-text-left">{business.businessName}</span>
-              </button>
-            )}
+            <button
+              className="fcw-btn fcw-btn-ghost fcw-w-full"
+              style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}
+              onClick={() => navigate(ROUTES.sellerOnboarding)}
+            >
+              <Building2 size={18} style={{ color: "var(--fcw-color-primary)" }} />
+              <span className="fcw-flex-1 fcw-text-left">{t("profile.createBusiness")}</span>
+            </button>
 
-            {isBusiness && business && (
-              <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={() => navigate(buildRoute(ROUTES.storefront, {}, { businessId: business.businessId }))}>
+            {businessMemberships.map(membership => (
+              <button
+                key={membership.membershipId}
+                className="fcw-btn fcw-btn-ghost fcw-w-full"
+                style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}
+                onClick={() => {
+                  actions.selectBusiness(membership.businessId);
+                  navigate(buildRoute(ROUTES.business, { businessId: membership.businessId }));
+                }}
+              >
+                <Building2 size={18} style={{ color: "var(--fcw-color-primary)" }} />
+                <span className="fcw-flex-1 fcw-text-left">{membership.businessName}</span>
+              </button>
+            ))}
+
+            {activeBusiness && (
+              <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={() => navigate(buildRoute(ROUTES.storefront, { businessId: activeBusiness.businessId }))}>
                 <Package size={18} style={{ color: "var(--fcw-color-primary)" }} />
                 <span className="fcw-flex-1 fcw-text-left">{t("profile.myStorefront")}</span>
               </button>
@@ -332,6 +382,37 @@ export function ProfilePage() {
               <LogOut size={18} />
               <span className="fcw-flex-1 fcw-text-left">{t("profile.logout")}</span>
             </button>
+          </Card>
+
+          <Card padding="lg">
+            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
+              <h2 className="fcw-h3" style={{ margin: 0 }}>{t("profile.account.title")}</h2>
+              <p className="fcw-body-s fcw-text-secondary">{t("profile.account.description")}</p>
+              <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
+                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={handleExportAccount}>
+                  <Download size={14} />
+                  {t("profile.account.export")}
+                </button>
+                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setShowDeleteConfirmation(true)}>
+                  <Trash2 size={14} />
+                  {t("profile.account.delete")}
+                </button>
+              </div>
+              {showDeleteConfirmation && (
+                <div className="fcw-flex-col fcw-radius-md" style={{ gap: "0.5rem", padding: "0.75rem", background: "var(--fcw-color-surface-secondary)" }}>
+                  <p className="fcw-body-s">{t("profile.account.deleteConfirm")}</p>
+                  <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                    <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleDeleteAccount}>
+                      {t("profile.account.deleteFinal")}
+                    </button>
+                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => setShowDeleteConfirmation(false)}>
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {accountActionError && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{accountActionError}</p>}
+            </div>
           </Card>
         </motion.div>
       </div>

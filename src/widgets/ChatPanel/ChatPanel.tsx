@@ -143,11 +143,20 @@ export function ChatPanel() {
     setUploading(true);
     setChatError("");
     try {
-      const url = await uploadChatFile(file);
-      if (conversationId) {
-        const msg = await sendChatMessage(conversationId, "", url);
-        setMessages(prev => [...prev, msg]);
+      let targetConversationId = conversationId;
+      if (!targetConversationId) {
+        if (!chatData?.businessId) {
+          setChatError(t("companyCard.chat.error"));
+          return;
+        }
+        const subject = chatData.title || chatData.brandName || t("companyCard.newChat");
+        const conv = await startChatConversation(chatData.businessId, subject);
+        targetConversationId = conv.conversationId;
+        setConversationId(conv.conversationId);
       }
+      const url = await uploadChatFile(targetConversationId, file);
+      const msg = await sendChatMessage(targetConversationId, "", url);
+      setMessages(prev => [...prev, msg]);
     } catch {
       setChatError(t("companyCard.chat.uploadError"));
     } finally {

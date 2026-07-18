@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { SearchBar } from "../../shared/ui/SearchBar/SearchBar";
 import { CitySelector } from "../../shared/ui/CitySelector/CitySelector";
@@ -23,11 +23,7 @@ export function HomePage() {
   const { reduced } = useMotion();
   const { state } = useAuth();
 
-  if (state.view === "business" || state.view === "staff") {
-    return <Navigate to={ROUTES.business} replace />;
-  }
-
-  const isAuthenticated = state.view !== "auth";
+  const isAuthenticated = state.authenticated;
 
   const handleSearch = (query: string) => {
     if (!isAuthenticated) {

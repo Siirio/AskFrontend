@@ -5,9 +5,14 @@ export const ROUTES = {
   product: "/product/:id",
   storefront: "/storefront/:businessId",
   profile: "/profile",
-  business: "/business",
+  business: "/business/:businessId",
+  platform: "/platform",
   chats: "/chats",
   oauthCallback: "/oauth/callback",
+  legal: "/legal/:document",
+  support: "/support",
+  accountDeletion: "/account-deletion",
+  sellerOnboarding: "/seller/onboarding",
 } as const;
 
 export function buildRoute(route: string, params: Record<string, string> = {}, query?: Record<string, string>): string {

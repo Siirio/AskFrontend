@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, CheckCheck, Paperclip, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, CheckCheck, Paperclip, FileText, Flag } from "lucide-react";
 import type { ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { getPublicBusinessCard, startChatConversation, getChatMessages, sendChatMessage, uploadChatFile } from "../../shared/api/askClient";
+import { ReportDialog } from "../ReportDialog/ReportDialog";
 import type { BusinessCardDto, ChatMessageDto } from "../../shared/api/dto";
 
 interface Props {
@@ -24,6 +25,7 @@ export function CompanyCard({ data, onClose }: Props) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [chatError, setChatError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -104,11 +106,20 @@ export function CompanyCard({ data, onClose }: Props) {
     setUploading(true);
     setChatError("");
     try {
-      const url = await uploadChatFile(file);
-      if (conversationId) {
-        const msg = await sendChatMessage(conversationId, "", url);
-        setMessages(prev => [...prev, msg]);
+      let targetConversationId = conversationId;
+      if (!targetConversationId) {
+        if (!data?.businessId) {
+          setChatError(t("companyCard.chat.error"));
+          return;
+        }
+        const subject = data.title || data.brandName || t("companyCard.newChat");
+        const conv = await startChatConversation(data.businessId, subject);
+        targetConversationId = conv.conversationId;
+        setConversationId(conv.conversationId);
       }
+      const url = await uploadChatFile(targetConversationId, file);
+      const msg = await sendChatMessage(targetConversationId, "", url);
+      setMessages(prev => [...prev, msg]);
     } catch {
       setChatError(t("companyCard.chat.uploadError"));
     } finally {
@@ -120,7 +131,8 @@ export function CompanyCard({ data, onClose }: Props) {
   const brandLabel = data?.brandName || data?.title || "";
 
   return (
-    <AnimatePresence>
+    <>
+      <AnimatePresence>
       {data && (
         <motion.div
           className="fcw-fixed fcw-z-modal"
@@ -228,6 +240,17 @@ export function CompanyCard({ data, onClose }: Props) {
                 <X size={18} />
               </button>
             </div>
+
+            {!showChat && data.businessId && (
+              <button
+                className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                style={{ alignSelf: "flex-start", margin: "0.25rem 1rem 0", gap: "0.375rem", color: "var(--fcw-color-text-tertiary)" }}
+                onClick={() => setReportOpen(true)}
+              >
+                <Flag size={12} />
+                {t("report.title.BUSINESS")}
+              </button>
+            )}
 
             {/* Content */}
             <AnimatePresence mode="wait">
@@ -442,7 +465,14 @@ export function CompanyCard({ data, onClose }: Props) {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+      <ReportDialog
+        targetType="BUSINESS"
+        targetId={data?.businessId ?? ""}
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+      />
+    </>
   );
 }
 

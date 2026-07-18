@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest, setStoredToken } from "./httpClient";
+import { API_BASE_URL, apiRequest } from "./httpClient";
 
 export type AuthChallenge = {
   authChallengeId: string;
@@ -8,12 +8,6 @@ export type AuthChallenge = {
   maskedDestination: string;
   expiresAt: string;
   code?: string;
-};
-
-export type RoleOption = {
-  userId: string;
-  role: string;
-  displayName: string;
 };
 
 export type AuthSession = {
@@ -26,18 +20,22 @@ export type AuthSession = {
   startRoute?: string;
   user?: { userId: string; displayName: string; email?: string; phone?: string; status?: string };
   business?: { businessId: string; businessName: string; membershipId?: string; memberRole?: string; branchId?: string; branchName?: string };
-  requiresRoleSelection?: boolean;
-  availableRoles?: RoleOption[];
-  allRoles?: string[];
   requiresTwoFactor?: boolean;
   authChallengeId?: string;
-  suggestRoleExpansion?: boolean;
+  customerProfile?: { enabled: boolean };
+  businessMemberships?: Array<{
+    membershipId: string;
+    businessId: string;
+    businessName: string;
+    role: "OWNER" | "MANAGER" | "WORKER";
+    branchIds: string[];
+  }>;
+  platformMembership?: {
+    role: "SUPER_ADMIN" | "ADMIN" | "MODERATOR";
+    permissions: string[];
+  };
+  pendingInvitationsCount?: number;
 };
-
-function persistSession(session: AuthSession): AuthSession {
-  setStoredToken(session.accessToken);
-  return session;
-}
 
 export function getGoogleOAuthUrl() {
   return `${API_BASE_URL}/oauth2/authorization/google`;
@@ -47,40 +45,20 @@ export function loginWithPassword(email: string, password: string) {
   return apiRequest<AuthSession>("/api/v1/auth/login", {
     method: "POST",
     body: { email, password },
-  }).then(persistSession);
+  });
 }
 
-export function selectRole(email: string, password: string, role: string) {
-  return apiRequest<AuthSession>("/api/v1/auth/select-role", {
-    method: "POST",
-    body: { email, password, role },
-  }).then(persistSession);
+export function fetchCurrentSession() {
+  return apiRequest<AuthSession>("/api/v1/auth/session", { auth: true });
 }
 
-export function switchRole(role: string) {
-  return apiRequest<AuthSession>("/api/v1/auth/switch-role", {
-    method: "POST",
-    auth: true,
-    body: { role },
-  }).then(persistSession);
-}
-
-export type EmailAccountInfo = {
-  role: string;
-  status: string;
-  businessName?: string;
-};
-
-export type EmailInfoResponse = {
-  exists: boolean;
-  accounts: EmailAccountInfo[];
-};
-
-export function fetchEmailInfo(email: string) {
-  return apiRequest<EmailInfoResponse>(`/api/v1/auth/email-info?email=${encodeURIComponent(email)}`);
-}
-
-export function registerCustomer(displayName: string, email: string, password: string) {
+export function registerCustomer(
+  displayName: string,
+  email: string,
+  password: string,
+  acceptedUserAgreement: boolean,
+  locale: string,
+) {
   return apiRequest<AuthChallenge>("/api/v1/auth/customer/register", {
     method: "POST",
     body: {
@@ -88,7 +66,9 @@ export function registerCustomer(displayName: string, email: string, password: s
       email,
       password,
       passwordConfirmation: password,
-      acceptedUserAgreement: true,
+      acceptedUserAgreement,
+      countryCode: "KZ",
+      locale,
       rememberMe: true,
     },
   });
@@ -123,14 +103,14 @@ export function verifyCode(authChallengeId: string, code: string) {
   return apiRequest<AuthSession>("/api/v1/auth/verify", {
     method: "POST",
     body: { authChallengeId, code },
-  }).then(persistSession);
+  });
 }
 
 export function verifyTwoFactor(authChallengeId: string, code: string) {
   return apiRequest<AuthSession>("/api/v1/auth/verify", {
     method: "POST",
     body: { authChallengeId, code },
-  }).then(persistSession);
+  });
 }
 
 export function resolveCity(name: string) {
@@ -138,7 +118,6 @@ export function resolveCity(name: string) {
 }
 
 export function logout() {
-  setStoredToken(null);
 }
 
 export function logoutRemote() {
@@ -169,5 +148,32 @@ export function changeTemporaryPassword(newPassword: string, passwordConfirmatio
     method: "POST",
     auth: true,
     body: { newPassword, passwordConfirmation },
-  }).then(persistSession);
+  });
+}
+
+export function requestEmailChange(newEmail: string) {
+  return apiRequest<AuthChallenge>("/api/v1/auth/email-change/request", {
+    method: "POST",
+    auth: true,
+    body: { newEmail },
+  });
+}
+
+export function confirmEmailChange(authChallengeId: string, code: string) {
+  return apiRequest<AuthSession>("/api/v1/auth/email-change/confirm", {
+    method: "POST",
+    auth: true,
+    body: { authChallengeId, code },
+  });
+}
+
+export function exportAccount() {
+  return apiRequest<Record<string, unknown>>("/api/v1/account/export", { auth: true });
+}
+
+export function deleteAccount() {
+  return apiRequest<{ success: boolean }>("/api/v1/account", {
+    method: "DELETE",
+    auth: true,
+  });
 }

@@ -10,6 +10,10 @@ import { BusinessPage } from "../pages/BusinessPage/BusinessPage";
 import { AuthPage } from "../pages/AuthPage/AuthPage";
 import { ChatsPage } from "../pages/ChatsPage/ChatsPage";
 import { OAuthCallbackPage } from "../pages/OAuthCallbackPage/OAuthCallbackPage";
+import { PlatformPage } from "../pages/PlatformPage/PlatformPage";
+import { LegalPage } from "../pages/LegalPage/LegalPage";
+import { SellerOnboardingPage } from "../pages/SellerOnboardingPage/SellerOnboardingPage";
+import { BusinessInvitationModal } from "../widgets/BusinessInvitationModal/BusinessInvitationModal";
 
 import { ROUTES } from "./routes";
 
@@ -21,6 +25,7 @@ export function App() {
         {t("app.skipNav")}
       </a>
       <Navigation />
+      <BusinessInvitationModal />
       <Routes>
         <Route path={ROUTES.home} element={<HomePage />} />
         <Route path={ROUTES.auth} element={<AuthPage />} />
@@ -28,9 +33,14 @@ export function App() {
         <Route path={ROUTES.product} element={<ProductPage />} />
         <Route path={ROUTES.storefront} element={<StorefrontPage />} />
         <Route path={ROUTES.profile} element={<ProfilePage />} />
-        <Route path={ROUTES.business} element={<BusinessPage />} />
+        <Route path={`${ROUTES.business}/*`} element={<BusinessPage />} />
+        <Route path={ROUTES.platform} element={<PlatformPage />} />
         <Route path={ROUTES.chats} element={<ChatsPage />} />
         <Route path={ROUTES.oauthCallback} element={<OAuthCallbackPage />} />
+        <Route path={ROUTES.legal} element={<LegalPage />} />
+        <Route path={ROUTES.support} element={<LegalPage />} />
+        <Route path={ROUTES.accountDeletion} element={<LegalPage />} />
+        <Route path={ROUTES.sellerOnboarding} element={<SellerOnboardingPage />} />
 
         <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
       </Routes>

@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, MapPin, Phone, MessageCircle, Clock3, Store, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, MessageCircle, Clock3, Store, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle, Flag } from "lucide-react";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
 import { BrandBadge } from "../../shared/ui/BrandBadge/BrandBadge";
 import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
 import { Modal } from "../../shared/ui/Modal/Modal";
+import { ReportDialog } from "../../widgets/ReportDialog/ReportDialog";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { resolveContactAction } from "../../shared/api/askClient";
 import type { ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
@@ -25,6 +26,7 @@ export function ProductPage() {
   const [messageText, setMessageText] = useState("");
   const [contactState, setContactState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [contactError, setContactError] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (!card) {
     return (
@@ -126,6 +128,14 @@ export function ProductPage() {
                 <span className="fcw-body-s fcw-text-tertiary fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
                   <Clock3 size={12} />
                   {typeLabel}
+                  <button
+                    className="fcw-btn fcw-btn-ghost fcw-btn-icon"
+                    style={{ width: 24, height: 24, padding: 0 }}
+                    aria-label={t("report.title.PRODUCT")}
+                    onClick={() => authState.session ? setReportOpen(true) : navigate("/auth")}
+                  >
+                    <Flag size={12} />
+                  </button>
                 </span>
               </div>
               <h1 className="fcw-h1" style={{ margin: "0 0 0.5rem 0" }}>{card.title}</h1>
@@ -211,6 +221,13 @@ export function ProductPage() {
             </div>
           </div>
         </Modal>
+
+        <ReportDialog
+          targetType="PRODUCT"
+          targetId={id ?? ""}
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+        />
       </div>
     </main>
   );

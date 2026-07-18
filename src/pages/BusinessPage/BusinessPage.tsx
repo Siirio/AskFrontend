@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import MapLocationPicker from "../../widgets/MapLocationPicker/MapLocationPicker";
 import {
@@ -27,8 +27,8 @@ import {
   listProducts, createProduct, updateProduct, deleteProduct,
   listServices, createService, updateService,
   listBranches, createBranch, updateBranch,
-  listCategories, listStaff, createStaff, updateStaff, resetStaffPassword,
-  createEmployee, listEmployees,
+  listCategories, listStaff, updateStaff, resetStaffPassword,
+  listEmployees,
   listCities,
   listBusinessChats, getBusinessChatMessages, sendBusinessChatMessage, markBusinessChatRead,
 } from "../../shared/api/askClient";
@@ -37,6 +37,12 @@ import type {
   BusinessProductDto, BusinessServiceDto, StaffDto,
   ChatConversationDto, ChatMessageDto,
 } from "../../shared/api/dto";
+import { createBusinessInvitation } from "../../shared/api/businessInvitationClient";
+import { getManagedImportCatalogAccess } from "../../shared/api/managedImportClient";
+import {
+  getBusinessCatalogStatus, completeBusinessCatalogSetup,
+  type BusinessCatalogStatus,
+} from "../../shared/api/sellerOnboardingClient";
 
 import { ApiError } from "../../shared/api/httpClient";
 import { isValidEmail } from "../../shared/utils/validation";
@@ -88,18 +94,43 @@ function flattenCategories(items: CategoryInfo[]): CategoryInfo[] {
 
 
 export function BusinessPage() {
-  const { state } = useAuth();
+  const { state, actions } = useAuth();
+  const { selectBusiness } = actions;
+  const { businessId = "" } = useParams<{ businessId: string }>();
   const { reduced } = useMotion();
   const { t } = useTranslation();
   const [section, setSection] = useState<BusinessSection>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const businessId = state.session?.business?.businessId || "";
-  const isStaff = state.view === "staff";
-  const memberRole = state.session?.business?.memberRole || "";
+  const membership = state.session?.businessMemberships?.find(
+    item => item.businessId === businessId,
+  );
+  const platformPermissions = state.session?.platformMembership?.permissions ?? [];
+  const isPlatformCandidate = platformPermissions.includes("EDIT_CATALOG_DURING_IMPORT");
+  const [platformWorkspaceAccess, setPlatformWorkspaceAccess] = useState<boolean | null>(
+    isPlatformCandidate ? null : false,
+  );
+  const isPlatformWorkspace = !membership && platformWorkspaceAccess === true;
+  const hasBusinessAccess = Boolean(membership || isPlatformWorkspace);
+  const memberRole = membership?.role ?? (isPlatformWorkspace ? "PLATFORM_IMPORT" : "");
+  const isStaff = memberRole === "MANAGER" || memberRole === "WORKER";
   const isWorker = memberRole === "WORKER";
   const isManager = memberRole === "MANAGER";
-  const isOwner = memberRole === "OWNER" || (!isStaff);
+  const isOwner = memberRole === "OWNER";
+
+  useEffect(() => {
+    if (!membership && isPlatformCandidate && businessId) {
+      getManagedImportCatalogAccess(businessId)
+        .then(result => setPlatformWorkspaceAccess(result.allowed))
+        .catch(() => setPlatformWorkspaceAccess(false));
+    }
+  }, [businessId, isPlatformCandidate, membership]);
+
+  useEffect(() => {
+    if (membership) {
+      selectBusiness(membership.businessId);
+    }
+  }, [membership?.businessId, selectBusiness]);
 
   // Shared state
   const [busy, setBusy] = useState(false);
@@ -151,12 +182,16 @@ export function BusinessPage() {
   const [employees, setEmployees] = useState<StaffDto[]>([]);
   const [employeesBusy, setEmployeesBusy] = useState(false);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
-  const [employeeForm, setEmployeeForm] = useState({ displayName: "", email: "", role: "WORKER", branchId: "" });
+  const [employeeForm, setEmployeeForm] = useState({ email: "", role: "WORKER", branchId: "" });
 
   // Overview
   const [importBranchId, setImportBranchId] = useState("");
   const [importMode, setImportMode] = useState<"PRODUCT" | "SERVICE">("PRODUCT");
   const [quickRailOpen, setQuickRailOpen] = useState(false);
+
+  // Catalog setup deadline
+  const [catalogStatus, setCatalogStatus] = useState<BusinessCatalogStatus | null>(null);
+  const [catalogCompleteBusy, setCatalogCompleteBusy] = useState(false);
 
   // Chats
   const [chatConversations, setChatConversations] = useState<ChatConversationDto[]>([]);
@@ -174,7 +209,7 @@ export function BusinessPage() {
     { key: "services", label: t("business.services"), icon: <Briefcase size={18} /> },
     { key: "events", label: t("business.events"), icon: <Calendar size={18} /> },
     { key: "business-card", label: t("business.businessCard"), icon: <Sparkles size={18} /> },
-    ...(isWorker ? [] : [
+    ...(isWorker || isPlatformWorkspace ? [] : [
       { key: "organization" as BusinessSection, label: t("business.organization"), icon: <Building2 size={18} /> },
     ]),
   ];
@@ -341,7 +376,7 @@ export function BusinessPage() {
   }, [businessId]);
 
   const handleCreateEmployee = async () => {
-    if (!businessId || !employeeForm.displayName || !employeeForm.email) return;
+    if (!businessId || !employeeForm.email) return;
     if (!isValidEmail(employeeForm.email)) {
       toast.show(t("business.validation.emailInvalid"), "error");
       return;
@@ -352,16 +387,17 @@ export function BusinessPage() {
     }
     setEmployeesBusy(true);
     try {
-      await createEmployee(businessId, {
-        email: employeeForm.email,
-        displayName: employeeForm.displayName,
-        role: employeeForm.role,
-        ...(employeeForm.role === "WORKER" && employeeForm.branchId ? { branchId: employeeForm.branchId } : {}),
+      await createBusinessInvitation(businessId, {
+        invitedEmail: employeeForm.email,
+        invitedRole: employeeForm.role as "MANAGER" | "WORKER",
+        branchIds: employeeForm.role === "WORKER" && employeeForm.branchId
+          ? [employeeForm.branchId]
+          : [],
       });
-      setEmployeeForm({ displayName: "", email: "", role: "WORKER", branchId: "" });
+      setEmployeeForm({ email: "", role: "WORKER", branchId: "" });
       setShowEmployeeForm(false);
       await loadEmployees();
-      toast.show(t("business.toast.staffAdded"), "success");
+      toast.show(t("business.toast.invitationSent"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.staffAddError"), "error");
     } finally {
@@ -369,15 +405,33 @@ export function BusinessPage() {
     }
   };
 
-  useEffect(() => { loadCoreData(); }, [loadCoreData]);
-  useEffect(() => { loadCategories(); }, [loadCategories]);
+  useEffect(() => { if (hasBusinessAccess) loadCoreData(); }, [hasBusinessAccess, loadCoreData]);
+  useEffect(() => { if (hasBusinessAccess) loadCategories(); }, [hasBusinessAccess, loadCategories]);
   useEffect(() => {
     listCities().then(setCities).catch(() => setCities([]));
   }, []);
   useEffect(() => { productsCacheRef.current.clear(); setProductsPage(0); }, [activeBranchId]);
-  useEffect(() => { if (section === "products" || section === "overview") loadProducts(); }, [section, loadProducts]);
-  useEffect(() => { if (section === "services" || section === "overview") loadServices(); }, [section, loadServices]);
-  useEffect(() => { if (section === "organization") { loadBranches(); loadEmployees(); } }, [section, loadBranches, loadEmployees]);
+  useEffect(() => { if (hasBusinessAccess && (section === "products" || section === "overview")) loadProducts(); }, [hasBusinessAccess, section, loadProducts]);
+  useEffect(() => { if (hasBusinessAccess && (section === "services" || section === "overview")) loadServices(); }, [hasBusinessAccess, section, loadServices]);
+  useEffect(() => { if (hasBusinessAccess && section === "organization") { loadBranches(); loadEmployees(); } }, [hasBusinessAccess, section, loadBranches, loadEmployees]);
+  useEffect(() => {
+    if (!hasBusinessAccess || !businessId) return;
+    getBusinessCatalogStatus(businessId).then(setCatalogStatus).catch(() => setCatalogStatus(null));
+  }, [hasBusinessAccess, businessId]);
+
+  const handleCompleteCatalogSetup = async () => {
+    setCatalogCompleteBusy(true);
+    try {
+      const updated = await completeBusinessCatalogSetup(businessId);
+      setCatalogStatus(updated);
+      toast.show(t("business.catalogSetup.completedToast"), "success");
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.loadError"), "error");
+    } finally {
+      setCatalogCompleteBusy(false);
+    }
+  };
+
   const loadChats = useCallback(async () => {
     if (!businessId) return;
     setChatsBusy(true);
@@ -416,9 +470,13 @@ export function BusinessPage() {
     } catch { /* empty */ }
   }, [businessId, selectedConversationId, replyText, loadMessages, loadChats]);
 
-  useEffect(() => { if (section === "overview") { loadChats(); } }, [section, loadChats]);
+  useEffect(() => { if (hasBusinessAccess && section === "overview") { loadChats(); } }, [hasBusinessAccess, section, loadChats]);
 
-  if (state.view !== "business" && state.view !== "staff") {
+  if (!membership && isPlatformCandidate && platformWorkspaceAccess === null) {
+    return <Loading />;
+  }
+
+  if (!hasBusinessAccess) {
     return <Navigate to={ROUTES.home} replace />;
   }
 
@@ -663,7 +721,11 @@ export function BusinessPage() {
     }
     setStaffBusy(branchId);
     try {
-      await createStaff(businessId, branchId, { email: form.email, displayName: form.displayName, role: form.role || undefined });
+      await createBusinessInvitation(businessId, {
+        invitedEmail: form.email,
+        invitedRole: (form.role || "WORKER") as "MANAGER" | "WORKER",
+        branchIds: [branchId],
+      });
       setStaffForms(current => ({ ...current, [branchId]: { displayName: "", email: "", role: "WORKER" } }));
       await loadStaffForBranch(branchId);
       toast.show(t("business.toast.staffAdded"), "success");
@@ -891,6 +953,43 @@ export function BusinessPage() {
                   />
                 )}
               </div>
+
+              {catalogStatus && catalogStatus.status !== "COMPLETED" && (
+                <Card padding="md" style={{
+                  marginBottom: "var(--fcw-space-md)",
+                  borderColor: catalogStatus.status === "RESTRICTED" ? "var(--fcw-color-error)" : "var(--fcw-amber-500)",
+                  backgroundColor: catalogStatus.status === "RESTRICTED"
+                    ? "color-mix(in srgb, var(--fcw-color-error) 6%, transparent)"
+                    : "color-mix(in srgb, var(--fcw-amber-500) 8%, transparent)",
+                }}>
+                  <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem", alignItems: "center" }}>
+                    <div className="fcw-flex-col" style={{ gap: "0.25rem", minWidth: 0 }}>
+                      <span className="fcw-body fcw-weight-semibold">
+                        {catalogStatus.status === "RESTRICTED"
+                          ? t("business.catalogSetup.restrictedTitle")
+                          : t("business.catalogSetup.deadlineTitle", {
+                              days: Math.max(0, Math.ceil((new Date(catalogStatus.deadlineAt).getTime() - Date.now()) / 86400000)),
+                            })}
+                      </span>
+                      <span className="fcw-body-s fcw-text-secondary">
+                        {catalogStatus.status === "RESTRICTED"
+                          ? t("business.catalogSetup.restrictedDescription")
+                          : t("business.catalogSetup.deadlineDescription")}
+                      </span>
+                    </div>
+                    {(isOwner || isManager || isPlatformWorkspace) && (
+                      <button
+                        className="fcw-btn fcw-btn-primary fcw-btn-sm"
+                        disabled={catalogCompleteBusy}
+                        onClick={handleCompleteCatalogSetup}
+                      >
+                        {catalogCompleteBusy ? <Loader2 size={14} className="fcw-spin" /> : <Check size={14} />}
+                        {t("business.catalogSetup.complete")}
+                      </button>
+                    )}
+                  </div>
+                </Card>
+              )}
 
               <motion.div
                 key={section}
@@ -1975,7 +2074,7 @@ export function BusinessPage() {
                             className="fcw-btn fcw-btn-primary fcw-btn-sm"
                             onClick={() => {
                               setShowEmployeeForm(v => !v);
-                              if (!showEmployeeForm) setEmployeeForm({ displayName: "", email: "", role: "WORKER", branchId: "" });
+                              if (!showEmployeeForm) setEmployeeForm({ email: "", role: "WORKER", branchId: "" });
                             }}
                           >
                             <Plus size={16} />{t("business.employee.add")}
@@ -2000,16 +2099,7 @@ export function BusinessPage() {
                                   <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
                                   {t("business.employee.add")}
                                 </h3>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.staff.name")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.staff.name")}
-                                      value={employeeForm.displayName}
-                                      onChange={e => setEmployeeForm(p => ({ ...p, displayName: e.target.value }))}
-                                    />
-                                  </div>
+                                <div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                     <label className="fcw-label">{t("business.staff.email")}</label>
                                     <input

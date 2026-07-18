@@ -318,6 +318,9 @@ export type ChatConversationDto = {
   customerId: string | null;
   customerName?: string;
   subject: string;
+  conversationType: "GENERAL_SUPPORT" | "MANAGED_IMPORT";
+  conversationStatus: "PENDING" | "IN_CHAT" | "CLOSED";
+  managedImportRequestId?: string | null;
   customerUnreadCount: number;
   businessUnreadCount: number;
   lastMessageAt: string;
@@ -327,7 +330,7 @@ export type ChatConversationDto = {
 export type ChatMessageDto = {
   messageId: string;
   conversationId: string;
-  senderType: "SYSTEM" | "CUSTOMER" | "BUSINESS";
+  senderType: "SYSTEM" | "CUSTOMER" | "BUSINESS" | "PLATFORM";
   text: string;
   attachmentUrl?: string;
   readAt?: string;
