@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -42,29 +43,34 @@ import {
 const MESSAGES: Record<Locale, typeof ru> = { ru, kk, en };
 const STORAGE_KEY = LOCALE_STORAGE_KEY;
 
-/** The locale chosen IN THIS SESSION — the source the snapshot prefers, so a
- *  switch stays active even when persistence is unavailable (storage.set is a
- *  silent no-op there; without this copy the snapshot would re-read nothing
- *  and snap back to the server seed). */
-let sessionLocale: Locale | undefined;
-
-/** The active client locale: this session's choice, else the persisted value;
- *  undefined when neither exists — the provider then falls back to the
- *  server-seeded cookie value, so a missing localStorage entry can never
- *  override a real stored preference. */
+/** The stored client locale; undefined when none exists — the provider then
+ *  falls back to the server-seeded cookie value, so a missing localStorage
+ *  entry can never override a real stored preference. The storage door itself
+ *  guarantees a write reads back within the session even when persistence is
+ *  unavailable (its in-memory fallback — 2026-07-18; this file previously
+ *  carried that guarantee alone as a module-level `sessionLocale`). */
 function getStoredLocale(): Locale | undefined {
-  return sessionLocale ?? parseLocale(storage.get(STORAGE_KEY));
+  return parseLocale(storage.get(STORAGE_KEY));
 }
 
 const listeners = new Set<() => void>();
+let crossTabListenerBound = false;
 
 function setStoredLocale(locale: Locale): void {
-  sessionLocale = locale;
   storage.set(STORAGE_KEY, locale);
   listeners.forEach((listener) => listener());
 }
 
 function subscribeLocale(listener: () => void): () => void {
+  // Bound once for the module's lifetime (same pattern as the theme's OS
+  // listener): a switch made in ANOTHER tab re-notifies this one, so two open
+  // tabs never disagree about the language.
+  if (!crossTabListenerBound && typeof window !== "undefined") {
+    crossTabListenerBound = true;
+    storage.subscribe(STORAGE_KEY, () => {
+      listeners.forEach((l) => l());
+    });
+  }
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
@@ -102,6 +108,12 @@ export function LocaleProvider({
   );
   const locale = stored ?? initialLocale;
   const setLocale = useCallback((next: Locale) => setStoredLocale(next), []);
+  // Stable identity: without it every provider re-render would re-render every
+  // useLocale() consumer even when the locale itself is unchanged.
+  const contextValue = useMemo(
+    () => ({ locale, setLocale }),
+    [locale, setLocale],
+  );
 
   // Keep <html lang>, localStorage AND the ask.locale cookie in step with the
   // resolved locale — on mount as well as on switch. lang: the root layout
@@ -115,7 +127,7 @@ export function LocaleProvider({
   }, [locale]);
 
   return (
-    <LocaleContext.Provider value={{ locale, setLocale }}>
+    <LocaleContext.Provider value={contextValue}>
       <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]}>
         {children}
       </NextIntlClientProvider>

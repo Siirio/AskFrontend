@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { Toaster as Sonner, toast, type ToasterProps } from "sonner";
 
 import { getResolvedTheme, subscribeTheme } from "@/shared/theme";
+import { useThemePreferenceSeed } from "@/shared/ui/theme-toggle";
 
 /*
  * The Toast primitive, on sonner (the sanctioned toast; §7 single
@@ -21,10 +22,13 @@ import { getResolvedTheme, subscribeTheme } from "@/shared/theme";
  * as transient chrome.
  */
 function Toaster(props: ToasterProps) {
-  const theme = useSyncExternalStore(
-    subscribeTheme,
-    getResolvedTheme,
-    () => "light" as const,
+  // SSR/hydration snapshot from the cookie seed where one wraps the tree
+  // (/app/*, D19) — an explicit "dark" preference hydrates dark instead of
+  // flashing a light toast host on a dark page. "system" cannot know the OS
+  // server-side and stays light, like the toggle's own seed path.
+  const seed = useThemePreferenceSeed();
+  const theme = useSyncExternalStore(subscribeTheme, getResolvedTheme, () =>
+    seed === "dark" ? ("dark" as const) : ("light" as const),
   );
 
   return (

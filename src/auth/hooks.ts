@@ -152,7 +152,10 @@ const CODE_RE = /^\d{6}$/;
 const ERROR_KEY_BY_CODE: Record<string, string> = {
   EMAIL_ALREADY_REGISTERED: "errors.emailTaken",
   USER_NOT_FOUND: "errors.userNotFound",
-  INVALID_CREDENTIALS: "errors.codeInvalid",
+  // Login-context code (verify failures are CHALLENGE_*, phrased by the
+  // fallback key) — mapped to the credentials message so the table stays
+  // correct even if a caller stops special-casing it before describeError.
+  INVALID_CREDENTIALS: "errors.invalidCredentials",
   ACCOUNT_NOT_ACTIVE: "errors.accountNotActive",
 };
 
@@ -241,7 +244,14 @@ export function useRegisterFlow() {
   const setField = useCallback(
     <K extends keyof RegisterValues>(key: K, value: RegisterValues[K]) => {
       setValues((v) => ({ ...v, [key]: value }));
-      setErrors((e) => ({ ...e, [key]: undefined }));
+      // The mismatch error lives on passwordConfirmation but depends on BOTH
+      // password fields — editing password must clear it too, or a stale
+      // "don't match" survives the user fixing the password to agree.
+      setErrors((e) => ({
+        ...e,
+        [key]: undefined,
+        ...(key === "password" ? { passwordConfirmation: undefined } : null),
+      }));
     },
     [],
   );

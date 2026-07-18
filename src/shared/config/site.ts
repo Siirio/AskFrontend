@@ -12,5 +12,7 @@ export const TITLE_TEMPLATE = `%s - ${SITE_NAME}`;
 /** Format a page title exactly as the metadata template renders it — for the
  *  client `document.title` writers (in-session locale switch, D19). */
 export function formatPageTitle(pageTitle: string): string {
-  return TITLE_TEMPLATE.replace("%s", pageTitle);
+  // Replacer function, not a bare string: a translated title containing a
+  // `$&`/`$$` sequence must land literally, not as a replace() pattern.
+  return TITLE_TEMPLATE.replace("%s", () => pageTitle);
 }

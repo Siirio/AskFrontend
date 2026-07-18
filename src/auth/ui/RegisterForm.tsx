@@ -10,7 +10,7 @@ import { Input } from "@/shared/ui/input";
 import { Spinner } from "@/shared/ui/spinner";
 
 import { useRegisterFlow, type VerifyResult } from "../hooks";
-import { Field } from "./Field";
+import { Field, fieldErrorId } from "./Field";
 import { PasswordInput } from "./PasswordInput";
 import { VerifyCodeForm } from "./VerifyCodeForm";
 
@@ -63,6 +63,9 @@ export function RegisterForm({
           className="h-11 text-base"
           value={values.displayName}
           aria-invalid={Boolean(errors.displayName)}
+          aria-describedby={
+            errors.displayName ? fieldErrorId("register-name") : undefined
+          }
           placeholder={t("placeholders.name")}
           onChange={(e) => setField("displayName", e.target.value)}
         />
@@ -80,6 +83,9 @@ export function RegisterForm({
           className="h-11 text-base"
           value={values.email}
           aria-invalid={Boolean(errors.email)}
+          aria-describedby={
+            errors.email ? fieldErrorId("register-email") : undefined
+          }
           placeholder={t("placeholders.email")}
           onChange={(e) => setField("email", e.target.value)}
         />
@@ -94,6 +100,9 @@ export function RegisterForm({
           autoComplete="new-password"
           value={values.password}
           invalid={Boolean(errors.password)}
+          describedBy={
+            errors.password ? fieldErrorId("register-password") : undefined
+          }
           placeholder={t("placeholders.password")}
           visible={showPassword}
           onToggleVisible={() => setShowPassword((v) => !v)}
@@ -110,6 +119,11 @@ export function RegisterForm({
           autoComplete="new-password"
           value={values.passwordConfirmation}
           invalid={Boolean(errors.passwordConfirmation)}
+          describedBy={
+            errors.passwordConfirmation
+              ? fieldErrorId("register-password-confirm")
+              : undefined
+          }
           visible={showPassword}
           onToggleVisible={() => setShowPassword((v) => !v)}
           onValueChange={(value) => setField("passwordConfirmation", value)}
@@ -135,6 +149,11 @@ export function RegisterForm({
               className="peer size-5 appearance-none rounded-xs border border-border-strong bg-surface-raised focus-ring transition-colors checked:border-accent checked:bg-accent aria-invalid:border-destructive"
               checked={values.acceptedUserAgreement}
               aria-invalid={Boolean(errors.acceptedUserAgreement)}
+              aria-describedby={
+                errors.acceptedUserAgreement
+                  ? fieldErrorId("register-agreement")
+                  : undefined
+              }
               onChange={(e) =>
                 setField("acceptedUserAgreement", e.target.checked)
               }
@@ -166,7 +185,11 @@ export function RegisterForm({
           </span>
         </div>
         {errors.acceptedUserAgreement ? (
-          <p role="alert" className="text-center text-sm text-destructive">
+          <p
+            id={fieldErrorId("register-agreement")}
+            role="alert"
+            className="text-center text-sm text-destructive"
+          >
             {errors.acceptedUserAgreement}
           </p>
         ) : null}

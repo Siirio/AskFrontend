@@ -5,7 +5,16 @@ import type { ReactNode } from "react";
  * one field shape (slice-private). Native `<label>`/`<p>`; every value is a
  * token (P9.2). The error is announced (`role="alert"`) and rendered in the
  * destructive colour, never invented visuals (P9.3).
+ *
+ * The error carries the id `{htmlFor}-error` (see fieldErrorId) so the input
+ * can reference it via aria-describedby — role="alert" alone announces once
+ * but never durably associates the message with the control.
  */
+
+/** The ONE id convention binding an input to its Field error (P6.2). */
+export function fieldErrorId(htmlFor: string): string {
+  return `${htmlFor}-error`;
+}
 export function Field({
   label,
   htmlFor,
@@ -28,7 +37,11 @@ export function Field({
           +26px per field broke the form's rhythm — the compact spacing wins,
           the shift-on-error is accepted. */}
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p
+          id={fieldErrorId(htmlFor)}
+          role="alert"
+          className="text-sm text-destructive"
+        >
           {error}
         </p>
       ) : null}

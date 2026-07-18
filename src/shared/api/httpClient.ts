@@ -87,7 +87,21 @@ async function request<T>(
     return undefined as T;
   }
 
-  return camelizeKeys(await response.json()) as T;
+  // Success bodies are JSON per contract, but the transport must not leak a
+  // raw SyntaxError (its one error type is ApiError, §7): a proxy/CDN blank
+  // 200 or an endpoint answering 200-with-empty-body degrades instead of
+  // crashing the first caller that isn't wrapped in try/catch.
+  const text = await response.text();
+  if (text === "") {
+    return undefined as T;
+  }
+  try {
+    return camelizeKeys(JSON.parse(text)) as T;
+  } catch {
+    throw new ApiError(response.status, {
+      message: "Response body was not valid JSON",
+    });
+  }
 }
 
 export const httpClient = {

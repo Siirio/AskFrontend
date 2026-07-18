@@ -32,6 +32,16 @@ const OPTIONS: { value: ThemePreference; Icon: LucideIcon }[] = [
 const ThemePreferenceSeedContext = createContext<ThemePreference>("system");
 
 /**
+ * The server-known theme preference (the `ask.theme` cookie seed) — "system"
+ * where no seed provider wraps the tree (the static marketing surface, which
+ * must never read a cookie, D6). For any chrome whose SSR snapshot depends on
+ * the theme (the toggle here, the Toaster per D21).
+ */
+export function useThemePreferenceSeed(): ThemePreference {
+  return useContext(ThemePreferenceSeedContext);
+}
+
+/**
  * Seeds the toggle's SSR/hydration snapshot with the server-known preference
  * (the `ask.theme` cookie, read by the platform layout — D19), so the active
  * option is highlighted correctly on first paint instead of flashing "system"
@@ -53,7 +63,7 @@ export function ThemePreferenceSeed({
 
 export function ThemeToggle() {
   const t = useTranslations("common");
-  const seed = useContext(ThemePreferenceSeedContext);
+  const seed = useThemePreferenceSeed();
   const preference = useSyncExternalStore(
     subscribeTheme,
     getThemePreference,

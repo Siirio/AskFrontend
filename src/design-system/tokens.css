@@ -34,6 +34,16 @@
  * `shared/theme.ts`. The measured values and the 31 verified contrast pairs are
  * unchanged; only HOW a theme is selected changed (media query → attribute +
  * script). No `dark:` in components still holds.
+ *
+ * §note — 2026-07-18: "exactly ONE place" gains its single sanctioned
+ * exception (review finding): a no-JS fallback block at the bottom of the dark
+ * section repeats the dark values under `@media (prefers-color-scheme: dark)`
+ * scoped to `:root:not([data-theme])` — reachable ONLY when scripts never run
+ * (blocked, CSP, error), because with JS the pre-paint script always writes
+ * the attribute before first paint. Without it, an OS-dark visitor with
+ * scripts off read the whole product in light. Same status as the pre-paint
+ * script's inline theme logic: a comment-bound duplicate — CHANGE THE TWO
+ * DARK BLOCKS TOGETHER.
  */
 
 :root {
@@ -172,6 +182,51 @@
   --shadow-color-weak: oklch(0 0 0 / 0.3);
   --shadow-color: oklch(0 0 0 / 0.45);
   --shadow-color-strong: oklch(0 0 0 / 0.6);
+}
+
+/*
+ * NO-JS FALLBACK — the sanctioned duplicate of the dark block ABOVE (header
+ * §note 2026-07-18). `:root:not([data-theme])` can only match when the
+ * pre-paint script never ran (scripts blocked/failed): with JS the attribute
+ * exists before first paint, so this block is unreachable and the attribute
+ * selector stays the one live mechanism. KEEP THE VALUES IDENTICAL TO
+ * `:root[data-theme="dark"]` — change the two blocks together.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+
+    --accent: oklch(0.72 0.186 46);
+    --accent-hover: oklch(0.775 0.141 46);
+    --accent-active: oklch(0.67 0.188 46);
+    --accent-foreground: oklch(0.235 0.012 50);
+
+    --offer: oklch(0.31 0.038 68);
+    --offer-border: oklch(0.4 0.048 68);
+    --offer-foreground: oklch(0.9 0.045 75);
+
+    --surface: oklch(0.205 0.01 50);
+    --surface-raised: oklch(0.255 0.011 50);
+    --surface-sunken: oklch(0.17 0.009 50);
+
+    --border: oklch(0.32 0.012 50);
+    --border-strong: oklch(0.42 0.014 50);
+
+    --foreground: oklch(0.96 0.004 50);
+    --foreground-muted: oklch(0.74 0.01 50);
+    --foreground-subtle: oklch(0.64 0.01 50);
+
+    --destructive: oklch(0.7 0.18 27);
+    --destructive-foreground: oklch(0.235 0.012 50);
+    --success: oklch(0.76 0.187 155);
+    --success-foreground: oklch(0.235 0.012 50);
+    --warning: oklch(0.84 0.16 85);
+    --warning-foreground: oklch(0.235 0.012 50);
+
+    --shadow-color-weak: oklch(0 0 0 / 0.3);
+    --shadow-color: oklch(0 0 0 / 0.45);
+    --shadow-color-strong: oklch(0 0 0 / 0.6);
+  }
 }
 
 /*

@@ -16,8 +16,12 @@
 const camelize = (key: string): string =>
   key.replace(/_([a-z0-9])/g, (_, ch: string) => ch.toUpperCase());
 
+/** Matches Jackson's SnakeCaseStrategy on acronym runs: a run of capitals is
+ *  ONE segment (`userID` → `user_id`, never `user_i_d`) — Jackson underscores
+ *  only at a lower→upper boundary. Frontend fields therefore use strict
+ *  camelCase (`userId`), which round-trips exactly. */
 const snakify = (key: string): string =>
-  key.replace(/([A-Z])/g, "_$1").toLowerCase();
+  key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null) return false;

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { RoleSelectionModal } from "@/auth";
 import { NavigationMenu } from "@/app/_components/NavigationMenu";
 
 /**
@@ -10,10 +9,9 @@ import { NavigationMenu } from "@/app/_components/NavigationMenu";
  * (no navigation menu) while still inheriting the LocaleProvider from the parent
  * platform layout. Server component (D7).
  *
- * RoleSelectionModal is mounted HERE — not on a page — because it follows the
- * session, not a route: a fresh signup's unanswered role choice must stay on
- * screen across the navigation to /app and across reloads until it is answered
- * (its open state lives in the auth store, seeded from storage).
+ * RoleSelectionModal is NOT here: it follows the session, not a route, so it
+ * mounts one level up in the platform layout — covering the auth routes this
+ * group excludes (2026-07-18 review).
  */
 export default function MainLayout({ children }: { children: ReactNode }) {
   return (
@@ -22,7 +20,6 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         <NavigationMenu />
       </header>
       {children}
-      <RoleSelectionModal />
     </>
   );
 }

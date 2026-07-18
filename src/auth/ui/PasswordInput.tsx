@@ -26,6 +26,7 @@ export function PasswordInput({
   autoComplete,
   placeholder,
   invalid,
+  describedBy,
   visible,
   onToggleVisible,
   onValueChange,
@@ -35,6 +36,8 @@ export function PasswordInput({
   autoComplete: string;
   placeholder?: string;
   invalid: boolean;
+  /** id of the field's error message (aria-describedby), when one shows. */
+  describedBy?: string;
   visible: boolean;
   onToggleVisible: () => void;
   onValueChange: (value: string) => void;
@@ -51,6 +54,7 @@ export function PasswordInput({
         className="h-11 pe-11 text-base"
         value={value}
         aria-invalid={invalid}
+        aria-describedby={describedBy}
         placeholder={placeholder}
         onChange={(e) => onValueChange(e.target.value)}
       />

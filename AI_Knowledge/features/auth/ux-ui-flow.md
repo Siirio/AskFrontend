@@ -9,7 +9,7 @@ Traces PRODUCT_VISION **UF 1** (Landing → Authorization → Home + Role Choosi
 | Log in page | /app/auth/login | client (thin server route) |
 | Sign up page | /app/auth/register | client (thin server route) |
 | Verify code step (shared by both) | inline on either page after the challenge | client |
-| Role Choosing Modal | over /app — hosted by the `(main)` layout, follows the SESSION not a page; persistent and non-dismissable until answered | client |
+| Role Choosing Modal | over EVERY /app/* route — hosted by the platform layout (auth routes included, 2026-07-18), follows the SESSION not a page; persistent and non-dismissable until answered | client |
 
 `/app/auth` redirects to `/app/auth/login`. The two pages are separate routes
 (not a tab switcher), each with a cross-link to the other.
@@ -58,11 +58,13 @@ owner's to write, never invented here (tracked in ROADMAP "Parked fixes").
    - The pending flag is dropped when the session ends (sign-out, or the backend rejecting the token).
 4. Role decides the surface: customer → Home/search (UF 2.x); business owner → business registration then the cabinet (UF 3.1). `startRoute` from the backend is the authority for where the session lands.
 
-**Placement:** the vision draws the modal over Home (`/app`) — and that is now
-literally where it lives: `RoleSelectionModal` (exported from `@/auth`) is
-mounted by the `(main)` route-group layout and self-drives from the auth store,
-so it renders over whatever `(main)` page is on screen. When `search` lands on
-`/app` (roadmap #2), nothing moves.
+**Placement:** the vision draws the modal over Home (`/app`), and it renders
+there — but `RoleSelectionModal` (exported from `@/auth`) is mounted by the
+PLATFORM layout, one level above the `(main)` group, and self-drives from the
+auth store: it renders over whatever `/app/*` page is on screen, auth routes
+included (2026-07-18 — mounting it only in `(main)` let browser-back to
+`/app/auth/*` escape the undismissable choice). When `search` lands on `/app`
+(roadmap #2), nothing moves.
 
 **Modal anatomy (owner reference, 2026-07-17):** title + description, a
 two-card radiogroup (icon badge, label, hint — arrow keys move selection), and
@@ -73,7 +75,7 @@ Continue is the single saturated fill (saturation-is-action holds).
 ## States (mandatory even though the vision doesn't draw them — P8.4/P9.3)
 
 - Loading: submitting credentials (Spinner in the button, disabled), verifying the code, restoring the session on app load
-- Error: incorrect email or password (log in, a form-level error), account not active (log in, 403), multi-role account awaiting role selection (log in — `select-role` is deferred, so the state is a form-level error, never a silent empty session), wrong/expired code (verify), email already registered (sign up, inline on the email field), network failure → Toast + inline error (`role="alert"`, destructive colour)
+- Error: incorrect email or password (log in, a form-level error), account not active (log in, 403), multi-role account awaiting role selection (log in — `select-role` is deferred, so the state is a form-level error, never a silent empty session), wrong/expired code (verify), email already registered (sign up, inline on the email field), network failure → Toast + inline error (`role="alert"`, destructive colour; the error carries the id `{inputId}-error` and the input points at it via `aria-describedby` + `aria-invalid`, so screen readers re-discover the message from the field — 2026-07-18)
 - Validation: email format, password present (log in) / ≥ 8 + confirmation match (sign up), name present (sign up — the backend schema requires it, see Flow step 2), agreement checked, code length (6)
 - Empty: n/a
 

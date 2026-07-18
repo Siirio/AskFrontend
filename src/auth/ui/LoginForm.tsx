@@ -8,7 +8,7 @@ import { Input } from "@/shared/ui/input";
 import { Spinner } from "@/shared/ui/spinner";
 
 import { useLoginFlow, type VerifyResult } from "../hooks";
-import { Field } from "./Field";
+import { Field, fieldErrorId } from "./Field";
 import { PasswordInput } from "./PasswordInput";
 import { VerifyCodeForm } from "./VerifyCodeForm";
 
@@ -75,6 +75,9 @@ export function LoginForm({
           className="h-11 text-base"
           value={email}
           aria-invalid={Boolean(errors.email)}
+          aria-describedby={
+            errors.email ? fieldErrorId("login-email") : undefined
+          }
           placeholder={t("placeholders.email")}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -89,6 +92,9 @@ export function LoginForm({
           autoComplete="current-password"
           value={password}
           invalid={Boolean(errors.password)}
+          describedBy={
+            errors.password ? fieldErrorId("login-password") : undefined
+          }
           placeholder={t("placeholders.passwordLogin")}
           visible={showPassword}
           onToggleVisible={() => setShowPassword((v) => !v)}

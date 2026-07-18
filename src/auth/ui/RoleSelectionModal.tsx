@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, Store } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
@@ -19,9 +20,10 @@ import { useRoleSelection } from "../hooks";
 /**
  * The role-choosing modal (PRODUCT_VISION UF 1), shown over /app after a fresh
  * signup sets `suggestRoleExpansion`. Self-driven from the auth store
- * (useRoleSelection) and hosted by the platform `(main)` layout, so it follows
- * the session — NOT the page that opened it: it survives the navigation to
- * /app and a reload, and it cannot be dismissed (no close button, no ESC, no
+ * (useRoleSelection) and hosted by the platform layout (EVERY /app/* route,
+ * auth included — 2026-07-18 review), so it follows the session — NOT the page
+ * that opened it: it survives the navigation to /app, a reload, and a detour
+ * through /app/auth/*, and it cannot be dismissed (no close button, no ESC, no
  * outside click). The ONLY way out is answering — an owner decision, same
  * pattern as the reference flows: the pending flag lives in localStorage and
  * is cleared by the choice alone.
@@ -78,19 +80,21 @@ function RoleCard({
           onArrowKey();
         }
       }}
-      className={`flex cursor-pointer flex-col items-center gap-2 rounded-sm border p-4 text-center focus-ring transition-colors duration-(--duration-base) ${
+      className={cn(
+        "flex cursor-pointer flex-col items-center gap-2 rounded-sm border p-4 text-center focus-ring transition-colors duration-(--duration-base)",
         selected
           ? "border-accent bg-accent/10"
-          : "border-border-strong bg-surface-raised hover:bg-surface-sunken"
-      }`}
+          : "border-border-strong bg-surface-raised hover:bg-surface-sunken",
+      )}
     >
       <span
         aria-hidden="true"
-        className={`flex size-12 items-center justify-center rounded-full transition-colors duration-(--duration-base) ${
+        className={cn(
+          "flex size-12 items-center justify-center rounded-full transition-colors duration-(--duration-base)",
           selected
             ? "bg-accent/10 text-accent"
-            : "bg-surface-sunken text-foreground-muted"
-        }`}
+            : "bg-surface-sunken text-foreground-muted",
+        )}
       >
         {icon}
       </span>

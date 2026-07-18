@@ -8,7 +8,7 @@ import { Input } from "@/shared/ui/input";
 import { Spinner } from "@/shared/ui/spinner";
 
 import { useVerifyStep, type VerifyResult } from "../hooks";
-import { Field } from "./Field";
+import { Field, fieldErrorId } from "./Field";
 
 /**
  * The shared 6-digit code step — used by both log-in and sign-up. On success it
@@ -59,6 +59,7 @@ export function VerifyCodeForm({
           className="h-11 text-center text-base tracking-widest"
           value={code}
           aria-invalid={Boolean(error)}
+          aria-describedby={error ? fieldErrorId("verify-code") : undefined}
           onChange={(e) =>
             setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
           }

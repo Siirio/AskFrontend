@@ -67,6 +67,7 @@ function apply(preference: ThemePreference): void {
 
 const listeners = new Set<() => void>();
 let systemListenerBound = false;
+let crossTabListenerBound = false;
 
 /**
  * Bind the OS-theme change listener ONCE (idempotent), so a mid-session OS
@@ -86,6 +87,22 @@ export function ensureSystemThemeListener(): void {
         listeners.forEach((listener) => listener());
       }
     });
+}
+
+/**
+ * Bind the cross-tab listener ONCE (idempotent): a preference change made in
+ * ANOTHER tab (the native `storage` event, via the shared storage door)
+ * re-applies `data-theme` and re-notifies subscribers here, so two open tabs
+ * never disagree about the theme. Same-tab writes notify through
+ * setThemePreference directly — the event never fires for them.
+ */
+function ensureCrossTabThemeListener(): void {
+  if (crossTabListenerBound || typeof window === "undefined") return;
+  crossTabListenerBound = true;
+  storage.subscribe(THEME_STORAGE_KEY, () => {
+    apply(getThemePreference());
+    listeners.forEach((listener) => listener());
+  });
 }
 
 /**
@@ -115,6 +132,7 @@ export function setThemePreference(preference: ThemePreference): void {
 /** Subscribe to preference changes (for useSyncExternalStore). */
 export function subscribeTheme(listener: () => void): () => void {
   ensureSystemThemeListener();
+  ensureCrossTabThemeListener();
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
