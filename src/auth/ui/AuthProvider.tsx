@@ -71,12 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     };
 
-    restore();
     // Cross-tab session sync (the shared storage door's `storage` event):
     // sign-out in another tab clears this one immediately instead of leaving a
     // stale authenticated UI whose requests go out unauthorized; a login in
-    // another tab restores the session here the same way.
+    // another tab restores the session here the same way. Subscribed BEFORE
+    // the initial restore runs — a token change landing during that async
+    // window must re-trigger, not slip through unobserved.
     const unsubscribe = storage.subscribe(ACCESS_TOKEN_STORAGE_KEY, restore);
+    restore();
     return () => {
       active = false;
       unsubscribe();

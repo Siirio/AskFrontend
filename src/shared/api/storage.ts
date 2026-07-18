@@ -64,7 +64,13 @@ export const storage = {
     if (typeof window === "undefined") return () => {};
     const handler = (event: StorageEvent) => {
       // key === null means localStorage.clear() — every key may have changed.
-      if (event.key === key || event.key === null) listener();
+      if (event.key === key || event.key === null) {
+        // The event proves localStorage changed and is now the fresher truth —
+        // drop any in-session fallback so listeners don't re-read a stale
+        // value this tab failed to persist.
+        memoryFallback.delete(key);
+        listener();
+      }
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);

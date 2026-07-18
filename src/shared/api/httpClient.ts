@@ -87,19 +87,20 @@ async function request<T>(
     return undefined as T;
   }
 
-  // Success bodies are JSON per contract, but the transport must not leak a
-  // raw SyntaxError (its one error type is ApiError, §7): a proxy/CDN blank
-  // 200 or an endpoint answering 200-with-empty-body degrades instead of
-  // crashing the first caller that isn't wrapped in try/catch.
+  // Success bodies are JSON per contract (a bodiless success is 204, handled
+  // above), but the transport must not leak a raw SyntaxError — its one error
+  // type is ApiError (§7). A blank or malformed 2xx body (proxy/CDN fault)
+  // therefore throws the structured error; it never becomes `undefined as T`,
+  // which would hand typed callers a silent lie instead of a catchable fault.
   const text = await response.text();
-  if (text === "") {
-    return undefined as T;
-  }
   try {
     return camelizeKeys(JSON.parse(text)) as T;
   } catch {
     throw new ApiError(response.status, {
-      message: "Response body was not valid JSON",
+      message:
+        text === ""
+          ? "Empty body on a non-204 success response"
+          : "Response body was not valid JSON",
     });
   }
 }
