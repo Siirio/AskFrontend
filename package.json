@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run lint && npm run lint:fixtures && next build",
+    "build": "npm run lint && npm run lint:fixtures && next build && npm run verify:rendering",
     "start": "next start",
     "lint": "eslint src",
     "lint:fixtures": "node scripts/check-lint-fixtures.mjs",
+    "verify:rendering": "node scripts/check-rendering.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "playwright test"

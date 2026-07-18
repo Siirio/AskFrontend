@@ -32,8 +32,14 @@ and the landing page all called them unseeded, opting the whole tree in.
 (`src/app/layout.tsx`, `src/app/(marketing)/page.tsx`); corrected the overclaiming
 comment in `src/shared/i18n/request.ts`. **Proof (rebuild):** `/` and
 `/_not-found` → `○ (Static)`; all `/app/*` → `ƒ (Dynamic)`, unchanged (they read
-cookies per D19). No decision reversed — the code now MEETS D6. Full record in
-`Changelog.md` (2026-07-18).
+cookies per D19). No decision reversed — the code now MEETS D6.
+
+**Regression guard (CodeRabbit follow-up):** `scripts/check-rendering.mjs`
+(`verify:rendering`, a mandatory stage of `npm run build` after `next build`)
+asserts the contract against `.next/prerender-manifest.json` — `/` static, no
+`/app*` static — so a future dropped seed fails the build instead of silently
+reverting. Proven both ways (green on the real build; exit 1 on a broken
+manifest). See the §8 note dated 2026-07-18. Full record in `Changelog.md`.
 
 ---
 
