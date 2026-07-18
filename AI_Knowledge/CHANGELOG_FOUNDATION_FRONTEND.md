@@ -1,5 +1,15 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-18 — Identity and managed-import review fixes
+
+- Protected deep links wait for cookie-session bootstrap before applying route guards.
+- Profile forms hydrate from the restored session without overwriting active edits.
+- Desktop account navigation opens the shared profile instead of a business-only modal.
+- Platform managed-import workspace is limited to catalog products.
+- Seller onboarding opens the created managed-import conversation when the backend returns it.
+- Legal pages display the active backend document version.
+- Test-only files and dependencies added by the previous implementation were removed as requested.
+
 ## 2026-07-16 — Organization Page Redesign: Branches + Team, Emil Kowalsky Design
 
 Merged dead `branches`/`employees` sections (not in BusinessSection type, unreachable) into single `organization` section on BusinessPage. Applied Emil Kowalsky editorial-minimalist design: thin-border cards, dot-status indicators, outlined tags, generous whitespace, editorial typography.

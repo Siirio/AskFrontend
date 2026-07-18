@@ -306,3 +306,11 @@ When a brand has an active drop, its product cards receive `hasActiveDrop: true`
 - WhatsApp, Telegram, map links, and Ask chat are separate per-response actions.
 - Map action should not appear when branch address is unknown.
 - Browser prototypes may use web URLs; native clients may use deep links.
+
+## 2026-07-18 managed catalog updates
+- Branch DTOs include `addressDetails`; 2GIS selection supplies address, city, latitude, and longitude.
+- Catalog setup has no manual completion endpoint and may return `REVIEW_REQUIRED`.
+- Managed-import activation starts an assigned seven-day product-only workspace and file-capable chat; there is no manual completion endpoint.
+- Business import accepts `.xlsx`; assigned platform import additionally exposes TXT/MD/PDF Autodump.
+- `POST /api/v1/platform/ai-enrichment` queues selected aggregate IDs.
+- Account export was removed; account deletion remains.

@@ -6,6 +6,14 @@ import type {
   ChatMessageListResponse,
 } from "./dto";
 
+export function requestAiEnrichment(documentType: "PRODUCT" | "SERVICE", aggregateIds: string[]) {
+  return apiRequest<{ queuedCount: number }>("/api/v1/platform/ai-enrichment", {
+    method: "POST",
+    auth: true,
+    body: { documentType, aggregateIds },
+  });
+}
+
 export type PlatformMembershipItem = {
   id: string;
   userId: string;
@@ -26,6 +34,12 @@ export type ContentReportItem = {
   reporterUserId: string;
   reporterName?: string;
   createdAt: string;
+};
+
+export type CatalogReviewItem = {
+  businessId: string;
+  businessName: string;
+  catalogStatus: "REVIEW_REQUIRED";
 };
 
 export function listPlatformConversations() {
@@ -83,10 +97,30 @@ export function listOpenReports() {
   return apiRequest<ContentReportItem[]>("/api/v1/platform/reports", { auth: true });
 }
 
-export function resolveReport(reportId: string, status: "RESOLVED" | "REJECTED") {
-  return apiRequest<ContentReportItem>(`/api/v1/platform/reports/${reportId}?status=${status}`, {
+export function listCatalogReviews() {
+  return apiRequest<CatalogReviewItem[]>("/api/v1/platform/catalog-reviews", { auth: true });
+}
+
+export function reviewCatalog(businessId: string, approved: boolean) {
+  return apiRequest<void>(`/api/v1/platform/catalog-reviews/${businessId}`, {
     method: "PATCH",
     auth: true,
+    body: { approved },
+  });
+}
+
+export function resolveReport(
+  reportId: string,
+  status: "RESOLVED" | "REJECTED",
+  resolution: string,
+) {
+  return apiRequest<ContentReportItem>(`/api/v1/platform/reports/${reportId}`, {
+    method: "PATCH",
+    auth: true,
+    body: {
+      status,
+      resolution,
+    },
   });
 }
 

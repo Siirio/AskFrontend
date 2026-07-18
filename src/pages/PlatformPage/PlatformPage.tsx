@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Shield, Upload, Users, MessageCircle, Flag, Send, X, Check, Loader2 } from "lucide-react";
+import { Shield, Upload, Users, MessageCircle, Flag, Send, X, Check, Loader2, Paperclip } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
 import { Card } from "../../shared/ui/Card/Card";
+import { Loading } from "../../shared/ui/Loading/Loading";
 import { Select } from "../../shared/ui/Select/Select";
 import { useToast } from "../../shared/ui/Toast/Toast";
 import { ApiError } from "../../shared/api/httpClient";
 import type { ChatConversationDto, ChatMessageDto } from "../../shared/api/dto";
+import { uploadChatFile } from "../../shared/api/askClient";
 import {
   activateManagedImport,
-  completeManagedImport,
   listPlatformManagedImports,
   type ManagedImportItem,
 } from "../../shared/api/managedImportClient";
@@ -19,8 +20,8 @@ import {
   listPlatformConversations, getPlatformChatMessages, sendPlatformChatMessage,
   markPlatformChatRead, closePlatformConversation,
   listPlatformUsers, createPlatformUser, updatePlatformUser, deactivatePlatformUser,
-  listOpenReports, resolveReport, moderateBusiness, moderateProduct,
-  type PlatformMembershipItem, type ContentReportItem,
+  listOpenReports, listCatalogReviews, reviewCatalog, resolveReport, moderateBusiness, moderateProduct,
+  type PlatformMembershipItem, type ContentReportItem, type CatalogReviewItem,
 } from "../../shared/api/platformClient";
 
 type PlatformSection = "managedImports" | "users" | "support" | "moderation";
@@ -29,6 +30,7 @@ const ALL_PERMISSIONS = [
   "MANAGE_PLATFORM_USERS",
   "MANAGE_MANAGED_IMPORTS",
   "EDIT_CATALOG_DURING_IMPORT",
+  "USE_AI_CATALOG_TOOLS",
   "PUBLISH_CATALOG_DURING_IMPORT",
   "MANAGE_SUPPORT_CHATS",
   "MODERATE_CONTENT",
@@ -70,6 +72,7 @@ export function PlatformPage() {
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
   const [messagesBusy, setMessagesBusy] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [replyFile, setReplyFile] = useState<File | null>(null);
 
   const [users, setUsers] = useState<PlatformMembershipItem[]>([]);
   const [showUserForm, setShowUserForm] = useState(false);
@@ -78,7 +81,9 @@ export function PlatformPage() {
   const [userBusy, setUserBusy] = useState(false);
 
   const [reports, setReports] = useState<ContentReportItem[]>([]);
+  const [catalogReviews, setCatalogReviews] = useState<CatalogReviewItem[]>([]);
   const [reportBusyId, setReportBusyId] = useState("");
+  const [reportResolutions, setReportResolutions] = useState<Record<string, string>>({});
 
   const loadConversations = useCallback(() => {
     listPlatformConversations().then(res => setConversations(res.items)).catch(() => setConversations([]));
@@ -96,8 +101,13 @@ export function PlatformPage() {
     }
     if (activeSection === "moderation" && canModerate) {
       listOpenReports().then(setReports).catch(() => setReports([]));
+      listCatalogReviews().then(setCatalogReviews).catch(() => setCatalogReviews([]));
     }
   }, [activeSection, canManageImports, canSupport, canManageUsers, canModerate, loadConversations]);
+
+  if (!state.sessionReady) {
+    return <Loading />;
+  }
 
   if (!membership) {
     return <Navigate to={ROUTES.home} replace />;
@@ -108,18 +118,22 @@ export function PlatformPage() {
     try {
       const updated = await activateManagedImport(requestId);
       setManagedImports(items => items.map(item => item.id === requestId ? updated : item));
+    } catch (cause) {
+      toast.show(cause instanceof ApiError ? cause.message : t("platform.moderation.error"), "error");
     } finally {
       setBusyId("");
     }
   };
 
-  const complete = async (requestId: string) => {
-    setBusyId(requestId);
+  const handleCatalogReview = async (businessId: string, approved: boolean) => {
+    setReportBusyId(businessId);
     try {
-      await completeManagedImport(requestId);
-      setManagedImports(items => items.filter(item => item.id !== requestId));
+      await reviewCatalog(businessId, approved);
+      setCatalogReviews(items => items.filter(item => item.businessId !== businessId));
+    } catch (cause) {
+      toast.show(cause instanceof ApiError ? cause.message : t("platform.moderation.error"), "error");
     } finally {
-      setBusyId("");
+      setReportBusyId("");
     }
   };
 
@@ -141,11 +155,15 @@ export function PlatformPage() {
   };
 
   const sendReply = async () => {
-    if (!selectedConversationId || !replyText.trim()) return;
+    if (!selectedConversationId || (!replyText.trim() && !replyFile)) return;
     const text = replyText.trim();
     setReplyText("");
     try {
-      const msg = await sendPlatformChatMessage(selectedConversationId, text);
+      const attachmentUrl = replyFile
+        ? await uploadChatFile(selectedConversationId, replyFile)
+        : undefined;
+      const msg = await sendPlatformChatMessage(selectedConversationId, text, attachmentUrl);
+      setReplyFile(null);
       setMessages(prev => [...prev, msg]);
       loadConversations();
     } catch (e) {
@@ -219,9 +237,11 @@ export function PlatformPage() {
   };
 
   const handleReport = async (report: ContentReportItem, status: "RESOLVED" | "REJECTED") => {
+    const resolution = reportResolutions[report.id]?.trim();
+    if (!resolution) return;
     setReportBusyId(report.id);
     try {
-      await resolveReport(report.id, status);
+      await resolveReport(report.id, status, resolution);
       setReports(items => items.filter(item => item.id !== report.id));
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("platform.moderation.error"), "error");
@@ -296,6 +316,11 @@ export function PlatformPage() {
                       <span className="fcw-label">{item.sourceTypes.join(", ")}</span>
                     </div>
                     <p className="fcw-body-s">{item.preferredContactChannel}: {item.preferredContactValue}</p>
+                    {item.expiresAt && (
+                      <p className="fcw-body-s fcw-text-secondary">
+                        Доступ и чат до {new Date(item.expiresAt).toLocaleString("ru-KZ")}
+                      </p>
+                    )}
                     {item.sourceLinks && <p className="fcw-body-s fcw-text-secondary">{item.sourceLinks}</p>}
                     <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
                       {item.status === "PENDING" && (
@@ -303,17 +328,16 @@ export function PlatformPage() {
                           {t("platform.managed.activate")}
                         </button>
                       )}
-                      <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => navigate(buildRoute(ROUTES.business, { businessId: item.businessId }))}>
-                        {t("platform.managed.workspace")}
-                      </button>
+                      {item.status === "ACTIVE" && (
+                        <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => navigate(buildRoute(ROUTES.business, { businessId: item.businessId }))}>
+                          {t("platform.managed.workspace")}
+                        </button>
+                      )}
                       {item.conversationId && (
                         <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => openConversation(item.conversationId as string)}>
                           {t("platform.managed.chat")}
                         </button>
                       )}
-                      <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={busyId === item.id} onClick={() => complete(item.id)}>
-                        {t("platform.managed.complete")}
-                      </button>
                     </div>
                   </div>
                 </Card>
@@ -407,6 +431,10 @@ export function PlatformPage() {
                     </div>
                     {selectedConversation?.conversationStatus !== "CLOSED" && (
                       <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                        <label className="fcw-btn fcw-btn-secondary fcw-btn-sm">
+                          <Paperclip size={14} />
+                          <input type="file" style={{ display: "none" }} onChange={event => setReplyFile(event.target.files?.[0] || null)} />
+                        </label>
                         <input
                           className="fcw-input"
                           style={{ flex: 1 }}
@@ -415,7 +443,7 @@ export function PlatformPage() {
                           onChange={e => setReplyText(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter") sendReply(); }}
                         />
-                        <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={sendReply} disabled={!replyText.trim()}>
+                        <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={sendReply} disabled={!replyText.trim() && !replyFile}>
                           <Send size={14} />
                         </button>
                       </div>
@@ -511,7 +539,27 @@ export function PlatformPage() {
           {activeSection === "moderation" && canModerate && (
             <section className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
               <h2 className="fcw-h3" style={{ margin: 0 }}>{t("platform.moderation.title")}</h2>
-              {reports.length === 0 && (
+              {catalogReviews.map(item => (
+                <Card key={item.businessId} padding="lg">
+                  <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem" }}>
+                    <div>
+                      <span className="fcw-body fcw-weight-semibold">{item.businessName}</span>
+                      <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0" }}>
+                        Каталог ожидает решения модератора
+                      </p>
+                    </div>
+                    <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+                      <button className="fcw-btn fcw-btn-primary fcw-btn-sm" disabled={reportBusyId === item.businessId} onClick={() => handleCatalogReview(item.businessId, true)}>
+                        Одобрить
+                      </button>
+                      <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={reportBusyId === item.businessId} onClick={() => handleCatalogReview(item.businessId, false)}>
+                        Ограничить
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+              {reports.length === 0 && catalogReviews.length === 0 && (
                 <Card padding="md">
                   <p className="fcw-body-s fcw-text-secondary">{t("platform.moderation.empty")}</p>
                 </Card>
@@ -526,11 +574,21 @@ export function PlatformPage() {
                       <span className="fcw-body-xs fcw-text-tertiary">{report.reporterName}</span>
                     </div>
                     {report.details && <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0 }}>{report.details}</p>}
+                    <textarea
+                      className="fcw-input"
+                      rows={2}
+                      value={reportResolutions[report.id] ?? ""}
+                      placeholder={t("platform.moderation.resolution")}
+                      onChange={event => setReportResolutions(current => ({
+                        ...current,
+                        [report.id]: event.target.value,
+                      }))}
+                    />
                     <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                      <button className="fcw-btn fcw-btn-primary fcw-btn-sm" disabled={reportBusyId === report.id} onClick={() => handleReport(report, "RESOLVED")}>
+                      <button className="fcw-btn fcw-btn-primary fcw-btn-sm" disabled={reportBusyId === report.id || !reportResolutions[report.id]?.trim()} onClick={() => handleReport(report, "RESOLVED")}>
                         {t("platform.moderation.resolve")}
                       </button>
-                      <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={reportBusyId === report.id} onClick={() => handleReport(report, "REJECTED")}>
+                      <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={reportBusyId === report.id || !reportResolutions[report.id]?.trim()} onClick={() => handleReport(report, "REJECTED")}>
                         {t("platform.moderation.reject")}
                       </button>
                       {report.targetType === "PRODUCT" && permissions.has("MODERATE_CONTENT") && (

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import MapLocationPicker from "../../widgets/MapLocationPicker/MapLocationPicker";
 import {
   Package, Briefcase, Building2, UserRound,
   Sparkles, Plus, RefreshCw, Loader2,
   ChevronDown, Menu, X, MapPin, Trash2, Edit3, Check, Layout,
-  Calendar, Upload, Reply, ChevronLeft, ChevronRight, MessageCircle
+  Calendar, Upload, Reply, ChevronLeft, ChevronRight, MessageCircle, Paperclip
 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
@@ -27,20 +27,21 @@ import {
   listProducts, createProduct, updateProduct, deleteProduct,
   listServices, createService, updateService,
   listBranches, createBranch, updateBranch,
-  listCategories, listStaff, updateStaff, resetStaffPassword,
-  listEmployees,
+  listCategories, listStaff, createStaff, updateStaff, resetStaffPassword,
+  listEmployees, createEmployee,
   listCities,
   listBusinessChats, getBusinessChatMessages, sendBusinessChatMessage, markBusinessChatRead,
+  uploadChatFile,
 } from "../../shared/api/askClient";
 import type {
   BrandProfileDto, BrandDropDto,
   BusinessProductDto, BusinessServiceDto, StaffDto,
   ChatConversationDto, ChatMessageDto,
 } from "../../shared/api/dto";
-import { createBusinessInvitation } from "../../shared/api/businessInvitationClient";
-import { getManagedImportCatalogAccess } from "../../shared/api/managedImportClient";
+import { getManagedImportCatalogAccess, listBusinessManagedImports, requestManagedImportHelp } from "../../shared/api/managedImportClient";
+import { requestAiEnrichment } from "../../shared/api/platformClient";
 import {
-  getBusinessCatalogStatus, completeBusinessCatalogSetup,
+  getBusinessCatalogStatus,
   type BusinessCatalogStatus,
 } from "../../shared/api/sellerOnboardingClient";
 
@@ -65,6 +66,7 @@ interface BranchInfo {
   cityName: string;
   name: string;
   address: string;
+  addressDetails: string;
   onlineOnly: boolean;
   status: string;
   latitude: number;
@@ -92,11 +94,21 @@ function flattenCategories(items: CategoryInfo[]): CategoryInfo[] {
   return items.flatMap(item => [item, ...flattenCategories(item.children || [])]);
 }
 
+function normalizeCityName(value: string) {
+  return value
+    .toLocaleLowerCase()
+    .replace(/^(\u0433\.?|\u0433\u043e\u0440\u043e\u0434)\s*/u, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
 
 export function BusinessPage() {
   const { state, actions } = useAuth();
   const { selectBusiness } = actions;
   const { businessId = "" } = useParams<{ businessId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialConversationId = searchParams.get("conversationId");
   const { reduced } = useMotion();
   const { t } = useTranslation();
   const [section, setSection] = useState<BusinessSection>("overview");
@@ -150,6 +162,10 @@ export function BusinessPage() {
   const [editProduct, setEditProduct] = useState<BusinessProductDto | null>(null);
   const [productForm, setProductForm] = useState({ name: "", description: "", price: "", categoryId: "", imageUrl: "" });
   const [productsBusy, setProductsBusy] = useState(false);
+  const [selectedProductOfferIds, setSelectedProductOfferIds] = useState<Set<string>>(new Set());
+  const [aiEnrichmentBusy, setAiEnrichmentBusy] = useState(false);
+  const [managedImportRequestBusy, setManagedImportRequestBusy] = useState(false);
+  const [managedImportRequested, setManagedImportRequested] = useState(false);
   const [productsLoadingPage, setProductsLoadingPage] = useState(false);
   const [newProductIds, setNewProductIds] = useState<Set<string>>(new Set());
   const prevProductIdsRef = useRef<Set<string>>(new Set());
@@ -170,8 +186,7 @@ export function BusinessPage() {
   const [branchesBusy, setBranchesBusy] = useState(false);
   const [showBranchForm, setShowBranchForm] = useState(false);
   const [editBranchId, setEditBranchId] = useState<string | null>(null);
-  const [branchForm, setBranchForm] = useState({ name: "", address: "", cityId: "", latitude: null as number | null, longitude: null as number | null });
-  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [branchForm, setBranchForm] = useState({ name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null });
   const [staffByBranch, setStaffByBranch] = useState<Record<string, StaffDto[]>>({});
   const [staffForms, setStaffForms] = useState<Record<string, { displayName: string; email: string; role: string }>>({});
   const [staffBusy, setStaffBusy] = useState("");
@@ -182,7 +197,7 @@ export function BusinessPage() {
   const [employees, setEmployees] = useState<StaffDto[]>([]);
   const [employeesBusy, setEmployeesBusy] = useState(false);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
-  const [employeeForm, setEmployeeForm] = useState({ email: "", role: "WORKER", branchId: "" });
+  const [employeeForm, setEmployeeForm] = useState({ displayName: "", email: "", role: "WORKER", branchId: "" });
 
   // Overview
   const [importBranchId, setImportBranchId] = useState("");
@@ -191,8 +206,6 @@ export function BusinessPage() {
 
   // Catalog setup deadline
   const [catalogStatus, setCatalogStatus] = useState<BusinessCatalogStatus | null>(null);
-  const [catalogCompleteBusy, setCatalogCompleteBusy] = useState(false);
-
   // Chats
   const [chatConversations, setChatConversations] = useState<ChatConversationDto[]>([]);
   const [chatsBusy, setChatsBusy] = useState(false);
@@ -200,10 +213,20 @@ export function BusinessPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessageDto[]>([]);
   const [messagesBusy, setMessagesBusy] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [replyFile, setReplyFile] = useState<File | null>(null);
 
   const activeBranchId = selectedBranchId || branches[0]?.id || "";
 
-  const sidebarItems: { key: BusinessSection; label: string; icon: React.ReactNode }[] = [
+  useEffect(() => {
+    if (!membership) return;
+    listBusinessManagedImports(membership.businessId)
+      .then(items => setManagedImportRequested(
+        items.some(item => item.status === "PENDING" || item.status === "ACTIVE"),
+      ))
+      .catch(() => setManagedImportRequested(false));
+  }, [membership?.businessId]);
+
+  const businessSidebarItems: { key: BusinessSection; label: string; icon: React.ReactNode }[] = [
     { key: "overview", label: t("business.overview"), icon: <Layout size={18} /> },
     { key: "products", label: t("business.products"), icon: <Package size={18} /> },
     { key: "services", label: t("business.services"), icon: <Briefcase size={18} /> },
@@ -213,6 +236,15 @@ export function BusinessPage() {
       { key: "organization" as BusinessSection, label: t("business.organization"), icon: <Building2 size={18} /> },
     ]),
   ];
+  const sidebarItems = isPlatformWorkspace
+    ? businessSidebarItems.filter(item => item.key === "products")
+    : businessSidebarItems;
+
+  useEffect(() => {
+    if (isPlatformWorkspace && section !== "products") {
+      setSection("products");
+    }
+  }, [isPlatformWorkspace, section]);
 
   function formatStaffStatus(status: string) {
     if (status === "PENDING_ACTIVATION") return t("business.staffStatus.pendingActivation");
@@ -376,7 +408,7 @@ export function BusinessPage() {
   }, [businessId]);
 
   const handleCreateEmployee = async () => {
-    if (!businessId || !employeeForm.email) return;
+    if (!businessId || !employeeForm.displayName.trim() || !employeeForm.email) return;
     if (!isValidEmail(employeeForm.email)) {
       toast.show(t("business.validation.emailInvalid"), "error");
       return;
@@ -387,17 +419,19 @@ export function BusinessPage() {
     }
     setEmployeesBusy(true);
     try {
-      await createBusinessInvitation(businessId, {
-        invitedEmail: employeeForm.email,
-        invitedRole: employeeForm.role as "MANAGER" | "WORKER",
-        branchIds: employeeForm.role === "WORKER" && employeeForm.branchId
-          ? [employeeForm.branchId]
-          : [],
+      const created = await createEmployee(businessId, {
+        email: employeeForm.email,
+        displayName: employeeForm.displayName.trim(),
+        role: employeeForm.role,
+        branchId: employeeForm.role === "WORKER" ? employeeForm.branchId : undefined,
       });
-      setEmployeeForm({ email: "", role: "WORKER", branchId: "" });
+      setEmployees(current => [created, ...current.filter(item => item.id !== created.id)]);
+      if (employeeForm.branchId) {
+        await loadStaffForBranch(employeeForm.branchId);
+      }
+      setEmployeeForm({ displayName: "", email: "", role: "WORKER", branchId: "" });
       setShowEmployeeForm(false);
-      await loadEmployees();
-      toast.show(t("business.toast.invitationSent"), "success");
+      toast.show(t("business.toast.staffAdded"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.staffAddError"), "error");
     } finally {
@@ -418,19 +452,6 @@ export function BusinessPage() {
     if (!hasBusinessAccess || !businessId) return;
     getBusinessCatalogStatus(businessId).then(setCatalogStatus).catch(() => setCatalogStatus(null));
   }, [hasBusinessAccess, businessId]);
-
-  const handleCompleteCatalogSetup = async () => {
-    setCatalogCompleteBusy(true);
-    try {
-      const updated = await completeBusinessCatalogSetup(businessId);
-      setCatalogStatus(updated);
-      toast.show(t("business.catalogSetup.completedToast"), "success");
-    } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : t("business.toast.loadError"), "error");
-    } finally {
-      setCatalogCompleteBusy(false);
-    }
-  };
 
   const loadChats = useCallback(async () => {
     if (!businessId) return;
@@ -460,17 +481,39 @@ export function BusinessPage() {
     if (businessId) markBusinessChatRead(conversationId, businessId).catch(() => {});
   }, [businessId, loadMessages]);
 
+  useEffect(() => {
+    if (hasBusinessAccess
+        && initialConversationId
+        && selectedConversationId !== initialConversationId) {
+      setSection("overview");
+      handleSelectConversation(initialConversationId);
+    }
+  }, [
+    handleSelectConversation,
+    hasBusinessAccess,
+    initialConversationId,
+    selectedConversationId,
+  ]);
+
   const handleSendReply = useCallback(async () => {
-    if (!businessId || !selectedConversationId || !replyText.trim()) return;
+    if (!businessId || !selectedConversationId || (!replyText.trim() && !replyFile)) return;
     try {
-      await sendBusinessChatMessage(selectedConversationId, businessId, replyText.trim());
+      const attachmentUrl = replyFile
+        ? await uploadChatFile(selectedConversationId, replyFile)
+        : undefined;
+      await sendBusinessChatMessage(selectedConversationId, businessId, replyText.trim(), attachmentUrl);
       setReplyText("");
+      setReplyFile(null);
       loadMessages(selectedConversationId);
       loadChats();
     } catch { /* empty */ }
-  }, [businessId, selectedConversationId, replyText, loadMessages, loadChats]);
+  }, [businessId, selectedConversationId, replyText, replyFile, loadMessages, loadChats]);
 
   useEffect(() => { if (hasBusinessAccess && section === "overview") { loadChats(); } }, [hasBusinessAccess, section, loadChats]);
+
+  if (!state.sessionReady) {
+    return <Loading />;
+  }
 
   if (!membership && isPlatformCandidate && platformWorkspaceAccess === null) {
     return <Loading />;
@@ -554,7 +597,7 @@ export function BusinessPage() {
   const handleUpdateProduct = async () => {
     if (!activeBranchId || !editProduct) return;
     try {
-      await updateProduct(activeBranchId, editProduct.productOfferId, {
+      await updateProduct(activeBranchId, editProduct.productId, {
         name: productForm.name || undefined,
         description: productForm.description || undefined,
         price: productForm.price ? Number(productForm.price) : undefined,
@@ -574,7 +617,7 @@ export function BusinessPage() {
     if (!branchId) return;
     try {
       productsCacheRef.current.clear();
-      await deleteProduct(branchId, product.productOfferId);
+      await deleteProduct(branchId, product.productId);
       loadProducts();
       toast.show(t("business.toast.productDeleted"), "success");
     } catch (e) {
@@ -592,6 +635,36 @@ export function BusinessPage() {
       imageUrl: p.imageUrl || "",
     });
     setShowProductForm(false);
+  };
+
+  const handleAiEnrichment = async (offerIds: string[]) => {
+    if (!isPlatformWorkspace || offerIds.length === 0) return;
+    setAiEnrichmentBusy(true);
+    try {
+      const result = await requestAiEnrichment("PRODUCT", offerIds);
+      setSelectedProductOfferIds(new Set());
+      toast.show(`AI enrichment поставлен в очередь: ${result.queuedCount}`, "success");
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
+    } finally {
+      setAiEnrichmentBusy(false);
+    }
+  };
+
+  const handleRequestManagedImport = async () => {
+    const email = state.session?.user.email;
+    if (!businessId || !email) return;
+    if (!window.confirm("Запросить помощь с импортом каталога и принять условия услуги?")) return;
+    setManagedImportRequestBusy(true);
+    try {
+      await requestManagedImportHelp(businessId, email);
+      setManagedImportRequested(true);
+      toast.show("Запрос помощи с каталогом отправлен", "success");
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
+    } finally {
+      setManagedImportRequestBusy(false);
+    }
   };
 
   // Service CRUD
@@ -627,7 +700,7 @@ export function BusinessPage() {
   const handleUpdateService = async () => {
     if (!activeBranchId || !editService) return;
     try {
-      await updateService(activeBranchId, editService.serviceBranchOfferId, {
+      await updateService(activeBranchId, editService.serviceOfferingId, {
         name: serviceForm.name || undefined,
         description: serviceForm.description || undefined,
         basePrice: serviceForm.basePrice ? Number(serviceForm.basePrice) : undefined,
@@ -669,16 +742,21 @@ export function BusinessPage() {
       toast.show(t("business.toast.branchLocationRequired"), "error");
       return;
     }
+    if (!branchForm.address || !branchForm.cityId) {
+      toast.show(t("business.toast.branchLocationRequired"), "error");
+      return;
+    }
     try {
       const created = await createBranch(businessId, {
         name: branchForm.name.trim(),
         address: branchForm.address || undefined,
+        addressDetails: branchForm.addressDetails || undefined,
         cityId: branchForm.cityId || undefined,
         onlineOnly: false,
         latitude: branchForm.latitude,
         longitude: branchForm.longitude,
       });
-      setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
       setShowBranchForm(false);
       setSelectedBranchId(created.id);
       setImportBranchId(created.id);
@@ -699,11 +777,12 @@ export function BusinessPage() {
       await updateBranch(businessId, editBranchId, {
         name: branchForm.name.trim() || undefined,
         address: branchForm.address || undefined,
+        addressDetails: branchForm.addressDetails || undefined,
         cityId: branchForm.cityId || undefined,
         latitude: branchForm.latitude ?? undefined,
         longitude: branchForm.longitude ?? undefined,
       });
-      setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+      setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
       setEditBranchId(null);
       loadBranches();
       toast.show(t("business.toast.branchUpdated"), "success");
@@ -721,11 +800,15 @@ export function BusinessPage() {
     }
     setStaffBusy(branchId);
     try {
-      await createBusinessInvitation(businessId, {
-        invitedEmail: form.email,
-        invitedRole: (form.role || "WORKER") as "MANAGER" | "WORKER",
-        branchIds: [branchId],
+      const created = await createStaff(businessId, branchId, {
+        email: form.email,
+        displayName: form.displayName.trim(),
+        role: form.role || "WORKER",
       });
+      setStaffByBranch(current => ({
+        ...current,
+        [branchId]: [created, ...(current[branchId] || []).filter(item => item.id !== created.id)],
+      }));
       setStaffForms(current => ({ ...current, [branchId]: { displayName: "", email: "", role: "WORKER" } }));
       await loadStaffForBranch(branchId);
       toast.show(t("business.toast.staffAdded"), "success");
@@ -932,7 +1015,7 @@ export function BusinessPage() {
                   flexShrink: 0,
                 }} />
                 <span className="fcw-body fcw-weight-semibold" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {state.session?.business?.businessName || t("business.companyCabinet")}
+                  {membership?.businessName || t("business.companyCabinet")}
                 </span>
                 <span className="fcw-label" style={{
                   color: isStaff ? "var(--fcw-color-text-tertiary)" : "var(--fcw-color-primary)",
@@ -941,7 +1024,15 @@ export function BusinessPage() {
                   borderRadius: "var(--fcw-radius-full)",
                   flexShrink: 0,
                 }}>
-                  {isManager ? t("business.employee.manager") : isWorker ? t("business.employee.worker") : isStaff ? "" : t("business.owner")}
+                  {isPlatformWorkspace
+                    ? t("platform.managed.title")
+                    : isManager
+                      ? t("business.employee.manager")
+                      : isWorker
+                        ? t("business.employee.worker")
+                        : isStaff
+                          ? ""
+                          : t("business.owner")}
                 </span>
                 <div style={{ flex: 1 }} />
                 {branches.length > 0 && (
@@ -967,6 +1058,8 @@ export function BusinessPage() {
                       <span className="fcw-body fcw-weight-semibold">
                         {catalogStatus.status === "RESTRICTED"
                           ? t("business.catalogSetup.restrictedTitle")
+                          : catalogStatus.status === "REVIEW_REQUIRED"
+                            ? t("business.catalogSetup.reviewTitle")
                           : t("business.catalogSetup.deadlineTitle", {
                               days: Math.max(0, Math.ceil((new Date(catalogStatus.deadlineAt).getTime() - Date.now()) / 86400000)),
                             })}
@@ -974,19 +1067,11 @@ export function BusinessPage() {
                       <span className="fcw-body-s fcw-text-secondary">
                         {catalogStatus.status === "RESTRICTED"
                           ? t("business.catalogSetup.restrictedDescription")
+                          : catalogStatus.status === "REVIEW_REQUIRED"
+                            ? t("business.catalogSetup.reviewDescription")
                           : t("business.catalogSetup.deadlineDescription")}
                       </span>
                     </div>
-                    {(isOwner || isManager || isPlatformWorkspace) && (
-                      <button
-                        className="fcw-btn fcw-btn-primary fcw-btn-sm"
-                        disabled={catalogCompleteBusy}
-                        onClick={handleCompleteCatalogSetup}
-                      >
-                        {catalogCompleteBusy ? <Loader2 size={14} className="fcw-spin" /> : <Check size={14} />}
-                        {t("business.catalogSetup.complete")}
-                      </button>
-                    )}
                   </div>
                 </Card>
               )}
@@ -1089,6 +1174,11 @@ export function BusinessPage() {
                               border: msg.senderType === "BUSINESS" ? "var(--fcw-border-width-thin) solid color-mix(in srgb, var(--fcw-color-primary) 25%, transparent)" : "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
                             }}>
                               <span className="fcw-body-s" style={{ wordBreak: "break-word" }}>{msg.text}</span>
+                              {msg.attachmentUrl && (
+                                <a className="fcw-body-s" href={msg.attachmentUrl} target="_blank" rel="noreferrer" style={{ display: "block" }}>
+                                  Вложение
+                                </a>
+                              )}
                               <span className="fcw-body-xs fcw-text-tertiary" style={{ display: "block", marginTop: "0.25rem" }}>
                                 {new Date(msg.createdAt).toLocaleTimeString("ru-KZ", { hour: "2-digit", minute: "2-digit" })}
                               </span>
@@ -1096,6 +1186,10 @@ export function BusinessPage() {
                           ))}
                         </div>
                         <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", flexShrink: 0 }}>
+                          <label className="fcw-btn fcw-btn-secondary fcw-btn-sm">
+                            <Paperclip size={14} />
+                            <input type="file" style={{ display: "none" }} onChange={event => setReplyFile(event.target.files?.[0] || null)} />
+                          </label>
                           <input
                             className="fcw-input fcw-input-sm"
                             placeholder={t("business.chats.replyPlaceholder")}
@@ -1104,7 +1198,7 @@ export function BusinessPage() {
                             onKeyDown={e => { if (e.key === "Enter") handleSendReply(); }}
                             style={{ flex: 1 }}
                           />
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleSendReply} disabled={!replyText.trim()}>
+                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleSendReply} disabled={!replyText.trim() && !replyFile}>
                             <Reply size={14} />
                           </button>
                         </div>
@@ -1126,6 +1220,26 @@ export function BusinessPage() {
                       </div>
                       {!isWorker && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
+                          {!isPlatformWorkspace && (isOwner || isManager) && (
+                            <button
+                              className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                              onClick={handleRequestManagedImport}
+                              disabled={managedImportRequestBusy || managedImportRequested}
+                            >
+                              {managedImportRequestBusy ? <Loader2 size={16} className="fcw-spin" /> : <MessageCircle size={16} />}
+                              {managedImportRequested ? "Запрос отправлен" : "Запросить помощь с каталогом"}
+                            </button>
+                          )}
+                          {isPlatformWorkspace && selectedProductOfferIds.size > 0 && (
+                            <button
+                              className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                              onClick={() => handleAiEnrichment(Array.from(selectedProductOfferIds))}
+                              disabled={aiEnrichmentBusy}
+                            >
+                              {aiEnrichmentBusy ? <Loader2 size={16} className="fcw-spin" /> : <Sparkles size={16} />}
+                              AI enrichment ({selectedProductOfferIds.size})
+                            </button>
+                          )}
                           <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("PRODUCT"); setSection("import"); }}>
                             <Upload size={16} />{t("business.import.title")}
                           </button>
@@ -1271,12 +1385,34 @@ export function BusinessPage() {
                                   </div>
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                     <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateProduct}><Check size={14} />{t("business.save")}</button>
+                                    {isPlatformWorkspace && (
+                                      <button
+                                        className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                        onClick={() => handleAiEnrichment([p.productOfferId])}
+                                        disabled={aiEnrichmentBusy}
+                                      >
+                                        <Sparkles size={14} />AI enrichment
+                                      </button>
+                                    )}
                                     <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>{t("business.cancel")}</button>
                                   </div>
                                 </div>
                               </Card>
                             ) : (
                             <>
+                              {isPlatformWorkspace && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedProductOfferIds.has(p.productOfferId)}
+                                  onChange={event => setSelectedProductOfferIds(current => {
+                                    const next = new Set(current);
+                                    if (event.target.checked) next.add(p.productOfferId);
+                                    else next.delete(p.productOfferId);
+                                    return next;
+                                  })}
+                                  aria-label={`Выбрать ${p.name}`}
+                                />
+                              )}
                               <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "120px" }}>
                                 {p.name}
                               </span>
@@ -1581,8 +1717,8 @@ export function BusinessPage() {
                           <button
                             className="fcw-btn fcw-btn-primary fcw-btn-sm"
                             onClick={() => {
-                              setEditBranchId(null); setShowMapPicker(false);
-                              setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+                              setEditBranchId(null);
+                              setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
                               setShowBranchForm(v => !v);
                             }}
                           >
@@ -1624,51 +1760,37 @@ export function BusinessPage() {
                                     onChange={e => setBranchForm(p => ({ ...p, name: e.target.value }))}
                                   />
                                 </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.branch.address")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.branch.address")}
-                                      value={branchForm.address}
-                                      onChange={e => setBranchForm(p => ({ ...p, address: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.branch.city")}</label>
-                                    <Select
-                                      options={cities.map(c => ({ value: c.id, label: c.name }))}
-                                      value={branchForm.cityId}
-                                      onChange={v => setBranchForm(p => ({ ...p, cityId: v }))}
-                                      placeholder={t("business.branch.city")}
-                                    />
-                                  </div>
-                                </div>
                                 <div className="fcw-flex-col" style={{ gap: "0.375rem" }}>
                                   <span className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)" }}>
                                     {t("business.branch.location")}
                                   </span>
-                                  <button
-                                    type="button"
-                                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                    onClick={() => setShowMapPicker(v => !v)}
-                                    style={{ alignSelf: "flex-start", gap: "0.375rem" }}
-                                  >
-                                    <MapPin size={14} />
-                                    {showMapPicker ? t("business.cancel") : t("business.branch.pickOnMap")}
-                                  </button>
-                                  {showMapPicker && (
-                                    <MapLocationPicker
-                                      initialLat={branchForm.latitude ?? undefined}
-                                      initialLng={branchForm.longitude ?? undefined}
-                                      onChange={(lat, lng, address) => setBranchForm(p => ({
+                                  <MapLocationPicker
+                                    initialLat={branchForm.latitude ?? undefined}
+                                    initialLng={branchForm.longitude ?? undefined}
+                                    onChange={(lat, lng, address, cityName) => {
+                                      const cityId = cities.find(city =>
+                                        normalizeCityName(city.name) === normalizeCityName(cityName || "")
+                                      )?.id || "";
+                                      setBranchForm(p => ({
                                         ...p,
                                         latitude: lat,
                                         longitude: lng,
-                                        ...(address ? { address } : {}),
-                                      }))}
-                                    />
+                                        address: address || "",
+                                        cityId,
+                                      }));
+                                    }}
+                                  />
+                                  {(branchForm.address || branchForm.cityId) && (
+                                    <span className="fcw-body-s fcw-text-secondary">
+                                      {[cities.find(city => city.id === branchForm.cityId)?.name, branchForm.address].filter(Boolean).join(", ")}
+                                    </span>
                                   )}
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.branch.addressDetails")}
+                                    value={branchForm.addressDetails}
+                                    onChange={e => setBranchForm(p => ({ ...p, addressDetails: e.target.value }))}
+                                  />
                                   {branchForm.latitude != null && branchForm.longitude != null && (
                                     <a
                                       className="fcw-btn fcw-btn-ghost fcw-btn-sm"
@@ -1686,8 +1808,8 @@ export function BusinessPage() {
                                     <Check size={14} />{t("business.create")}
                                   </button>
                                   <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => {
-                                    setShowBranchForm(false); setShowMapPicker(false);
-                                    setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+                                    setShowBranchForm(false);
+                                    setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
                                   }}>{t("business.cancel")}</button>
                                 </div>
                               </div>
@@ -1714,51 +1836,37 @@ export function BusinessPage() {
                                     onChange={e => setBranchForm(p => ({ ...p, name: e.target.value }))}
                                   />
                                 </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.branch.address")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.branch.address")}
-                                      value={branchForm.address}
-                                      onChange={e => setBranchForm(p => ({ ...p, address: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.branch.city")}</label>
-                                    <Select
-                                      options={cities.map(c => ({ value: c.id, label: c.name }))}
-                                      value={branchForm.cityId}
-                                      onChange={v => setBranchForm(p => ({ ...p, cityId: v }))}
-                                      placeholder={t("business.branch.city")}
-                                    />
-                                  </div>
-                                </div>
                                 <div className="fcw-flex-col" style={{ gap: "0.375rem" }}>
                                   <span className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)" }}>
                                     {t("business.branch.location")}
                                   </span>
-                                  <button
-                                    type="button"
-                                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                    onClick={() => setShowMapPicker(v => !v)}
-                                    style={{ alignSelf: "flex-start", gap: "0.375rem" }}
-                                  >
-                                    <MapPin size={14} />
-                                    {showMapPicker ? t("business.cancel") : t("business.branch.pickOnMap")}
-                                  </button>
-                                  {showMapPicker && (
-                                    <MapLocationPicker
-                                      initialLat={branchForm.latitude ?? undefined}
-                                      initialLng={branchForm.longitude ?? undefined}
-                                      onChange={(lat, lng, address) => setBranchForm(p => ({
+                                  <MapLocationPicker
+                                    initialLat={branchForm.latitude ?? undefined}
+                                    initialLng={branchForm.longitude ?? undefined}
+                                    onChange={(lat, lng, address, cityName) => {
+                                      const cityId = cities.find(city =>
+                                        normalizeCityName(city.name) === normalizeCityName(cityName || "")
+                                      )?.id || "";
+                                      setBranchForm(p => ({
                                         ...p,
                                         latitude: lat,
                                         longitude: lng,
-                                        ...(address ? { address } : {}),
-                                      }))}
-                                    />
+                                        address: address || "",
+                                        cityId,
+                                      }));
+                                    }}
+                                  />
+                                  {(branchForm.address || branchForm.cityId) && (
+                                    <span className="fcw-body-s fcw-text-secondary">
+                                      {[cities.find(city => city.id === branchForm.cityId)?.name, branchForm.address].filter(Boolean).join(", ")}
+                                    </span>
                                   )}
+                                  <input
+                                    className="fcw-input"
+                                    placeholder={t("business.branch.addressDetails")}
+                                    value={branchForm.addressDetails}
+                                    onChange={e => setBranchForm(p => ({ ...p, addressDetails: e.target.value }))}
+                                  />
                                   {branchForm.latitude != null && branchForm.longitude != null && (
                                     <a
                                       className="fcw-btn fcw-btn-ghost fcw-btn-sm"
@@ -1776,8 +1884,8 @@ export function BusinessPage() {
                                     <Check size={14} />{t("business.save")}
                                   </button>
                                   <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => {
-                                    setEditBranchId(null); setShowMapPicker(false);
-                                    setBranchForm({ name: "", address: "", cityId: "", latitude: null, longitude: null });
+                                    setEditBranchId(null);
+                                    setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
                                   }}>{t("business.cancel")}</button>
                                 </div>
                               </div>
@@ -1801,7 +1909,7 @@ export function BusinessPage() {
                                 </span>
                                 {b.address && (
                                   <span className="fcw-body-s" style={{ color: "var(--fcw-color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {b.address}
+                                    {[b.address, b.addressDetails].filter(Boolean).join(", ")}
                                   </span>
                                 )}
                                 <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
@@ -1859,9 +1967,9 @@ export function BusinessPage() {
                                     className="fcw-btn fcw-btn-ghost fcw-btn-sm"
                                     style={{ flexShrink: 0 }}
                                     onClick={() => {
-                                      setEditBranchId(b.id); setShowMapPicker(false);
+                                      setEditBranchId(b.id);
                                       setBranchForm({
-                                        name: b.name, address: b.address || "", cityId: b.cityId || "",
+                                        name: b.name, address: b.address || "", addressDetails: b.addressDetails || "", cityId: b.cityId || "",
                                         latitude: b.latitude ?? null, longitude: b.longitude ?? null,
                                       });
                                       setShowBranchForm(false);
@@ -2074,7 +2182,7 @@ export function BusinessPage() {
                             className="fcw-btn fcw-btn-primary fcw-btn-sm"
                             onClick={() => {
                               setShowEmployeeForm(v => !v);
-                              if (!showEmployeeForm) setEmployeeForm({ email: "", role: "WORKER", branchId: "" });
+                              if (!showEmployeeForm) setEmployeeForm({ displayName: "", email: "", role: "WORKER", branchId: "" });
                             }}
                           >
                             <Plus size={16} />{t("business.employee.add")}
@@ -2099,7 +2207,16 @@ export function BusinessPage() {
                                   <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
                                   {t("business.employee.add")}
                                 </h3>
-                                <div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.staff.displayName")}</label>
+                                    <input
+                                      className="fcw-input"
+                                      placeholder={t("business.staff.displayName")}
+                                      value={employeeForm.displayName}
+                                      onChange={e => setEmployeeForm(p => ({ ...p, displayName: e.target.value }))}
+                                    />
+                                  </div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                     <label className="fcw-label">{t("business.staff.email")}</label>
                                     <input
@@ -2243,6 +2360,7 @@ export function BusinessPage() {
                     onBackToProducts={() => setSection(importMode === "SERVICE" ? "services" : "products")}
                     onImported={handleImportCompleted}
                     importMode={importMode}
+                    allowAiTools={isPlatformWorkspace}
                   />
                 )}
 

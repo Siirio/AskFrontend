@@ -26,6 +26,7 @@ export type SellerOnboardingResult = {
   businessId: string;
   catalogSetupMode: "MANUAL" | "ASK_MANAGED_IMPORT";
   catalogDeadlineAt: string;
+  conversationId?: string;
   startRoute: "BUSINESS_CABINET" | "MANAGED_IMPORT";
 };
 
@@ -39,7 +40,7 @@ export function completeSellerOnboarding(data: SellerOnboardingData) {
 
 export type BusinessCatalogStatus = {
   businessId: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "RESTRICTED";
+  status: "IN_PROGRESS" | "REVIEW_REQUIRED" | "COMPLETED" | "RESTRICTED";
   deadlineAt: string;
 };
 
@@ -47,12 +48,5 @@ export function getBusinessCatalogStatus(businessId: string) {
   return apiRequest<BusinessCatalogStatus>(
     `/api/v1/businesses/${businessId}/catalog-setup`,
     { auth: true },
-  );
-}
-
-export function completeBusinessCatalogSetup(businessId: string) {
-  return apiRequest<BusinessCatalogStatus>(
-    `/api/v1/businesses/${businessId}/catalog-setup/complete`,
-    { method: "POST", auth: true },
   );
 }

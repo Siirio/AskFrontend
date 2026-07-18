@@ -6,7 +6,7 @@ import { load } from "@2gis/mapgl";
 interface MapLocationPickerProps {
   initialLat?: number;
   initialLng?: number;
-  onChange: (lat: number, lng: number, address?: string) => void;
+  onChange: (lat: number, lng: number, address?: string, cityName?: string) => void;
   readOnly?: boolean;
 }
 
@@ -18,6 +18,28 @@ interface GeocodingSuggestion {
   fullName: string;
   lat: number;
   lng: number;
+  cityName?: string;
+}
+
+interface GeocodingItem {
+  name?: string;
+  full_name?: string;
+  full_address_name?: string;
+  address_name?: string;
+  point?: { lat: number; lon: number };
+  adm_div?: Array<{ name?: string; type?: string }>;
+}
+
+function getAddress(item: GeocodingItem) {
+  return item.full_address_name || item.full_name || item.address_name || item.name || "";
+}
+
+function getCityName(item: GeocodingItem) {
+  const division = item.adm_div?.find(part => {
+    const type = part.type?.toLowerCase() || "";
+    return type.includes("city") || type.includes("settlement");
+  });
+  return division?.name || item.adm_div?.[0]?.name;
 }
 
 export default function MapLocationPicker({ initialLat, initialLng, onChange, readOnly }: MapLocationPickerProps) {
@@ -26,6 +48,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
   const mapRef = useRef<any>(null);
   const mapglRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const onChangeRef = useRef(onChange);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,6 +59,35 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
   );
   const internalChangeRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const resolveLocation = useCallback(async (lat: number, lng: number) => {
+    if (!API_KEY) {
+      onChangeRef.current(lat, lng);
+      return;
+    }
+    setSearching(true);
+    try {
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lon: String(lng),
+        key: API_KEY,
+        fields: "items.point,items.adm_div,items.full_address_name",
+      });
+      const response = await fetch(`https://catalog.api.2gis.com/3.0/items/geocode?${params}`);
+      if (!response.ok) throw new Error("Reverse geocoding failed");
+      const data = await response.json();
+      const item = data.result?.items?.[0] as GeocodingItem | undefined;
+      onChangeRef.current(lat, lng, item ? getAddress(item) : undefined, item ? getCityName(item) : undefined);
+    } catch {
+      onChangeRef.current(lat, lng);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
 
   const center: [number, number] = selected
     ? [selected.lat, selected.lng]
@@ -57,10 +109,10 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
         const coords = marker.getCoordinates();
         internalChangeRef.current = true;
         setSelected({ lat: coords[1], lng: coords[0] });
-        onChange(coords[1], coords[0]);
+        void resolveLocation(coords[1], coords[0]);
       });
     }
-  }, [readOnly, onChange]);
+  }, [readOnly, resolveLocation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +139,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
             const [lng, lat] = e.lngLat;
             internalChangeRef.current = true;
             setSelected({ lat, lng });
-            onChange(lat, lng);
+            void resolveLocation(lat, lng);
             placeMarker(lat, lng);
           });
         }
@@ -130,17 +182,18 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
     setSearching(true);
     try {
       const res = await fetch(
-        `https://catalog.api.2gis.com/3.0/items/geocode?q=${encodeURIComponent(query)}&key=${API_KEY}&fields=items.point`
+        `https://catalog.api.2gis.com/3.0/items/geocode?q=${encodeURIComponent(query)}&key=${API_KEY}&fields=items.point,items.adm_div,items.full_address_name`
       );
       if (!res.ok) throw new Error("Geocoding failed");
       const data = await res.json();
       const items: GeocodingSuggestion[] = (data.result?.items || [])
-        .filter((item: any) => item.point)
-        .map((item: any) => ({
+        .filter((item: GeocodingItem) => item.point)
+        .map((item: GeocodingItem) => ({
           name: item.name || "",
-          fullName: item.full_name || item.name || "",
-          lat: item.point.lat,
-          lng: item.point.lon,
+          fullName: getAddress(item),
+          lat: item.point!.lat,
+          lng: item.point!.lon,
+          cityName: getCityName(item),
         }));
       setSuggestions(items.slice(0, 5));
     } catch {
@@ -159,7 +212,7 @@ export default function MapLocationPicker({ initialLat, initialLng, onChange, re
   const selectSuggestion = (s: GeocodingSuggestion) => {
     internalChangeRef.current = true;
     setSelected({ lat: s.lat, lng: s.lng });
-    onChange(s.lat, s.lng, s.fullName);
+    onChange(s.lat, s.lng, s.fullName, s.cityName);
     setSearchQuery(s.fullName);
     setSuggestions([]);
 

@@ -19,6 +19,7 @@ const ACTIVE_BUSINESS_KEY = "ask.activeBusinessId";
 
 interface AuthState {
   session: AuthSession | null;
+  sessionReady: boolean;
   authenticated: boolean;
   challenge: AuthChallenge | null;
   busy: boolean;
@@ -28,6 +29,7 @@ interface AuthState {
   twoFactorChallengeId: string | null;
   activationRequired: boolean;
   activeBusinessId: string | null;
+  registrationJustCompleted: boolean;
 }
 
 interface AuthActions {
@@ -43,6 +45,7 @@ interface AuthActions {
   activateStaffAccount: (newPassword: string, passwordConfirmation: string) => Promise<void>;
   selectBusiness: (businessId: string) => void;
   refreshSession: () => Promise<void>;
+  dismissRoleExpansion: () => void;
 }
 
 const AuthContext = createContext<{ state: AuthState; actions: AuthActions } | null>(null);
@@ -50,6 +53,7 @@ const AuthContext = createContext<{ state: AuthState; actions: AuthActions } | n
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
   const [challenge, setChallenge] = useState<AuthChallenge | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -60,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeBusinessId, setActiveBusinessId] = useState<string | null>(
     () => window.localStorage.getItem(ACTIVE_BUSINESS_KEY),
   );
+  const [registrationJustCompleted, setRegistrationJustCompleted] = useState(false);
 
   useEffect(() => {
     if (!activeBusinessId && session?.businessMemberships?.length) {
@@ -78,9 +83,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
     fetchCurrentSession()
-      .then(acceptSession)
-      .catch(() => setSession(null));
+      .then(nextSession => {
+        if (active) {
+          acceptSession(nextSession);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSession(null);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setSessionReady(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [acceptSession]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -134,10 +158,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!challenge) {
       return;
     }
+    const wasRegistration = challenge.purpose === "REGISTER";
     setBusy(true);
     setError("");
     try {
       acceptSession(await verifyCode(challenge.authChallengeId, code));
+      if (wasRegistration) {
+        setRegistrationJustCompleted(true);
+      }
     } catch (cause) {
       setError(cause instanceof ApiError
         ? cause.message
@@ -234,12 +262,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(ACTIVE_BUSINESS_KEY, businessId);
   }, []);
 
+  const dismissRoleExpansion = useCallback(() => {
+    setRegistrationJustCompleted(false);
+  }, []);
+
   const refreshSession = useCallback(async () => {
     acceptSession(await fetchCurrentSession());
   }, [acceptSession]);
 
   const state: AuthState = {
     session,
+    sessionReady,
     authenticated: session !== null,
     challenge,
     busy,
@@ -249,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     twoFactorChallengeId,
     activationRequired,
     activeBusinessId,
+    registrationJustCompleted,
   };
 
   const actions: AuthActions = {
@@ -264,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     activateStaffAccount,
     selectBusiness,
     refreshSession,
+    dismissRoleExpansion,
   };
 
   return <AuthContext.Provider value={{ state, actions }}>{children}</AuthContext.Provider>;

@@ -402,14 +402,14 @@ export function publishAutodumpSession(branchId: string, sessionId: string) {
 }
 
 export function listBranches(businessId: string) {
-  return apiRequest<Array<{ id: string; businessId: string; cityId: string; cityName: string; name: string; address: string; onlineOnly: boolean; status: string; latitude: number; longitude: number }>>(`/api/v1/businesses/${businessId}/branches`, { auth: true });
+  return apiRequest<Array<{ id: string; businessId: string; cityId: string; cityName: string; name: string; address: string; addressDetails: string; onlineOnly: boolean; status: string; latitude: number; longitude: number }>>(`/api/v1/businesses/${businessId}/branches`, { auth: true });
 }
 
-export function createBranch(businessId: string, data: { name: string; address?: string; cityId?: string; onlineOnly?: boolean; latitude: number; longitude: number }) {
+export function createBranch(businessId: string, data: { name: string; address?: string; addressDetails?: string; cityId?: string; onlineOnly?: boolean; latitude: number; longitude: number }) {
   return apiRequest<{ id: string; name: string }>(`/api/v1/businesses/${businessId}/branches`, { method: "POST", auth: true, body: data });
 }
 
-export function updateBranch(businessId: string, branchId: string, data: { name?: string; address?: string; cityId?: string; onlineOnly?: boolean; latitude?: number; longitude?: number }) {
+export function updateBranch(businessId: string, branchId: string, data: { name?: string; address?: string; addressDetails?: string; cityId?: string; onlineOnly?: boolean; latitude?: number; longitude?: number }) {
   return apiRequest<{ id: string; name: string }>(`/api/v1/businesses/${businessId}/branches/${branchId}`, { method: "PATCH", auth: true, body: data });
 }
 
@@ -563,11 +563,11 @@ export function getBusinessChatMessages(conversationId: string, businessId: stri
   return apiRequest<ChatMessageListResponse>(`/api/v1/business-admin/chats/${conversationId}/messages?businessId=${encodeURIComponent(businessId)}`, { auth: true });
 }
 
-export function sendBusinessChatMessage(conversationId: string, businessId: string, text: string) {
+export function sendBusinessChatMessage(conversationId: string, businessId: string, text: string, attachmentUrl?: string) {
   return apiRequest<ChatMessageDto>(`/api/v1/business-admin/chats/${conversationId}/messages?businessId=${encodeURIComponent(businessId)}`, {
     method: "POST",
     auth: true,
-    body: { text },
+    body: { text, attachmentUrl },
   });
 }
 

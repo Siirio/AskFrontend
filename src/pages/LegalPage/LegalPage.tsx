@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { Card } from "../../shared/ui/Card/Card";
 import { ROUTES } from "../../app/routes";
+import { listActiveLegalDocuments } from "../../shared/api/legalClient";
 
 const LEGAL_DOCUMENTS = new Set([
   "user-terms",
@@ -12,8 +14,17 @@ const LEGAL_DOCUMENTS = new Set([
   "content-policy",
 ]);
 
+const LEGAL_DOCUMENT_CODES: Record<string, string> = {
+  "user-terms": "USER_TERMS",
+  privacy: "PRIVACY_POLICY",
+  "seller-terms": "SELLER_TERMS",
+  "import-service": "MANAGED_IMPORT_TERMS",
+  "prohibited-products": "PROHIBITED_PRODUCTS_POLICY",
+  "content-policy": "CONTENT_POLICY",
+};
+
 export function LegalPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { document = "" } = useParams<{ document: string }>();
   const { pathname } = useLocation();
   const page = pathname === ROUTES.support
@@ -21,6 +32,21 @@ export function LegalPage() {
     : pathname === ROUTES.accountDeletion
       ? "account-deletion"
       : LEGAL_DOCUMENTS.has(document) ? document : "user-terms";
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    const code = LEGAL_DOCUMENT_CODES[page];
+    if (!code) {
+      setVersion(null);
+      return;
+    }
+    const locale = i18n.resolvedLanguage?.split("-")[0] ?? "ru";
+    listActiveLegalDocuments(locale)
+      .then(documents => {
+        setVersion(documents.find(item => item.code === code)?.version ?? null);
+      })
+      .catch(() => setVersion(null));
+  }, [i18n.resolvedLanguage, page]);
 
   return (
     <main id="main-content">
@@ -29,7 +55,9 @@ export function LegalPage() {
           <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
             <div>
               <h1 className="fcw-h2" style={{ marginBottom: "0.5rem" }}>{t(`legal.${page}.title`)}</h1>
-              <p className="fcw-body-s fcw-text-tertiary">{t("legal.version", { version: "1.0" })}</p>
+              {version && (
+                <p className="fcw-body-s fcw-text-tertiary">{t("legal.version", { version })}</p>
+              )}
             </div>
             <section>
               <h2 className="fcw-h3">{t("legal.section1.title")}</h2>

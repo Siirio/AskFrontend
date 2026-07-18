@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, Download, Trash2 } from "lucide-react";
+import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
+import { Loading } from "../../shared/ui/Loading/Loading";
 import { buildRoute, ROUTES } from "../../app/routes";
-import { confirmEmailChange, deleteAccount, exportAccount, requestEmailChange } from "../../shared/api/authClient";
+import { confirmEmailChange, deleteAccount, requestEmailChange } from "../../shared/api/authClient";
 
 type GeoStatus = "active" | "off" | "expired" | "denied" | "requesting" | "notGranted" | "unavailable";
 
@@ -71,6 +72,7 @@ export function ProfilePage() {
     email: user?.email || "",
     phone: user?.phone || "",
   });
+  const [profileFormDirty, setProfileFormDirty] = useState(false);
   const [formErrors, setFormErrors] = useState<{ email?: string; phone?: string }>({});
   const [emailChallengeId, setEmailChallengeId] = useState("");
   const [emailCode, setEmailCode] = useState("");
@@ -111,6 +113,19 @@ export function ProfilePage() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!user || profileFormDirty) return;
+    setEditForm({
+      displayName: user.displayName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+    });
+  }, [user?.userId, user?.displayName, user?.email, user?.phone, profileFormDirty]);
+
+  if (!state.sessionReady) {
+    return <Loading />;
+  }
+
   if (!state.authenticated) {
     return <Navigate to={ROUTES.auth} replace />;
   }
@@ -139,6 +154,8 @@ export function ProfilePage() {
     if (editForm.email && editForm.email !== user?.email) {
       const challenge = await requestEmailChange(editForm.email);
       setEmailChallengeId(challenge.authChallengeId);
+    } else {
+      setProfileFormDirty(false);
     }
   };
 
@@ -148,19 +165,7 @@ export function ProfilePage() {
     setEmailChallengeId("");
     setEmailCode("");
     await actions.refreshSession();
-  };
-
-  const handleExportAccount = async () => {
-    const data = await exportAccount();
-    const url = URL.createObjectURL(new Blob(
-      [JSON.stringify(data, null, 2)],
-      { type: "application/json" },
-    ));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "ask-account-export.json";
-    anchor.click();
-    URL.revokeObjectURL(url);
+    setProfileFormDirty(false);
   };
 
   const handleDeleteAccount = async () => {
@@ -262,13 +267,13 @@ export function ProfilePage() {
             </div>
             <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}>
-                <input className="fcw-input" value={editForm.displayName} onChange={event => setEditForm(prev => ({ ...prev, displayName: event.target.value }))} placeholder={t("profile.placeholder.name")} />
+                <input className="fcw-input" value={editForm.displayName} onChange={event => { setProfileFormDirty(true); setEditForm(prev => ({ ...prev, displayName: event.target.value })); }} placeholder={t("profile.placeholder.name")} />
                 <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
                   <input
                     className="fcw-input"
                     type="email"
                     value={editForm.email}
-                    onChange={event => { setEditForm(prev => ({ ...prev, email: event.target.value })); setFormErrors(prev => ({ ...prev, email: undefined })); }}
+                    onChange={event => { setProfileFormDirty(true); setEditForm(prev => ({ ...prev, email: event.target.value })); setFormErrors(prev => ({ ...prev, email: undefined })); }}
                     placeholder={t("profile.placeholder.email")}
                     style={formErrors.email ? { borderColor: "var(--fcw-color-error)" } : undefined}
                   />
@@ -298,7 +303,7 @@ export function ProfilePage() {
                   <input
                     className="fcw-input"
                     value={editForm.phone}
-                    onChange={event => { setEditForm(prev => ({ ...prev, phone: event.target.value })); setFormErrors(prev => ({ ...prev, phone: undefined })); }}
+                    onChange={event => { setProfileFormDirty(true); setEditForm(prev => ({ ...prev, phone: event.target.value })); setFormErrors(prev => ({ ...prev, phone: undefined })); }}
                     placeholder={t("profile.placeholder.phone")}
                     style={formErrors.phone ? { borderColor: "var(--fcw-color-error)" } : undefined}
                   />
@@ -389,10 +394,6 @@ export function ProfilePage() {
               <h2 className="fcw-h3" style={{ margin: 0 }}>{t("profile.account.title")}</h2>
               <p className="fcw-body-s fcw-text-secondary">{t("profile.account.description")}</p>
               <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={handleExportAccount}>
-                  <Download size={14} />
-                  {t("profile.account.export")}
-                </button>
                 <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setShowDeleteConfirmation(true)}>
                   <Trash2 size={14} />
                   {t("profile.account.delete")}

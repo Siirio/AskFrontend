@@ -33,6 +33,7 @@ interface ProductImportWizardProps {
   onBackToProducts: () => void;
   onImported: () => void;
   importMode: "PRODUCT" | "SERVICE";
+  allowAiTools: boolean;
 }
 
 const PRODUCT_FIELD_OPTIONS: { value: ProductImportTargetField; label: string }[] = [
@@ -76,20 +77,6 @@ const SERVICE_RECOMMENDED_COLUMNS = [
   ["Теги", "Метки, Tags"],
 ];
 
-const PRODUCT_DEMO_CSV = [
-  "Код товара,Название,Категория,Бренд,Вкус,Вес,Остаток,Розничная цена,Описание,Теги",
-  "ON-001,Optimum Nutrition Предтреник 60 капсул,Спортивное питание,Optimum Nutrition,Шоколад,60 капсул,12,15900,Энергия перед тренировкой,спорт; предтрен",
-  "MX-014,Maxler Whey Protein 900 г,Спортивное питание,Maxler,Ваниль,900 г,4,24900,Сывороточный протеин,протеин; фитнес",
-  "BSN-020,BSN Amino X 435 г,Спортивное питание,BSN,Фруктовый пунш,435 г,8,18900,BCAA комплекс,аминокислоты; восстановление",
-].join("\n");
-
-const SERVICE_DEMO_CSV = [
-  "Название,Категория,Длительность,Базовая цена,Описание,Теги",
-  "Стрижка мужская,Парикмахерские услуги,30 мин,5000,Классическая мужская стрижка с мытьём головы,стрижка; мужской зал",
-  "Маникюр с покрытием,Ногтевой сервис,90 мин,12000,Аппаратный маникюр + гель-лак,маникюр; гель-лак",
-  "Диагностика двигателя,Автосервис,60 мин,8000,Компьютерная диагностика + проверка ошибок,авто; диагностика",
-].join("\n");
-
 const PRODUCT_DEMO_TABLE_ROWS = [
   ["Optimum Nutrition Предтреник 60 капсул", "Спортивное питание", "ON-001", "15 900", "Энергия перед тренировкой, 60 капсул", "спорт; предтрен"],
   ["Maxler Whey Protein 900 г", "Спортивное питание", "MX-014", "24 900", "Сывороточный протеин, ваниль", "протеин; фитнес"],
@@ -116,12 +103,6 @@ function getRecommendedColumns(mode: "PRODUCT" | "SERVICE") {
   return mode === "PRODUCT" ? PRODUCT_RECOMMENDED_COLUMNS : SERVICE_RECOMMENDED_COLUMNS;
 }
 
-function createDemoFile(mode: "PRODUCT" | "SERVICE") {
-  const csv = mode === "PRODUCT" ? PRODUCT_DEMO_CSV : SERVICE_DEMO_CSV;
-  const name = mode === "PRODUCT" ? "ask-demo-products.csv" : "ask-demo-services.csv";
-  return new File([csv], name, { type: "text/csv" });
-}
-
 function normalizeUploadResponse(value: ProductImportUploadResponse | { sessionId?: string; status?: string; draftsCreated?: number }) {
   return value as ProductImportUploadResponse & { sessionId?: string };
 }
@@ -138,7 +119,7 @@ function draftTitle(draft: AutodumpDraftDto) {
   return draft.normalizedTitle || draft.title || "Без названия";
 }
 
-export function ProductImportWizard({ branches, activeBranchId, onBranchChange, onBackToProducts, onImported, importMode }: ProductImportWizardProps) {
+export function ProductImportWizard({ branches, activeBranchId, onBranchChange, onBackToProducts, onImported, importMode, allowAiTools }: ProductImportWizardProps) {
   const [step, setStep] = useState<ImportStep>("upload");
   const [fileMode, setFileMode] = useState<ImportMode>("table");
   const [file, setFile] = useState<File | null>(null);
@@ -183,6 +164,16 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   };
 
   const setSelectedFile = (nextFile: File) => {
+    const allowed = allowAiTools
+      ? /\.(xlsx|txt|md|pdf)$/i.test(nextFile.name)
+      : /\.xlsx$/i.test(nextFile.name);
+    if (!allowed) {
+      setFile(null);
+      setMessage(allowAiTools
+        ? "Поддерживаются Excel, TXT, MD и PDF"
+        : "Для бизнес-кабинета доступен только импорт Excel");
+      return;
+    }
     setFile(nextFile);
     setMessage("");
     setFileMode(isAutodumpFile(nextFile) ? "autodump" : "table");
@@ -194,7 +185,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
     setMessage("");
     try {
       const response = normalizeUploadResponse(await uploadProductImport(activeBranchId, nextFile, importMode));
-      if (isAutodumpFile(nextFile)) {
+      if (allowAiTools && isAutodumpFile(nextFile)) {
         const nextSessionId = response.sessionId || "";
         setFileMode("autodump");
         setSessionId(nextSessionId);
@@ -282,12 +273,6 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
     setMappings(current => current.map(mapping => mapping.sourceColumn === sourceColumn ? { ...mapping, characteristicName } : mapping));
   };
 
-  const useDemo = () => {
-    const demo = createDemoFile(importMode);
-    setSelectedFile(demo);
-    uploadFile(demo);
-  };
-
   return (
     <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
       <div className="fcw-flex-between" style={{ gap: "1rem", flexWrap: "wrap" }}>
@@ -342,17 +327,21 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
             >
               {fileMode === "autodump" ? <FileText size={32} style={{ color: "var(--fcw-color-primary)" }} /> : <FileSpreadsheet size={32} style={{ color: "var(--fcw-color-primary)" }} />}
               <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: "0.75rem 0 0" }}>
-                Загрузите файл Excel (.xlsx), CSV или текстовый файл с {itemLabelPlural}
+                {allowAiTools
+                  ? `Загрузите Excel, TXT, MD или PDF с ${itemLabelPlural}`
+                  : `Загрузите файл Excel (.xlsx) с ${itemLabelPlural}`}
               </h3>
               <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.35rem 0 1rem" }}>
-                Таблицы идут через сопоставление колонок. TXT, MD и PDF проходят через AI Dumping и превращаются в черновики {itemLabelPlural}.
+                {allowAiTools
+                  ? `Excel проходит через сопоставление колонок. TXT, MD и PDF обрабатываются AI Dumping и превращаются в черновики ${itemLabelPlural}.`
+                  : "Импорт выполняется без AI через обычное сопоставление колонок Excel."}
               </p>
               <label className="fcw-btn fcw-btn-primary fcw-btn-sm" style={{ display: "inline-flex" }}>
                 <Upload size={14} />
                 Выбрать файл
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.csv,.txt,.md,.pdf"
+                  accept={allowAiTools ? ".xlsx,.txt,.md,.pdf" : ".xlsx"}
                   onChange={event => {
                     const nextFile = event.target.files?.[0];
                     if (nextFile) setSelectedFile(nextFile);
@@ -418,10 +407,6 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
                   Каждая колонка принимает разные названия заголовков: {getRecommendedColumns(importMode).map(([name, examples]) => `${name} → ${examples}`).join("; ")}
                 </span>
               </div>
-              <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={useDemo} disabled={busy || !activeBranchId} style={{ marginTop: "0.5rem" }}>
-                <FileSpreadsheet size={14} />
-                Попробовать демо-набор
-              </button>
               <span className="fcw-body-xs fcw-text-tertiary" style={{ marginLeft: "0.5rem" }}>{isProduct ? "Спортивное питание" : "Услуги салона и автосервиса"}, 3 {itemLabelPlural}</span>
             </details>
 

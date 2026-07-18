@@ -11,12 +11,12 @@ export type AuthChallenge = {
 };
 
 export type AuthSession = {
-  accessToken: string;
-  tokenType: string;
+  accessToken?: string;
+  tokenType?: string;
   expiresAt: string;
   remembered?: boolean;
   activationRequired?: boolean;
-  role: string;
+  role?: string;
   startRoute?: string;
   user?: { userId: string; displayName: string; email?: string; phone?: string; status?: string };
   business?: { businessId: string; businessName: string; membershipId?: string; memberRole?: string; branchId?: string; branchName?: string };
@@ -165,10 +165,6 @@ export function confirmEmailChange(authChallengeId: string, code: string) {
     auth: true,
     body: { authChallengeId, code },
   });
-}
-
-export function exportAccount() {
-  return apiRequest<Record<string, unknown>>("/api/v1/account/export", { auth: true });
 }
 
 export function deleteAccount() {

@@ -2,103 +2,29 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Home, MessageCircle, UserRound, Sun, Moon, LogOut, Building2, Settings, Shield, Key, Check, Loader2 } from "lucide-react";
+import { Home, MessageCircle, UserRound, Sun, Moon, LogOut, Building2, Settings, Shield } from "lucide-react";
 import { buildRoute, ROUTES } from "../../../app/routes";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { useTheme } from "../../../app/providers/ThemeProvider";
 import { LanguageSwitcher } from "../LanguageSwitcher/LanguageSwitcher";
 import { Modal } from "../Modal/Modal";
-import { useToast } from "../Toast/Toast";
-import { ProfileEditor } from "../../../widgets/ProfileEditor/ProfileEditor";
-import { getBrandProfile, updateBrandProfile } from "../../../shared/api/askClient";
-import { changePassword } from "../../../shared/api/authClient";
-import { ApiError } from "../../../shared/api/httpClient";
-import { isStrongPassword } from "../../utils/validation";
-import type { BrandProfileDto } from "../../../shared/api/dto";
 
 export function Navigation() {
   const { t } = useTranslation();
   const { state, actions } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-  const toast = useToast();
 
   const businessMemberships = state.session?.businessMemberships ?? [];
   const selectedMembership = businessMemberships.find(
     membership => membership.businessId === state.activeBusinessId,
   ) ?? businessMemberships[0];
-  const businessId = selectedMembership?.businessId ?? "";
   const hasPlatformAccess = Boolean(state.session?.platformMembership);
 
   // User menu
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
-  const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [accountTab, setAccountTab] = useState<"brand" | "security">("brand");
-
-  // Profile
-  const DEFAULT_BRAND_COLOR = "#e8824e";
-  const [profile, setProfile] = useState<BrandProfileDto>(() => ({
-    businessId,
-    brandColor: DEFAULT_BRAND_COLOR,
-    logoUrl: "",
-    coverUrl: "",
-    toneOfVoice: "",
-    description: "",
-    instagramUrl: "",
-    telegramUrl: "",
-    websiteUrl: "",
-  }));
-  const [profileBusy, setProfileBusy] = useState(false);
-
-  // Password
-  const [passwordForm, setPasswordForm] = useState({ current: "", newPass: "", confirm: "" });
-  const [passwordBusy, setPasswordBusy] = useState(false);
-
-  const loadProfile = async () => {
-    if (!businessId) return;
-    try {
-      const p = await getBrandProfile(businessId);
-      setProfile(p);
-    } catch { /* ignore */ }
-  };
-
-  const handleSaveProfile = async () => {
-    if (!businessId) return;
-    setProfileBusy(true);
-    try {
-      const saved = await updateBrandProfile(businessId, profile);
-      setProfile(saved);
-      toast.show(t("business.toast.profileSaved"), "success");
-    } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : t("business.toast.saveError"), "error");
-    } finally {
-      setProfileBusy(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (passwordForm.newPass !== passwordForm.confirm) {
-      toast.show(t("business.passwordMismatch"), "error");
-      return;
-    }
-    const pwCheck = isStrongPassword(passwordForm.newPass);
-    if (!pwCheck.valid) {
-      toast.show(t(pwCheck.reason === "tooShort" ? "business.validation.passwordTooShort" : "business.validation.passwordWeak"), "error");
-      return;
-    }
-    setPasswordBusy(true);
-    try {
-      await changePassword(passwordForm.current, passwordForm.newPass);
-      setPasswordForm({ current: "", newPass: "", confirm: "" });
-      toast.show(t("business.passwordChanged"), "success");
-    } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : t("business.toast.saveError"), "error");
-    } finally {
-      setPasswordBusy(false);
-    }
-  };
 
   const consumerDesktopLinks = [
     { to: ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
@@ -265,108 +191,6 @@ export function Navigation() {
       <div className="fcw-hidden-desktop" style={{ height: "48px" }} aria-hidden="true" />
       <div className="fcw-hidden-desktop" style={{ height: "64px" }} aria-hidden="true" />
 
-      {/* Account Modal */}
-      <Modal open={accountModalOpen} onClose={() => setAccountModalOpen(false)} title={t("business.account")} size="lg">
-        <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-          <div className="fcw-flex" style={{ gap: 0, borderBottom: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", paddingBottom: 0 }}>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{
-                color: accountTab === "brand" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                borderBottom: accountTab === "brand" ? "2px solid var(--fcw-color-primary)" : "2px solid transparent",
-                borderRadius: 0,
-                marginBottom: -1,
-              }}
-              onClick={() => setAccountTab("brand")}
-            >
-              <Building2 size={14} />{t("business.brand")}
-            </button>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{
-                color: accountTab === "security" ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                borderBottom: accountTab === "security" ? "2px solid var(--fcw-color-primary)" : "2px solid transparent",
-                borderRadius: 0,
-                marginBottom: -1,
-              }}
-              onClick={() => setAccountTab("security")}
-            >
-              <Shield size={14} />{t("business.security")}
-            </button>
-          </div>
-
-          {accountTab === "brand" && (
-            <ProfileEditor
-              profile={profile}
-              onChange={setProfile}
-              onSave={handleSaveProfile}
-              busy={profileBusy}
-              readOnly={selectedMembership?.role === "WORKER"}
-            />
-          )}
-
-          {accountTab === "security" && (
-            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
-              <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-                <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Key size={16} style={{ color: "var(--fcw-color-primary)" }} />
-                  {t("business.changePassword")}
-                </h3>
-                <div className="fcw-flex-col" style={{ gap: "0.5rem", maxWidth: 360 }}>
-                  <input
-                    className="fcw-input"
-                    type="password"
-                    placeholder={t("business.currentPassword")}
-                    value={passwordForm.current}
-                    onChange={e => setPasswordForm(p => ({ ...p, current: e.target.value }))}
-                  />
-                  <input
-                    className="fcw-input"
-                    type="password"
-                    placeholder={t("business.newPassword")}
-                    value={passwordForm.newPass}
-                    onChange={e => setPasswordForm(p => ({ ...p, newPass: e.target.value }))}
-                  />
-                  <input
-                    className="fcw-input"
-                    type="password"
-                    placeholder={t("business.confirmPassword")}
-                    value={passwordForm.confirm}
-                    onChange={e => setPasswordForm(p => ({ ...p, confirm: e.target.value }))}
-                  />
-                  <button
-                    className="fcw-btn fcw-btn-primary fcw-btn-sm"
-                    style={{ alignSelf: "flex-start" }}
-                    onClick={handleChangePassword}
-                    disabled={passwordBusy || !passwordForm.current || !passwordForm.newPass || !passwordForm.confirm}
-                  >
-                    {passwordBusy ? <Loader2 size={14} className="fcw-animate-spin" /> : <Check size={14} />}
-                    {t("business.save")}
-                  </button>
-                </div>
-              </div>
-
-              <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-                <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Shield size={16} style={{ color: "var(--fcw-color-primary)" }} />
-                  {t("business.twoFactorSetup")}
-                </h3>
-                <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0 }}>{t("business.twoFactorDesc")}</p>
-                <div style={{
-                  padding: "var(--fcw-space-md)",
-                  borderRadius: "var(--fcw-radius-md)",
-                  backgroundColor: "var(--fcw-color-surface-secondary)",
-                  border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                  textAlign: "center",
-                }}>
-                  <span className="fcw-body-s fcw-text-tertiary">{t("business.twoFactorComingSoon")}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
-
       {/* User Dropdown — portalled to body to escape nav backdrop-filter stacking context */}
       {userMenuOpen && menuAnchor && createPortal(
         <>
@@ -392,7 +216,7 @@ export function Navigation() {
             <button
               className="fcw-btn fcw-btn-ghost fcw-btn-sm"
               style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
-              onClick={() => { setAccountModalOpen(true); setUserMenuOpen(false); setAccountTab("brand"); loadProfile(); }}
+              onClick={() => { setUserMenuOpen(false); navigate(ROUTES.profile); }}
             >
               <UserRound size={14} />{t("business.account")}
             </button>

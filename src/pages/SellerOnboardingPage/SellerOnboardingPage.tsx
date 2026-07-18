@@ -10,6 +10,7 @@ import {
   type SellerOnboardingData,
 } from "../../shared/api/sellerOnboardingClient";
 import { Card } from "../../shared/ui/Card/Card";
+import { Loading } from "../../shared/ui/Loading/Loading";
 
 const DRAFT_KEY = "ask.sellerOnboardingDraft";
 const SOURCE_TYPES = [
@@ -66,6 +67,10 @@ export function SellerOnboardingPage() {
     listCities().then(setCities).catch(() => setCities([]));
   }, []);
 
+  if (!state.sessionReady) {
+    return <Loading />;
+  }
+
   if (!state.authenticated) {
     return <Navigate to={ROUTES.auth} replace />;
   }
@@ -97,7 +102,10 @@ export function SellerOnboardingPage() {
       });
       sessionStorage.removeItem(DRAFT_KEY);
       await actions.refreshSession();
-      navigate(buildRoute(ROUTES.business, { businessId: result.businessId }));
+      const businessRoute = buildRoute(ROUTES.business, { businessId: result.businessId });
+      navigate(result.startRoute === "MANAGED_IMPORT" && result.conversationId
+        ? `${businessRoute}?conversationId=${encodeURIComponent(result.conversationId)}`
+        : businessRoute);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("seller.error"));
     } finally {
@@ -134,7 +142,12 @@ export function SellerOnboardingPage() {
                   <option value="TELEGRAM">Telegram</option>
                   <option value="EMAIL">Email</option>
                 </select>
-                <input className="fcw-input" value={data.preferredContactValue} onChange={event => update("preferredContactValue", event.target.value)} placeholder={t("seller.contactValue")} />
+                <input
+                  className="fcw-input"
+                  value={data.preferredContactValue}
+                  onChange={event => update("preferredContactValue", event.target.value)}
+                  placeholder={t(`seller.contactValue.${data.preferredContactChannel}`)}
+                />
               </div>
             )}
 

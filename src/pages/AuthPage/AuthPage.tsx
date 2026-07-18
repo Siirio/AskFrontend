@@ -2,12 +2,15 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft } from "lucide-react";
+import { ArrowRight, ArrowLeft, Search, Building2 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { getGoogleOAuthUrl } from "../../shared/api/authClient";
 import { Input } from "../../shared/ui/Input/Input";
-import { ROUTES } from "../../app/routes";
+import { Loading } from "../../shared/ui/Loading/Loading";
+import { buildRoute, ROUTES } from "../../app/routes";
+
+const SELLER_ONBOARDING_DRAFT_KEY = "ask.sellerOnboardingDraft";
 
 export function AuthPage() {
   const { t, i18n } = useTranslation();
@@ -21,8 +24,22 @@ export function AuthPage() {
   const [code, setCode] = useState("");
   const [acceptedUserAgreement, setAcceptedUserAgreement] = useState(false);
 
-  if (state.authenticated && !state.challenge && !state.requiresTwoFactor && !state.activationRequired) {
-    return <Navigate to={sessionStorage.getItem("ask.sellerOnboardingDraft") ? ROUTES.sellerOnboarding : ROUTES.home} replace />;
+  if (!state.sessionReady) {
+    return <Loading />;
+  }
+
+  if (state.authenticated && !state.challenge && !state.requiresTwoFactor && !state.activationRequired && !state.registrationJustCompleted) {
+    if (sessionStorage.getItem("ask.sellerOnboardingDraft")) {
+      return <Navigate to={ROUTES.sellerOnboarding} replace />;
+    }
+    const startRoute = state.session?.startRoute;
+    if (startRoute === "BUSINESS_CABINET" && state.session?.business) {
+      return <Navigate to={buildRoute(ROUTES.business, { businessId: state.session.business.businessId })} replace />;
+    }
+    if (startRoute === "CLIENT_SEARCH") {
+      return <Navigate to={ROUTES.results} replace />;
+    }
+    return <Navigate to={ROUTES.home} replace />;
   }
 
   const handleLogin = async (e: FormEvent) => {
@@ -49,6 +66,18 @@ export function AuthPage() {
   const handleTwoFactor = async (e: FormEvent) => {
     e.preventDefault();
     await actions.verifyTwoFactor(code);
+  };
+
+  const continueAsBuyer = () => {
+    sessionStorage.removeItem(SELLER_ONBOARDING_DRAFT_KEY);
+    actions.dismissRoleExpansion();
+    navigate(ROUTES.results);
+  };
+
+  const continueAsCompany = () => {
+    sessionStorage.setItem(SELLER_ONBOARDING_DRAFT_KEY, "{}");
+    actions.dismissRoleExpansion();
+    navigate(ROUTES.sellerOnboarding);
   };
 
   const cardContent = renderCard();
@@ -213,7 +242,35 @@ export function AuthPage() {
       );
     }
 
-    // Role expansion — suggest adding another role after first registration
+    // Role choice — shown after first registration
+    if (state.registrationJustCompleted) {
+      return (
+        <>
+          <h2 className="fcw-h3" style={{ marginBottom: "var(--fcw-space-sm)", textAlign: "center" }}>
+            {t("auth.roleChoice.title")}
+          </h2>
+          <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
+            <button
+              className="fcw-btn fcw-btn-primary fcw-btn-full fcw-btn-lg"
+              onClick={continueAsBuyer}
+            >
+              <Search size={18} />
+              {t("auth.roleChoice.buyer")}
+              <ArrowRight size={18} />
+            </button>
+            <button
+              className="fcw-btn fcw-btn-secondary fcw-btn-full fcw-btn-lg"
+              onClick={continueAsCompany}
+            >
+              <Building2 size={18} />
+              {t("auth.roleChoice.company")}
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        </>
+      );
+    }
+
     // Login / Register forms
     return (
       <>

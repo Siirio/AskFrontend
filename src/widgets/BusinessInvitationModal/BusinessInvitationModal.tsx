@@ -39,10 +39,10 @@ export function BusinessInvitationModal() {
     try {
       if (decision === "accept") {
         await acceptBusinessInvitation(current.id);
-        await actions.refreshSession();
       } else {
         await declineBusinessInvitation(current.id);
       }
+      await actions.refreshSession();
       setInvitations(items => items.filter(item => item.id !== current.id));
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : t("invitation.actionError"));
