@@ -6,11 +6,24 @@ import { ArrowRight, ArrowLeft, Search, Building2 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { getGoogleOAuthUrl } from "../../shared/api/authClient";
+import { acceptLegalDocuments } from "../../shared/api/legalClient";
 import { Input } from "../../shared/ui/Input/Input";
 import { Loading } from "../../shared/ui/Loading/Loading";
 import { buildRoute, ROUTES } from "../../app/routes";
 
 const SELLER_ONBOARDING_DRAFT_KEY = "ask.sellerOnboardingDraft";
+type RegistrationRole = "customer" | "seller";
+
+const ROLE_DOCUMENTS: Record<RegistrationRole, Array<{ code: string; href: string; label: string }>> = {
+  customer: [
+    { code: "USER_TERMS", href: "/legal/user-terms", label: "auth.legal.userAgreement" },
+    { code: "PRIVACY_POLICY", href: "/legal/privacy", label: "auth.legal.privacyPolicy" },
+  ],
+  seller: [
+    { code: "SELLER_TERMS", href: "/legal/seller-terms", label: "auth.legal.sellerTerms" },
+    { code: "PERSONAL_DATA_CONSENT", href: "/legal/personal-data-consent", label: "auth.legal.personalDataConsent" },
+  ],
+};
 
 export function AuthPage() {
   const { t, i18n } = useTranslation();
@@ -22,7 +35,10 @@ export function AuthPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [code, setCode] = useState("");
-  const [acceptedUserAgreement, setAcceptedUserAgreement] = useState(false);
+  const [registrationRole, setRegistrationRole] = useState<RegistrationRole | null>(null);
+  const [acceptedRoleDocuments, setAcceptedRoleDocuments] = useState(false);
+  const [roleChoiceBusy, setRoleChoiceBusy] = useState(false);
+  const [roleChoiceError, setRoleChoiceError] = useState("");
 
   if (!state.sessionReady) {
     return <Loading />;
@@ -53,7 +69,6 @@ export function AuthPage() {
       email,
       password,
       displayName,
-      acceptedUserAgreement,
       locale: i18n.resolvedLanguage ?? "ru",
     });
   };
@@ -66,6 +81,35 @@ export function AuthPage() {
   const handleTwoFactor = async (e: FormEvent) => {
     e.preventDefault();
     await actions.verifyTwoFactor(code);
+  };
+
+  const chooseRegistrationRole = (role: RegistrationRole) => {
+    setRegistrationRole(role);
+    setAcceptedRoleDocuments(false);
+    setRoleChoiceError("");
+  };
+
+  const confirmRegistrationRole = async () => {
+    if (!registrationRole || !acceptedRoleDocuments) {
+      return;
+    }
+    setRoleChoiceBusy(true);
+    setRoleChoiceError("");
+    try {
+      await acceptLegalDocuments(
+        ROLE_DOCUMENTS[registrationRole].map(document => document.code),
+        i18n.resolvedLanguage?.split("-")[0] ?? "ru",
+      );
+      if (registrationRole === "customer") {
+        continueAsBuyer();
+      } else {
+        continueAsCompany();
+      }
+    } catch (cause) {
+      setRoleChoiceError(cause instanceof Error ? cause.message : t("auth.legal.acceptError"));
+    } finally {
+      setRoleChoiceBusy(false);
+    }
   };
 
   const continueAsBuyer = () => {
@@ -251,21 +295,58 @@ export function AuthPage() {
           </h2>
           <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
             <button
-              className="fcw-btn fcw-btn-primary fcw-btn-full fcw-btn-lg"
-              onClick={continueAsBuyer}
+              className={`fcw-btn fcw-btn-full fcw-btn-lg ${registrationRole === "customer" ? "fcw-btn-primary" : "fcw-btn-secondary"}`}
+              onClick={() => chooseRegistrationRole("customer")}
+              style={{ justifyContent: "space-between", whiteSpace: "normal", textAlign: "left" }}
             >
               <Search size={18} />
               {t("auth.roleChoice.buyer")}
               <ArrowRight size={18} />
             </button>
             <button
-              className="fcw-btn fcw-btn-secondary fcw-btn-full fcw-btn-lg"
-              onClick={continueAsCompany}
+              className={`fcw-btn fcw-btn-full fcw-btn-lg ${registrationRole === "seller" ? "fcw-btn-primary" : "fcw-btn-secondary"}`}
+              onClick={() => chooseRegistrationRole("seller")}
+              style={{ justifyContent: "space-between", whiteSpace: "normal", textAlign: "left" }}
             >
               <Building2 size={18} />
               {t("auth.roleChoice.company")}
               <ArrowRight size={18} />
             </button>
+            {registrationRole && (
+              <div className="fcw-card fcw-p-md fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
+                <p className="fcw-body-s fcw-text-secondary">
+                  {t(`auth.roleChoice.${registrationRole}Documents`)}
+                </p>
+                <ul className="fcw-body-s" style={{ margin: 0, paddingLeft: "1.25rem" }}>
+                  {ROLE_DOCUMENTS[registrationRole].map(document => (
+                    <li key={document.code}>
+                      <a href={document.href} target="_blank" rel="noreferrer">
+                        {t(document.label)}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <label className="fcw-flex fcw-items-start" style={{ gap: "0.5rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptedRoleDocuments}
+                    onChange={event => setAcceptedRoleDocuments(event.target.checked)}
+                  />
+                  <span className="fcw-body-s">{t("auth.legal.roleAccept")}</span>
+                </label>
+                {roleChoiceError && (
+                  <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{roleChoiceError}</p>
+                )}
+                <button
+                  className="fcw-btn fcw-btn-primary fcw-btn-full"
+                  disabled={!acceptedRoleDocuments || roleChoiceBusy}
+                  onClick={confirmRegistrationRole}
+                >
+                  {roleChoiceBusy ? "..." : t("auth.roleChoice.continue")}
+                  {!roleChoiceBusy && <ArrowRight size={18} />}
+                </button>
+              </div>
+            )}
           </div>
         </>
       );
@@ -326,29 +407,13 @@ export function AuthPage() {
               autoComplete={state.mode === "login" ? "current-password" : "new-password"}
             />
             {state.mode === "register" && (
-              <>
-                <Input
-                  label={t("auth.label.name")}
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  placeholder={t("auth.placeholder.name")}
-                  required
-                />
-                <label className="fcw-flex fcw-items-start" style={{ gap: "0.5rem" }}>
-                  <input
-                    type="checkbox"
-                    checked={acceptedUserAgreement}
-                    onChange={event => setAcceptedUserAgreement(event.target.checked)}
-                    required
-                  />
-                  <span className="fcw-body-s">
-                    {t("auth.legal.accept")}{" "}
-                    <a href="/legal/user-terms">{t("auth.legal.userTerms")}</a>
-                    {" "}{t("auth.legal.and")}{" "}
-                    <a href="/legal/privacy">{t("auth.legal.privacy")}</a>
-                  </span>
-                </label>
-              </>
+              <Input
+                label={t("auth.label.name")}
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder={t("auth.placeholder.name")}
+                required
+              />
             )}
 
             {state.error && (
@@ -390,7 +455,17 @@ export function AuthPage() {
   }
 
   return (
-    <main id="main-content" className="fcw-flex-center" style={{ minHeight: "100vh", padding: "var(--fcw-space-lg)" }}>
+    <main
+      id="main-content"
+      className="fcw-flex-center"
+      style={{
+        minHeight: "100vh",
+        padding: "var(--fcw-space-lg)",
+        paddingBottom: state.registrationJustCompleted
+          ? "calc(var(--fcw-space-xl) + 64px)"
+          : "var(--fcw-space-lg)",
+      }}
+    >
       <motion.div
         className="fcw-card fcw-p-xl"
         style={{ width: "100%", maxWidth: "440px" }}

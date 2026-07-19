@@ -9,6 +9,7 @@ const LEGAL_DOCUMENTS = new Set([
   "user-terms",
   "privacy",
   "seller-terms",
+  "personal-data-consent",
   "import-service",
   "prohibited-products",
   "content-policy",
@@ -18,9 +19,17 @@ const LEGAL_DOCUMENT_CODES: Record<string, string> = {
   "user-terms": "USER_TERMS",
   privacy: "PRIVACY_POLICY",
   "seller-terms": "SELLER_TERMS",
+  "personal-data-consent": "PERSONAL_DATA_CONSENT",
   "import-service": "MANAGED_IMPORT_TERMS",
   "prohibited-products": "PROHIBITED_PRODUCTS_POLICY",
   "content-policy": "CONTENT_POLICY",
+};
+
+const SOURCE_DOCUMENTS: Record<string, string> = {
+  "user-terms": "/legal-documents/user-agreement-ru.docx",
+  privacy: "/legal-documents/privacy-policy-ru.docx",
+  "seller-terms": "/legal-documents/seller-terms-ru.docx",
+  "personal-data-consent": "/legal-documents/personal-data-consent-ru.docx",
 };
 
 export function LegalPage() {
@@ -63,6 +72,17 @@ export function LegalPage() {
               <h2 className="fcw-h3">{t("legal.section1.title")}</h2>
               <p className="fcw-body fcw-text-secondary">{t(`legal.${page}.section1.body`)}</p>
             </section>
+            {SOURCE_DOCUMENTS[page] && (
+              <a
+                className="fcw-btn fcw-btn-primary"
+                href={SOURCE_DOCUMENTS[page]}
+                target="_blank"
+                rel="noreferrer"
+                style={{ alignSelf: "flex-start" }}
+              >
+                {t("legal.openDocument")}
+              </a>
+            )}
             <section>
               <h2 className="fcw-h3">{t("legal.section2.title")}</h2>
               <p className="fcw-body fcw-text-secondary">{t(`legal.${page}.section2.body`)}</p>

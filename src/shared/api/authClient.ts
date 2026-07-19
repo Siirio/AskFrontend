@@ -22,6 +22,7 @@ export type AuthSession = {
   startRoute?: string;
   user?: { userId: string; displayName: string; email?: string; phone?: string; status?: string };
   business?: { businessId: string; businessName: string; membershipId?: string; memberRole?: string; branchId?: string; branchName?: string };
+  requiresRoleSelection?: boolean;
   requiresTwoFactor?: boolean;
   authChallengeId?: string;
   customerProfile?: { enabled: boolean };
@@ -58,7 +59,6 @@ export function registerCustomer(
   displayName: string,
   email: string,
   password: string,
-  acceptedUserAgreement: boolean,
   locale: string,
 ) {
   return apiRequest<AuthChallenge>("/api/v1/auth/customer/register", {
@@ -68,7 +68,6 @@ export function registerCustomer(
       email,
       password,
       passwordConfirmation: password,
-      acceptedUserAgreement,
       countryCode: "KZ",
       locale,
       rememberMe: true,

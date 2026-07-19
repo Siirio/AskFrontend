@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../../shared/api/httpClient";
 import type { AuthSession } from "../../shared/api/authClient";
 import { setAccessToken } from "../../shared/api/authTokenStore";
+import { ROUTES } from "../../app/routes";
 
 export function OAuthCallbackPage() {
   const [error, setError] = useState("");
@@ -19,7 +20,7 @@ export function OAuthCallbackPage() {
     apiRequest<AuthSession>("/api/v1/auth/session", { auth: true })
       .then(session => {
         setAccessToken(session.accessToken);
-        window.location.replace("/");
+        window.location.replace(session.requiresRoleSelection ? ROUTES.auth : ROUTES.home);
       })
       .catch(() => {
         setError("OAuth authentication failed");

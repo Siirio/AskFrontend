@@ -38,7 +38,6 @@ const INITIAL_DATA: SellerOnboardingData = {
   sourceLinks: "",
   sourceNotes: "",
   locale: "ru",
-  legalAccepted: false,
 };
 
 function readDraft(): SellerOnboardingData {
@@ -255,21 +254,6 @@ export function SellerOnboardingPage() {
               </div>
             )}
 
-            {step === 4 && (
-              <label className="fcw-flex fcw-items-start" style={{ gap: "0.5rem" }}>
-                <input type="checkbox" checked={data.legalAccepted} onChange={event => update("legalAccepted", event.target.checked)} />
-                <span className="fcw-body-s">
-                  {t("seller.legal")}{" "}
-                  <a href="/legal/user-terms">{t("auth.legal.userTerms")}</a>,{" "}
-                  <a href="/legal/privacy">{t("auth.legal.privacy")}</a>,{" "}
-                  <a href="/legal/seller-terms">{t("seller.sellerTerms")}</a>
-                  {data.catalogSetupMode === "ASK_MANAGED_IMPORT" && (
-                    <> {t("auth.legal.and")} <a href="/legal/import-service">{t("seller.importTerms")}</a></>
-                  )}
-                </span>
-              </label>
-            )}
-
             {error && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{error}</p>}
             <div className="fcw-flex-between">
               <button className="fcw-btn fcw-btn-ghost" disabled={step === 1} onClick={() => setStep(current => current - 1)}>
@@ -280,7 +264,7 @@ export function SellerOnboardingPage() {
                   {t("seller.next")}<ChevronRight size={16} />
                 </button>
               ) : (
-                <button className="fcw-btn fcw-btn-primary" disabled={!data.legalAccepted || busy} onClick={submit}>
+                <button className="fcw-btn fcw-btn-primary" disabled={busy} onClick={submit}>
                   <Check size={16} />{t("seller.complete")}
                 </button>
               )}

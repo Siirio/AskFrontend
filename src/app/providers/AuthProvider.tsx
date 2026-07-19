@@ -36,7 +36,7 @@ interface AuthState {
 interface AuthActions {
   setMode: (mode: AuthMode) => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; displayName: string; acceptedUserAgreement: boolean; locale: string }) => Promise<void>;
+  register: (data: { email: string; password: string; displayName: string; locale: string }) => Promise<void>;
   verify: (code: string) => Promise<void>;
   verifyTwoFactor: (code: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -82,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRequiresTwoFactor(false);
     setTwoFactorChallengeId(null);
     setActivationRequired(Boolean(nextSession.activationRequired));
+    setRegistrationJustCompleted(Boolean(nextSession.requiresRoleSelection));
   }, []);
 
   useEffect(() => {
@@ -134,7 +135,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string;
     password: string;
     displayName: string;
-    acceptedUserAgreement: boolean;
     locale: string;
   }) => {
     setBusy(true);
@@ -144,7 +144,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data.displayName || data.email,
         data.email,
         data.password,
-        data.acceptedUserAgreement,
         data.locale,
       );
       setChallenge(result);

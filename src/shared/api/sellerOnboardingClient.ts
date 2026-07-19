@@ -20,7 +20,6 @@ export type SellerOnboardingData = {
   sourceLinks: string;
   sourceNotes: string;
   locale: string;
-  legalAccepted: boolean;
 };
 
 export type SellerOnboardingResult = {
