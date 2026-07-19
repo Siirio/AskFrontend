@@ -32,6 +32,14 @@ The 4 key features of our platform:
 3. Home + Role Choosing Modal
 ```
 
+> **Auth methods (added 2026-07-19 — owner directive; append-only change to this CORE file).**
+> The Authorization Page offers TWO sign-in methods, present on BOTH the Sign up and Log in pages:
+> 1. **Email + password** — sign-up verifies the email with a 6-digit code; log-in is email + password (a 2FA code step runs when enabled).
+> 2. **Continue with Google (OAuth)** — required on both pages.
+>
+> Email + password **alone is not sufficient**: Google OAuth must be present on login and register. SMS/phone sign-in stays out of V1 scope.
+> **Justification:** owner decision to broaden entry beyond email-only and cut sign-up friction. Supersedes the earlier "email-only" framing — the `Email-only auth` lock was reversed the same day (`features/auth/locks.md`).
+
 ### Customer
 
 #### UF 2.1 — The customer wants to find a product

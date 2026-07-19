@@ -9,6 +9,7 @@ Traces PRODUCT_VISION **UF 1** (Landing → Authorization → Home + Role Choosi
 | Log in page | /app/auth/login | client (thin server route) |
 | Sign up page | /app/auth/register | client (thin server route) |
 | Verify code step (shared by both) | inline on either page after the challenge | client |
+| OAuth callback (Google) | /oauth/callback (top-level, transient) | client — exchanges the cookie session for a Bearer token, then redirects to startRoute |
 | Role Choosing Modal | over EVERY /app/* route — hosted by the platform layout (auth routes included, 2026-07-18), follows the SESSION not a page; persistent and non-dismissable until answered | client |
 
 `/app/auth` redirects to `/app/auth/login`. The two pages are separate routes
@@ -71,6 +72,32 @@ two-card radiogroup (icon badge, label, hint — arrow keys move selection), and
 one full-width Continue. Selected card = accent BORDER over a low-chroma
 `accent/10` tint (selection is actionable; the tint stays information-quiet);
 Continue is the single saturated fill (saturation-is-action holds).
+
+## Google sign-in (owner directive 2026-07-19 — REQUIRED on both pages)
+
+"Continue with Google" is a **required** control on BOTH the Log in and Sign up pages — a
+full-width **secondary** button under the email form, separated by an "or" divider. It is
+NOT the accent fill (the primary submit keeps that — saturation-is-action holds); it reads
+as quiet secondary chrome. It may sit behind a `NEXT_PUBLIC_OAUTH_ENABLED` flag so it never
+renders dead where the backend has no Google client configured.
+
+**Flow.** The button is a full-page navigation (not fetch — the browser must follow the
+redirect chain through Google) to `{apiBaseUrl}/oauth2/authorization/google`. Google returns
+to the backend callback, which creates a revocable server session, writes the single-use
+`ASK_SESSION` **bridge cookie**, and redirects to `/oauth/callback` on our origin. That
+transient page (the backend shipped this exchange 2026-07-19):
+
+1. exchanges the cookie for a Bearer token — one `getSession()` call with `credentials:'include'`; the backend returns the HS256 JWT (`access_token`/`expires_in`) and clears `ASK_SESSION` — then applies it via the existing `applySessionTo()`;
+2. redirects to the backend's `startRoute` (`startRouteToPath`), exactly like verify/login;
+3. if the session carries `suggestRoleExpansion` (a first-time Google signup), arms the persistent Role Choosing Modal the same way the verify step does.
+
+**Callback states (P8.4/P9.3).**
+
+- Loading: a centered spinner + "Signing you in…" — this page is ALWAYS transient.
+- Error: the exchange fails, or `getSession` returns 401/403 → an inline message + a "back to log in" link + a Toast; never a blank or stuck page.
+
+**Auth model.** OAuth only bootstraps a Bearer token; the app never authenticates by cookie
+(token lock, D5/P5.2). Sign-out is unchanged — it clears `ask.accessToken`.
 
 ## States (mandatory even though the vision doesn't draw them — P8.4/P9.3)
 

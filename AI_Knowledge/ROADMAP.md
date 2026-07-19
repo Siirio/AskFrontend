@@ -92,6 +92,13 @@ Slices 7–9 are one product surface but three slices: the cabinet **composes**,
 - [ ] **With item 10 (the landing): `public/logo_vertical.svg` has no consumer yet** (2026-07-16 audit, P8.1). The asset was exported with `logo_horizontal.svg` but nothing in `src/` references it; the landing is its expected first consumer. If the landing ships without it, delete it then.
 - [ ] **With item 10 (the landing): `/terms` and `/privacy` do not exist.** The register agreement ("I agree to the Terms of Service and Privacy Policy") links to both, so **both links 404 today** — a known, owner-accepted gap (2026-07-15), not an oversight: the legal copy is the owner's to write and is never invented client-side (P9.1). Build the two static, SEO-ready routes under `app/(marketing)/` with the landing, then the links resolve with no change to `auth`.
 
+### Auth follow-up — Google OAuth (owner directive 2026-07-19, an addition to shipped slice #1)
+
+Both gates that parked this are now cleared: Google login is in `PRODUCT_VISION.md` UF 1 and the `Email-only auth` lock is reversed. Google OAuth is now **required** on the Log in and Sign up pages. Docs are written (auth `contracts.md` / `ux-ui-flow.md` / `README.md` / `locks.md`); implementation is pending.
+
+- [ ] **Frontend:** `src/app/oauth/callback/page.tsx` (transient exchange page) + a "Continue with Google" secondary button on `LoginForm` and `RegisterForm` + a per-request `credentials` option on `httpClient`. The callback reuses `applySessionTo` → `startRoute` (identical to verify/login; `suggestRoleExpansion` arms the role modal). i18n `auth.oauth.*` in ru/kk/en. Optional `NEXT_PUBLIC_OAUTH_ENABLED` flag so the button never renders dead.
+- [x] **Backend delivered (2026-07-19, Final Major Update):** `GET /api/v1/auth/session` now exchanges the `ASK_SESSION` bridge cookie for the HS256 JWT (+ `expires_in`) and clears the cookie — exactly the option-2 hand-off. **Frontend is fully unblocked**; the whole item can be built now.
+
 Depends on: Phase 0.
 
 ## Phase 2 — Expansion
@@ -134,7 +141,7 @@ Do NOT build these early. Recorded so today's decisions don't block them.
 
 | Gate | Question | Parks (everything else in that slice still ships) | Status |
 |---|---|---|---|
-| **G1** | **Search sort & filter contract.** The vision (§4) promises sorting by relevance / distance / cost / unique offers, and filters for price / companies / location (100 km · city · map area). `UnifiedSearchRequest` accepts only `query`, `cityId`, `limit`. The backend must extend the contract — a lock forbids faking it by re-sorting a loaded page client-side. | The extra sort tabs and filter controls on the Catalog Page. **Ships anyway:** Home, the search form, the Catalog Page, result cards, relevance sort (the backend default) and the city filter — both already supported. | **OPEN — raise with backend** |
+| **G1** | **Search sort & filter contract — MOSTLY RESOLVED 2026-07-19.** The vision (§4) wants sorts relevance / distance / cost / unique-offers and filters price / companies / location (100 km · city · map area). The backend replaced `UnifiedSearchRequest` with `POST /api/v1/search` (see `features/search/contracts.md`), which now supports sorts `intent_match` (relevance) · `distance` · `price_asc` (cost), and `filters`/`overrides` for price (`min_price`/`max_price`), `city`, `category`, `scope`. **Still missing:** a Unique-Offers sort, a Companies filter, and the 100 km-radius / map-area location filters. The lock still forbids faking any of these by re-sorting a loaded page client-side. | Only the three unbuilt controls — the Unique-Offers sort tab, the Companies filter, and radius/map-area. **Ships now:** Home, the search form, the Catalog Page, result cards, and the relevance/distance/cost sorts + price/city/category filters — all backend-supported. | **PARTIAL — the missing three raise with backend** |
 | **G2** | **Company Profile scope.** The vision marks it "coming in a future update"; no backend endpoints exist. | Nothing. The placeholder IS the spec — ship it and move on. Re-open when the vision describes a screen. | Open, not blocking |
 | **G3** | **What does "Proceed to Purchase" do?** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. Likely candidate: the backend's `contact` module (`ContactActionController`, the `contactActionId` privacy pattern). If so, a `contact` slice must be registered per §2. | One button's click handler. **Ships anyway:** the whole Product Card — every field, the modal, the `/app/product/:id` page, SEO, and the chat button. | **OPEN — raise with backend + product** |
 | **G4** | World-wide domain/brand choice (ask.kz is KZ-branded) | Nothing before Phase 4 | Open, not urgent |
@@ -145,9 +152,11 @@ What the frontend needs FROM `../Ask_Backend` — tracked here because a missing
 
 | Need | For | Status |
 |---|---|---|
-| Sort & filter params on `UnifiedSearchRequest` | G1 → the Catalog Page | Not requested yet |
+| Unique-Offers sort, Companies filter, and 100 km-radius / map-area location filters on `POST /api/v1/search` | G1 → the remaining Catalog Page controls | **Partly delivered 2026-07-19:** relevance/distance/cost sorts + price/city/category filters now exist on `/api/v1/search`; these three remain |
 | The "Proceed to Purchase" contract | G3 → the Product Card | Not requested yet |
 | CORS origin for THIS client — every backend profile allows only Vite ports (5173/5174); `http://localhost:3000` (dev) + the deploy domain must be added to `ask.cors.allowed-origins` | Any browser call to the real backend | **Local dev DONE (2026-07-18):** `http://localhost:3000` + `http://127.0.0.1:3000` added to Ask_Backend `application-local.yml` (preflight + register 201 verified from the :3000 origin). The **deploy domain** still pending |
+| `GET /api/v1/auth/session` returns a real `access_token` under `ASK_SESSION` cookie auth | Google OAuth on the auth pages — the option-2 cookie→Bearer hand-off (`features/auth/contracts.md`) | **DONE 2026-07-19 (Final Major Update):** `/session` accepts the bridge cookie, returns the HS256 JWT + `expires_in`, then clears the single-use `ASK_SESSION`. Frontend fully unblocked |
+| `OAUTH2_FRONTEND_REDIRECT_URI` per environment + Google Console redirect URIs + `OAUTH2_GOOGLE_CLIENT_ID/SECRET` set | Google OAuth redirect landing on `/oauth/callback` | Dev/prod defaults aligned to `:3000`/`ask.com.kz` (2026-07-19); **stage must override** the redirect URI, and Google Console must whitelist each backend callback |
 | `AUTH_VERIFICATION_TEST_MODE=false`, real secrets, prod CORS origins | Phase 1 · Launch | Backend-owned |
 
 Architecture decisions D1–D10 live in `ARCHITECTURE_PATTERN_FRONTEND.md` §11 — that is the decision log. This file plans; it does not decide.
