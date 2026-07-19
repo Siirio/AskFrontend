@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -8,8 +8,11 @@ import {
   Building2,
   ChevronDown,
   Cookie,
+  Home,
   Info,
+  LayoutDashboard,
   LogOut,
+  MessageCircle,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -44,7 +47,13 @@ import { AskMark } from "./AskMark";
  * the primary destinations — Home (search), Chats, and a role-gated Dashboard
  * shown only to a seller/staff session (UF 3.1), keyed off `user.kind` (R6).
  * Right: the account card — name + initials avatar opening the profile-card
- * dropdown (settings, learn more ▸ About ASK + the legal links, sign out).
+ * dropdown (settings, learn more → About ASK + the legal links, sign out).
+ *
+ * Mobile-first (§7): under `sm` the destination chips collapse to ICONS (labels
+ * return at `sm+`), and the account menu's "Learn more" becomes a flat inline
+ * group instead of a sideways fly-out submenu — a phone has neither the room nor
+ * the hover a fly-out needs. No hamburger: with only 2–3 destinations, hiding
+ * them behind a tap costs discoverability for no space gain.
  *
  * Client component: it reads the live session (`useAuth`) and re-renders when
  * the platform locale switches (LocaleProvider, D18). A server component would
@@ -73,11 +82,29 @@ export function NavigationMenu() {
       : pathname === href || pathname.startsWith(`${href}/`);
 
   const isSeller = user?.kind === "business" || user?.kind === "staff";
+  const isMobile = useIsMobile();
 
   const links = [
-    { href: "/app", label: t("nav.home") },
-    { href: "/app/chats", label: t("nav.chats") },
-    ...(isSeller ? [{ href: "/app/business", label: t("nav.dashboard") }] : []),
+    { href: "/app", label: t("nav.home"), Icon: Home },
+    { href: "/app/chats", label: t("nav.chats"), Icon: MessageCircle },
+    ...(isSeller
+      ? [
+          {
+            href: "/app/business",
+            label: t("nav.dashboard"),
+            Icon: LayoutDashboard,
+          },
+        ]
+      : []),
+  ];
+
+  // The account menu's "Learn more" group — rendered as a fly-out submenu on
+  // desktop and a flat inline list on mobile (see the account card below).
+  const learnMoreItems = [
+    { href: "/?from=app", label: t("userMenu.about"), Icon: Building2 },
+    { href: "/terms", label: t("userMenu.terms"), Icon: ScrollText },
+    { href: "/privacy", label: t("userMenu.privacy"), Icon: ShieldCheck },
+    { href: "/cookies", label: t("userMenu.cookies"), Icon: Cookie },
   ];
 
   const displayName = user?.displayName?.trim() || user?.email?.split("@")[0];
@@ -104,15 +131,17 @@ export function NavigationMenu() {
               <li key={link.href}>
                 <Link
                   href={link.href}
+                  aria-label={link.label}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex min-h-11 items-center rounded-sm px-3 text-sm font-medium focus-ring transition-colors duration-(--duration-fast) ease-out",
+                    "flex min-h-11 min-w-11 items-center justify-center rounded-sm px-2 text-sm font-medium focus-ring transition-colors duration-(--duration-fast) ease-out sm:px-3",
                     active
                       ? "text-foreground"
                       : "text-foreground-subtle hover:text-foreground",
                   )}
                 >
-                  {link.label}
+                  <link.Icon className="size-5 sm:hidden" aria-hidden="true" />
+                  <span className="hidden sm:inline">{link.label}</span>
                 </Link>
               </li>
             );
@@ -167,39 +196,41 @@ export function NavigationMenu() {
                     {t("userMenu.settings")}
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger data-testid="user-menu-learn-more">
-                    <Info />
-                    {t("userMenu.learnMore")}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-60">
-                    <DropdownMenuItem asChild>
-                      <Link href="/?from=app">
-                        <Building2 />
-                        {t("userMenu.about")}
-                      </Link>
-                    </DropdownMenuItem>
+                {isMobile ? (
+                  // Mobile: a flat, tappable group — no sideways fly-out.
+                  <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/terms">
-                        <ScrollText />
-                        {t("userMenu.terms")}
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/privacy">
-                        <ShieldCheck />
-                        {t("userMenu.privacy")}
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/cookies">
-                        <Cookie />
-                        {t("userMenu.cookies")}
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                    <DropdownMenuLabel>
+                      {t("userMenu.learnMore")}
+                    </DropdownMenuLabel>
+                    {learnMoreItems.map((item) => (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <Link href={item.href}>
+                          <item.Icon />
+                          {item.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : (
+                  // Desktop: a hover/keyboard fly-out submenu.
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger data-testid="user-menu-learn-more">
+                      <Info />
+                      {t("userMenu.learnMore")}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-60">
+                      {learnMoreItems.map((item) => (
+                        <DropdownMenuItem key={item.href} asChild>
+                          <Link href={item.href}>
+                            <item.Icon />
+                            {item.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   data-testid="user-menu-logout"
@@ -228,4 +259,19 @@ function initialsFrom(name: string): string {
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** True on a phone-width viewport (< the `sm` breakpoint). Drives the account
+ *  menu's fly-out→flat swap. Starts false so SSR and first paint match (the menu
+ *  content only mounts on open, after this has resolved client-side). */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
 }

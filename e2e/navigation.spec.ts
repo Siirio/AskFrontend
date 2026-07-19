@@ -118,10 +118,11 @@ test("the account menu opens the profile card: settings, legal links, sign out",
   await expect(page.getByTestId("user-menu-logout")).toBeVisible();
   await shoot(page, "nav-menu-open-light");
 
-  // About + the legal links are nested under Learn more (Claude-style). Opening
-  // it reveals all four; ?from=app on About suppresses the D6 logged-in redirect
-  // so the marketing landing stays reachable.
-  await page.getByTestId("user-menu-learn-more").hover();
+  // About + the legal links live under "Learn more": a fly-out submenu on
+  // desktop (hover to open), a flat inline group on mobile (already visible). The
+  // submenu testid only exists on desktop, so open it only when present.
+  const subTrigger = page.getByTestId("user-menu-learn-more");
+  if (await subTrigger.count()) await subTrigger.hover();
   await expect(page.locator('a[href="/?from=app"]')).toBeVisible(); // About ASK
   await expect(page.locator('a[href="/terms"]')).toBeVisible();
   await expect(page.locator('a[href="/privacy"]')).toBeVisible();
