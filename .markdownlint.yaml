@@ -36,3 +36,8 @@ MD037: false
 # The tables throughout the CORE docs use a compact pipe style. Satisfying this
 # rule would mean reformatting every table in the normative authorities.
 MD060: false
+
+# The docs put a table directly under its heading with no blank line between —
+# the same intentional density choice MD022/MD032 already exempt for lists, and
+# the sibling of MD060 above. Enforcing it would reformat every feature contract.
+MD058: false
