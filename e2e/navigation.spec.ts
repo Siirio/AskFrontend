@@ -119,10 +119,19 @@ test("the account menu opens the profile card: settings, legal links, sign out",
   await shoot(page, "nav-menu-open-light");
 
   // About + the legal links live under "Learn more": a fly-out submenu on
-  // desktop (hover to open), a flat inline group on mobile (already visible). The
-  // submenu testid only exists on desktop, so open it only when present.
+  // desktop (hover to open), a flat inline group on mobile (already visible).
+  // Assert the layout MATCHES the viewport — don't just adapt to whatever
+  // rendered — so a mobile build that wrongly shipped the desktop fly-out fails.
   const subTrigger = page.getByTestId("user-menu-learn-more");
-  if (await subTrigger.count()) await subTrigger.hover();
+  const isMobile = await page.evaluate(
+    () => window.matchMedia("(max-width: 639px)").matches,
+  );
+  if (isMobile) {
+    await expect(subTrigger).toHaveCount(0); // flat inline group, no fly-out
+  } else {
+    await expect(subTrigger).toBeVisible();
+    await subTrigger.hover(); // open the fly-out
+  }
   await expect(page.locator('a[href="/?from=app"]')).toBeVisible(); // About ASK
   await expect(page.locator('a[href="/terms"]')).toBeVisible();
   await expect(page.locator('a[href="/privacy"]')).toBeVisible();
