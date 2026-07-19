@@ -147,7 +147,7 @@ What the frontend needs FROM `../Ask_Backend` — tracked here because a missing
 |---|---|---|
 | Sort & filter params on `UnifiedSearchRequest` | G1 → the Catalog Page | Not requested yet |
 | The "Proceed to Purchase" contract | G3 → the Product Card | Not requested yet |
-| CORS origin for THIS client — every backend profile allows only Vite ports (5173/5174); `http://localhost:3000` (dev) + the deploy domain must be added to `ask.cors.allowed-origins`. Interim dev workaround: run Next on 5173 (`npm run dev -- -p 5173`) | Any browser call to the real backend | Not requested yet |
+| CORS origin for THIS client — every backend profile allows only Vite ports (5173/5174); `http://localhost:3000` (dev) + the deploy domain must be added to `ask.cors.allowed-origins` | Any browser call to the real backend | **Local dev DONE (2026-07-18):** `http://localhost:3000` + `http://127.0.0.1:3000` added to Ask_Backend `application-local.yml` (preflight + register 201 verified from the :3000 origin). The **deploy domain** still pending |
 | `AUTH_VERIFICATION_TEST_MODE=false`, real secrets, prod CORS origins | Phase 1 · Launch | Backend-owned |
 
 Architecture decisions D1–D10 live in `ARCHITECTURE_PATTERN_FRONTEND.md` §11 — that is the decision log. This file plans; it does not decide.

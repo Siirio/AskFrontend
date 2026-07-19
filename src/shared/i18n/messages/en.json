@@ -5,10 +5,22 @@
   },
   "app": {
     "nav": {
+      "aria": "Main",
+      "brand": "ASK — home",
       "home": "Home",
       "chats": "Chats",
-      "profile": "Profile",
-      "business": "Business"
+      "dashboard": "Dashboard",
+      "signIn": "Sign in"
+    },
+    "userMenu": {
+      "aria": "Account menu",
+      "settings": "Settings",
+      "learnMore": "Learn more",
+      "about": "About ASK",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "cookies": "Cookies",
+      "logout": "Log out"
     },
     "pages": {
       "home": "Home",

@@ -5,10 +5,22 @@
   },
   "app": {
     "nav": {
+      "aria": "Негізгі",
+      "brand": "ASK — басты бет",
       "home": "Басты бет",
       "chats": "Чаттар",
-      "profile": "Профиль",
-      "business": "Бизнес"
+      "dashboard": "Панель",
+      "signIn": "Кіру"
+    },
+    "userMenu": {
+      "aria": "Аккаунт мәзірі",
+      "settings": "Баптаулар",
+      "learnMore": "Толығырақ",
+      "about": "ASK туралы",
+      "terms": "Пайдалану шарттары",
+      "privacy": "Құпиялылық саясаты",
+      "cookies": "Cookie файлдары",
+      "logout": "Шығу"
     },
     "pages": {
       "home": "Басты бет",

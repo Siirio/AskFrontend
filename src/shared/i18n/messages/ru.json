@@ -5,10 +5,22 @@
   },
   "app": {
     "nav": {
+      "aria": "Основная",
+      "brand": "ASK — на главную",
       "home": "Главная",
       "chats": "Чаты",
-      "profile": "Профиль",
-      "business": "Бизнес"
+      "dashboard": "Панель",
+      "signIn": "Войти"
+    },
+    "userMenu": {
+      "aria": "Меню аккаунта",
+      "settings": "Настройки",
+      "learnMore": "Подробнее",
+      "about": "О ASK",
+      "terms": "Условия использования",
+      "privacy": "Политика конфиденциальности",
+      "cookies": "Файлы cookie",
+      "logout": "Выйти"
     },
     "pages": {
       "home": "Главная",

@@ -9,6 +9,10 @@ import { NavigationMenu } from "@/app/_components/NavigationMenu";
  * (no navigation menu) while still inheriting the LocaleProvider from the parent
  * platform layout. Server component (D7).
  *
+ * NavigationMenu renders its own `<header>` landmark (the sticky bar), so this
+ * layout only places it above the page content — no wrapping header, which would
+ * nest two banner landmarks.
+ *
  * RoleSelectionModal is NOT here: it follows the session, not a route, so it
  * mounts one level up in the platform layout — covering the auth routes this
  * group excludes (2026-07-18 review).
@@ -16,9 +20,7 @@ import { NavigationMenu } from "@/app/_components/NavigationMenu";
 export default function MainLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <header>
-        <NavigationMenu />
-      </header>
+      <NavigationMenu />
       {children}
     </>
   );
