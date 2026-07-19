@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { SearchBar } from "../../shared/ui/SearchBar/SearchBar";
 import { CitySelector } from "../../shared/ui/CitySelector/CitySelector";
 import { SegmentedControl, type SegmentedOption } from "../../shared/ui/SegmentedControl/SegmentedControl";
-import { HomeCursorSurface } from "../../widgets/home-cursor-surface/HomeCursorSurface";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
@@ -147,7 +146,6 @@ export function HomePage() {
           </div>
         </div>
 
-        <HomeCursorSurface />
         <div
           className="fcw-absolute"
           style={{

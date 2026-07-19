@@ -307,3 +307,12 @@ Completed the frontend part of the identity/onboarding/managed-import/compliance
 - `BusinessInvitationModal.test.tsx`: pending invitation rendering (business/role/inviter), accept calls API + refreshes session, decline calls API without session refresh, nothing rendered without invitations.
 - `SellerOnboardingPage.test.tsx`: wizard renders for authenticated (existing) users, unauthenticated (new) users are redirected to auth first, no country selector rendered while submit defaults `countryCode: "KZ"`, full wizard walk lands in the business cabinet.
 - `ProfilePage.test.tsx`: multiple business selector lists every membership; clicking one calls `selectBusiness` and opens that business cabinet.
+## 2026-07-19 — OAuth bridge, scoped import, and cabinet usability
+
+- OAuth callback exchanges `ASK_SESSION` for a signed Bearer token, stores it in session storage, and later API calls omit cookies.
+- Existing business members no longer see create-business or duplicate storefront actions in the account screen.
+- Removed the homepage mouse-hover tile canvas.
+- Product, service, and unique-offer quick actions now open their create surface; the empty-product form renders correctly.
+- Seller onboarding asks PRODUCTS, SERVICES, or BOTH before manual setup versus managed import.
+- Product and service cabinet tabs open a scoped managed-import request with benefits, price state, sources, contact details, and legal acceptance.
+- Kept the graphite, ivory, and orange palette while tightening typography, card motion, forms, responsive onboarding, and modal hierarchy.

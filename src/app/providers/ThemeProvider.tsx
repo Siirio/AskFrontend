@@ -10,11 +10,14 @@ interface ThemeState {
 const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeMode>("light");
+  const [theme, setTheme] = useState<ThemeMode>(
+    () => window.localStorage.getItem("ask.theme") === "light" ? "light" : "dark",
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.fcwMode = "ask";
+    window.localStorage.setItem("ask.theme", theme);
   }, [theme]);
 
   const toggle = () => setTheme(t => t === "dark" ? "light" : "dark");

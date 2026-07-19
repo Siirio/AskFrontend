@@ -15,6 +15,7 @@ export type SellerOnboardingData = {
   deliveryTermsKk: string;
   deliveryTermsEn: string;
   catalogSetupMode: "MANUAL" | "ASK_MANAGED_IMPORT";
+  catalogScope: "PRODUCTS" | "SERVICES" | "BOTH";
   catalogSources: string[];
   sourceLinks: string;
   sourceNotes: string;

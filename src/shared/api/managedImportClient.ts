@@ -7,6 +7,7 @@ export type ManagedImportItem = {
   requestedByUserId: string;
   requestedByName: string;
   status: "PENDING" | "ACTIVE" | "COMPLETED";
+  catalogScope: "PRODUCTS" | "SERVICES" | "BOTH";
   sourceTypes: string[];
   preferredContactChannel: string;
   preferredContactValue: string;
@@ -26,18 +27,23 @@ export function listPlatformManagedImports() {
 
 export function requestManagedImportHelp(
   businessId: string,
-  preferredContactValue: string,
+  request: {
+    catalogScope: "PRODUCTS" | "SERVICES" | "BOTH";
+    sourceTypes: string[];
+    preferredContactChannel: "WHATSAPP" | "TELEGRAM" | "EMAIL";
+    preferredContactValue: string;
+    sourceLinks: string;
+    sourceNotes: string;
+    legalAccepted: boolean;
+  },
 ) {
   return apiRequest<ManagedImportItem>(`/api/v1/businesses/${businessId}/managed-imports`, {
     method: "POST",
     auth: true,
     body: {
-      sourceTypes: ["EXCEL"],
-      preferredContactChannel: "EMAIL",
-      preferredContactValue,
+      ...request,
       countryCode: "KZ",
       locale: "ru",
-      legalAccepted: true,
     },
   });
 }
@@ -57,7 +63,7 @@ export function activateManagedImport(requestId: string) {
 }
 
 export function getManagedImportCatalogAccess(businessId: string) {
-  return apiRequest<{ allowed: boolean }>(
+  return apiRequest<{ allowed: boolean; catalogScope: "PRODUCTS" | "SERVICES" | "BOTH" }>(
     `/api/v1/platform/managed-imports/businesses/${businessId}/catalog-access`,
     { auth: true },
   );

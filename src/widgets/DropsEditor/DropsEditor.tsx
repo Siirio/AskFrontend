@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X, Check, Plus, Trash2, Calendar, Tag, Loader2, Clock } from "lucide-react";
@@ -36,6 +36,7 @@ interface DropsEditorProps {
   onDelete: (drop: BrandDropDto) => Promise<void>;
   busy: boolean;
   readOnly?: boolean;
+  openRequest?: number;
 }
 
 interface DropForm {
@@ -49,13 +50,21 @@ interface DropForm {
 
 const emptyForm: DropForm = { name: "", type: "NEW_COLLECTION", description: "", startDate: "", endDate: "", tags: "" };
 
-export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnly }: DropsEditorProps) {
+export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnly, openRequest }: DropsEditorProps) {
   const { t } = useTranslation();
   const [form, setForm] = useState<DropForm>(emptyForm);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const update = (patch: Partial<DropForm>) => setForm(f => ({ ...f, ...patch }));
+
+  useEffect(() => {
+    if (!openRequest || readOnly) return;
+    setForm(emptyForm);
+    setSaveState("idle");
+    setErrorMessage("");
+    setDrawerOpen(true);
+  }, [openRequest, readOnly]);
 
   const DROP_TYPES = [
     { key: "NEW_COLLECTION", label: t("drops.typeNewCollection"), desc: t("drops.typeNewCollectionDesc") },

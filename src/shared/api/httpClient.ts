@@ -1,3 +1,5 @@
+import { getAccessToken } from "./authTokenStore";
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 function snakeToCamel(key: string): string {
@@ -66,8 +68,13 @@ type RequestOptions = {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const accessToken = options.auth ? getAccessToken() : null;
 
-  if (options.method && options.method !== "GET") {
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  if (!accessToken && options.method && options.method !== "GET") {
     Object.assign(headers, getCsrfHeaders());
   }
 
@@ -75,7 +82,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     method: options.method ?? "GET",
     headers,
     body: options.body ? JSON.stringify(camelToSnakeKeys(options.body)) : undefined,
-    credentials: "include",
+    credentials: accessToken ? "omit" : "include",
   });
 
   if (!response.ok) {

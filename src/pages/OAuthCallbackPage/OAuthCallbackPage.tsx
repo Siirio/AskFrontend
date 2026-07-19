@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../../shared/api/httpClient";
 import type { AuthSession } from "../../shared/api/authClient";
+import { setAccessToken } from "../../shared/api/authTokenStore";
 
 export function OAuthCallbackPage() {
   const [error, setError] = useState("");
@@ -16,7 +17,8 @@ export function OAuthCallbackPage() {
       return;
     }
     apiRequest<AuthSession>("/api/v1/auth/session", { auth: true })
-      .then(() => {
+      .then(session => {
+        setAccessToken(session.accessToken);
         window.location.replace("/");
       })
       .catch(() => {

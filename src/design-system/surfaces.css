@@ -28,13 +28,7 @@
   border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
   border-radius: var(--fcw-radius-lg);
   box-shadow: var(--fcw-shadow-sm);
-  transition: box-shadow var(--fcw-duration-fast) var(--fcw-ease-out),
-              transform var(--fcw-duration-fast) var(--fcw-ease-out);
-}
-
-.fcw-card:hover {
-  box-shadow: var(--fcw-shadow-md);
-  transform: translateY(-2px);
+  transition: border-color var(--fcw-duration-fast) var(--fcw-ease-out);
 }
 
 .fcw-card-interactive {

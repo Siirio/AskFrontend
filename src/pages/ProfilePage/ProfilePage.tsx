@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Package, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, Trash2 } from "lucide-react";
+import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
@@ -63,9 +63,6 @@ export function ProfilePage() {
   };
   const user = state.session?.user;
   const businessMemberships = state.session?.businessMemberships ?? [];
-  const activeBusiness = businessMemberships.find(
-    membership => membership.businessId === state.activeBusinessId,
-  ) ?? businessMemberships[0];
   const isBusiness = businessMemberships.length > 0;
   const [editForm, setEditForm] = useState({
     displayName: user?.displayName || "",
@@ -352,14 +349,16 @@ export function ProfilePage() {
               </span>
             </button>
 
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-w-full"
-              style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}
-              onClick={() => navigate(ROUTES.sellerOnboarding)}
-            >
-              <Building2 size={18} style={{ color: "var(--fcw-color-primary)" }} />
-              <span className="fcw-flex-1 fcw-text-left">{t("profile.createBusiness")}</span>
-            </button>
+            {businessMemberships.length === 0 && (
+              <button
+                className="fcw-btn fcw-btn-ghost fcw-w-full"
+                style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}
+                onClick={() => navigate(ROUTES.sellerOnboarding)}
+              >
+                <Building2 size={18} style={{ color: "var(--fcw-color-primary)" }} />
+                <span className="fcw-flex-1 fcw-text-left">{t("profile.createBusiness")}</span>
+              </button>
+            )}
 
             {businessMemberships.map(membership => (
               <button
@@ -375,13 +374,6 @@ export function ProfilePage() {
                 <span className="fcw-flex-1 fcw-text-left">{membership.businessName}</span>
               </button>
             ))}
-
-            {activeBusiness && (
-              <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={() => navigate(buildRoute(ROUTES.storefront, { businessId: activeBusiness.businessId }))}>
-                <Package size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                <span className="fcw-flex-1 fcw-text-left">{t("profile.myStorefront")}</span>
-              </button>
-            )}
 
             <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", color: "var(--fcw-color-error)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={handleLogout}>
               <LogOut size={18} />

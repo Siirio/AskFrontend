@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { Briefcase, Check, ChevronLeft, ChevronRight, FileUp, Handshake, Info, Package } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
 import { listCities } from "../../shared/api/askClient";
@@ -33,6 +33,7 @@ const INITIAL_DATA: SellerOnboardingData = {
   deliveryTermsKk: "",
   deliveryTermsEn: "",
   catalogSetupMode: "MANUAL",
+  catalogScope: "BOTH",
   catalogSources: [],
   sourceLinks: "",
   sourceNotes: "",
@@ -73,6 +74,10 @@ export function SellerOnboardingPage() {
 
   if (!state.authenticated) {
     return <Navigate to={ROUTES.auth} replace />;
+  }
+
+  if (state.session?.businessMemberships?.length) {
+    return <Navigate to={buildRoute(ROUTES.business, { businessId: state.session.businessMemberships[0].businessId })} replace />;
   }
 
   const update = <K extends keyof SellerOnboardingData>(
@@ -177,20 +182,63 @@ export function SellerOnboardingPage() {
             )}
 
             {step === 3 && (
-              <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                  <input type="radio" checked={data.catalogSetupMode === "MANUAL"} onChange={() => update("catalogSetupMode", "MANUAL")} />
-                  {t("seller.catalog.MANUAL")}
-                </label>
-                <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                  <input type="radio" checked={data.catalogSetupMode === "ASK_MANAGED_IMPORT"} onChange={() => update("catalogSetupMode", "ASK_MANAGED_IMPORT")} />
-                  {t("seller.catalog.ASK_MANAGED_IMPORT")}
-                </label>
+              <div className="seller-catalog-step">
+                <div>
+                  <h3>{t("seller.catalogScope.title")}</h3>
+                  <p>{t("seller.catalogScope.description")}</p>
+                </div>
+                <div className="seller-scope-options">
+                  {([
+                    ["PRODUCTS", Package],
+                    ["SERVICES", Briefcase],
+                    ["BOTH", Handshake],
+                  ] as const).map(([scope, Icon]) => (
+                    <button
+                      key={scope}
+                      type="button"
+                      className={data.catalogScope === scope ? "is-selected" : ""}
+                      onClick={() => update("catalogScope", scope)}
+                    >
+                      <Icon size={20} />
+                      <span>{t(`seller.catalogScope.${scope}`)}</span>
+                      <small>{t(`seller.catalogScope.${scope}.description`)}</small>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="seller-import-choice">
+                  <button
+                    type="button"
+                    className={data.catalogSetupMode === "MANUAL" ? "is-selected" : ""}
+                    onClick={() => update("catalogSetupMode", "MANUAL")}
+                  >
+                    <Check size={18} />
+                    <span>
+                      <strong>{t("seller.catalog.MANUAL")}</strong>
+                      <small>{t("seller.catalog.manualDescription")}</small>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={data.catalogSetupMode === "ASK_MANAGED_IMPORT" ? "is-selected" : ""}
+                    onClick={() => update("catalogSetupMode", "ASK_MANAGED_IMPORT")}
+                  >
+                    <FileUp size={18} />
+                    <span>
+                      <strong>{t("seller.catalog.ASK_MANAGED_IMPORT")}</strong>
+                      <small>{t("seller.catalog.managedDescription", { catalog: t(`seller.catalogScope.${data.catalogScope}`) })}</small>
+                    </span>
+                  </button>
+                </div>
                 {data.catalogSetupMode === "ASK_MANAGED_IMPORT" && (
-                  <>
-                    <div className="fcw-flex fcw-items-start fcw-radius-md" style={{ gap: "0.5rem", padding: "0.75rem", background: "var(--fcw-color-surface-secondary)" }}>
+                  <div className="seller-managed-import-details">
+                    <div className="fcw-flex fcw-items-start" style={{ gap: "0.5rem" }}>
                       <Info size={18} />
-                      <p className="fcw-body-s">{t("seller.managedInfo")}</p>
+                      <div>
+                        <strong>{t("seller.managedBenefitTitle")}</strong>
+                        <p className="fcw-body-s">{t("seller.managedInfo")}</p>
+                        <span className="fcw-label">{t("managedImport.priceEstimate")}</span>
+                      </div>
                     </div>
                     <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
                       {SOURCE_TYPES.map(source => (
@@ -202,7 +250,7 @@ export function SellerOnboardingPage() {
                     </div>
                     <textarea className="fcw-input" value={data.sourceLinks} onChange={event => update("sourceLinks", event.target.value)} placeholder={t("seller.sourceLinks")} rows={3} />
                     <textarea className="fcw-input" value={data.sourceNotes} onChange={event => update("sourceNotes", event.target.value)} placeholder={t("seller.sourceNotes")} rows={3} />
-                  </>
+                  </div>
                 )}
               </div>
             )}

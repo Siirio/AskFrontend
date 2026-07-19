@@ -12,6 +12,7 @@ import {
   verifyCode,
 } from "../../shared/api/authClient";
 import { ApiError } from "../../shared/api/httpClient";
+import { setAccessToken } from "../../shared/api/authTokenStore";
 
 export type AuthMode = "login" | "register";
 
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session, activeBusinessId]);
 
   const acceptSession = useCallback((nextSession: AuthSession) => {
+    setAccessToken(nextSession.accessToken);
     setSession(nextSession);
     setChallenge(null);
     setRequiresTwoFactor(false);
@@ -93,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (active) {
+          setAccessToken();
           setSession(null);
         }
       })
@@ -199,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSession();
     }
     window.localStorage.removeItem(ACTIVE_BUSINESS_KEY);
+    setAccessToken();
     setSession(null);
     setChallenge(null);
     setError("");

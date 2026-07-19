@@ -20,6 +20,7 @@ import { DropsEditor } from "../../widgets/DropsEditor/DropsEditor";
 import { ProfileEditor } from "../../widgets/ProfileEditor/ProfileEditor";
 import { BusinessCardBuilder } from "../../widgets/BusinessCardBuilder/BusinessCardBuilder";
 import { ProductImportWizard } from "../../widgets/ProductImportWizard/ProductImportWizard";
+import { ManagedImportRequestDialog } from "../../widgets/ManagedImportRequestDialog/ManagedImportRequestDialog";
 import {
   getBrandProfile, listDrops,
   updateBrandProfile,
@@ -38,7 +39,7 @@ import type {
   BusinessProductDto, BusinessServiceDto, StaffDto,
   ChatConversationDto, ChatMessageDto,
 } from "../../shared/api/dto";
-import { getManagedImportCatalogAccess, listBusinessManagedImports, requestManagedImportHelp } from "../../shared/api/managedImportClient";
+import { getManagedImportCatalogAccess, listBusinessManagedImports } from "../../shared/api/managedImportClient";
 import { requestAiEnrichment } from "../../shared/api/platformClient";
 import {
   getBusinessCatalogStatus,
@@ -122,6 +123,7 @@ export function BusinessPage() {
   const [platformWorkspaceAccess, setPlatformWorkspaceAccess] = useState<boolean | null>(
     isPlatformCandidate ? null : false,
   );
+  const [platformCatalogScope, setPlatformCatalogScope] = useState<"PRODUCTS" | "SERVICES" | "BOTH" | null>(null);
   const isPlatformWorkspace = !membership && platformWorkspaceAccess === true;
   const hasBusinessAccess = Boolean(membership || isPlatformWorkspace);
   const memberRole = membership?.role ?? (isPlatformWorkspace ? "PLATFORM_IMPORT" : "");
@@ -133,8 +135,14 @@ export function BusinessPage() {
   useEffect(() => {
     if (!membership && isPlatformCandidate && businessId) {
       getManagedImportCatalogAccess(businessId)
-        .then(result => setPlatformWorkspaceAccess(result.allowed))
-        .catch(() => setPlatformWorkspaceAccess(false));
+        .then(result => {
+          setPlatformWorkspaceAccess(result.allowed);
+          setPlatformCatalogScope(result.catalogScope);
+        })
+        .catch(() => {
+          setPlatformWorkspaceAccess(false);
+          setPlatformCatalogScope(null);
+        });
     }
   }, [businessId, isPlatformCandidate, membership]);
 
@@ -164,8 +172,8 @@ export function BusinessPage() {
   const [productsBusy, setProductsBusy] = useState(false);
   const [selectedProductOfferIds, setSelectedProductOfferIds] = useState<Set<string>>(new Set());
   const [aiEnrichmentBusy, setAiEnrichmentBusy] = useState(false);
-  const [managedImportRequestBusy, setManagedImportRequestBusy] = useState(false);
-  const [managedImportRequested, setManagedImportRequested] = useState(false);
+  const [managedImportRequestedScopes, setManagedImportRequestedScopes] = useState<Set<"PRODUCTS" | "SERVICES">>(new Set());
+  const [managedImportDialogScope, setManagedImportDialogScope] = useState<"PRODUCTS" | "SERVICES" | null>(null);
   const [productsLoadingPage, setProductsLoadingPage] = useState(false);
   const [newProductIds, setNewProductIds] = useState<Set<string>>(new Set());
   const prevProductIdsRef = useRef<Set<string>>(new Set());
@@ -203,6 +211,7 @@ export function BusinessPage() {
   const [importBranchId, setImportBranchId] = useState("");
   const [importMode, setImportMode] = useState<"PRODUCT" | "SERVICE">("PRODUCT");
   const [quickRailOpen, setQuickRailOpen] = useState(false);
+  const [dropComposerRequest, setDropComposerRequest] = useState(0);
 
   // Catalog setup deadline
   const [catalogStatus, setCatalogStatus] = useState<BusinessCatalogStatus | null>(null);
@@ -220,10 +229,17 @@ export function BusinessPage() {
   useEffect(() => {
     if (!membership) return;
     listBusinessManagedImports(membership.businessId)
-      .then(items => setManagedImportRequested(
-        items.some(item => item.status === "PENDING" || item.status === "ACTIVE"),
-      ))
-      .catch(() => setManagedImportRequested(false));
+      .then(items => {
+        const scopes = new Set<"PRODUCTS" | "SERVICES">();
+        items
+          .filter(item => item.status === "PENDING" || item.status === "ACTIVE")
+          .forEach(item => {
+            if (item.catalogScope === "PRODUCTS" || item.catalogScope === "BOTH") scopes.add("PRODUCTS");
+            if (item.catalogScope === "SERVICES" || item.catalogScope === "BOTH") scopes.add("SERVICES");
+          });
+        setManagedImportRequestedScopes(scopes);
+      })
+      .catch(() => setManagedImportRequestedScopes(new Set()));
   }, [membership?.businessId]);
 
   const businessSidebarItems: { key: BusinessSection; label: string; icon: React.ReactNode }[] = [
@@ -237,14 +253,22 @@ export function BusinessPage() {
     ]),
   ];
   const sidebarItems = isPlatformWorkspace
-    ? businessSidebarItems.filter(item => item.key === "products")
+    ? businessSidebarItems.filter(item =>
+        (item.key === "products" && platformCatalogScope !== "SERVICES")
+        || (item.key === "services" && platformCatalogScope !== "PRODUCTS"))
     : businessSidebarItems;
 
   useEffect(() => {
-    if (isPlatformWorkspace && section !== "products") {
-      setSection("products");
+    if (!isPlatformWorkspace) return;
+    const allowedSections: BusinessSection[] = platformCatalogScope === "SERVICES"
+      ? ["services"]
+      : platformCatalogScope === "BOTH"
+        ? ["products", "services"]
+        : ["products"];
+    if (!allowedSections.includes(section)) {
+      setSection(allowedSections[0]);
     }
-  }, [isPlatformWorkspace, section]);
+  }, [isPlatformWorkspace, platformCatalogScope, section]);
 
   function formatStaffStatus(status: string) {
     if (status === "PENDING_ACTIVATION") return t("business.staffStatus.pendingActivation");
@@ -274,10 +298,35 @@ export function BusinessPage() {
   }
 
   const quickActions = [
-    { label: t("business.product.add"), icon: <Package size={16} />, onClick: () => setSection("products") },
-    { label: t("business.service.add"), icon: <Briefcase size={16} />, onClick: () => setSection("services") },
+    {
+      label: t("business.product.add"),
+      icon: <Package size={16} />,
+      onClick: () => {
+        setEditProduct(null);
+        setProductForm({ name: "", description: "", price: "", categoryId: flattenCategories(categories)[0]?.id || "", imageUrl: "" });
+        setShowProductForm(true);
+        setSection("products");
+      },
+    },
+    {
+      label: t("business.service.add"),
+      icon: <Briefcase size={16} />,
+      onClick: () => {
+        setEditService(null);
+        setServiceForm({ name: "", description: "", basePrice: "", categoryId: flattenCategories(categories)[0]?.id || "", scheduleType: "FIXED", imageUrl: "" });
+        setShowServiceForm(true);
+        setSection("services");
+      },
+    },
+    {
+      label: t("drops.create"),
+      icon: <Sparkles size={16} />,
+      onClick: () => {
+        setSection("events");
+        setDropComposerRequest(current => current + 1);
+      },
+    },
     { label: t("business.importData"), icon: <Upload size={16} />, onClick: () => setSection("import") },
-    { label: t("business.businessCard"), icon: <Sparkles size={16} />, onClick: () => setSection("business-card") },
   ];
 
   const loadCoreData = useCallback(async () => {
@@ -648,22 +697,6 @@ export function BusinessPage() {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
     } finally {
       setAiEnrichmentBusy(false);
-    }
-  };
-
-  const handleRequestManagedImport = async () => {
-    const email = state.session?.user.email;
-    if (!businessId || !email) return;
-    if (!window.confirm("Запросить помощь с импортом каталога и принять условия услуги?")) return;
-    setManagedImportRequestBusy(true);
-    try {
-      await requestManagedImportHelp(businessId, email);
-      setManagedImportRequested(true);
-      toast.show("Запрос помощи с каталогом отправлен", "success");
-    } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
-    } finally {
-      setManagedImportRequestBusy(false);
     }
   };
 
@@ -1223,11 +1256,13 @@ export function BusinessPage() {
                           {!isPlatformWorkspace && (isOwner || isManager) && (
                             <button
                               className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                              onClick={handleRequestManagedImport}
-                              disabled={managedImportRequestBusy || managedImportRequested}
+                              onClick={() => setManagedImportDialogScope("PRODUCTS")}
+                              disabled={managedImportRequestedScopes.has("PRODUCTS")}
                             >
-                              {managedImportRequestBusy ? <Loader2 size={16} className="fcw-spin" /> : <MessageCircle size={16} />}
-                              {managedImportRequested ? "Запрос отправлен" : "Запросить помощь с каталогом"}
+                              <MessageCircle size={16} />
+                              {managedImportRequestedScopes.has("PRODUCTS")
+                                ? t("managedImport.requested")
+                                : t("managedImport.requestProducts")}
                             </button>
                           )}
                           {isPlatformWorkspace && selectedProductOfferIds.size > 0 && (
@@ -1268,7 +1303,7 @@ export function BusinessPage() {
                       />
                     )}
 
-                    {activeBranchId && products.length > 0 && (
+                    {activeBranchId && (products.length > 0 || showProductForm) && (
                       <div className="fcw-flex-col" style={{ gap: "0.25rem", minHeight: 440, opacity: productsLoadingPage ? 0.6 : 1, transition: "opacity 150ms" }}>
                         <AnimatePresence>
                           {showProductForm && !editProduct && (
@@ -1487,6 +1522,18 @@ export function BusinessPage() {
                       <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.services")}</h2>
                       {!isWorker && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
+                          {!isPlatformWorkspace && (isOwner || isManager) && (
+                            <button
+                              className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                              onClick={() => setManagedImportDialogScope("SERVICES")}
+                              disabled={managedImportRequestedScopes.has("SERVICES")}
+                            >
+                              <MessageCircle size={16} />
+                              {managedImportRequestedScopes.has("SERVICES")
+                                ? t("managedImport.requested")
+                                : t("managedImport.requestServices")}
+                            </button>
+                          )}
                           <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("SERVICE"); setSection("import"); }}>
                             <Upload size={16} />{t("business.import.titleServices")}
                           </button>
@@ -2348,6 +2395,7 @@ export function BusinessPage() {
                     onDelete={handleDeleteDrop}
                     busy={busy}
                     readOnly={isStaff}
+                    openRequest={dropComposerRequest}
                   />
                 )}
 
@@ -2374,6 +2422,14 @@ export function BusinessPage() {
           </div>
         </div>
       </div>
+      <ManagedImportRequestDialog
+        open={managedImportDialogScope !== null}
+        businessId={businessId}
+        scope={managedImportDialogScope ?? "PRODUCTS"}
+        defaultContactValue={state.session?.user?.email ?? ""}
+        onClose={() => setManagedImportDialogScope(null)}
+        onSubmitted={scope => setManagedImportRequestedScopes(current => new Set(current).add(scope))}
+      />
     </main>
   );
 }

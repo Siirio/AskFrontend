@@ -1,4 +1,5 @@
 import { API_BASE_URL, apiRequest } from "./httpClient";
+import { setAccessToken } from "./authTokenStore";
 
 export type AuthChallenge = {
   authChallengeId: string;
@@ -13,6 +14,7 @@ export type AuthChallenge = {
 export type AuthSession = {
   accessToken?: string;
   tokenType?: string;
+  expiresIn?: number;
   expiresAt: string;
   remembered?: boolean;
   activationRequired?: boolean;
@@ -118,6 +120,7 @@ export function resolveCity(name: string) {
 }
 
 export function logout() {
+  setAccessToken();
 }
 
 export function logoutRemote() {

@@ -65,9 +65,9 @@
   /* --- Type Scale --- */
   --fcw-font-size-display-xl: clamp(4rem, 8vw, 8rem);
   --fcw-font-size-display: clamp(3rem, 6vw, 5rem);
-  --fcw-font-size-h1: clamp(2.25rem, 4vw, 3.5rem);
-  --fcw-font-size-h2: clamp(1.75rem, 3vw, 2.5rem);
-  --fcw-font-size-h3: clamp(1.25rem, 2vw, 1.75rem);
+  --fcw-font-size-h1: 2.5rem;
+  --fcw-font-size-h2: 1.75rem;
+  --fcw-font-size-h3: 1.25rem;
   --fcw-font-size-body-l: 1.125rem;
   --fcw-font-size-body: 1rem;
   --fcw-font-size-body-s: 0.875rem;
@@ -151,7 +151,7 @@
   /* --- Motion Durations --- */
   --fcw-duration-instant: 100ms;
   --fcw-duration-fast: 200ms;
-  --fcw-duration-normal: 400ms;
+  --fcw-duration-normal: 240ms;
   --fcw-duration-slow: 700ms;
   --fcw-duration-cinematic: 1200ms;
 

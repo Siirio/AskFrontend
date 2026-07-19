@@ -313,7 +313,7 @@ export function PlatformPage() {
                         <h3 className="fcw-body-l fcw-weight-semibold">{item.businessName}</h3>
                         <p className="fcw-body-s fcw-text-secondary">{item.requestedByName} · {item.status}</p>
                       </div>
-                      <span className="fcw-label">{item.sourceTypes.join(", ")}</span>
+                      <span className="fcw-label">{item.catalogScope} · {item.sourceTypes.join(", ")}</span>
                     </div>
                     <p className="fcw-body-s">{item.preferredContactChannel}: {item.preferredContactValue}</p>
                     {item.expiresAt && (

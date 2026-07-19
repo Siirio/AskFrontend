@@ -310,7 +310,14 @@ When a brand has an active drop, its product cards receive `hasActiveDrop: true`
 ## 2026-07-18 managed catalog updates
 - Branch DTOs include `addressDetails`; 2GIS selection supplies address, city, latitude, and longitude.
 - Catalog setup has no manual completion endpoint and may return `REVIEW_REQUIRED`.
-- Managed-import activation starts an assigned seven-day product-only workspace and file-capable chat; there is no manual completion endpoint.
+- Managed-import activation starts an assigned seven-day workspace scoped to `PRODUCTS`, `SERVICES`, or `BOTH` and a file-capable chat; there is no manual completion endpoint.
 - Business import accepts `.xlsx`; assigned platform import additionally exposes TXT/MD/PDF Autodump.
 - `POST /api/v1/platform/ai-enrichment` queues selected aggregate IDs.
 - Account export was removed; account deletion remains.
+
+## 2026-07-19 OAuth and catalog-scope updates
+- `GET /api/v1/auth/session` accepts the OAuth bridge cookie or a Bearer token and returns `access_token`, `token_type`, `expires_in`, plus the normal session context. The bridge cookie is cleared by the response.
+- Successful password, OTP, activation, and OAuth exchange responses return an HS256 JWT whose `sid` remains tied to the revocable backend session.
+- Frontend stores the access token in session storage. Requests with a token send `Authorization: Bearer ...`, use `credentials: omit`, and do not rely on auth cookies.
+- Seller onboarding requires `catalog_scope`: `PRODUCTS`, `SERVICES`, or `BOTH`.
+- Managed-import creation requires the same scope. `GET /api/v1/platform/managed-imports/businesses/{businessId}/catalog-access` returns both `allowed` and `catalog_scope`.

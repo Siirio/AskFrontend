@@ -72,8 +72,7 @@
   font-size: var(--fcw-font-size-label);
   font-weight: var(--fcw-font-weight-semibold);
   line-height: 1.3;
-  letter-spacing: var(--fcw-tracking-wider);
-  text-transform: uppercase;
+  letter-spacing: var(--fcw-tracking-normal);
 }
 
 .fcw-mono { font-family: var(--fcw-font-mono); }
