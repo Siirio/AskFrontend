@@ -130,7 +130,11 @@ test("the account menu opens the profile card: settings, legal links, sign out",
     await expect(subTrigger).toHaveCount(0); // flat inline group, no fly-out
   } else {
     await expect(subTrigger).toBeVisible();
-    await subTrigger.hover(); // open the fly-out
+    await subTrigger.hover(); // action, not an assertion — verify it opened next
+    await expect(subTrigger).toHaveAttribute("aria-expanded", "true");
+    await expect(
+      page.locator('[data-slot="dropdown-menu-sub-content"]'),
+    ).toBeVisible(); // the fly-out panel actually opened
   }
   await expect(page.locator('a[href="/?from=app"]')).toBeVisible(); // About ASK
   await expect(page.locator('a[href="/terms"]')).toBeVisible();
