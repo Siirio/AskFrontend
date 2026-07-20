@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -21,6 +21,7 @@ import {
 
 import { canAccessDashboard, useAuth } from "@/auth";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/lib/useIsMobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -261,19 +262,4 @@ function initialsFrom(name: string): string {
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-/** True on a phone-width viewport (< the `sm` breakpoint). Drives the account
- *  menu's fly-out→flat swap. Starts false so SSR and first paint match (the menu
- *  content only mounts on open, after this has resolved client-side). */
-function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  return isMobile;
 }
