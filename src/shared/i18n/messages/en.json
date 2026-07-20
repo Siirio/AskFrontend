@@ -72,6 +72,13 @@
       "verifying": "Verifying…",
       "changeEmail": "Change email"
     },
+    "oauth": {
+      "or": "or",
+      "continueWithGoogle": "Continue with Google",
+      "signingIn": "Signing you in…",
+      "failed": "Google sign-in didn't work. Please try again.",
+      "backToLogin": "Back to log in"
+    },
     "verify": {
       "sentTo": "We sent a 6-digit code to {destination}.",
       "codeLabel": "Verification code"
@@ -86,10 +93,10 @@
       "emailTaken": "This email is already registered. Log in instead.",
       "userNotFound": "No account was found for this email.",
       "network": "Something went wrong. Check your connection and try again.",
-      "passwordRequired": "Enter your password",
-      "invalidCredentials": "Incorrect email or password",
-      "accountNotActive": "This account is not active",
-      "nameRequired": "Enter your name",
+      "passwordRequired": "Enter your password.",
+      "invalidCredentials": "Incorrect email or password.",
+      "accountNotActive": "This account is not active.",
+      "nameRequired": "Enter your name.",
       "roleSelection": "This email is linked to several roles. Choosing a role at sign-in is not available yet."
     },
     "roleModal": {

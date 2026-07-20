@@ -85,6 +85,7 @@ Don't build features, parameters, or abstractions before a real need exists.
 - **P9.2** No magic visual values in components: every color, font size, spacing, and radius comes from `design-system/` tokens via the Tailwind theme (D3). A raw hex or px literal in a component is a violation (computed dynamic values excepted).
 - **P9.3** States the vision doesn't spell out (loading, empty, error, validation) are still mandatory (P8.4) — implement them with the standard `shared/ui` patterns (Loading, EmptyState, Toast), not invented visuals.
 - **P9.4** When the vision and the backend contract disagree (missing field, different cardinality), the backend wins for DATA and the vision wins for INTENT — and the mismatch is raised, never silently patched.
+- **P9.5** *(added 2026-07-20)* i18n copy punctuation: **sentences get a terminal period, fragments do not.** Full-sentence strings the system speaks to the user — errors, validation, notifications, status — end in `.` in every locale (a genuine `?`/`!` counts as terminal). UI chrome — labels, buttons, titles, subtitles, placeholders, nav — carries no terminal punctuation. Rationale: several error strings are two sentences and need an internal period, so omitting the trailing one reads as truncation; terminating every sentence is the only internally consistent rule. Applies per string across `messages/{en,kk,ru}.json` — the three locales stay punctuation-parallel.
 
 ---
 

@@ -1,8 +1,8 @@
-export const locales = ["ru", "kk", "en"] as const;
+export const locales = ["kk", "ru", "en"] as const;
 
 export type Locale = (typeof locales)[number];
 
-export const defaultLocale: Locale = "ru";
+export const defaultLocale: Locale = "kk";
 
 /** localStorage AND cookie key for the stored platform locale (D18/D19).
  *  Lives here (a plain module) so server code can import it too. */

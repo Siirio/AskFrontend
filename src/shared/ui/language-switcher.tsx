@@ -7,15 +7,15 @@ import { useLocale } from "@/shared/i18n/LocaleProvider";
 import { locales, type Locale } from "@/shared/i18n/locales";
 
 /**
- * ru / kk / en switcher — domain-free chrome (shared/ui). Reads and writes the
+ * kk / ru / en switcher — domain-free chrome (shared/ui). Reads and writes the
  * platform locale via the LocaleProvider (shared/i18n). Language names are
  * endonyms (shown in their own language, not translated); only the group label
  * is localised. Like the theme toggle, the active option is a quiet sunken fill
  * — the accent is reserved for the focus ring (saturation-is-action).
  */
 const LABELS: Record<Locale, { code: string; name: string }> = {
-  ru: { code: "RU", name: "Русский" },
   kk: { code: "KK", name: "Қазақша" },
+  ru: { code: "RU", name: "Русский" },
   en: { code: "EN", name: "English" },
 };
 

@@ -49,6 +49,20 @@ export function getSession(): Promise<AuthSessionResponse> {
   return httpClient.get<AuthSessionResponse>(`${BASE}/session`);
 }
 
+/**
+ * Google OAuth bridge exchange. After the backend's callback redirects to
+ * `/oauth/callback`, the browser holds the single-use `ASK_SESSION` cookie; this
+ * GET /session sends it (`credentials: "include"`) so the backend validates the
+ * server session, returns the Bearer JWT (`accessToken` + `expiresIn`), and
+ * clears the cookie. From here the app is pure Bearer — the cookie was only the
+ * OAuth bootstrap (token lock, D5/P5.2; features/auth/contracts.md).
+ */
+export function exchangeOAuthSession(): Promise<AuthSessionResponse> {
+  return httpClient.get<AuthSessionResponse>(`${BASE}/session`, {
+    credentials: "include",
+  });
+}
+
 /** Invalidate the current session server-side. */
 export function logout(): Promise<{ success?: boolean }> {
   return httpClient.post<{ success?: boolean }>(`${BASE}/logout`);

@@ -29,6 +29,11 @@ export type RequestOptions = {
   headers?: HeadersInit;
   /** Abort signal. */
   signal?: AbortSignal;
+  /** fetch credentials mode. Omitted → the browser default (`same-origin`), so
+   *  no ordinary call sends cookies — the app is Bearer-only (token lock). The
+   *  OAuth callback sets `include` for the ONE cross-origin cookie exchange that
+   *  turns the ASK_SESSION bridge cookie into a Bearer JWT (D5/P5.2). */
+  credentials?: RequestCredentials;
 };
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
@@ -77,6 +82,7 @@ async function request<T>(
     headers,
     body,
     signal: options.signal,
+    credentials: options.credentials,
   });
 
   if (!response.ok) {

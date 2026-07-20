@@ -11,6 +11,7 @@ import { Spinner } from "@/shared/ui/spinner";
 
 import { useRegisterFlow, type VerifyResult } from "../hooks";
 import { Field, fieldErrorId } from "./Field";
+import { OAuthOptions } from "./OAuthOptions";
 import { PasswordInput } from "./PasswordInput";
 import { VerifyCodeForm } from "./VerifyCodeForm";
 
@@ -202,6 +203,7 @@ export function RegisterForm({
           t("actions.createAccount")
         )}
       </Button>
+      <OAuthOptions />
     </form>
   );
 }

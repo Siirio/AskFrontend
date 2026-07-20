@@ -87,17 +87,31 @@ to the backend callback, which creates a revocable server session, writes the si
 `ASK_SESSION` **bridge cookie**, and redirects to `/oauth/callback` on our origin. That
 transient page (the backend shipped this exchange 2026-07-19):
 
-1. exchanges the cookie for a Bearer token — one `getSession()` call with `credentials:'include'`; the backend returns the HS256 JWT (`access_token`/`expires_in`) and clears `ASK_SESSION` — then applies it via the existing `applySessionTo()`;
+1. exchanges the cookie for a Bearer token — one `exchangeOAuthSession()` call (`GET /session` with `credentials:'include'`); the backend returns the HS256 JWT (`access_token`/`expires_in`) and clears `ASK_SESSION` — then applies it via the existing `applySessionTo()`. A token-less response is surfaced as an error, never applied as an empty sign-in (P9.4). The exchange runs at most once (the cookie is single-use);
 2. redirects to the backend's `startRoute` (`startRouteToPath`), exactly like verify/login;
 3. if the session carries `suggestRoleExpansion` (a first-time Google signup), arms the persistent Role Choosing Modal the same way the verify step does.
 
 **Callback states (P8.4/P9.3).**
 
-- Loading: a centered spinner + "Signing you in…" — this page is ALWAYS transient.
-- Error: the exchange fails, or `getSession` returns 401/403 → an inline message + a "back to log in" link + a Toast; never a blank or stuck page.
+- Loading: a centered spinner + "Signing you in…" — this page is ALWAYS transient (covers both the exchange and the moment before the redirect fires).
+- Error: the exchange fails, or the session carries no token → an **inline** message (`role="alert"`) + a "back to log in" link. NOT a Toast — the Toaster host lives in the platform layout, and `/oauth/callback` sits at the top level under the root providers only (i18n at defaultLocale + the auth store); a redirect page needs no more.
 
 **Auth model.** OAuth only bootstraps a Bearer token; the app never authenticates by cookie
 (token lock, D5/P5.2). Sign-out is unchanged — it clears `ask.accessToken`.
+
+**Built (2026-07-19).** `OAuthOptions` (slice-private, `auth/ui/`) renders the "or" divider +
+the Google button (`outline` variant via Button `asChild` over `<a href={env.googleOAuthUrl}>`,
+full-width, 44px, with the official multicolour Google "G" from `public/google.svg` via `<img>`
+— a sanctioned brand-asset exception to the lucide-only icon rule and P9.2, owner request
+2026-07-19, since Google Sign-in branding requires its own mark), placed INSIDE each form after
+the submit so it shows only on the credential step, never the 2FA verify step. `OAuthCallbackPage` (`auth/ui/`, exported via `index.ts`) is
+rendered by the thin server route `src/app/oauth/callback/page.tsx` and driven by
+`useOAuthCallback()` (`auth/hooks.ts`). `env.oauthEnabled` (default true;
+`NEXT_PUBLIC_OAUTH_ENABLED=false` hides it) gates the button; `env.googleOAuthUrl` holds the
+start URL. `httpClient` gained a per-request `credentials` option, set only by the exchange.
+A real Google round-trip additionally needs the backend's `OAUTH2_GOOGLE_CLIENT_ID/SECRET` +
+the Google Console redirect URIs configured — until then the button renders but the redirect
+has no Google app to hit.
 
 ## States (mandatory even though the vision doesn't draw them — P8.4/P9.3)
 

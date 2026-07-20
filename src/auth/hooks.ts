@@ -11,7 +11,14 @@
  * `AuthProvider`. The store holds pure state; the token-storage and API side
  * effects are orchestrated here, keeping store.ts DOM-free (D5).
  */
-import { createContext, useCallback, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useStore } from "zustand";
 import { useTranslations } from "next-intl";
 
@@ -128,6 +135,68 @@ export function useRoleSelection() {
   }, [store]);
 
   return { open: pending && status === "authenticated", resolve };
+}
+
+// ── Google OAuth callback ────────────────────────────────────────────────────
+
+/** The transient state of the /oauth/callback page. */
+export type OAuthCallbackState =
+  | { status: "pending" }
+  | { status: "error"; message: string }
+  | { status: "done"; targetPath: string };
+
+/**
+ * Drives /oauth/callback: performs the ONE cookie→Bearer exchange
+ * (`api.exchangeOAuthSession` → GET /session with the single-use ASK_SESSION
+ * cookie), applies the session exactly like verify/login, and — for a first-time
+ * Google sign-up carrying `suggestRoleExpansion` — arms the persistent role
+ * modal (the /app layout renders it once the page redirects there). The exchange
+ * runs at most once: the cookie is single-use, so a StrictMode re-invoke or a
+ * reload must not replay it against a cleared cookie. A token-less response is
+ * never applied as a sign-in (P9.4) — it surfaces as an inline error.
+ */
+export function useOAuthCallback(): OAuthCallbackState {
+  const store = useAuthStoreApi();
+  const applySession = useApplySession();
+  const t = useTranslations("auth");
+  const [state, setState] = useState<OAuthCallbackState>({ status: "pending" });
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    let active = true;
+
+    void (async () => {
+      try {
+        const session = await api.exchangeOAuthSession();
+        // The exchange must yield a real Bearer session; a token-less response
+        // is a failed sign-in, never applied as an empty success (P9.4).
+        if (!session.accessToken || !toAuthUser(session)) {
+          if (active) setState({ status: "error", message: t("oauth.failed") });
+          return;
+        }
+        applySession(session);
+        if (session.suggestRoleExpansion) {
+          persistPendingRoleSelection(store, true);
+        }
+        if (active) {
+          setState({
+            status: "done",
+            targetPath: startRouteToPath(session.startRoute),
+          });
+        }
+      } catch {
+        if (active) setState({ status: "error", message: t("oauth.failed") });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [applySession, store, t]);
+
+  return state;
 }
 
 // ── Auth flows ──────────────────────────────────────────────────────────────

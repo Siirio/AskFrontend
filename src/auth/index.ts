@@ -5,6 +5,7 @@
  */
 export { LoginPage } from "./ui/LoginPage";
 export { RegisterPage } from "./ui/RegisterPage";
+export { OAuthCallbackPage } from "./ui/OAuthCallbackPage";
 export { AuthProvider } from "./ui/AuthProvider";
 export { RoleSelectionModal } from "./ui/RoleSelectionModal";
 export { useAuth, type Auth } from "./hooks";

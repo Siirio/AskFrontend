@@ -72,6 +72,13 @@
       "verifying": "Проверяем…",
       "changeEmail": "Изменить почту"
     },
+    "oauth": {
+      "or": "или",
+      "continueWithGoogle": "Продолжить с Google",
+      "signingIn": "Выполняется вход…",
+      "failed": "Не удалось войти через Google. Попробуйте ещё раз.",
+      "backToLogin": "Вернуться ко входу"
+    },
     "verify": {
       "sentTo": "Мы отправили 6-значный код на {destination}.",
       "codeLabel": "Код подтверждения"
@@ -86,10 +93,10 @@
       "emailTaken": "Эта почта уже зарегистрирована. Войдите вместо регистрации.",
       "userNotFound": "Аккаунт с такой почтой не найден.",
       "network": "Что-то пошло не так. Проверьте соединение и попробуйте снова.",
-      "passwordRequired": "Введите пароль",
-      "invalidCredentials": "Неверная почта или пароль",
-      "accountNotActive": "Аккаунт не активен",
-      "nameRequired": "Введите имя",
+      "passwordRequired": "Введите пароль.",
+      "invalidCredentials": "Неверная почта или пароль.",
+      "accountNotActive": "Аккаунт не активен.",
+      "nameRequired": "Введите имя.",
       "roleSelection": "К этой почте привязано несколько ролей. Выбор роли при входе пока недоступен."
     },
     "roleModal": {
