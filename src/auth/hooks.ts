@@ -114,10 +114,9 @@ export function useAuth(): Auth {
     tokenStorage.clear();
     persistPendingRoleSelection(store, false);
     store.getState().clearSession();
-    // Auth teardown: abandon any in-flight OAuth exchange (bump the generation so
-    // a resolution after logout is ignored) and drop the cache, so a post-logout
-    // revisit to /oauth/callback starts clean.
-    oauthGeneration += 1;
+    // Teardown safety net: drop any cached OAuth exchange so a post-logout
+    // revisit to /oauth/callback can never replay the just-ended session (the
+    // cache also self-clears when the exchange settles, above).
     oauthExchange = null;
   }, [store]);
 
@@ -149,15 +148,13 @@ export type OAuthCallbackState =
   | { status: "error"; message: string }
   | { status: "done"; targetPath: string };
 
-// The in-flight Google OAuth exchange, deduplicated at MODULE scope: a component
-// ref is per-instance, so StrictMode's remount — or a fast unmount/remount —
-// would fire a SECOND exchange against the single-use bridge cookie. Two guards
-// keep the shared state honest: the promise is evicted only by its OWN
-// settlement (identity-checked), so an older exchange never clears a newer one;
-// and `oauthGeneration`, bumped on sign-out, abandons an in-flight exchange so a
-// resolution after logout never re-applies the ended session.
+// The in-flight Google OAuth exchange, cached at MODULE scope (not a component
+// ref): a ref is per-instance, so a real unmount/remount — not just a StrictMode
+// double-invoke — would fire a SECOND exchange against the single-use bridge
+// cookie. It is CLEARED once the promise settles (below) and on sign-out, so a
+// settled result never lingers to be replayed by a later revisit (e.g. browser-
+// back after logout), and a transient failure can be retried by a fresh mount.
 let oauthExchange: Promise<AuthSessionResponse> | null = null;
-let oauthGeneration = 0;
 
 /**
  * Drives /oauth/callback: performs the ONE cookie→Bearer exchange
@@ -177,27 +174,24 @@ export function useOAuthCallback(): OAuthCallbackState {
 
   useEffect(() => {
     let active = true;
-    const generation = oauthGeneration;
-    // Reuse an in-flight exchange (StrictMode double-invoke / remount), else fire
-    // it once and cache it; each setup attaches its own guarded handler.
-    const exchange = oauthExchange ?? api.exchangeOAuthSession();
-    oauthExchange = exchange;
-
-    // Evict on settle, but ONLY if the cache still holds this promise — a sign-
-    // out or a newer remount may have replaced it, and an older settle must not
-    // clear a newer exchange (that would let a later remount fire a duplicate
-    // request against the single-use bridge).
-    const evictIfCurrent = () => {
-      if (oauthExchange === exchange) oauthExchange = null;
-    };
-    // Abandoned when this mount is gone OR a sign-out bumped the generation — so
-    // a resolution after logout never re-applies the ended session.
-    const abandoned = () => !active || generation !== oauthGeneration;
-
+    // Reuse the single in-flight exchange across remounts (module-cached above),
+    // but attach a FRESH active-guarded handler on every setup — so a StrictMode
+    // remount (setup → cleanup → setup) or a dep change still resolves the UI
+    // instead of the first, now-inactive handler being the only one and the page
+    // hanging on the spinner.
+    let exchange = oauthExchange;
+    if (!exchange) {
+      // Fire once; clear the module cache when it SETTLES, so a settled result
+      // never lingers to be replayed by a later revisit (e.g. browser-back after
+      // logout) and a transient failure can be retried by a fresh mount.
+      exchange = api.exchangeOAuthSession().finally(() => {
+        oauthExchange = null;
+      });
+      oauthExchange = exchange;
+    }
     exchange
       .then((session) => {
-        evictIfCurrent();
-        if (abandoned()) return;
+        if (!active) return;
         // The exchange must yield a real Bearer session; a token-less response
         // is a failed sign-in, never applied as an empty success (P9.4).
         if (!session.accessToken || !toAuthUser(session)) {
@@ -214,10 +208,7 @@ export function useOAuthCallback(): OAuthCallbackState {
         });
       })
       .catch(() => {
-        evictIfCurrent();
-        if (!abandoned()) {
-          setState({ status: "error", message: t("oauth.failed") });
-        }
+        if (active) setState({ status: "error", message: t("oauth.failed") });
       });
 
     return () => {
