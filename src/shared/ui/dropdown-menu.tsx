@@ -87,7 +87,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "relative flex cursor-default items-center gap-2 rounded-xs px-2 py-1.5 text-sm outline-hidden transition-colors duration-(--duration-fast) ease-out select-none focus:bg-surface-sunken focus:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50 data-[highlighted]:bg-surface-sunken data-[inset]:pl-8 data-[variant=destructive]:text-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 data-[variant=destructive]:[&_svg]:text-destructive [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle",
+        "relative flex cursor-default items-center gap-2 rounded-xs px-2 py-1.5 text-sm outline-hidden transition-colors duration-(--duration-fast) ease-out select-none focus:bg-surface-sunken focus:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-surface-sunken data-inset:pl-8 data-[variant=destructive]:text-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 data-[variant=destructive]:[&_svg]:text-destructive [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle",
         className,
       )}
       {...props}
@@ -107,7 +107,7 @@ function DropdownMenuLabel({
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
-        "px-2 py-1.5 text-xs text-foreground-subtle data-[inset]:pl-8",
+        "px-2 py-1.5 text-xs text-foreground-subtle data-inset:pl-8",
         className,
       )}
       {...props}
@@ -147,7 +147,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex cursor-default items-center gap-2 rounded-xs px-2 py-1.5 text-sm outline-hidden transition-colors duration-(--duration-fast) ease-out select-none focus:bg-surface-sunken focus:text-foreground data-[highlighted]:bg-surface-sunken data-[inset]:pl-8 data-[state=open]:bg-surface-sunken [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle",
+        "flex cursor-default items-center gap-2 rounded-xs px-2 py-1.5 text-sm outline-hidden transition-colors duration-(--duration-fast) ease-out select-none focus:bg-surface-sunken focus:text-foreground data-highlighted:bg-surface-sunken data-inset:pl-8 data-[state=open]:bg-surface-sunken [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle",
         className,
       )}
       {...props}
