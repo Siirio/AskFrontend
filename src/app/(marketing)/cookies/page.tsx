@@ -13,10 +13,10 @@ import { defaultLocale } from "@/shared/i18n/locales";
 export async function generateMetadata(): Promise<Metadata> {
   setRequestLocale(defaultLocale);
   const t = await getTranslations("marketing.legal");
-  // `noindex` WHILE the body is a placeholder: a "being prepared" page must never
-  // be crawled or cached as the real Cookies notice. Remove `robots` the moment
-  // the owner's final copy lands (P9.1) — that is also when the page becomes an
-  // SEO surface (ROADMAP launch gate).
+  // `noindex` WHILE the body is a placeholder: keeps the page out of search
+  // results, so a "being prepared" page is never surfaced as the real Cookies
+  // notice. Remove `robots` the moment the owner's final copy lands (P9.1) —
+  // that is also when the page becomes an SEO surface (ROADMAP launch gate).
   return { title: t("cookies.title"), robots: { index: false } };
 }
 

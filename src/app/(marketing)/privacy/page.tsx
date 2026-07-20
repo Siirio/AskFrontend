@@ -13,10 +13,11 @@ import { defaultLocale } from "@/shared/i18n/locales";
 export async function generateMetadata(): Promise<Metadata> {
   setRequestLocale(defaultLocale);
   const t = await getTranslations("marketing.legal");
-  // `noindex` WHILE the body is a placeholder: the register consent links point
-  // here, so a "being prepared" page must never be crawled or cached as the real
-  // Privacy Policy. Remove `robots` the moment the owner's final copy lands
-  // (P9.1) — that is also when the page becomes an SEO surface (ROADMAP launch gate).
+  // `noindex` WHILE the body is a placeholder: keeps the page out of search
+  // results, so a "being prepared" page is never surfaced as the real Privacy
+  // Policy (the register consent links point here). Remove `robots` the moment
+  // the owner's final copy lands (P9.1) — that is also when the page becomes an
+  // SEO surface (ROADMAP launch gate).
   return { title: t("privacy.title"), robots: { index: false } };
 }
 
