@@ -89,20 +89,25 @@ Ask_Frontend/                    # ONE Next.js app: marketing at `/`, platform a
       globals.css                #   global styles entry (Tailwind v4 + design-system tokens)
       providers/                 #   client components MOUNTING contexts; logic/hooks live in slices (R6)
       _components/               #   app chrome: navigation menu, profile card, footer — used only by layouts here
-      (marketing)/               #   Landing Page (UF 1): static, SEO-first, CONTENT ONLY —
+      (marketing)/               #   Landing Page (UF 1) + legal pages: static, SEO-first, CONTENT ONLY —
         page.tsx                 #     imports shared/ + design-system only; never slices, no api/store
+        LandingRedirect.tsx      #     client island: logged-in `/` visitor → /app unless ?from=app (D6, rule 5)
+        terms/page.tsx           #     /terms    → legal page, OUTSIDE /app (owner rule 3, D23)  [static]
+        privacy/page.tsx         #     /privacy  → legal page, OUTSIDE /app (owner rule 3, D23)  [static]
+        cookies/page.tsx         #     /cookies  → legal page, OUTSIDE /app (owner rule 3, D23)  [static]
       app/                       #   the platform under /app/*
         layout.tsx               #     platform shell: mounts LocaleProvider (D18) — NO nav
         auth/page.tsx            #     /app/auth          → redirect to /app/auth/login
         auth/login/page.tsx      #     /app/auth/login    → @/auth LoginPage (email+password)  [client]
         auth/register/page.tsx   #     /app/auth/register → @/auth RegisterPage (email+code)   [client]
-        (main)/                  #     route group (no URL segment) — the nav-bearing pages
-          layout.tsx             #       renders the NavigationMenu; auth sits OUTSIDE this group, so it has no nav
+        (main)/                  #     route group (no URL segment) — the GATED, nav-bearing pages
+          layout.tsx             #       RequireAuth gate (D23, rule 2) + NavigationMenu; auth sits OUTSIDE this group (ungated, no nav)
           page.tsx               #       /app             → @/search HomePage (+ role modal)  [server]
           catalog/page.tsx       #       /app/catalog     → @/search CatalogPage              [server]
           product/[id]/page.tsx  #       /app/product/:id → @/catalog ProductCard (D10)       [server]
           chats/page.tsx         #       /app/chats       → @/chats                           [client]
           profile/page.tsx       #       /app/profile     → @/profile                         [client]
+          business/layout.tsx    #       RequireDashboardAccess gate — customer-only → /app (D23, rule 1)
           business/page.tsx      #       /app/business    → @/business-cabinet                [client]
     auth/                        # ← backend: identity  — Authorization Page, role choosing modal, session (R6)
     search/                      # ← backend: search    — Home (search entry) + Catalog Page (list, sort, filters)
@@ -357,7 +362,7 @@ Where the vision and the backend contract disagree (missing field, different car
 | D4 | 2026-07-14 | framer-motion is the single JS animation system (LazyMotion + `m.`), shared variants in `shared/motion.ts`, reduced motion via `useReducedMotion()` | **REVERSED 2026-07-14 by D11** |
 | D5 | 2026-07-14 | Slice `api/model/store` files stay platform-neutral — they run server-side during SSR now, and lift into React Native shared packages later | Accepted |
 | D6 | 2026-07-14 | One Next.js app: content-only marketing landing at `/` (route group `(marketing)`, statically rendered) + platform at `/app/*`. `ask.accessToken` is the token storage key; logged-in `/` visitors redirect to `/app/` client-side unless `?from=app`. The `/app/*` prefix keeps a future subdomain split URL-stable | Accepted |
-| D7 | 2026-07-14 | Rendering & state policy: route files/layouts are server components; public surfaces (marketing, home, catalog, product card) server-render, fetching via the slice's `api.ts`; authenticated surfaces are client pages. `store.ts` exports store factories consumed via context providers; module-scope store singletons are banned (server request-state leakage) | Accepted |
+| D7 | 2026-07-14 | Rendering & state policy: route files/layouts are server components; public surfaces (marketing, home, catalog, product card) server-render, fetching via the slice's `api.ts`; authenticated surfaces are client pages. `store.ts` exports store factories consumed via context providers; module-scope store singletons are banned (server request-state leakage). **AMENDED by D23 (2026-07-21):** home/catalog/product are STILL server-rendered but are now behind the client-side auth gate — no longer publicly reachable/crawlable; the "public surfaces" this row names now means the marketing landing + the legal pages only. The rendering policy (server components, client islands) is unchanged | Accepted (amended by D23) |
 | D8 | 2026-07-14 | Cross-slice reuse is decided by the ownership test, not judgment: domain-free → duplicate at the 2nd consumer, promote to `shared/ui` at the 3rd; domain-aware keeping the owner's data/behavior → import via owner's `index.ts`; domain-aware with own data/behavior → duplicate into the consumer. Applies to types as well as components (§5) | Accepted |
 | D9 | 2026-07-14 | **Sources of truth:** `PRODUCT_VISION.md` is the product authority (screens, flows, controls); the AskBackend API is the data authority (contracts, DTOs, module/slice names). Nothing is built from any other source (P9) | Accepted |
 | D10 | 2026-07-14 | Product Card is a modal over the Catalog Page (per the vision), with the same component server-rendered as a full page at `/app/product/:id` for direct visits and SEO; Next.js intercepting routes are the sanctioned mechanism | Accepted |

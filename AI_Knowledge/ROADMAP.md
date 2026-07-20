@@ -81,7 +81,7 @@ Goal: the V1 product from `PRODUCT_VISION.md`, one vertical slice at a time. Not
 |   | — | **Seller path complete** | |
 | 10 | `app/(marketing)` | The landing at `/` — content only, static, SEO-first. Logged-in redirect to `/app/` via `ask.accessToken`, suppressed by `?from=app` (D6) | UF 1 |
 | 11 | — | SEO base: `sitemap.ts`, `robots.ts`, OG images | |
-| 12 | — | **Launch:** e2e suite green → deploy (marketing `/` + platform `/app/*`, one app) | |
+| 12 | — | **Launch:** owner-authored legal copy replaces the Terms/Privacy/Cookies placeholders + each `noindex` removed (see Parked fixes — the register consent links depend on it) → e2e suite green → deploy (marketing `/` + platform `/app/*`, one app) | |
 
 Slices 7–9 are one product surface but three slices: the cabinet **composes**, it does not own other domains' data (R2, D8).
 
@@ -90,7 +90,7 @@ Slices 7–9 are one product surface but three slices: the cabinet **composes**,
 - [x] **With slice #1 (landed 2026-07-15):** R4 teeth — a small custom flat-config rule `local/no-cross-element-relative-import` catches a relative import escaping its element to a *legal* target (illegal targets were already caught by `boundaries/dependencies`). Proven by `lint-fixtures/src/auth/bad-r4-relative-escape.ts` + a clean within-slice fixture (see the dated §4 note in the architecture doc). All of R1–R5 now carry ESLint teeth.
 - [ ] **With item 10 (the landing):** the smoke test locates the `/app` link via bare `getByRole("link")` — it breaks on ambiguity the moment the landing gains a second link. Scope it by `href`, not by accessible name (name would couple the test to translated copy).
 - [ ] **With item 10 (the landing): `public/logo_vertical.svg` has no consumer yet** (2026-07-16 audit, P8.1). The asset was exported with `logo_horizontal.svg` but nothing in `src/` references it; the landing is its expected first consumer. If the landing ships without it, delete it then.
-- [x] **Done early (2026-07-21, with the platform guard — D23): `/terms`, `/privacy` AND `/cookies` now exist** as static, content-only routes under `app/(marketing)/` (owner rule 3 — legal pages live OUTSIDE `/app`). The register agreement + the nav "Learn more" links resolve; no change to `auth`. Bodies are a neutral "being prepared" placeholder — the legal copy is still the owner's to write, never invented client-side (P9.1). SEO metadata + real copy land with the full landing (item 10).
+- [x] **Done early (2026-07-21, with the platform guard — D23): `/terms`, `/privacy` AND `/cookies` now exist** as static, content-only routes under `app/(marketing)/` (owner rule 3 — legal pages live OUTSIDE `/app`). The register agreement + the nav "Learn more" links resolve; no change to `auth`. Bodies are a neutral "being prepared" placeholder — the legal copy is still the owner's to write, never invented client-side (P9.1). The three pages are `noindex` while placeholder, so they cannot be crawled/cached as the real documents. **LAUNCH BLOCKER (item 12):** owner-authored Terms / Privacy / Cookies copy MUST replace the placeholders before launch — the register consent checkbox links to these pages, so shipping live consent against placeholder text is not acceptable in production; removing each `noindex` (and adding SEO metadata) is the same step, with the full landing (item 10).
 
 ### Auth follow-up — Google OAuth (owner directive 2026-07-19, an addition to shipped slice #1)
 
