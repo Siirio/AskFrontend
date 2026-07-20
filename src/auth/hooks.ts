@@ -106,6 +106,10 @@ export function useAuth(): Auth {
   const user = useStore(store, (s) => s.user);
 
   const signOut = useCallback(async () => {
+    // Invalidate OAuth work FIRST, before the async logout — a resolution during
+    // the await must not re-apply the ending session.
+    oauthGeneration += 1;
+    oauthExchange = null;
     try {
       await api.logout();
     } catch {
@@ -114,10 +118,6 @@ export function useAuth(): Auth {
     tokenStorage.clear();
     persistPendingRoleSelection(store, false);
     store.getState().clearSession();
-    // Teardown safety net: drop any cached OAuth exchange so a post-logout
-    // revisit to /oauth/callback can never replay the just-ended session (the
-    // cache also self-clears when the exchange settles, above).
-    oauthExchange = null;
   }, [store]);
 
   return { status, user, signOut };
@@ -155,6 +155,7 @@ export type OAuthCallbackState =
 // settled result never lingers to be replayed by a later revisit (e.g. browser-
 // back after logout), and a transient failure can be retried by a fresh mount.
 let oauthExchange: Promise<AuthSessionResponse> | null = null;
+let oauthGeneration = 0; // bumped on sign-out to abandon in-flight exchanges
 
 /**
  * Drives /oauth/callback: performs the ONE cookie→Bearer exchange
@@ -174,6 +175,7 @@ export function useOAuthCallback(): OAuthCallbackState {
 
   useEffect(() => {
     let active = true;
+    const generation = oauthGeneration;
     // Reuse the single in-flight exchange across remounts (module-cached above),
     // but attach a FRESH active-guarded handler on every setup — so a StrictMode
     // remount (setup → cleanup → setup) or a dep change still resolves the UI
@@ -185,13 +187,14 @@ export function useOAuthCallback(): OAuthCallbackState {
       // never lingers to be replayed by a later revisit (e.g. browser-back after
       // logout) and a transient failure can be retried by a fresh mount.
       exchange = api.exchangeOAuthSession().finally(() => {
-        oauthExchange = null;
+        // evict only if the cache still holds THIS promise (never a newer one)
+        if (oauthExchange === exchange) oauthExchange = null;
       });
       oauthExchange = exchange;
     }
     exchange
       .then((session) => {
-        if (!active) return;
+        if (!active || generation !== oauthGeneration) return;
         // The exchange must yield a real Bearer session; a token-less response
         // is a failed sign-in, never applied as an empty success (P9.4).
         if (!session.accessToken || !toAuthUser(session)) {
@@ -208,7 +211,8 @@ export function useOAuthCallback(): OAuthCallbackState {
         });
       })
       .catch(() => {
-        if (active) setState({ status: "error", message: t("oauth.failed") });
+        if (!active || generation !== oauthGeneration) return;
+        setState({ status: "error", message: t("oauth.failed") });
       });
 
     return () => {
