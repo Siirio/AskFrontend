@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
  * no live backend). A session is seeded by writing the Bearer token before load
  * (addInitScript) and answering GET /session; stub bodies speak the backend's
  * REAL wire format — snake_case (D20). Selectors key on href / testid, never on
- * translated copy (the ROADMAP parked-fix rule). Locale defaults to ru.
+ * translated copy (the ROADMAP parked-fix rule). Locale defaults to kk.
  *
  * Set NAV_SHOTS=<dir> to also capture review screenshots (opt-in; unset in CI).
  */

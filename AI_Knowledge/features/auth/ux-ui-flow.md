@@ -78,8 +78,11 @@ Continue is the single saturated fill (saturation-is-action holds).
 "Continue with Google" is a **required** control on BOTH the Log in and Sign up pages — a
 full-width **secondary** button under the email form, separated by an "or" divider. It is
 NOT the accent fill (the primary submit keeps that — saturation-is-action holds); it reads
-as quiet secondary chrome. It may sit behind a `NEXT_PUBLIC_OAUTH_ENABLED` flag so it never
-renders dead where the backend has no Google client configured.
+as quiet secondary chrome. It **defaults to shown** — OAuth is a required method and
+production runs a configured Google client, so a required control is not hidden by default
+(the "never render dead" goal is met by configuring the backend, not by hiding the button).
+`NEXT_PUBLIC_OAUTH_ENABLED=false` is the opt-OUT for an environment that deliberately has no
+Google client, so it never renders dead there. `env.ts` is the source of truth for this default.
 
 **Flow.** The button is a full-page navigation (not fetch — the browser must follow the
 redirect chain through Google) to `{apiBaseUrl}/oauth2/authorization/google`. Google returns

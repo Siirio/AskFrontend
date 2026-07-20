@@ -29,7 +29,16 @@ export function OAuthOptions() {
         <span className="text-xs text-foreground-muted">{t("oauth.or")}</span>
         <span aria-hidden="true" className="h-px flex-1 bg-border" />
       </div>
-      <Button asChild variant="outline" size="lg" className="w-full">
+      {/* Override the Button's fixed h-11 + whitespace-nowrap: the long Google
+          label ("Google арқылы жалғастыру" in kk) overflows a narrow button on
+          small screens, so allow it to wrap onto two centred lines and let the
+          height grow — keeping the 44px touch floor (min-h-11). */}
+      <Button
+        asChild
+        variant="outline"
+        size="lg"
+        className="h-auto min-h-11 w-full py-2 text-center whitespace-normal"
+      >
         <a href={env.googleOAuthUrl}>
           {/* The official multicolour Google "G" — a brand asset via <img>, like
               the ASK wordmark (D2). Its fixed brand colours are inherent to the

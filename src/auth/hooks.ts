@@ -160,36 +160,40 @@ export function useOAuthCallback(): OAuthCallbackState {
   const applySession = useApplySession();
   const t = useTranslations("auth");
   const [state, setState] = useState<OAuthCallbackState>({ status: "pending" });
-  const started = useRef(false);
+  // The cookie is single-use, so the exchange request must fire exactly ONCE;
+  // its promise is cached here. Each effect setup then attaches a FRESH,
+  // active-guarded handler to that one promise — so a StrictMode remount
+  // (setup → cleanup → setup) or a dependency change still resolves the UI,
+  // instead of the first (now-inactive) handler being the only one and the page
+  // hanging on the spinner forever.
+  const exchange = useRef<Promise<AuthSessionResponse> | null>(null);
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
     let active = true;
-
-    void (async () => {
-      try {
-        const session = await api.exchangeOAuthSession();
+    if (!exchange.current) {
+      exchange.current = api.exchangeOAuthSession();
+    }
+    exchange.current
+      .then((session) => {
+        if (!active) return;
         // The exchange must yield a real Bearer session; a token-less response
         // is a failed sign-in, never applied as an empty success (P9.4).
         if (!session.accessToken || !toAuthUser(session)) {
-          if (active) setState({ status: "error", message: t("oauth.failed") });
+          setState({ status: "error", message: t("oauth.failed") });
           return;
         }
         applySession(session);
         if (session.suggestRoleExpansion) {
           persistPendingRoleSelection(store, true);
         }
-        if (active) {
-          setState({
-            status: "done",
-            targetPath: startRouteToPath(session.startRoute),
-          });
-        }
-      } catch {
+        setState({
+          status: "done",
+          targetPath: startRouteToPath(session.startRoute),
+        });
+      })
+      .catch(() => {
         if (active) setState({ status: "error", message: t("oauth.failed") });
-      }
-    })();
+      });
 
     return () => {
       active = false;

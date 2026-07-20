@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
  * /app/auth/login (email + password) and /app/auth/register (email + code), plus
  * the theme toggle and language switch in the shell. The backend is STUBBED with
  * page.route (the harness runs the production build, no live backend). Locale
- * defaults to ru.
+ * defaults to kk.
  *
  * Stub bodies speak the backend's REAL wire format — snake_case keys (D20) —
  * so httpClient's case boundary is exercised by every scenario here.
@@ -89,12 +89,12 @@ test("the theme toggle sets data-theme on <html>", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
 
-test("the language switch changes the copy (ru → en)", async ({ page }) => {
+test("the language switch changes the copy (kk → en)", async ({ page }) => {
   await page.goto("/app/auth/login");
   // The on-page heading (login.title) and the tab title (login.pageTitle) are
   // deliberately DIFFERENT strings.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "С возвращением",
+    "Қайта келдіңіз",
   );
   await page.getByTestId("locale-en").click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -376,7 +376,7 @@ test("a multi-role account (role selection) shows an error, never a silent sign-
 
   await expect(
     page
-      .getByText("Выбор роли при входе пока недоступен", { exact: false })
+      .getByText("Кіру кезінде рөл таңдау әзірге қолжетімсіз", { exact: false })
       .first(),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/app\/auth\/login$/);
@@ -403,7 +403,7 @@ test("an inactive account shows its own message, not the network fallback", asyn
   await page.locator('button[type="submit"]').click();
 
   await expect(
-    page.getByText("Аккаунт не активен", { exact: false }).first(),
+    page.getByText("Аккаунт белсенді емес", { exact: false }).first(),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/app\/auth\/login$/);
 });
