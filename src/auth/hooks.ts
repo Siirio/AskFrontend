@@ -16,7 +16,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { useStore } from "zustand";
@@ -145,6 +144,15 @@ export type OAuthCallbackState =
   | { status: "error"; message: string }
   | { status: "done"; targetPath: string };
 
+// The Google OAuth exchange is cached at MODULE scope, not a component ref: a
+// ref is per-instance, so a real unmount/remount — not just a StrictMode
+// double-invoke — would create a fresh ref and fire a SECOND exchange, and the
+// bridge cookie is single-use (the first, now-unmounted call would consume it,
+// leaving the remount to fail). The callback page is reached by a full-page
+// redirect from the backend, so this starts fresh per OAuth attempt and is reset
+// by that navigation.
+let oauthExchange: Promise<AuthSessionResponse> | null = null;
+
 /**
  * Drives /oauth/callback: performs the ONE cookie→Bearer exchange
  * (`api.exchangeOAuthSession` → GET /session with the single-use ASK_SESSION
@@ -160,20 +168,20 @@ export function useOAuthCallback(): OAuthCallbackState {
   const applySession = useApplySession();
   const t = useTranslations("auth");
   const [state, setState] = useState<OAuthCallbackState>({ status: "pending" });
-  // The cookie is single-use, so the exchange request must fire exactly ONCE;
-  // its promise is cached here. Each effect setup then attaches a FRESH,
-  // active-guarded handler to that one promise — so a StrictMode remount
-  // (setup → cleanup → setup) or a dependency change still resolves the UI,
-  // instead of the first (now-inactive) handler being the only one and the page
-  // hanging on the spinner forever.
-  const exchange = useRef<Promise<AuthSessionResponse> | null>(null);
 
   useEffect(() => {
     let active = true;
-    if (!exchange.current) {
-      exchange.current = api.exchangeOAuthSession();
+    // Reuse the single in-flight exchange across remounts (module-cached above),
+    // but attach a FRESH active-guarded handler on every setup — so a StrictMode
+    // remount (setup → cleanup → setup) or a dep change still resolves the UI
+    // instead of the first, now-inactive handler being the only one and the page
+    // hanging on the spinner.
+    let exchange = oauthExchange;
+    if (!exchange) {
+      exchange = api.exchangeOAuthSession();
+      oauthExchange = exchange;
     }
-    exchange.current
+    exchange
       .then((session) => {
         if (!active) return;
         // The exchange must yield a real Bearer session; a token-less response
