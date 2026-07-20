@@ -114,6 +114,10 @@ export function useAuth(): Auth {
     tokenStorage.clear();
     persistPendingRoleSelection(store, false);
     store.getState().clearSession();
+    // Teardown safety net: drop any cached OAuth exchange so a post-logout
+    // revisit to /oauth/callback can never replay the just-ended session (the
+    // cache also self-clears when the exchange settles, above).
+    oauthExchange = null;
   }, [store]);
 
   return { status, user, signOut };
@@ -144,13 +148,12 @@ export type OAuthCallbackState =
   | { status: "error"; message: string }
   | { status: "done"; targetPath: string };
 
-// The Google OAuth exchange is cached at MODULE scope, not a component ref: a
-// ref is per-instance, so a real unmount/remount — not just a StrictMode
-// double-invoke — would create a fresh ref and fire a SECOND exchange, and the
-// bridge cookie is single-use (the first, now-unmounted call would consume it,
-// leaving the remount to fail). The callback page is reached by a full-page
-// redirect from the backend, so this starts fresh per OAuth attempt and is reset
-// by that navigation.
+// The in-flight Google OAuth exchange, cached at MODULE scope (not a component
+// ref): a ref is per-instance, so a real unmount/remount — not just a StrictMode
+// double-invoke — would fire a SECOND exchange against the single-use bridge
+// cookie. It is CLEARED once the promise settles (below) and on sign-out, so a
+// settled result never lingers to be replayed by a later revisit (e.g. browser-
+// back after logout), and a transient failure can be retried by a fresh mount.
 let oauthExchange: Promise<AuthSessionResponse> | null = null;
 
 /**
@@ -178,7 +181,12 @@ export function useOAuthCallback(): OAuthCallbackState {
     // hanging on the spinner.
     let exchange = oauthExchange;
     if (!exchange) {
-      exchange = api.exchangeOAuthSession();
+      // Fire once; clear the module cache when it SETTLES, so a settled result
+      // never lingers to be replayed by a later revisit (e.g. browser-back after
+      // logout) and a transient failure can be retried by a fresh mount.
+      exchange = api.exchangeOAuthSession().finally(() => {
+        oauthExchange = null;
+      });
       oauthExchange = exchange;
     }
     exchange
