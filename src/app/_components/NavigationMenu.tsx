@@ -37,6 +37,9 @@ import { Skeleton } from "@/shared/ui/skeleton";
 
 import { AskMark } from "./AskMark";
 
+/** One row in the account menu's "Learn more" group. `Icon` is a lucide glyph. */
+type LearnMoreLink = { href: string; label: string; Icon: typeof Building2 };
+
 /**
  * App chrome (§2): the platform navigation menu from PRODUCT_VISION UF 2.1–2.3.
  *
@@ -106,13 +109,27 @@ export function NavigationMenu() {
   ];
 
   // The account menu's "Learn more" group — rendered as a fly-out submenu on
-  // desktop and a flat inline list on mobile (see the account card below).
-  const learnMoreItems = [
+  // desktop and a flat inline list on mobile (see the account card below). Split
+  // in two so a divider can separate the company page (About ASK) from the legal
+  // pages (owner request): a full divider on desktop, an inset MINOR one on
+  // mobile (a sub-group hint, lighter than the section separators around it).
+  const aboutItems: LearnMoreLink[] = [
     { href: "/?from=app", label: t("userMenu.about"), Icon: Building2 },
+  ];
+  const legalItems: LearnMoreLink[] = [
     { href: "/terms", label: t("userMenu.terms"), Icon: ScrollText },
     { href: "/privacy", label: t("userMenu.privacy"), Icon: ShieldCheck },
     { href: "/cookies", label: t("userMenu.cookies"), Icon: Cookie },
   ];
+  const renderLearnMore = (items: LearnMoreLink[]) =>
+    items.map((item) => (
+      <DropdownMenuItem key={item.href} asChild>
+        <Link href={item.href}>
+          <item.Icon />
+          {item.label}
+        </Link>
+      </DropdownMenuItem>
+    ));
 
   const displayName = user?.displayName?.trim() || user?.email?.split("@")[0];
   const initials = displayName ? initialsFrom(displayName) : "";
@@ -204,37 +221,31 @@ export function NavigationMenu() {
                   </Link>
                 </DropdownMenuItem>
                 {isMobile ? (
-                  // Mobile: a flat, tappable group — no sideways fly-out.
+                  // Mobile: a flat, tappable group — no sideways fly-out. The
+                  // About/legal divider is INSET (mx-2), so it reads as a minor
+                  // sub-group hint, not a full section break like the ones
+                  // bracketing Settings and Log out (owner request).
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel>
                       {t("userMenu.learnMore")}
                     </DropdownMenuLabel>
-                    {learnMoreItems.map((item) => (
-                      <DropdownMenuItem key={item.href} asChild>
-                        <Link href={item.href}>
-                          <item.Icon />
-                          {item.label}
-                        </Link>
-                      </DropdownMenuItem>
-                    ))}
+                    {renderLearnMore(aboutItems)}
+                    <DropdownMenuSeparator className="mx-2" />
+                    {renderLearnMore(legalItems)}
                   </>
                 ) : (
-                  // Desktop: a hover/keyboard fly-out submenu.
+                  // Desktop: a hover/keyboard fly-out submenu. A full divider
+                  // separates About ASK from the legal pages.
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger data-testid="user-menu-learn-more">
                       <Info />
                       {t("userMenu.learnMore")}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="w-60">
-                      {learnMoreItems.map((item) => (
-                        <DropdownMenuItem key={item.href} asChild>
-                          <Link href={item.href}>
-                            <item.Icon />
-                            {item.label}
-                          </Link>
-                        </DropdownMenuItem>
-                      ))}
+                      {renderLearnMore(aboutItems)}
+                      <DropdownMenuSeparator />
+                      {renderLearnMore(legalItems)}
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                 )}
