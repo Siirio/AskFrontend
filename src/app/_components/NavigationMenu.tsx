@@ -19,9 +19,8 @@ import {
   User,
 } from "lucide-react";
 
-import { useAuth } from "@/auth";
+import { canAccessDashboard, useAuth } from "@/auth";
 import { cn } from "@/lib/utils";
-import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,12 +39,19 @@ import { AskMark } from "./AskMark";
 /**
  * App chrome (§2): the platform navigation menu from PRODUCT_VISION UF 2.1–2.3.
  *
+ * The bar renders ONLY for an authenticated session: it lives inside the
+ * `(main)` layout's RequireAuth gate, so a logged-out visitor is redirected to
+ * login before it mounts. There is therefore no signed-out "sign in" entry here
+ * (owner rule 4) — the account card is always present.
+ *
  * Left: the ASK mark (same artwork as the favicon) links home, in the brand
  * ACCENT (owner decision 2026-07-18) — a logo is brand identity, the one
  * sanctioned accent use beyond an action; the primary/search control stays the
  * only accent UI *affordance*, so "saturation is action" still reads. Middle:
  * the primary destinations — Home (search), Chats, and a role-gated Dashboard
- * shown only to a seller/staff session (UF 3.1), keyed off `user.kind` (R6).
+ * shown only to a seller/staff session (UF 3.1), gated by the shared
+ * `canAccessDashboard` predicate (@/auth) — the SAME rule the RequireDashboardAccess
+ * route guard enforces, so the link and the route can never disagree (P6.2).
  * Right: the account card — name + initials avatar opening the profile-card
  * dropdown (settings, learn more → About ASK + the legal links, sign out).
  *
@@ -81,13 +87,13 @@ export function NavigationMenu() {
       ? pathname === "/app"
       : pathname === href || pathname.startsWith(`${href}/`);
 
-  const isSeller = user?.kind === "business" || user?.kind === "staff";
+  const canSeeDashboard = canAccessDashboard(user);
   const isMobile = useIsMobile();
 
   const links = [
     { href: "/app", label: t("nav.home"), Icon: Home },
     { href: "/app/chats", label: t("nav.chats"), Icon: MessageCircle },
-    ...(isSeller
+    ...(canSeeDashboard
       ? [
           {
             href: "/app/business",
@@ -241,11 +247,7 @@ export function NavigationMenu() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <Button asChild variant="ghost" className="min-h-11">
-              <Link href="/app/auth/login">{t("nav.signIn")}</Link>
-            </Button>
-          )}
+          ) : null}
         </div>
       </nav>
     </header>

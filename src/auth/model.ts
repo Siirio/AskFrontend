@@ -131,6 +131,17 @@ export type AuthUser =
 
 export type AuthUserKind = AuthUser["kind"];
 
+/**
+ * Who may open the business Dashboard (the cabinet under /app/business). The ONE
+ * source of truth for this rule (P6.2): the navigation menu gates the Dashboard
+ * link with it, and the RequireDashboardAccess route guard gates the route with
+ * it, so a customer-only session can never reach the cabinet — by link OR by
+ * typing the URL. A null user (unauthenticated/still loading) is never a seller.
+ */
+export function canAccessDashboard(user: AuthUser | null): boolean {
+  return user?.kind === "business" || user?.kind === "staff";
+}
+
 // ── Mappers (pure, P5.1) ────────────────────────────────────────────────────
 
 /**

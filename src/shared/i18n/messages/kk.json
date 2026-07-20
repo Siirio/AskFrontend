@@ -1,7 +1,19 @@
 {
   "marketing": {
     "title": "ASK",
-    "openApp": "Қосымшаны ашу"
+    "openApp": "Қосымшаны ашу",
+    "legal": {
+      "preparing": "Бұл бет дайындалып жатыр, жақында қолжетімді болады.",
+      "terms": {
+        "title": "Пайдалану шарттары"
+      },
+      "privacy": {
+        "title": "Құпиялылық саясаты"
+      },
+      "cookies": {
+        "title": "Cookie файлдары"
+      }
+    }
   },
   "app": {
     "nav": {
@@ -9,8 +21,7 @@
       "brand": "ASK — басты бет",
       "home": "Басты бет",
       "chats": "Чаттар",
-      "dashboard": "Панель",
-      "signIn": "Кіру"
+      "dashboard": "Панель"
     },
     "userMenu": {
       "aria": "Аккаунт мәзірі",
@@ -31,7 +42,8 @@
       "profile": "Профиль",
       "business": "Бизнес-кабинет"
     },
-    "placeholder": "Бөлім әзірлену үстінде"
+    "placeholder": "Бөлім әзірлену үстінде",
+    "loading": "Жүктелуде…"
   },
   "auth": {
     "login": {

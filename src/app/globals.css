@@ -70,6 +70,17 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Quiet chrome extends to the scrollbar. Standard properties only — they take
+   * tokens, not magic px, so P9.2 holds and there is nothing to duplicate for
+   * webkit. `thin` keeps it a hairline instrument, not a consumer-software slab;
+   * the thumb is the same warm hairline as `--border-strong` and the track stays
+   * transparent so it reads as part of the surface. Colour follows the theme
+   * through the tokens, so no `dark:` and no second definition. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
   /* Money is data. Tabular figures keep ₸ prices and −30% offer chips aligned
    * column-to-column so a list of results can be scanned rather than read —
    * the result card must be decidable in under two seconds. */

@@ -1,9 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Platform navigation-menu chrome (app/_components/NavigationMenu). Covers the
- * three session states the bar renders — signed-out, customer, seller — plus the
- * account (profile-card) dropdown from PRODUCT_VISION UF 2.3.
+ * Platform navigation-menu chrome (app/_components/NavigationMenu). The bar
+ * renders ONLY for an authenticated session — it lives inside the platform guard
+ * (owner rule 2), so a logged-out visitor is redirected to login and never sees
+ * it (there is no signed-out "sign in" entry, owner rule 4; the redirect itself
+ * is proven in guard.spec.ts). These tests cover the two authenticated states —
+ * customer and seller — plus the account (profile-card) dropdown from
+ * PRODUCT_VISION UF 2.3.
  *
  * The backend is STUBBED with page.route (the harness runs the production build,
  * no live backend). A session is seeded by writing the Bearer token before load
@@ -68,17 +72,18 @@ async function shoot(page: Page, name: string) {
   }
 }
 
-test("signed out: the sign-in link shows, not the account menu", async ({
+test("signed out: /app redirects to login and shows no nav (rules 2 + 4)", async ({
   page,
 }) => {
-  // No token seeded → restore lands unauthenticated.
+  // No token seeded → restore lands unauthenticated. The guard redirects to
+  // login before the bar mounts, so there is no signed-out nav — and therefore
+  // no signed-out "sign in" entry to render (rule 4).
   await page.route("**/api/v1/auth/session", (route) =>
     route.fulfill({ status: 401, json: { message: "no session" } }),
   );
   await page.goto("/app");
-  const nav = page.getByRole("navigation");
-  await expect(nav).toBeVisible();
-  await expect(nav.locator('a[href="/app/auth/login"]')).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/auth\/login$/);
+  await expect(page.getByRole("navigation")).toHaveCount(0);
   await expect(page.getByTestId("user-menu-trigger")).toHaveCount(0);
 });
 

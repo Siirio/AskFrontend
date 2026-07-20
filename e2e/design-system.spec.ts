@@ -15,7 +15,7 @@ test("the body renders on the design-system tokens, and dark redefines them", as
   const read = async (colorScheme: "light" | "dark") => {
     const context = await browser.newContext({ colorScheme });
     const page = await context.newPage();
-    await page.goto("/app");
+    await page.goto("/app/auth/login");
     const values = await page.evaluate(() => {
       // Resolve each token THROUGH the colour system rather than reading the raw
       // custom property: getPropertyValue returns the authored text

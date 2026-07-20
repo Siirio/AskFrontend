@@ -1,7 +1,19 @@
 {
   "marketing": {
     "title": "ASK",
-    "openApp": "Open the app"
+    "openApp": "Open the app",
+    "legal": {
+      "preparing": "This page is being prepared and will be available soon.",
+      "terms": {
+        "title": "Terms of Service"
+      },
+      "privacy": {
+        "title": "Privacy Policy"
+      },
+      "cookies": {
+        "title": "Cookies"
+      }
+    }
   },
   "app": {
     "nav": {
@@ -9,8 +21,7 @@
       "brand": "ASK — home",
       "home": "Home",
       "chats": "Chats",
-      "dashboard": "Dashboard",
-      "signIn": "Sign in"
+      "dashboard": "Dashboard"
     },
     "userMenu": {
       "aria": "Account menu",
@@ -31,7 +42,8 @@
       "profile": "Profile",
       "business": "Business cabinet"
     },
-    "placeholder": "Section under construction"
+    "placeholder": "Section under construction",
+    "loading": "Loading…"
   },
   "auth": {
     "login": {

@@ -8,5 +8,7 @@ export { RegisterPage } from "./ui/RegisterPage";
 export { OAuthCallbackPage } from "./ui/OAuthCallbackPage";
 export { AuthProvider } from "./ui/AuthProvider";
 export { RoleSelectionModal } from "./ui/RoleSelectionModal";
+export { RequireAuth } from "./ui/RequireAuth";
+export { RequireDashboardAccess } from "./ui/RequireDashboardAccess";
 export { useAuth, type Auth } from "./hooks";
-export type { AuthUser } from "./model";
+export { canAccessDashboard, type AuthUser } from "./model";

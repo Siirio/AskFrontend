@@ -45,9 +45,10 @@ eye flips both fields together (owner request 2026-07-17); login owns its own.
 rendered with next-intl `t.rich` so each locale places its own links. It is
 deliberately NOT wrapped in a `<label>` — a label would toggle the checkbox when
 a link is clicked — so the checkbox carries its own `aria-label` (a link-free
-version of the sentence). **Known gap:** `/terms` and `/privacy` do not exist yet
-and 404 until the landing (roadmap #10) builds them; the legal copy is the
-owner's to write, never invented here (tracked in ROADMAP "Parked fixes").
+version of the sentence). The links resolve: `/terms`, `/privacy` (and
+`/cookies`) are static routes under `app/(marketing)/`, built 2026-07-21 OUTSIDE
+`/app` (owner rule 3, D23). Their bodies are a neutral "being prepared"
+placeholder — the legal copy is the owner's to write, never invented here (P9.1).
 
 ## Flow
 
@@ -127,6 +128,24 @@ has no Google app to hit.
 
 - `AuthProvider` (mounted in `app/providers`) restores the session on load from `ask.accessToken` via `GET /session`. A 401/403 — the backend rejecting the token — clears it → unauthenticated; a network failure or 5xx keeps the token for the next load (only this session renders unauthenticated), so an offline app-open never signs the user out for good.
 - `useAuth()` → `{ status: "loading" | "authenticated" | "unauthenticated", user: AuthUser | null, signOut }`.
+
+## Route guards & access control (owner rules 1–2, built 2026-07-21 — architecture D23)
+
+The platform is gated. Two guards live in this slice (`ui/RequireAuth.tsx`,
+`ui/RequireDashboardAccess.tsx`), exported via `index.ts`, mounted by the app
+composition root (R3):
+
+| Guard | Mounted at | Rule | While loading | Denied → |
+|-------|-----------|------|---------------|----------|
+| `RequireAuth` | `app/app/(main)/layout.tsx` — wraps the whole `(main)` group | Rule 2: logged-out cannot enter `/app/*` | `GuardFallback` spinner | `/app/auth/login` |
+| `RequireDashboardAccess` | `app/app/(main)/business/layout.tsx` | Rule 1: customer-only cannot open the Dashboard | `GuardFallback` spinner | `/app` |
+
+- **The auth pages are the exception** because they sit OUTSIDE the `(main)` group — the route-group boundary is the "gated vs. sign-in entry" line, so there is no per-URL allowlist. `/app/auth/*` and the top-level `/oauth/callback` are reachable logged-out by construction.
+- **Client-side by necessity:** the token is localStorage-only (D5/D6), invisible to the server/middleware, so the guard runs after hydration. Sequence: server renders → `AuthProvider` restores → guard reveals or redirects. A server/middleware guard waits on the Phase-4 cookie migration.
+- **Loading is a real state (P8.4/P9.3):** the guard shows `GuardFallback` (a centered spinner, `app.loading`) while status is `loading`, and NEVER redirects then — redirecting before the restore settles would bounce an authenticated user to login on every load. `redirect` uses `router.replace` (no history entry → no Back-button loop).
+- **One predicate for the Dashboard:** `canAccessDashboard(user)` (`model.ts`) is the single source for "who may open the cabinet" — the nav gates the link with it, the guard gates the route with it (P6.2). A customer typing `/app/business` is bounced exactly as the hidden link implies.
+- **The nav has no signed-out state (owner rule 4):** it renders only inside `RequireAuth`, so there is no "sign in" button to remove-and-forget — a logged-out visitor is already gone.
+- **Landing (owner rule 5):** `LandingRedirect` (a `(marketing)` client island) carries a logged-in visitor from `/` to `/app` unless `?from=app` (D6). A logged-out visitor's "Open the app" link goes to `/app`, where `RequireAuth` sends them to log in — so the landing is the de-facto sign-in entry.
 
 ## Cross-slice
 
