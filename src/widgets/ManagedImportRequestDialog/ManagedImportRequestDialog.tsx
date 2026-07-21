@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, FileUp, Handshake, Loader2, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { requestManagedImportHelp } from "../../shared/api/managedImportClient";
+import { requestManagedImportHelp, type ManagedImportItem } from "../../shared/api/managedImportClient";
 import { ApiError } from "../../shared/api/httpClient";
 import { Modal } from "../../shared/ui/Modal/Modal";
 import { Select } from "../../shared/ui/Select/Select";
@@ -21,7 +21,7 @@ interface ManagedImportRequestDialogProps {
   scope: CatalogScope;
   defaultContactValue: string;
   onClose: () => void;
-  onSubmitted: (scope: CatalogScope) => void;
+  onSubmitted: (item: ManagedImportItem) => void;
 }
 
 export function ManagedImportRequestDialog({
@@ -59,7 +59,7 @@ export function ManagedImportRequestDialog({
     if (!contactValue.trim() || sourceTypes.length === 0 || !legalAccepted) return;
     setBusy(true);
     try {
-      await requestManagedImportHelp(businessId, {
+      const item = await requestManagedImportHelp(businessId, {
         catalogScope: scope,
         sourceTypes,
         preferredContactChannel: contactChannel,
@@ -68,7 +68,7 @@ export function ManagedImportRequestDialog({
         sourceNotes: sourceNotes.trim(),
         legalAccepted,
       });
-      onSubmitted(scope);
+      onSubmitted(item);
       toast.show(t("managedImport.sent"), "success");
       onClose();
     } catch (cause) {

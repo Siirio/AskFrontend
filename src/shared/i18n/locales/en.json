@@ -65,10 +65,74 @@
   "platform.moderation.applied": "Action applied",
   "platform.moderation.error": "Action failed",
   "platform.moderation.resolution": "Resolution note",
+  "platform.requests.title": "Customer Requests",
+  "platform.requests.empty": "No customer requests yet",
+  "platform.requests.suppliers": "Suppliers",
+  "platform.requests.replies": "Replies",
+  "platform.requests.status.CREATED": "Created",
+  "platform.requests.status.ROUTED": "Routed",
+  "platform.requests.status.ANSWERED": "Answered",
+  "platform.requests.status.CLOSED": "Closed",
+  "platform.requests.status.CANCELLED": "Cancelled",
+  "platform.requests.status.EXPIRED": "Expired",
   "platform.moderation.target.PRODUCT": "Product",
   "platform.moderation.target.BUSINESS": "Business",
   "platform.moderation.target.MESSAGE": "Message",
   "platform.moderation.target.USER": "User",
+  "platform.sections.dashboard": "Dashboard",
+  "platform.sections.businesses": "Businesses",
+  "platform.sections.requests": "Requests",
+  "platform.dashboard.subtitle": "Overview of platform activity",
+  "platform.dashboard.totalBusinesses": "Total Businesses",
+  "platform.dashboard.activeProducts": "Active Products",
+  "platform.dashboard.activeServices": "Active Services",
+  "platform.dashboard.activeDrops": "Active Drops",
+  "platform.dashboard.openChats": "Open Chats",
+  "platform.dashboard.pendingModeration": "Pending Moderation",
+  "platform.dashboard.totalUsers": "Total Users",
+  "platform.dashboard.error": "Failed to load dashboard",
+  "platform.businesses.title": "Businesses",
+  "platform.businesses.search": "Search businesses...",
+  "platform.businesses.empty": "No businesses found",
+  "platform.businesses.columns.name": "Name",
+  "platform.businesses.columns.email": "Email",
+  "platform.businesses.columns.branches": "Branches",
+  "platform.businesses.columns.members": "Members",
+  "platform.businesses.columns.products": "Products",
+  "platform.businesses.columns.services": "Services",
+  "platform.businesses.columns.drops": "Drops",
+  "platform.businesses.columns.moderation": "Moderation",
+  "platform.businesses.columns.catalog": "Catalog",
+  "platform.businessDetail.notFound": "Business not found",
+  "platform.businessDetail.products": "Products",
+  "platform.businessDetail.services": "Services",
+  "platform.businessDetail.drops": "Drops",
+  "platform.businessDetail.addProduct": "Add Product",
+  "platform.businessDetail.addProductTitle": "Add product to business",
+  "platform.businessDetail.productName": "Product name",
+  "platform.businessDetail.productCategory": "Category",
+  "platform.businessDetail.productDescription": "Description",
+  "platform.businessDetail.productAdded": "Product added",
+  "platform.businessDetail.productDeleted": "Product deleted",
+  "platform.businessDetail.openChat": "Open Chat",
+  "platform.support.subtitle": "Support conversations from businesses",
+  "platform.support.noSubject": "No subject",
+  "platform.moderation.subtitle": "Review and moderate content",
+  "platform.moderation.queueTitle": "Pre-moderation Queue",
+  "platform.moderation.queueEmpty": "No products pending moderation",
+  "platform.moderation.pendingCount": "{{count}} pending",
+  "platform.moderation.pending": "Pending",
+  "platform.moderation.approve": "Approve",
+  "platform.moderation.approved": "Product approved",
+  "platform.moderation.rejected": "Product rejected",
+  "platform.moderation.rejectTitle": "Reject Product",
+  "platform.moderation.rejectReason": "Reason for rejection...",
+  "platform.moderation.autoRejected": "Auto-rejected",
+  "platform.moderation.manualReview": "Manual Review",
+  "platform.moderation.catalogReviews": "Catalog Reviews",
+  "platform.moderation.catalogReviewHint": "Catalog is pending moderator decision",
+  "platform.moderation.restrict": "Restrict",
+  "platform.moderation.dismiss": "Dismiss",
   "invitation.title": "Business invitation",
   "invitation.role.MANAGER": "Manager",
   "invitation.role.WORKER": "Worker",
@@ -385,7 +449,8 @@
   "seller.deliveryTerms": "Delivery terms",
   "seller.catalog.MANUAL": "Add products manually",
   "seller.catalog.ASK_MANAGED_IMPORT": "Order catalog import from Ask",
-  "seller.managedInfo": "This is a paid service, usually 20,000–100,000 ₸. Price depends on volume and source quality. Ask understands the search and card structure, but you can also import the catalog yourself.",
+  "seller.managedInfo": "A paid service estimated at ₸20,000–100,000. The price depends on volume and source quality. Manual setup requires adding and checking every item separately; Ask can migrate the catalog quickly and structure it for cards and search.",
+  "seller.managedInfoBoth": "A paid service estimated at ₸20,000–130,000. The price depends on volume and source quality. Manual setup requires adding and checking every item separately; Ask can migrate the catalog quickly and structure it for cards and search.",
   "seller.sourceLinks": "Source links, one per line",
   "seller.sourceNotes": "Text, notes and context. Never provide passwords.",
   "seller.legal": "I accept the applicable documents, confirm my right to provide the materials and allow catalog work only within the selected service:",
@@ -582,6 +647,8 @@
   "business.product.categoryPlaceholder": "Product category *",
   "business.product.pricePlaceholder": "Price (KZT)",
   "business.product.imageUrlPlaceholder": "Image URL",
+  "business.product.imageLabel": "Photo (max 2 MB)",
+  "business.service.imageLabel": "Photo (max 2 MB)",
   "business.loadingServices": "Loading services...",
   "business.noServices": "No services",
   "business.noServicesDesc": "Add services so customers can find you in search",
@@ -657,7 +724,7 @@
   "business.staffStatus.pendingActivation": "Pending activation",
   "business.staffStatus.passwordResetRequired": "Password reset required",
   "business.catalogSetup.deadlineTitle": "Catalog setup: {{days}} days left",
-  "business.catalogSetup.deadlineDescription": "Fill in your catalog before the deadline, otherwise publishing will be restricted.",
+  "business.catalogSetup.deadlineDescription": "Complete the catalog before the deadline.",
   "business.catalogSetup.restrictedTitle": "Catalog setup deadline passed",
   "business.catalogSetup.restrictedDescription": "Products and services are excluded from search because the catalog remained empty for 7 days.",
   "business.catalogSetup.reviewTitle": "Catalog under review",
@@ -896,6 +963,12 @@
   "legal.account-deletion.section1.body": "You can export your account before requesting permanent deletion from the privacy and account section.",
   "legal.account-deletion.section2.body": "A sole business owner must transfer ownership or choose to delete the business before deleting the account.",
   "legal.account-deletion.section3.body": "Deletion revokes sessions, removes memberships and temporary data, anonymises records and retains only legally required information.",
+  "managedImport.chatTitle": "Import Discussion",
+  "managedImport.chatEmpty": "Discuss your import here",
+  "managedImport.chatEmptyDesc": "The Ask team will clarify details about your import request.",
+  "managedImport.chatPlaceholder": "Type a message...",
+  "managedImport.chatError": "Could not load messages",
+  "managedImport.openChat": "Import Discussion",
   "managedImport.requested": "Request sent",
   "managedImport.requestProducts": "Help importing products",
   "managedImport.requestServices": "Help importing services",
@@ -933,4 +1006,52 @@
   "seller.catalog.manualDescription": "I will add items myself or upload a prepared file",
   "seller.catalog.managedDescription": "The Ask team will help collect and prepare your {{catalog}} catalog",
   "seller.managedBenefitTitle": "Skip the manual transfer"
+  ,"seller.pickupDescription": "Customers can collect their order from your location without delivery."
+  ,"seller.pickupEnabled": "Enabled"
+  ,"seller.pickupDisabled": "Disabled"
+  ,"seller.source.WILDBERRIES": "Wildberries"
+  ,"seller.confirmation.business": "Business"
+  ,"seller.confirmation.fulfillment": "Order fulfilment"
+  ,"seller.confirmation.catalog": "Catalog scope"
+  ,"seller.confirmation.setup": "Catalog setup"
+  ,"seller.confirmation.notSpecified": "Not specified"
+  ,"seller.confirmation.legalTitle": "I confirm the details and accept the terms"
+  ,"seller.confirmation.legalDescription": "I have reviewed the seller terms and personal data consent. The supplied details may be used to create the business profile."
+  ,"resultCard.openBrand": "Open information about {{brand}}"
+  ,"nav.menu.account": "Account"
+  ,"nav.menu.business": "Brand and business"
+  ,"nav.menu.communication": "Communication"
+  ,"nav.menu.platformSupport": "Ask Support"
+  ,"supportDrawer.title": "Ask Support"
+  ,"supportDrawer.personalContext": "Personal question"
+  ,"supportDrawer.businessContext": "On behalf of {{business}}"
+  ,"supportDrawer.emptyTitle": "How can we help?"
+  ,"supportDrawer.emptyDescription": "Send your question. This conversation stays available when you return."
+  ,"supportDrawer.placeholder": "Describe your question…"
+  ,"supportDrawer.error": "Support could not be loaded. Please try again."
+  ,"nav.menu.legal": "Legal"
+  ,"legal.eyebrow": "Ask legal"
+  ,"legal.readOnPage": "The document is available directly on this page"
+  ,"legal.contents": "Contents"
+  ,"legal.detailFallback": "This document applies together with the laws of the Republic of Kazakhstan and related platform rules. Contact Ask support if you need clarification about a specific provision."
+  ,"profile.eyebrow": "Personal account"
+  ,"profile.title": "Profile and settings"
+  ,"profile.description": "Manage personal details, privacy, and access to your brands. Company information is edited separately in the business cabinet."
+  ,"chats.conversations.type.PLATFORM_SUPPORT": "Ask Support"
+  ,"seller.validation.businessContact": "Enter the business name and a contact method."
+  ,"seller.validation.importSource": "Select at least one catalog import source."
+  ,"business.toast.branchRequired": "Create or select a branch first."
+  ,"business.toast.imageTooLarge": "Image must be under 2 MB."
+  ,"business.toast.imageProcessingError": "Could not process the image."
+  ,"business.toast.productNameRequired": "Enter a product name."
+  ,"category.autocomplete.placeholder": "Enter category name..."
+  ,"category.autocomplete.standardGroup": "Standard categories"
+  ,"category.autocomplete.yourGroup": "Your categories"
+  ,"category.autocomplete.noMatch": "No matching categories"
+  ,"imageUploader.addPhoto": "Add photo"
+  ,"imageUploader.replace": "Replace"
+  ,"imageUploader.delete": "Delete"
+  ,"business.product.priceSuffix": "\u20B8"
+  ,"business.toast.serviceNameRequired": "Enter a service name."
+  ,"seller.validation.legalDetails": "Enter the legal identifier and legal name for the selected form, or choose“No specified legal form”."
 }

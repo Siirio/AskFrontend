@@ -314,11 +314,11 @@ export type BusinessCardDto = {
 
 export type ChatConversationDto = {
   conversationId: string;
-  businessId: string;
+  businessId: string | null;
   customerId: string | null;
   customerName?: string;
   subject: string;
-  conversationType: "GENERAL_SUPPORT" | "MANAGED_IMPORT";
+  conversationType: "GENERAL_SUPPORT" | "PLATFORM_SUPPORT" | "MANAGED_IMPORT";
   conversationStatus: "PENDING" | "IN_CHAT" | "CLOSED";
   managedImportRequestId?: string | null;
   customerUnreadCount: number;

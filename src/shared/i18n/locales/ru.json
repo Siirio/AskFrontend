@@ -65,10 +65,74 @@
   "platform.moderation.applied": "Действие применено",
   "platform.moderation.error": "Действие не выполнено",
   "platform.moderation.resolution": "Комментарий к решению",
+  "platform.requests.title": "Запросы клиентов",
+  "platform.requests.empty": "Запросов пока нет",
+  "platform.requests.suppliers": "Поставщики",
+  "platform.requests.replies": "Ответы",
+  "platform.requests.status.CREATED": "Создан",
+  "platform.requests.status.ROUTED": "Отправлен",
+  "platform.requests.status.ANSWERED": "Отвечен",
+  "platform.requests.status.CLOSED": "Закрыт",
+  "platform.requests.status.CANCELLED": "Отменён",
+  "platform.requests.status.EXPIRED": "Истёк",
   "platform.moderation.target.PRODUCT": "Товар",
   "platform.moderation.target.BUSINESS": "Бизнес",
   "platform.moderation.target.MESSAGE": "Сообщение",
   "platform.moderation.target.USER": "Пользователь",
+  "platform.sections.dashboard": "Дашборд",
+  "platform.sections.businesses": "Бизнесы",
+  "platform.sections.requests": "Запросы",
+  "platform.dashboard.subtitle": "Обзор активности платформы",
+  "platform.dashboard.totalBusinesses": "Всего бизнесов",
+  "platform.dashboard.activeProducts": "Активных товаров",
+  "platform.dashboard.activeServices": "Активных услуг",
+  "platform.dashboard.activeDrops": "Активных предложений",
+  "platform.dashboard.openChats": "Открытых чатов",
+  "platform.dashboard.pendingModeration": "На модерации",
+  "platform.dashboard.totalUsers": "Всего пользователей",
+  "platform.dashboard.error": "Не удалось загрузить дашборд",
+  "platform.businesses.title": "Бизнесы",
+  "platform.businesses.search": "Поиск бизнесов...",
+  "platform.businesses.empty": "Бизнесы не найдены",
+  "platform.businesses.columns.name": "Название",
+  "platform.businesses.columns.email": "Email",
+  "platform.businesses.columns.branches": "Филиалы",
+  "platform.businesses.columns.members": "Сотрудники",
+  "platform.businesses.columns.products": "Товары",
+  "platform.businesses.columns.services": "Услуги",
+  "platform.businesses.columns.drops": "Предложения",
+  "platform.businesses.columns.moderation": "Модерация",
+  "platform.businesses.columns.catalog": "Каталог",
+  "platform.businessDetail.notFound": "Бизнес не найден",
+  "platform.businessDetail.products": "Товары",
+  "platform.businessDetail.services": "Услуги",
+  "platform.businessDetail.drops": "Предложения",
+  "platform.businessDetail.addProduct": "Добавить товар",
+  "platform.businessDetail.addProductTitle": "Добавить товар в бизнес",
+  "platform.businessDetail.productName": "Название товара",
+  "platform.businessDetail.productCategory": "Категория",
+  "platform.businessDetail.productDescription": "Описание",
+  "platform.businessDetail.productAdded": "Товар добавлен",
+  "platform.businessDetail.productDeleted": "Товар удалён",
+  "platform.businessDetail.openChat": "Открыть чат",
+  "platform.support.subtitle": "Обращения в поддержку от бизнесов",
+  "platform.support.noSubject": "Без темы",
+  "platform.moderation.subtitle": "Модерация контента и жалоб",
+  "platform.moderation.queueTitle": "Очередь пре-модерации",
+  "platform.moderation.queueEmpty": "Нет товаров на модерации",
+  "platform.moderation.pendingCount": "{{count}} ожидает",
+  "platform.moderation.pending": "Ожидает",
+  "platform.moderation.approve": "Одобрить",
+  "platform.moderation.approved": "Товар одобрен",
+  "platform.moderation.rejected": "Товар отклонён",
+  "platform.moderation.rejectTitle": "Отклонить товар",
+  "platform.moderation.rejectReason": "Причина отклонения...",
+  "platform.moderation.autoRejected": "Авто-отклонён",
+  "platform.moderation.manualReview": "Ручная проверка",
+  "platform.moderation.catalogReviews": "Проверка каталогов",
+  "platform.moderation.catalogReviewHint": "Каталог ожидает решения модератора",
+  "platform.moderation.restrict": "Ограничить",
+  "platform.moderation.dismiss": "Отклонить",
   "invitation.title": "Приглашение в бизнес",
   "invitation.role.MANAGER": "Менеджер",
   "invitation.role.WORKER": "Сотрудник",
@@ -391,7 +455,8 @@
   "seller.deliveryTerms": "Условия доставки",
   "seller.catalog.MANUAL": "Добавлять товары вручную",
   "seller.catalog.ASK_MANAGED_IMPORT": "Заказать импорт каталога у Ask",
-  "seller.managedInfo": "Платная услуга, ориентировочно 20 000–100 000 ₸. Цена зависит от объёма и качества материалов. Команда Ask знает структуру поиска и карточек, но импорт также можно выполнить самостоятельно.",
+  "seller.managedInfo": "Платная услуга, ориентировочно 20 000–100 000 ₸. Цена зависит от объёма и качества материалов. Самостоятельно позиции придётся добавлять и проверять по одной; команда Ask быстро перенесёт каталог и сразу подготовит данные под структуру карточек и поиска.",
+  "seller.managedInfoBoth": "Платная услуга, ориентировочно 20 000–130 000 ₸. Цена зависит от объёма и качества материалов. Самостоятельно позиции придётся добавлять и проверять по одной; команда Ask быстро перенесёт каталог и сразу подготовит данные под структуру карточек и поиска.",
   "seller.sourceLinks": "Ссылки на источники, по одной в строке",
   "seller.sourceNotes": "Текст, заметки и пояснения. Не указывайте пароли.",
   "seller.legal": "Я принимаю применимые документы, подтверждаю право передавать материалы и разрешаю обработку каталога только в рамках выбранной услуги:",
@@ -588,6 +653,8 @@
   "business.product.categoryPlaceholder": "Категория товара *",
   "business.product.pricePlaceholder": "Цена (₸)",
   "business.product.imageUrlPlaceholder": "URL изображения",
+  "business.product.imageLabel": "Фото (до 2 МБ)",
+  "business.service.imageLabel": "Фото (до 2 МБ)",
   "business.loadingServices": "Загрузка услуг...",
   "business.noServices": "Нет услуг",
   "business.noServicesDesc": "Добавьте услуги, чтобы клиенты могли находить вас в поиске",
@@ -663,7 +730,7 @@
   "business.staffStatus.pendingActivation": "Ожидает активации",
   "business.staffStatus.passwordResetRequired": "Требуется смена пароля",
   "business.catalogSetup.deadlineTitle": "Настройка каталога: осталось {{days}} дн.",
-  "business.catalogSetup.deadlineDescription": "Заполните каталог до дедлайна, иначе публикация будет ограничена.",
+  "business.catalogSetup.deadlineDescription": "Заполните каталог до дедлайна.",
   "business.catalogSetup.restrictedTitle": "Срок настройки каталога истёк",
   "business.catalogSetup.restrictedDescription": "Товары и услуги не попали в поиск: за 7 дней каталог остался пустым.",
   "business.catalogSetup.reviewTitle": "Каталог на рассмотрении",
@@ -903,6 +970,12 @@
   "legal.account-deletion.section1.body": "Перед окончательным удалением можно экспортировать данные в разделе приватности и аккаунта.",
   "legal.account-deletion.section2.body": "Единственный владелец бизнеса должен передать владение или выбрать удаление бизнеса.",
   "legal.account-deletion.section3.body": "Удаление отзывает сессии, убирает memberships и временные данные, а оставшиеся записи обезличивает.",
+  "managedImport.chatTitle": "Обсуждение импорта",
+  "managedImport.chatEmpty": "Обсудите ваш импорт здесь",
+  "managedImport.chatEmptyDesc": "Команда Ask уточнит детали по вашему запросу импорта.",
+  "managedImport.chatPlaceholder": "Введите сообщение...",
+  "managedImport.chatError": "Не удалось загрузить сообщения",
+  "managedImport.openChat": "Обсуждение импорта",
   "managedImport.requested": "Запрос отправлен",
   "managedImport.requestProducts": "Помощь с импортом товаров",
   "managedImport.requestServices": "Помощь с импортом услуг",
@@ -940,4 +1013,52 @@
   "seller.catalog.manualDescription": "Добавлю позиции сам или загружу подготовленный файл",
   "seller.catalog.managedDescription": "Команда Ask поможет собрать и подготовить каталог {{catalog}}",
   "seller.managedBenefitTitle": "Не тратьте время на ручной перенос"
+  ,"seller.pickupDescription": "Покупатели смогут забрать заказ в вашей точке без доставки."
+  ,"seller.pickupEnabled": "Включён"
+  ,"seller.pickupDisabled": "Выключен"
+  ,"seller.source.WILDBERRIES": "Wildberries"
+  ,"seller.confirmation.business": "Бизнес"
+  ,"seller.confirmation.fulfillment": "Получение заказа"
+  ,"seller.confirmation.catalog": "Направление"
+  ,"seller.confirmation.setup": "Настройка каталога"
+  ,"seller.confirmation.notSpecified": "Не указано"
+  ,"seller.confirmation.legalTitle": "Подтверждаю сведения и принимаю условия"
+  ,"seller.confirmation.legalDescription": "Я ознакомился с условиями для продавцов и согласием на обработку персональных данных. Указанные сведения можно использовать для создания бизнес-профиля."
+  ,"resultCard.openBrand": "Открыть информацию о бренде {{brand}}"
+  ,"nav.menu.account": "Аккаунт"
+  ,"nav.menu.business": "Бренд и бизнес"
+  ,"nav.menu.communication": "Общение"
+  ,"nav.menu.platformSupport": "Поддержка Ask"
+  ,"supportDrawer.title": "Поддержка Ask"
+  ,"supportDrawer.personalContext": "Личный вопрос"
+  ,"supportDrawer.businessContext": "От имени «{{business}}»"
+  ,"supportDrawer.emptyTitle": "Чем можем помочь?"
+  ,"supportDrawer.emptyDescription": "Напишите вопрос — этот диалог сохранится и продолжится при следующем открытии."
+  ,"supportDrawer.placeholder": "Опишите вопрос…"
+  ,"supportDrawer.error": "Не удалось загрузить поддержку. Попробуйте ещё раз."
+  ,"nav.menu.legal": "Документы"
+  ,"legal.eyebrow": "Документы Ask"
+  ,"legal.readOnPage": "Полный текст доступен на этой странице"
+  ,"legal.contents": "Содержание"
+  ,"legal.detailFallback": "Документ применяется вместе с законодательством Республики Казахстан и другими связанными правилами платформы. Если у вас есть вопрос по конкретному положению, обратитесь в поддержку Ask."
+  ,"profile.eyebrow": "Личный аккаунт"
+  ,"profile.title": "Профиль и настройки"
+  ,"profile.description": "Управляйте личными данными, приватностью и доступом к своим брендам. Информация компании редактируется отдельно в бизнес-кабинете."
+  ,"chats.conversations.type.PLATFORM_SUPPORT": "Поддержка Ask"
+  ,"seller.validation.businessContact": "Укажите название бизнеса и контакт для связи."
+  ,"seller.validation.importSource": "Выберите хотя бы один источник для импорта каталога."
+  ,"business.toast.branchRequired": "Сначала создайте или выберите филиал."
+  ,"business.toast.imageTooLarge": "Изображение должно быть до 2 МБ."
+  ,"business.toast.imageProcessingError": "Не удалось обработать изображение."
+  ,"category.autocomplete.placeholder": "Введите название категории..."
+  ,"category.autocomplete.standardGroup": "Стандартные категории"
+  ,"category.autocomplete.yourGroup": "Ваши категории"
+  ,"category.autocomplete.noMatch": "Нет подходящих категорий"
+  ,"imageUploader.addPhoto": "Добавить фото"
+  ,"imageUploader.replace": "Заменить"
+  ,"imageUploader.delete": "Удалить"
+  ,"business.product.priceSuffix": "\u20B8"
+  ,"business.toast.productNameRequired": "Укажите название товара."
+  ,"business.toast.serviceNameRequired": "Укажите название услуги."
+  ,"seller.validation.legalDetails": "Для выбранной формы заполните ИИН/БИН и юридическое наименование либо выберите вариант «Без указанной формы»."
 }

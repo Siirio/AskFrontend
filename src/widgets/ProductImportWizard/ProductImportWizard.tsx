@@ -331,11 +331,6 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
                   ? `Загрузите Excel, TXT, MD или PDF с ${itemLabelPlural}`
                   : `Загрузите файл Excel (.xlsx) с ${itemLabelPlural}`}
               </h3>
-              <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.35rem 0 1rem" }}>
-                {allowAiTools
-                  ? `Excel проходит через сопоставление колонок. TXT, MD и PDF обрабатываются AI Dumping и превращаются в черновики ${itemLabelPlural}.`
-                  : "Импорт выполняется без AI через обычное сопоставление колонок Excel."}
-              </p>
               <label className="fcw-btn fcw-btn-primary fcw-btn-sm" style={{ display: "inline-flex" }}>
                 <Upload size={14} />
                 Выбрать файл
@@ -378,37 +373,6 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
               <span>Вы заполняете данные для витрины. Не включайте остатки, закупочные цены, поставщиков, маржинальность и другие внутренние данные бизнеса.</span>
             </div>
 
-            <details style={{ cursor: "pointer" }}>
-              <summary className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)", marginBottom: "0.5rem" }}>
-                Посмотреть пример идеального Excel
-              </summary>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--fcw-font-size-body-s)" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "var(--fcw-color-surface-secondary)" }}>
-                      {getRecommendedColumns(importMode).map(([name]) => (
-                        <th key={name} className="fcw-label" style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "2px solid var(--fcw-color-border)", whiteSpace: "nowrap" }}>{name}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getDemoTableRows(importMode).map((row, i) => (
-                      <tr key={i}>
-                        {row.map((cell, j) => (
-                          <td key={j} style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid var(--fcw-color-border)", whiteSpace: j === 3 ? "nowrap" : undefined }}>{cell}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="fcw-flex" style={{ gap: "0.5rem", marginTop: "0.75rem" }}>
-                <span className="fcw-body-s fcw-text-tertiary">
-                  Каждая колонка принимает разные названия заголовков: {getRecommendedColumns(importMode).map(([name, examples]) => `${name} → ${examples}`).join("; ")}
-                </span>
-              </div>
-              <span className="fcw-body-xs fcw-text-tertiary" style={{ marginLeft: "0.5rem" }}>{isProduct ? "Спортивное питание" : "Услуги салона и автосервиса"}, 3 {itemLabelPlural}</span>
-            </details>
 
             <div className="fcw-flex" style={{ gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
               <Select

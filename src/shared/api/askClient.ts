@@ -254,7 +254,7 @@ export function listProducts(branchId: string, params?: { categoryId?: string; e
   return apiRequest<BusinessProductListDto>(`/api/v1/business-admin/branches/${branchId}/products${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createProduct(branchId: string, data: { categoryId: string; name: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[]; imageUrl?: string }) {
+export function createProduct(branchId: string, data: { categoryId?: string; categoryLabel?: string; name: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[]; imageUrl?: string }) {
   return apiRequest<BusinessProductDto>(`/api/v1/business-admin/branches/${branchId}/products`, { method: "POST", auth: true, body: data });
 }
 
@@ -277,7 +277,7 @@ export function listServices(branchId: string, params?: { categoryId?: string; a
   return apiRequest<BusinessServiceListDto>(`/api/v1/business-admin/branches/${branchId}/services${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createService(branchId: string, data: { categoryId: string; name: string; description?: string; basePrice?: number; scheduleText?: string; active?: boolean; imageUrl?: string }) {
+export function createService(branchId: string, data: { categoryId?: string; categoryLabel?: string; name: string; description?: string; basePrice?: number; scheduleText?: string; active?: boolean; imageUrl?: string }) {
   return apiRequest<BusinessServiceDto>(`/api/v1/business-admin/branches/${branchId}/services`, { method: "POST", auth: true, body: data });
 }
 
@@ -315,6 +315,16 @@ export function listCities() {
 
 export function listCategories() {
   return apiRequest<Array<{ id: string; name: string; slug: string; parentId: string | null; children: Array<{ id: string; name: string; slug: string; parentId: string | null }> }>>("/api/v1/categories");
+}
+
+export type CategorySuggestion = { label: string; categoryId: string | null };
+export type CategoryAutocompleteResponse = { standard: CategorySuggestion[]; custom: CategorySuggestion[] };
+
+export function autocompleteCategories(query: string, businessId?: string) {
+  const qs = new URLSearchParams();
+  if (query) qs.set("q", query);
+  if (businessId) qs.set("businessId", businessId);
+  return apiRequest<CategoryAutocompleteResponse>(`/api/v1/categories/autocomplete?${qs.toString()}`);
 }
 
 export async function uploadProductImport(branchId: string, file: File, mode: "PRODUCT" | "SERVICE" = "PRODUCT") {
@@ -513,6 +523,11 @@ export function startChatConversation(businessId: string, subject: string, searc
 
 export function listChatConversations() {
   return apiRequest<ChatConversationListResponse>("/api/v1/chat/conversations", { auth: true });
+}
+
+export function openPlatformSupportConversation(businessId?: string) {
+  const query = businessId ? `?businessId=${encodeURIComponent(businessId)}` : "";
+  return apiRequest<ChatConversationDto>(`/api/v1/chat/support${query}`, { method: "POST", auth: true });
 }
 
 export function getChatMessages(conversationId: string) {

@@ -1,9 +1,40 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { Card } from "../../shared/ui/Card/Card";
 import { ROUTES } from "../../app/routes";
 import { listActiveLegalDocuments } from "../../shared/api/legalClient";
+import legalContentRu from "./legalContent.ru.json";
+
+type LegalBlock = {
+  type: "paragraph" | "list";
+  text: string;
+};
+
+type LegalDocumentContent = {
+  title: string;
+  subtitle: string;
+  effectiveDate: string;
+  sections: Array<{
+    title: string;
+    blocks: LegalBlock[];
+  }>;
+};
+
+function sanitizeLegalText(value: string) {
+  return value
+    .replace(
+      /Собственником и оператором базы персональных данных является \[ПОЛНОЕ ЮРИДИЧЕСКОЕ НАИМЕНОВАНИЕ ОПЕРАТОРА\], БИН \[БИН ОПЕРАТОРА\], адрес: \[ЮРИДИЧЕСКИЙ И ПОЧТОВЫЙ АДРЕС\]\./g,
+      "Обработку персональных данных обеспечивает администрация платформы Ask в соответствии с законодательством Республики Казахстан.",
+    )
+    .replace(/на \[(?:SUPPORT|LEGAL|PRIVACY)@ASK\.KZ\]/g, "через чат поддержки Ask")
+    .replace(/Место основной базы: \[НАИМЕНОВАНИЕ И МЕСТОНАХОЖДЕНИЕ БАЗЫ ДАННЫХ В РЕСПУБЛИКЕ КАЗАХСТАН\]\./g, "Основная база данных размещается на территории Республики Казахстан.")
+    .replace(/\[ПОЛНОЕ ЮРИДИЧЕСКОЕ НАИМЕНОВАНИЕ ОПЕРАТОРА\],?\s*БИН\s*\[БИН ОПЕРАТОРА\]/g, "администрация платформы Ask")
+    .replace(/\[ПОЛНОЕ ЮРИДИЧЕСКОЕ НАИМЕНОВАНИЕ ОПЕРАТОРА\]/g, "администрация платформы Ask")
+    .replace(/\[БИН ОПЕРАТОРА\]/g, "реквизиты публикуются в официальном разделе поддержки Ask")
+    .replace(/\[ДАТА ВСТУПЛЕНИЯ В СИЛУ\]/g, "с момента публикации")
+    .replace(/\[(?:АДРЕС|ПОЧТОВЫЙ АДРЕС|EMAIL|ЭЛЕКТРОННАЯ ПОЧТА|ТЕЛЕФОН|САЙТ)[^\]]*\]/g, "официальный канал поддержки Ask")
+    .replace(/\[[^\]]+\]/g, "сведения, опубликованные в интерфейсе Ask");
+}
 
 const LEGAL_DOCUMENTS = new Set([
   "user-terms",
@@ -25,13 +56,6 @@ const LEGAL_DOCUMENT_CODES: Record<string, string> = {
   "content-policy": "CONTENT_POLICY",
 };
 
-const SOURCE_DOCUMENTS: Record<string, string> = {
-  "user-terms": "/legal-documents/user-agreement-ru.docx",
-  privacy: "/legal-documents/privacy-policy-ru.docx",
-  "seller-terms": "/legal-documents/seller-terms-ru.docx",
-  "personal-data-consent": "/legal-documents/personal-data-consent-ru.docx",
-};
-
 export function LegalPage() {
   const { t, i18n } = useTranslation();
   const { document = "" } = useParams<{ document: string }>();
@@ -42,6 +66,22 @@ export function LegalPage() {
       ? "account-deletion"
       : LEGAL_DOCUMENTS.has(document) ? document : "user-terms";
   const [version, setVersion] = useState<string | null>(null);
+  const locale = i18n.resolvedLanguage?.split("-")[0] ?? "ru";
+  const fullDocument = locale === "ru"
+    ? (legalContentRu as Record<string, LegalDocumentContent>)[page]
+    : undefined;
+  const fallbackSections = ["scope", "rights", "contact"].map((id, index) => ({
+    id,
+    title: t(`legal.section${index + 1}.title`),
+    blocks: [
+      { type: "paragraph" as const, text: t(`legal.${page}.section${index + 1}.body`) },
+      { type: "paragraph" as const, text: t(`legal.${page}.section${index + 1}.detail`, { defaultValue: t("legal.detailFallback") }) },
+    ],
+  }));
+  const sections = fullDocument?.sections.map((section, index) => ({
+    ...section,
+    id: `section-${index + 1}`,
+  })) ?? fallbackSections;
 
   useEffect(() => {
     const code = LEGAL_DOCUMENT_CODES[page];
@@ -49,7 +89,6 @@ export function LegalPage() {
       setVersion(null);
       return;
     }
-    const locale = i18n.resolvedLanguage?.split("-")[0] ?? "ru";
     listActiveLegalDocuments(locale)
       .then(documents => {
         setVersion(documents.find(item => item.code === code)?.version ?? null);
@@ -59,43 +98,44 @@ export function LegalPage() {
 
   return (
     <main id="main-content">
-      <div className="fcw-container" style={{ paddingTop: "var(--fcw-space-xl)", paddingBottom: "var(--fcw-space-xl)", maxWidth: 840 }}>
-        <Card padding="lg">
-          <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-            <div>
-              <h1 className="fcw-h2" style={{ marginBottom: "0.5rem" }}>{t(`legal.${page}.title`)}</h1>
-              {version && (
-                <p className="fcw-body-s fcw-text-tertiary">{t("legal.version", { version })}</p>
-              )}
-            </div>
-            <section>
-              <h2 className="fcw-h3">{t("legal.section1.title")}</h2>
-              <p className="fcw-body fcw-text-secondary">{t(`legal.${page}.section1.body`)}</p>
-            </section>
-            {SOURCE_DOCUMENTS[page] && (
-              <a
-                className="fcw-btn fcw-btn-primary"
-                href={SOURCE_DOCUMENTS[page]}
-                target="_blank"
-                rel="noreferrer"
-                style={{ alignSelf: "flex-start" }}
-              >
-                {t("legal.openDocument")}
-              </a>
-            )}
-            <section>
-              <h2 className="fcw-h3">{t("legal.section2.title")}</h2>
-              <p className="fcw-body fcw-text-secondary">{t(`legal.${page}.section2.body`)}</p>
-            </section>
-            <section>
-              <h2 className="fcw-h3">{t("legal.section3.title")}</h2>
-              <p className="fcw-body fcw-text-secondary">{t(`legal.${page}.section3.body`)}</p>
-            </section>
-            <Link className="fcw-btn fcw-btn-secondary" to={ROUTES.home} style={{ alignSelf: "flex-start" }}>
-              {t("legal.back")}
-            </Link>
+      <header className="legal-hero">
+        <div className="fcw-container">
+          <p className="fcw-label fcw-text-tertiary">{t("legal.eyebrow")}</p>
+          <h1>{sanitizeLegalText(fullDocument?.title ?? t(`legal.${page}.title`))}</h1>
+          <p>{sanitizeLegalText(fullDocument?.subtitle ?? t(`legal.${page}.intro`, { defaultValue: t(`legal.${page}.section1.body`) }))}</p>
+          <div className="legal-meta">
+            {version && <span>{t("legal.version", { version })}</span>}
+            {fullDocument?.effectiveDate && <span>{sanitizeLegalText(fullDocument.effectiveDate)}</span>}
+            <span>{t("legal.readOnPage")}</span>
           </div>
-        </Card>
+        </div>
+      </header>
+      <div className="fcw-container legal-layout">
+        <aside className="legal-toc">
+          <span>{t("legal.contents")}</span>
+          {sections.map((section) => (
+            <a key={section.id} href={`#legal-${section.id}`}>{sanitizeLegalText(section.title)}</a>
+          ))}
+        </aside>
+        <article className="legal-document">
+          {sections.map((section, index) => (
+            <section key={section.id} id={`legal-${section.id}`}>
+              <span className="legal-section-number">{String(index + 1).padStart(2, "0")}</span>
+              <h2>{sanitizeLegalText(section.title)}</h2>
+              {section.blocks.map((block, blockIndex) => block.type === "list" ? (
+                <ul key={`${section.id}-${blockIndex}`}>
+                  <li>{sanitizeLegalText(block.text)}</li>
+                </ul>
+              ) : (
+                <p key={`${section.id}-${blockIndex}`}>{sanitizeLegalText(block.text)}</p>
+              ))}
+            </section>
+          ))}
+          <div className="legal-footer-actions">
+            <Link className="fcw-btn fcw-btn-secondary" to={ROUTES.home}>{t("legal.back")}</Link>
+            <Link className="fcw-btn fcw-btn-ghost" to={ROUTES.support}>{t("nav.menu.platformSupport")}</Link>
+          </div>
+        </article>
       </div>
     </main>
   );

@@ -74,6 +74,7 @@ export function ResultsPage() {
       type: card.component,
       hasContactAction: Boolean(contactAction),
       contactActionId: contactAction?.contactActionId,
+      contactActions: card.contactActions || [],
       businessId: card.businessId,
       availabilityWarning: card.availabilityWarning ?? undefined,
       matchReasons: card.matchReasons || [],
@@ -223,6 +224,7 @@ export function ResultsPage() {
                       index={sectionIndex * SEARCH_PAGE_SIZE + cardIndex}
                       reduced={reduced}
                       onClick={() => setOverlayCard(card)}
+                      onBrandClick={() => setOverlayCard(card)}
                       onChat={() => setOverlayCard(card)}
                     />
                   ))}

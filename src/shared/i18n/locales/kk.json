@@ -65,10 +65,74 @@
   "platform.moderation.applied": "Әрекет қолданылды",
   "platform.moderation.error": "Әрекет орындалмады",
   "platform.moderation.resolution": "Шешімге түсініктеме",
+  "platform.requests.title": "Клиент сұраныстары",
+  "platform.requests.empty": "Сұраныстар әзірге жоқ",
+  "platform.requests.suppliers": "Жеткізушілер",
+  "platform.requests.replies": "Жауаптар",
+  "platform.requests.status.CREATED": "Жасалды",
+  "platform.requests.status.ROUTED": "Жіберілді",
+  "platform.requests.status.ANSWERED": "Жауап берілді",
+  "platform.requests.status.CLOSED": "Жабылды",
+  "platform.requests.status.CANCELLED": "Бас тартылды",
+  "platform.requests.status.EXPIRED": "Мерзімі өтті",
   "platform.moderation.target.PRODUCT": "Тауар",
   "platform.moderation.target.BUSINESS": "Бизнес",
   "platform.moderation.target.MESSAGE": "Хабарлама",
   "platform.moderation.target.USER": "Пайдаланушы",
+  "platform.sections.dashboard": "Бақылау тақтасы",
+  "platform.sections.businesses": "Бизнестер",
+  "platform.sections.requests": "Сұраныстар",
+  "platform.dashboard.subtitle": "Платформа белсенділігіне шолу",
+  "platform.dashboard.totalBusinesses": "Барлық бизнестер",
+  "platform.dashboard.activeProducts": "Белсенді тауарлар",
+  "platform.dashboard.activeServices": "Белсенді қызметтер",
+  "platform.dashboard.activeDrops": "Белсенді ұсыныстар",
+  "platform.dashboard.openChats": "Ашық чаттар",
+  "platform.dashboard.pendingModeration": "Модерацияда",
+  "platform.dashboard.totalUsers": "Барлық пайдаланушылар",
+  "platform.dashboard.error": "Бақылау тақтасын жүктеу мүмкін болмады",
+  "platform.businesses.title": "Бизнестер",
+  "platform.businesses.search": "Бизнестерді іздеу...",
+  "platform.businesses.empty": "Бизнестер табылмады",
+  "platform.businesses.columns.name": "Атауы",
+  "platform.businesses.columns.email": "Email",
+  "platform.businesses.columns.branches": "Филиалдар",
+  "platform.businesses.columns.members": "Қызметкерлер",
+  "platform.businesses.columns.products": "Тауарлар",
+  "platform.businesses.columns.services": "Қызметтер",
+  "platform.businesses.columns.drops": "Ұсыныстар",
+  "platform.businesses.columns.moderation": "Модерация",
+  "platform.businesses.columns.catalog": "Каталог",
+  "platform.businessDetail.notFound": "Бизнес табылмады",
+  "platform.businessDetail.products": "Тауарлар",
+  "platform.businessDetail.services": "Қызметтер",
+  "platform.businessDetail.drops": "Ұсыныстар",
+  "platform.businessDetail.addProduct": "Тауар қосу",
+  "platform.businessDetail.addProductTitle": "Бизнеске тауар қосу",
+  "platform.businessDetail.productName": "Тауар атауы",
+  "platform.businessDetail.productCategory": "Санат",
+  "platform.businessDetail.productDescription": "Сипаттама",
+  "platform.businessDetail.productAdded": "Тауар қосылды",
+  "platform.businessDetail.productDeleted": "Тауар жойылды",
+  "platform.businessDetail.openChat": "Чатты ашу",
+  "platform.support.subtitle": "Бизнестерден қолдау сұраулары",
+  "platform.support.noSubject": "Тақырыпсыз",
+  "platform.moderation.subtitle": "Контент пен шағымдарды модерациялау",
+  "platform.moderation.queueTitle": "Пре-модерация кезегі",
+  "platform.moderation.queueEmpty": "Модерацияда тауарлар жоқ",
+  "platform.moderation.pendingCount": "{{count}} күтуде",
+  "platform.moderation.pending": "Күтуде",
+  "platform.moderation.approve": "Бекіту",
+  "platform.moderation.approved": "Тауар бекітілді",
+  "platform.moderation.rejected": "Тауар қабылданбады",
+  "platform.moderation.rejectTitle": "Тауарды қабылдамау",
+  "platform.moderation.rejectReason": "Қабылдамау себебі...",
+  "platform.moderation.autoRejected": "Авто-қабылданбады",
+  "platform.moderation.manualReview": "Қолмен тексеру",
+  "platform.moderation.catalogReviews": "Каталогтарды тексеру",
+  "platform.moderation.catalogReviewHint": "Каталог модератор шешімін күтуде",
+  "platform.moderation.restrict": "Шектеу",
+  "platform.moderation.dismiss": "Қабылдамау",
   "invitation.title": "Бизнеске шақыру",
   "invitation.role.MANAGER": "Менеджер",
   "invitation.role.WORKER": "Қызметкер",
@@ -385,7 +449,8 @@
   "seller.deliveryTerms": "Жеткізу шарттары",
   "seller.catalog.MANUAL": "Тауарларды қолмен қосу",
   "seller.catalog.ASK_MANAGED_IMPORT": "Ask командасынан каталог импортын тапсырыс беру",
-  "seller.managedInfo": "Ақылы қызмет, шамамен 20 000–100 000 ₸. Баға материал көлемі мен сапасына байланысты. Импортты өзіңіз де жасай аласыз.",
+  "seller.managedInfo": "Ақылы қызмет, шамамен 20 000–100 000 ₸. Бағасы материалдардың көлемі мен сапасына байланысты. Өзіңіз баптасаңыз, әр позицияны жеке қосып тексеру керек; Ask командасы каталогты жылдам көшіріп, карточкалар мен іздеу құрылымына дайындайды.",
+  "seller.managedInfoBoth": "Ақылы қызмет, шамамен 20 000–130 000 ₸. Бағасы материалдардың көлемі мен сапасына байланысты. Өзіңіз баптасаңыз, әр позицияны жеке қосып тексеру керек; Ask командасы каталогты жылдам көшіріп, карточкалар мен іздеу құрылымына дайындайды.",
   "seller.sourceLinks": "Дереккөз сілтемелері",
   "seller.sourceNotes": "Мәтін мен ескертпелер. Құпиясөздерді көрсетпеңіз.",
   "seller.legal": "Қолданылатын құжаттарды қабылдаймын, материалдарды беруге құқығымды растаймын және каталогпен жұмысқа тек таңдалған қызмет аясында рұқсат беремін:",
@@ -582,6 +647,8 @@
   "business.product.categoryPlaceholder": "Тауар санаты *",
   "business.product.pricePlaceholder": "Бағасы (₸)",
   "business.product.imageUrlPlaceholder": "Сурет URL",
+  "business.product.imageLabel": "Фото (2 МБ дейін)",
+  "business.service.imageLabel": "Фото (2 МБ дейін)",
   "business.loadingServices": "Қызметтер жүктелуде...",
   "business.noServices": "Қызметтер жоқ",
   "business.noServicesDesc": "Клиенттер сізді іздеуде табуы үшін қызметтерді қосыңыз",
@@ -657,7 +724,7 @@
   "business.staffStatus.pendingActivation": "Белсендіруді күтуде",
   "business.staffStatus.passwordResetRequired": "Құпия сөзді өзгерту қажет",
   "business.catalogSetup.deadlineTitle": "Каталогты баптау: {{days}} күн қалды",
-  "business.catalogSetup.deadlineDescription": "Каталогты мерзімге дейін толтырыңыз, әйтпесе жариялау шектеледі.",
+  "business.catalogSetup.deadlineDescription": "Каталогты мерзімге дейін толтырыңыз.",
   "business.catalogSetup.restrictedTitle": "Каталогты баптау мерзімі өтті",
   "business.catalogSetup.restrictedDescription": "Каталог 7 күн бойы бос болғандықтан, тауарлар мен қызметтер іздеуге кірмейді.",
   "business.catalogSetup.reviewTitle": "Каталог қаралуда",
@@ -896,6 +963,12 @@
   "legal.account-deletion.section1.body": "Жою алдында құпиялылық және аккаунт бөлімінен деректерді экспорттауға болады.",
   "legal.account-deletion.section2.body": "Бизнестің жалғыз иесі иелікті беруі немесе бизнесті жоюды таңдауы тиіс.",
   "legal.account-deletion.section3.body": "Жою сессияларды қайтарып, мүшеліктер мен уақытша деректерді алып тастайды.",
+  "managedImport.chatTitle": "Импортты талқылау",
+  "managedImport.chatEmpty": "Импорт туралы осында талқылаңыз",
+  "managedImport.chatEmptyDesc": "Ask командасы импорт сұрауыңыз бойынша мәліметтерді нақтылайды.",
+  "managedImport.chatPlaceholder": "Хабарлама енгізіңіз...",
+  "managedImport.chatError": "Хабарламаларды жүктеу мүмкін болмады",
+  "managedImport.openChat": "Импортты талқылау",
   "managedImport.requested": "Сұрау жіберілді",
   "managedImport.requestProducts": "Тауарларды импорттауға көмек",
   "managedImport.requestServices": "Қызметтерді импорттауға көмек",
@@ -933,4 +1006,52 @@
   "seller.catalog.manualDescription": "Позицияларды өзім қосамын немесе дайын файл жүктеймін",
   "seller.catalog.managedDescription": "Ask командасы {{catalog}} каталогын жинауға және дайындауға көмектеседі",
   "seller.managedBenefitTitle": "Қолмен көшіруге уақыт жұмсамаңыз"
+  ,"seller.pickupDescription": "Сатып алушылар тапсырысты жеткізусіз сіздің нүктеңізден ала алады."
+  ,"seller.pickupEnabled": "Қосулы"
+  ,"seller.pickupDisabled": "Өшірулі"
+  ,"seller.source.WILDBERRIES": "Wildberries"
+  ,"seller.confirmation.business": "Бизнес"
+  ,"seller.confirmation.fulfillment": "Тапсырысты алу"
+  ,"seller.confirmation.catalog": "Каталог бағыты"
+  ,"seller.confirmation.setup": "Каталогты баптау"
+  ,"seller.confirmation.notSpecified": "Көрсетілмеген"
+  ,"seller.confirmation.legalTitle": "Мәліметтерді растаймын және шарттарды қабылдаймын"
+  ,"seller.confirmation.legalDescription": "Сатушы шарттарымен және жеке деректерді өңдеуге келісіммен таныстым. Мәліметтер бизнес профилін жасау үшін пайдаланылуы мүмкін."
+  ,"resultCard.openBrand": "{{brand}} бренді туралы ақпаратты ашу"
+  ,"nav.menu.account": "Аккаунт"
+  ,"nav.menu.business": "Бренд және бизнес"
+  ,"nav.menu.communication": "Байланыс"
+  ,"nav.menu.platformSupport": "Ask қолдауы"
+  ,"supportDrawer.title": "Ask қолдауы"
+  ,"supportDrawer.personalContext": "Жеке сұрақ"
+  ,"supportDrawer.businessContext": "«{{business}}» атынан"
+  ,"supportDrawer.emptyTitle": "Қалай көмектесе аламыз?"
+  ,"supportDrawer.emptyDescription": "Сұрағыңызды жазыңыз. Бұл диалог келесі ашылғанда сақталады."
+  ,"supportDrawer.placeholder": "Сұрағыңызды сипаттаңыз…"
+  ,"supportDrawer.error": "Қолдауды жүктеу мүмкін болмады. Қайталап көріңіз."
+  ,"nav.menu.legal": "Құжаттар"
+  ,"legal.eyebrow": "Ask құжаттары"
+  ,"legal.readOnPage": "Құжаттың мәтіні осы бетте қолжетімді"
+  ,"legal.contents": "Мазмұны"
+  ,"legal.detailFallback": "Құжат Қазақстан Республикасының заңнамасымен және платформаның байланысты ережелерімен бірге қолданылады. Нақты ереже бойынша сұрақ болса, Ask қолдау қызметіне жүгініңіз."
+  ,"profile.eyebrow": "Жеке аккаунт"
+  ,"profile.title": "Профиль және баптаулар"
+  ,"profile.description": "Жеке деректерді, құпиялылықты және брендтерге қолжетімділікті басқарыңыз. Компания ақпараты бизнес кабинетінде бөлек өңделеді."
+  ,"chats.conversations.type.PLATFORM_SUPPORT": "Ask қолдауы"
+  ,"seller.validation.businessContact": "Бизнес атауын және байланыс дерегін көрсетіңіз."
+  ,"seller.validation.importSource": "Каталог импорты үшін кемінде бір дереккөзді таңдаңыз."
+  ,"business.toast.branchRequired": "Алдымен филиалды жасаңыз немесе таңдаңыз."
+  ,"business.toast.imageTooLarge": "Сурет 2 МБ дейін болуы керек."
+  ,"category.autocomplete.placeholder": "Санат атауын енгізіңіз..."
+  ,"category.autocomplete.standardGroup": "Стандартты санаттар"
+  ,"category.autocomplete.yourGroup": "Сіздің санаттарыңыз"
+  ,"category.autocomplete.noMatch": "Сәйкес санаттар жоқ"
+  ,"imageUploader.addPhoto": "Фото қосу"
+  ,"imageUploader.replace": "Ауыстыру"
+  ,"imageUploader.delete": "Жою"
+  ,"business.product.priceSuffix": "\u20B8"
+  ,"business.toast.imageProcessingError": "Суретті өңдеу мүмкін болмады."
+  ,"business.toast.productNameRequired": "Тауар атауын көрсетіңіз."
+  ,"business.toast.serviceNameRequired": "Қызмет атауын көрсетіңіз."
+  ,"seller.validation.legalDetails": "Таңдалған нысан үшін ЖСН/БСН және заңды атауды толтырыңыз немесе «Нысаны көрсетілмеген» нұсқасын таңдаңыз."
 }

@@ -7,7 +7,7 @@ import {
   Package, Briefcase, Building2, UserRound,
   Sparkles, Plus, RefreshCw, Loader2,
   ChevronDown, Menu, X, MapPin, Trash2, Edit3, Check, Layout,
-  Calendar, Upload, Reply, ChevronLeft, ChevronRight, MessageCircle, Paperclip
+  Upload, Reply, ChevronLeft, ChevronRight, MessageCircle, Paperclip, Zap
 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
@@ -16,11 +16,14 @@ import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
 import { Loading } from "../../shared/ui/Loading/Loading";
 import { useToast } from "../../shared/ui/Toast/Toast";
 import { Select } from "../../shared/ui/Select/Select";
+import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/CategoryAutocomplete";
+import { ImageUploader } from "../../shared/ui/ImageUploader/ImageUploader";
 import { DropsEditor } from "../../widgets/DropsEditor/DropsEditor";
 import { ProfileEditor } from "../../widgets/ProfileEditor/ProfileEditor";
 import { BusinessCardBuilder } from "../../widgets/BusinessCardBuilder/BusinessCardBuilder";
 import { ProductImportWizard } from "../../widgets/ProductImportWizard/ProductImportWizard";
 import { ManagedImportRequestDialog } from "../../widgets/ManagedImportRequestDialog/ManagedImportRequestDialog";
+import { ManagedImportChatDrawer } from "../../widgets/ManagedImportChatDrawer/ManagedImportChatDrawer";
 import {
   getBrandProfile, listDrops,
   updateBrandProfile,
@@ -39,7 +42,7 @@ import type {
   BusinessProductDto, BusinessServiceDto, StaffDto,
   ChatConversationDto, ChatMessageDto,
 } from "../../shared/api/dto";
-import { getManagedImportCatalogAccess, listBusinessManagedImports } from "../../shared/api/managedImportClient";
+import { getManagedImportCatalogAccess, listBusinessManagedImports, type ManagedImportItem } from "../../shared/api/managedImportClient";
 import { requestAiEnrichment } from "../../shared/api/platformClient";
 import {
   getBusinessCatalogStatus,
@@ -50,7 +53,7 @@ import { ApiError } from "../../shared/api/httpClient";
 import { isValidEmail } from "../../shared/utils/validation";
 import { ROUTES } from "../../app/routes";
 
-type BusinessSection = "overview" | "products" | "services" | "organization" | "events" | "business-card" | "import";
+type BusinessSection = "overview" | "products" | "services" | "drops" | "organization" | "events" | "business-card" | "import";
 
 interface CategoryInfo {
   id: string;
@@ -101,6 +104,49 @@ function normalizeCityName(value: string) {
     .replace(/^(\u0433\.?|\u0433\u043e\u0440\u043e\u0434)\s*/u, "")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
+}
+
+function compressImage(file: File, maxW = 1200, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width;
+      let h = img.height;
+      if (w > maxW || h > maxW) {
+        const ratio = Math.min(maxW / w, maxW / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas unavailable")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function handleImagePick(
+  file: File,
+  t: (key: string) => string,
+  toast: { show: (msg: string, type: string) => void },
+  setFormImage: (dataUrl: string) => void,
+  setPreview: (dataUrl: string) => void,
+) {
+  if (file.size > 2 * 1024 * 1024) {
+    toast.show(t("business.toast.imageTooLarge"), "error");
+    return;
+  }
+  compressImage(file).then(dataUrl => {
+    setFormImage(dataUrl);
+    setPreview(dataUrl);
+  }).catch(() => {
+    toast.show(t("business.toast.imageProcessingError"), "error");
+  });
 }
 
 
@@ -168,12 +214,13 @@ export function BusinessPage() {
   const [productsTotal, setProductsTotal] = useState(0);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editProduct, setEditProduct] = useState<BusinessProductDto | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", categoryId: "", imageUrl: "" });
+  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", categoryId: "", categoryLabel: "", imageUrl: "" });
   const [productsBusy, setProductsBusy] = useState(false);
   const [selectedProductOfferIds, setSelectedProductOfferIds] = useState<Set<string>>(new Set());
   const [aiEnrichmentBusy, setAiEnrichmentBusy] = useState(false);
-  const [managedImportRequestedScopes, setManagedImportRequestedScopes] = useState<Set<"PRODUCTS" | "SERVICES">>(new Set());
+  const [managedImportItems, setManagedImportItems] = useState<Record<string, ManagedImportItem>>({});
   const [managedImportDialogScope, setManagedImportDialogScope] = useState<"PRODUCTS" | "SERVICES" | null>(null);
+  const [managedImportChat, setManagedImportChat] = useState<ManagedImportItem | null>(null);
   const [productsLoadingPage, setProductsLoadingPage] = useState(false);
   const [newProductIds, setNewProductIds] = useState<Set<string>>(new Set());
   const prevProductIdsRef = useRef<Set<string>>(new Set());
@@ -188,7 +235,9 @@ export function BusinessPage() {
   const [servicesBusy, setServicesBusy] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [editService, setEditService] = useState<BusinessServiceDto | null>(null);
-  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", scheduleType: "FIXED" as "FIXED" | "FLEXIBLE" | "APPOINTMENT", imageUrl: "" });
+  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", scheduleType: "FIXED" as "FIXED" | "FLEXIBLE" | "APPOINTMENT", imageUrl: "" });
+  const [productImagePreview, setProductImagePreview] = useState("");
+  const [serviceImagePreview, setServiceImagePreview] = useState("");
 
   // Branches
   const [branchesBusy, setBranchesBusy] = useState(false);
@@ -230,23 +279,23 @@ export function BusinessPage() {
     if (!membership) return;
     listBusinessManagedImports(membership.businessId)
       .then(items => {
-        const scopes = new Set<"PRODUCTS" | "SERVICES">();
+        const map: Record<string, ManagedImportItem> = {};
         items
           .filter(item => item.status === "PENDING" || item.status === "ACTIVE")
           .forEach(item => {
-            if (item.catalogScope === "PRODUCTS" || item.catalogScope === "BOTH") scopes.add("PRODUCTS");
-            if (item.catalogScope === "SERVICES" || item.catalogScope === "BOTH") scopes.add("SERVICES");
+            if (item.catalogScope === "PRODUCTS" || item.catalogScope === "BOTH") map["PRODUCTS"] = item;
+            if (item.catalogScope === "SERVICES" || item.catalogScope === "BOTH") map["SERVICES"] = item;
           });
-        setManagedImportRequestedScopes(scopes);
+        setManagedImportItems(map);
       })
-      .catch(() => setManagedImportRequestedScopes(new Set()));
+      .catch(() => setManagedImportItems({}));
   }, [membership?.businessId]);
 
   const businessSidebarItems: { key: BusinessSection; label: string; icon: React.ReactNode }[] = [
     { key: "overview", label: t("business.overview"), icon: <Layout size={18} /> },
     { key: "products", label: t("business.products"), icon: <Package size={18} /> },
     { key: "services", label: t("business.services"), icon: <Briefcase size={18} /> },
-    { key: "events", label: t("business.events"), icon: <Calendar size={18} /> },
+    { key: "drops", label: t("business.events"), icon: <Zap size={18} /> },
     { key: "business-card", label: t("business.businessCard"), icon: <Sparkles size={18} /> },
     ...(isWorker || isPlatformWorkspace ? [] : [
       { key: "organization" as BusinessSection, label: t("business.organization"), icon: <Building2 size={18} /> },
@@ -302,8 +351,10 @@ export function BusinessPage() {
       label: t("business.product.add"),
       icon: <Package size={16} />,
       onClick: () => {
+        if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; }
         setEditProduct(null);
         setProductForm({ name: "", description: "", price: "", categoryId: flattenCategories(categories)[0]?.id || "", imageUrl: "" });
+        setProductImagePreview("");
         setShowProductForm(true);
         setSection("products");
       },
@@ -312,22 +363,27 @@ export function BusinessPage() {
       label: t("business.service.add"),
       icon: <Briefcase size={16} />,
       onClick: () => {
+        if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; }
         setEditService(null);
         setServiceForm({ name: "", description: "", basePrice: "", categoryId: flattenCategories(categories)[0]?.id || "", scheduleType: "FIXED", imageUrl: "" });
+        setServiceImagePreview("");
         setShowServiceForm(true);
         setSection("services");
       },
     },
-    {
-      label: t("drops.create"),
-      icon: <Sparkles size={16} />,
-      onClick: () => {
-        setSection("events");
-        setDropComposerRequest(current => current + 1);
-      },
-    },
+    { label: t("drops.create"), icon: <Zap size={16} />, onClick: () => setSection("drops") },
     { label: t("business.importData"), icon: <Upload size={16} />, onClick: () => setSection("import") },
   ];
+
+  useEffect(() => {
+    if (!showProductForm || section !== "products") return;
+    requestAnimationFrame(() => document.getElementById("new-product-form")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [section, showProductForm]);
+
+  useEffect(() => {
+    if (!showServiceForm || section !== "services") return;
+    requestAnimationFrame(() => document.getElementById("new-service-form")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [section, showServiceForm]);
 
   const loadCoreData = useCallback(async () => {
     if (!businessId) return;
@@ -558,7 +614,7 @@ export function BusinessPage() {
     } catch { /* empty */ }
   }, [businessId, selectedConversationId, replyText, replyFile, loadMessages, loadChats]);
 
-  useEffect(() => { if (hasBusinessAccess && section === "overview") { loadChats(); } }, [hasBusinessAccess, section, loadChats]);
+  useEffect(() => { if (hasBusinessAccess) { loadChats(); } }, [hasBusinessAccess, loadChats]);
 
   if (!state.sessionReady) {
     return <Loading />;
@@ -615,14 +671,20 @@ export function BusinessPage() {
 
   // Product CRUD
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", price: "", categoryId: "", imageUrl: "" });
+    setProductForm({ name: "", description: "", price: "", categoryId: "", categoryLabel: "", imageUrl: "" });
+    setProductImagePreview("");
     setEditProduct(null);
     setShowProductForm(false);
   };
 
   const handleCreateProduct = async () => {
-    if (!activeBranchId || !productForm.name) return;
-    if (!productForm.categoryId) {
+    if (!productForm.name.trim()) {
+      toast.show(t("business.toast.productNameRequired"), "error");
+      return;
+    }
+    const catLabel = productForm.categoryLabel.trim();
+    const catId = productForm.categoryId || undefined;
+    if (!catId && !catLabel) {
       toast.show(t("business.toast.selectCategory"), "error");
       return;
     }
@@ -630,8 +692,9 @@ export function BusinessPage() {
       await createProduct(activeBranchId, {
         name: productForm.name,
         description: productForm.description || undefined,
-        price: productForm.price ? Number(productForm.price) : undefined,
-        categoryId: productForm.categoryId,
+        price: productForm.price !== "" ? Number(productForm.price) : undefined,
+        categoryId: catId,
+        categoryLabel: catLabel || undefined,
         imageUrl: productForm.imageUrl || undefined,
       });
       productsCacheRef.current.clear();
@@ -649,7 +712,7 @@ export function BusinessPage() {
       await updateProduct(activeBranchId, editProduct.productId, {
         name: productForm.name || undefined,
         description: productForm.description || undefined,
-        price: productForm.price ? Number(productForm.price) : undefined,
+        price: productForm.price !== "" ? Number(productForm.price) : undefined,
         imageUrl: productForm.imageUrl || undefined,
       });
       productsCacheRef.current.clear();
@@ -679,10 +742,12 @@ export function BusinessPage() {
     setProductForm({
       name: p.name,
       description: p.description || "",
-      price: p.price ? String(p.price) : "",
+      price: p.price != null ? String(p.price) : "",
       categoryId: p.categoryId || "",
+      categoryLabel: p.categoryLabel || "",
       imageUrl: p.imageUrl || "",
     });
+    setProductImagePreview(p.imageUrl || "");
     setShowProductForm(false);
   };
 
@@ -702,26 +767,32 @@ export function BusinessPage() {
 
   // Service CRUD
   const resetServiceForm = () => {
-    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", scheduleType: "FIXED", imageUrl: "" });
+    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", scheduleType: "FIXED", imageUrl: "" });
+    setServiceImagePreview("");
     setEditService(null);
     setShowServiceForm(false);
   };
 
   const handleCreateService = async () => {
-    if (!activeBranchId || !serviceForm.name) return;
-    if (!serviceForm.categoryId) {
+    if (!serviceForm.name.trim()) {
+      toast.show(t("business.toast.serviceNameRequired"), "error");
+      return;
+    }
+    const catLabel = serviceForm.categoryLabel.trim();
+    const catId = serviceForm.categoryId || undefined;
+    if (!catId && !catLabel) {
       toast.show(t("business.toast.selectServiceCategory"), "error");
       return;
     }
     try {
       await createService(activeBranchId, {
-        categoryId: serviceForm.categoryId,
+        categoryId: catId,
+        categoryLabel: catLabel || undefined,
         name: serviceForm.name,
         description: serviceForm.description || undefined,
-        basePrice: serviceForm.basePrice ? Number(serviceForm.basePrice) : undefined,
-        scheduleType: serviceForm.scheduleType,
+        basePrice: serviceForm.basePrice !== "" ? Number(serviceForm.basePrice) : undefined,
         imageUrl: serviceForm.imageUrl || undefined,
-      } as any);
+      });
       resetServiceForm();
       loadServices();
       toast.show(t("business.toast.serviceCreated"), "success");
@@ -736,10 +807,9 @@ export function BusinessPage() {
       await updateService(activeBranchId, editService.serviceOfferingId, {
         name: serviceForm.name || undefined,
         description: serviceForm.description || undefined,
-        basePrice: serviceForm.basePrice ? Number(serviceForm.basePrice) : undefined,
-        scheduleType: serviceForm.scheduleType,
+        basePrice: serviceForm.basePrice !== "" ? Number(serviceForm.basePrice) : undefined,
         imageUrl: serviceForm.imageUrl || undefined,
-      } as any);
+      });
       resetServiceForm();
       loadServices();
       toast.show(t("business.toast.serviceUpdated"), "success");
@@ -753,12 +823,14 @@ export function BusinessPage() {
     setServiceForm({
       name: s.name,
       description: s.description || "",
-      basePrice: s.basePrice ? String(s.basePrice) : "",
+      basePrice: s.basePrice != null ? String(s.basePrice) : "",
       categoryId: s.categoryId || "",
+      categoryLabel: s.categoryLabel || "",
       scheduleType: (s as any).scheduleType || "FIXED",
       imageUrl: s.imageUrl || "",
     });
     setShowServiceForm(false);
+    setServiceImagePreview(s.imageUrl || "");
   };
 
   // Branch CRUD
@@ -1071,8 +1143,8 @@ export function BusinessPage() {
                 {branches.length > 0 && (
                   <Select
                     size="sm"
-                    options={branches.map(b => ({ value: b.id, label: b.name }))}
-                    value={activeBranchId}
+                    options={[{ value: "", label: t("business.allBranches") }, ...branches.map(b => ({ value: b.id, label: b.name }))]}
+                    value={selectedBranchId}
                     onChange={(v) => { setSelectedBranchId(v); setImportBranchId(v); }}
                   />
                 )}
@@ -1118,17 +1190,6 @@ export function BusinessPage() {
                 {/* Overview */}
                 {section === "overview" && (
                   <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-                    <div className="fcw-flex-between fcw-items-center">
-                      <h2 className="fcw-h3" style={{ margin: 0 }}>{t("business.overview.activity")}</h2>
-                      {branches.length > 0 && (
-                        <Select
-                          size="sm"
-                          options={[{ value: "", label: t("business.allBranches") }, ...branches.map(b => ({ value: b.id, label: b.name }))]}
-                          value={selectedBranchId}
-                          onChange={(v) => setSelectedBranchId(v)}
-                        />
-                      )}
-                    </div>
                     <div style={{ display: "flex", gap: "var(--fcw-space-md)", alignItems: "flex-start" }}>
                     <Card padding="lg" style={{ flex: 1, minWidth: 0 }}>
                       {chatConversations.length === 0 && (
@@ -1254,16 +1315,23 @@ export function BusinessPage() {
                       {!isWorker && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
                           {!isPlatformWorkspace && (isOwner || isManager) && (
-                            <button
-                              className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                              onClick={() => setManagedImportDialogScope("PRODUCTS")}
-                              disabled={managedImportRequestedScopes.has("PRODUCTS")}
-                            >
-                              <MessageCircle size={16} />
-                              {managedImportRequestedScopes.has("PRODUCTS")
-                                ? t("managedImport.requested")
-                                : t("managedImport.requestProducts")}
-                            </button>
+                            managedImportItems["PRODUCTS"] ? (
+                              <button
+                                className="fcw-btn fcw-btn-primary fcw-btn-sm"
+                                onClick={() => setManagedImportChat(managedImportItems["PRODUCTS"])}
+                              >
+                                <MessageCircle size={16} />
+                                {t("managedImport.openChat")}
+                              </button>
+                            ) : (
+                              <button
+                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                onClick={() => setManagedImportDialogScope("PRODUCTS")}
+                              >
+                                <MessageCircle size={16} />
+                                {t("managedImport.requestProducts")}
+                              </button>
+                            )
                           )}
                           {isPlatformWorkspace && selectedProductOfferIds.size > 0 && (
                             <button
@@ -1278,7 +1346,7 @@ export function BusinessPage() {
                           <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("PRODUCT"); setSection("import"); }}>
                             <Upload size={16} />{t("business.import.title")}
                           </button>
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { resetProductForm(); setShowProductForm(true); }}>
+                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } resetProductForm(); setProductImagePreview(""); setShowProductForm(true); }}>
                             <Plus size={16} />{t("business.product.add")}
                           </button>
                         </div>
@@ -1296,18 +1364,19 @@ export function BusinessPage() {
                         title={t("business.noProducts")}
                         description={t("business.noProductsDesc")}
                         action={!isWorker ? (
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => setShowProductForm(true)}>
+                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } setProductImagePreview(""); setShowProductForm(true); }}>
                             <Plus size={16} />{t("business.product.add")}
                           </button>
                         ) : undefined}
                       />
                     )}
 
-                    {activeBranchId && (products.length > 0 || showProductForm) && (
+                    {(activeBranchId || showProductForm) && (products.length > 0 || showProductForm) && (
                       <div className="fcw-flex-col" style={{ gap: "0.25rem", minHeight: 440, opacity: productsLoadingPage ? 0.6 : 1, transition: "opacity 150ms" }}>
                         <AnimatePresence>
                           {showProductForm && !editProduct && (
                             <motion.div
+                              id="new-product-form"
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: "auto", opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
@@ -1315,58 +1384,56 @@ export function BusinessPage() {
                               style={{ overflow: "hidden" }}
                             >
                               <Card padding="md">
-                                <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                                  <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                    <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                                    {t("business.newProduct")}
-                                  </h3>
-                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 240px", gap: "0.75rem" }}>
-                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                      <label className="fcw-label">{t("business.product.name")}</label>
-                                      <input
-                                        className="fcw-input"
-                                        placeholder={t("business.product.namePlaceholder")}
-                                        value={productForm.name}
-                                        onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
-                                      />
-                                    </div>
-                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                      <label className="fcw-label">{t("business.product.category")}</label>
-                                      <Select
-                                        options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
-                                        value={productForm.categoryId}
-                                        onChange={v => setProductForm(p => ({ ...p, categoryId: v }))}
-                                        placeholder={t("business.product.categoryPlaceholder")}
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "200px" }}>
-                                    <label className="fcw-label">{t("business.product.price")}</label>
+                                <div className="fcw-flex-col" style={{ gap: "0.75rem", maxWidth: 520 }}>
+                                  <ImageUploader
+                                    value={productForm.imageUrl}
+                                    onChange={dataUrl => { setProductForm(p => ({ ...p, imageUrl: dataUrl })); setProductImagePreview(dataUrl); }}
+                                    onRemove={() => { setProductForm(p => ({ ...p, imageUrl: "" })); setProductImagePreview(""); }}
+                                  />
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.product.name")}</label>
                                     <input
                                       className="fcw-input"
-                                      type="text"
-                                      inputMode="decimal"
-                                      placeholder={t("business.product.pricePlaceholder")}
-                                      value={productForm.price}
-                                      onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))}
+                                      maxLength={255}
+                                      placeholder={t("business.product.namePlaceholder")}
+                                      value={productForm.name}
+                                      onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
                                     />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.product.category")}</label>
+                                    <CategoryAutocomplete
+                                      value={productForm.categoryLabel}
+                                      categoryId={productForm.categoryId || null}
+                                      onChange={(label, catId) => setProductForm(p => ({ ...p, categoryLabel: label, categoryId: catId || "" }))}
+                                      businessId={businessId}
+                                      placeholder={t("business.product.categoryPlaceholder")}
+                                    />
+                                  </div>
+                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                    <label className="fcw-label">{t("business.product.price")}</label>
+                                    <div style={{ position: "relative" }}>
+                                      <input
+                                        className="fcw-input"
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder={t("business.product.pricePlaceholder")}
+                                        value={productForm.price}
+                                        onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))}
+                                        style={{ paddingRight: 28 }}
+                                      />
+                                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--fcw-muted)", fontSize: 14 }}>{t("business.product.priceSuffix")}</span>
+                                    </div>
                                   </div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                     <label className="fcw-label">{t("business.product.description")}</label>
-                                    <input
-                                      className="fcw-input"
+                                    <textarea
+                                      className="fcw-textarea"
+                                      maxLength={2000}
+                                      rows={3}
                                       placeholder={t("business.product.descriptionPlaceholder")}
                                       value={productForm.description}
                                       onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.imageUrlPlaceholder")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.product.imageUrlPlaceholder")}
-                                      value={productForm.imageUrl}
-                                      onChange={e => setProductForm(p => ({ ...p, imageUrl: e.target.value }))}
                                     />
                                   </div>
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
@@ -1403,7 +1470,7 @@ export function BusinessPage() {
                                   <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: "0.75rem" }}>
                                     <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                       <label className="fcw-label">{t("business.product.name")}</label>
-                                      <input className="fcw-input" value={productForm.name} onChange={e => setProductForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.product.namePlaceholder")} />
+                                      <input className="fcw-input" maxLength={255} value={productForm.name} onChange={e => setProductForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.product.namePlaceholder")} />
                                     </div>
                                     <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                       <label className="fcw-label">{t("business.product.price")}</label>
@@ -1412,11 +1479,22 @@ export function BusinessPage() {
                                   </div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                     <label className="fcw-label">{t("business.product.description")}</label>
-                                    <input className="fcw-input" value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.product.descriptionPlaceholder")} />
+                                    <textarea className="fcw-textarea" maxLength={2000} rows={2} value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.product.descriptionPlaceholder")} />
                                   </div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.imageUrlPlaceholder")}</label>
-                                    <input className="fcw-input" value={productForm.imageUrl} onChange={e => setProductForm(v => ({ ...v, imageUrl: e.target.value }))} placeholder={t("business.product.imageUrlPlaceholder")} />
+                                    <label className="fcw-label">{t("business.product.imageLabel")}</label>
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/png,image/webp"
+                                      onChange={e => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleImagePick(file, t, toast, dataUrl => setProductForm(v => ({ ...v, imageUrl: dataUrl })), setProductImagePreview);
+                                      }}
+                                      style={{ maxWidth: 320 }}
+                                    />
+                                    {productImagePreview && (
+                                      <img src={productImagePreview} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: "var(--fcw-radius-sm)", marginTop: "0.25rem" }} />
+                                    )}
                                   </div>
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                     <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateProduct}><Check size={14} />{t("business.save")}</button>
@@ -1523,21 +1601,28 @@ export function BusinessPage() {
                       {!isWorker && (
                         <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
                           {!isPlatformWorkspace && (isOwner || isManager) && (
-                            <button
-                              className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                              onClick={() => setManagedImportDialogScope("SERVICES")}
-                              disabled={managedImportRequestedScopes.has("SERVICES")}
-                            >
-                              <MessageCircle size={16} />
-                              {managedImportRequestedScopes.has("SERVICES")
-                                ? t("managedImport.requested")
-                                : t("managedImport.requestServices")}
-                            </button>
+                            managedImportItems["SERVICES"] ? (
+                              <button
+                                className="fcw-btn fcw-btn-primary fcw-btn-sm"
+                                onClick={() => setManagedImportChat(managedImportItems["SERVICES"])}
+                              >
+                                <MessageCircle size={16} />
+                                {t("managedImport.openChat")}
+                              </button>
+                            ) : (
+                              <button
+                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                                onClick={() => setManagedImportDialogScope("SERVICES")}
+                              >
+                                <MessageCircle size={16} />
+                                {t("managedImport.requestServices")}
+                              </button>
+                            )
                           )}
                           <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("SERVICE"); setSection("import"); }}>
                             <Upload size={16} />{t("business.import.titleServices")}
                           </button>
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { resetServiceForm(); setShowServiceForm(true); }}>
+                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } resetServiceForm(); setServiceImagePreview(""); setShowServiceForm(true); }}>
                             <Plus size={16} />{t("business.service.add")}
                           </button>
                         </div>
@@ -1555,18 +1640,19 @@ export function BusinessPage() {
                         title={t("business.noServices")}
                         description={t("business.noServicesDesc")}
                         action={!isWorker ? (
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => setShowServiceForm(true)}>
+                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } setServiceImagePreview(""); setShowServiceForm(true); }}>
                             <Plus size={16} />{t("business.service.add")}
                           </button>
                         ) : undefined}
                       />
                     )}
 
-                    {activeBranchId && !servicesBusy && (
+                    {(activeBranchId || showServiceForm) && !servicesBusy && (
                       <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                         <AnimatePresence>
                           {showServiceForm && !editService && (
                             <motion.div
+                              id="new-service-form"
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: "auto", opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
@@ -1574,73 +1660,58 @@ export function BusinessPage() {
                               style={{ overflow: "hidden" }}
                             >
                               <Card padding="md">
-                                <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                                  <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                    <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                                    {t("business.newService")}
-                                  </h3>
+                                <div className="fcw-flex-col" style={{ gap: "0.75rem", maxWidth: 520 }}>
+                                  <ImageUploader
+                                    value={serviceForm.imageUrl}
+                                    onChange={dataUrl => { setServiceForm(s => ({ ...s, imageUrl: dataUrl })); setServiceImagePreview(dataUrl); }}
+                                    onRemove={() => { setServiceForm(s => ({ ...s, imageUrl: "" })); setServiceImagePreview(""); }}
+                                  />
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                     <label className="fcw-label">{t("business.service.name")}</label>
                                     <input
                                       className="fcw-input"
+                                      maxLength={255}
                                       placeholder={t("business.service.namePlaceholder")}
                                       value={serviceForm.name}
                                       onChange={e => setServiceForm(s => ({ ...s, name: e.target.value }))}
                                     />
                                   </div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.service.description")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.service.descriptionPlaceholder")}
-                                      value={serviceForm.description}
-                                      onChange={e => setServiceForm(s => ({ ...s, description: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "260px" }}>
-                                    <label className="fcw-label">{t("business.service.schedule")}</label>
-                                    <Select
-                                      options={[
-                                        { value: "FIXED", label: t("business.scheduleFixed") },
-                                        { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
-                                        { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
-                                      ]}
-                                      value={serviceForm.scheduleType}
-                                      onChange={v => setServiceForm(s => ({ ...s, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
-                                    <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "160px" }}>
-                                      <label className="fcw-label">{t("business.service.price")}</label>
-                                      <input
-                                        className="fcw-input"
-                                        placeholder={t("business.service.pricePlaceholder")}
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={serviceForm.basePrice}
-                                        onChange={e => setServiceForm(s => ({ ...s, basePrice: e.target.value }))}
-                                      />
-                                    </div>
-                                    {serviceForm.scheduleType === "FLEXIBLE" && (
-                                      <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center", maxWidth: "160px" }}>{t("business.scheduleFlexibleHint")}</span>
-                                    )}
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "320px" }}>
                                     <label className="fcw-label">{t("business.service.category")}</label>
-                                    <Select
-                                      options={flattenCategories(categories).map(c => ({ value: c.id, label: c.name }))}
-                                      value={serviceForm.categoryId}
-                                      onChange={v => setServiceForm(s => ({ ...s, categoryId: v }))}
+                                    <CategoryAutocomplete
+                                      value={serviceForm.categoryLabel}
+                                      categoryId={serviceForm.categoryId || null}
+                                      onChange={(label, catId) => setServiceForm(s => ({ ...s, categoryLabel: label, categoryId: catId || "" }))}
+                                      businessId={businessId}
                                       placeholder={t("business.service.categoryPlaceholder")}
                                     />
                                   </div>
+                                  <div className="fcw-flex" style={{ gap: "0.75rem" }}>
+                                    <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: 1 }}>
+                                      <label className="fcw-label">{t("business.service.price")}</label>
+                                      <div style={{ position: "relative" }}>
+                                        <input
+                                          className="fcw-input"
+                                          type="text"
+                                          inputMode="decimal"
+                                          placeholder={t("business.service.pricePlaceholder")}
+                                          value={serviceForm.basePrice}
+                                          onChange={e => setServiceForm(s => ({ ...s, basePrice: e.target.value }))}
+                                          style={{ paddingRight: 28 }}
+                                        />
+                                        <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--fcw-muted)", fontSize: 14 }}>{t("business.product.priceSuffix")}</span>
+                                      </div>
+                                    </div>
+                                  </div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.service.imageUrlPlaceholder")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.service.imageUrlPlaceholder")}
-                                      value={serviceForm.imageUrl}
-                                      onChange={e => setServiceForm(s => ({ ...s, imageUrl: e.target.value }))}
+                                    <label className="fcw-label">{t("business.service.description")}</label>
+                                    <textarea
+                                      className="fcw-textarea"
+                                      maxLength={2000}
+                                      rows={3}
+                                      placeholder={t("business.service.descriptionPlaceholder")}
+                                      value={serviceForm.description}
+                                      onChange={e => setServiceForm(s => ({ ...s, description: e.target.value }))}
                                     />
                                   </div>
                                   <div className="fcw-flex" style={{ gap: "0.5rem" }}>
@@ -1680,7 +1751,7 @@ export function BusinessPage() {
                                 <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(110px, 160px) minmax(110px, 160px)", gap: "0.75rem" }}>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                     <label className="fcw-label">{t("business.service.name")}</label>
-                                    <input className="fcw-input" value={serviceForm.name} onChange={e => setServiceForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.service.namePlaceholder")} />
+                                    <input className="fcw-input" maxLength={255} value={serviceForm.name} onChange={e => setServiceForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.service.namePlaceholder")} />
                                   </div>
                                   <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                     <label className="fcw-label">{t("business.service.price")}</label>
@@ -1692,11 +1763,22 @@ export function BusinessPage() {
                                 </div>
                                 <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                                   <label className="fcw-label">{t("business.service.description")}</label>
-                                  <input className="fcw-input" value={serviceForm.description} onChange={e => setServiceForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.service.descriptionPlaceholder")} />
+                                  <textarea className="fcw-textarea" maxLength={2000} rows={2} value={serviceForm.description} onChange={e => setServiceForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.service.descriptionPlaceholder")} />
                                 </div>
                                 <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                  <label className="fcw-label">{t("business.service.imageUrlPlaceholder")}</label>
-                                  <input className="fcw-input" value={serviceForm.imageUrl} onChange={e => setServiceForm(v => ({ ...v, imageUrl: e.target.value }))} placeholder={t("business.service.imageUrlPlaceholder")} />
+                                  <label className="fcw-label">{t("business.service.imageLabel")}</label>
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleImagePick(file, t, toast, dataUrl => setServiceForm(v => ({ ...v, imageUrl: dataUrl })), setServiceImagePreview);
+                                    }}
+                                    style={{ maxWidth: 320 }}
+                                  />
+                                  {serviceImagePreview && (
+                                    <img src={serviceImagePreview} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: "var(--fcw-radius-sm)", marginTop: "0.25rem" }} />
+                                  )}
                                 </div>
                                 <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                   <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateService}><Check size={14} />{t("business.save")}</button>
@@ -1733,6 +1815,19 @@ export function BusinessPage() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Drops / Unique Offers */}
+                {section === "drops" && (
+                  <div>
+                    <DropsEditor
+                      drops={drops}
+                      onCreate={handleCreateDrop}
+                      onCancel={handleCancelDrop}
+                      onDelete={handleDeleteDrop}
+                      busy={busy}
+                    />
                   </div>
                 )}
 
@@ -2386,19 +2481,6 @@ export function BusinessPage() {
                   </div>
                 )}
 
-                {/* Events */}
-                {section === "events" && (
-                  <DropsEditor
-                    drops={drops}
-                    onCreate={handleCreateDrop}
-                    onCancel={handleCancelDrop}
-                    onDelete={handleDeleteDrop}
-                    busy={busy}
-                    readOnly={isStaff}
-                    openRequest={dropComposerRequest}
-                  />
-                )}
-
                 {/* Import data */}
                 {section === "import" && (
                   <ProductImportWizard
@@ -2428,7 +2510,14 @@ export function BusinessPage() {
         scope={managedImportDialogScope ?? "PRODUCTS"}
         defaultContactValue={state.session?.user?.email ?? ""}
         onClose={() => setManagedImportDialogScope(null)}
-        onSubmitted={scope => setManagedImportRequestedScopes(current => new Set(current).add(scope))}
+        onSubmitted={item => setManagedImportItems(current => ({ ...current, [item.catalogScope]: item }))}
+      />
+      <ManagedImportChatDrawer
+        open={managedImportChat !== null}
+        conversationId={managedImportChat?.conversationId ?? ""}
+        businessId={businessId}
+        businessName={membership?.businessName}
+        onClose={() => setManagedImportChat(null)}
       />
     </main>
   );

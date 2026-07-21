@@ -213,15 +213,15 @@ export function ProfilePage() {
       <div className="fcw-container" style={{ paddingTop: "var(--fcw-space-lg)", paddingBottom: "var(--fcw-space-xl)" }}>
         <motion.div
           className="fcw-flex-col"
-          style={{ gap: "var(--fcw-space-md)", maxWidth: "720px", margin: "0 auto" }}
+          style={{ gap: "var(--fcw-space-md)", maxWidth: "920px", margin: "0 auto" }}
           initial={reduced ? {} : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
         >
-          <Card padding="lg">
+          <Card padding="lg" className="profile-identity-card">
             <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "1rem" }}>
               <div
-                className="fcw-flex-center fcw-radius-full"
+                className="profile-avatar fcw-flex-center fcw-radius-full"
                 style={{
                   width: 72,
                   height: 72,
@@ -253,7 +253,8 @@ export function ProfilePage() {
             </div>
           </Card>
 
-          <Card padding="lg">
+          <section className="profile-action-zone">
+          <Card padding="lg" className="profile-section-card">
             <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem", marginBottom: "var(--fcw-space-md)" }}>
               <h2 className="fcw-h3" style={{ margin: 0 }}>{t("profile.section.profileData")}</h2>
               <label className="fcw-btn fcw-btn-secondary fcw-btn-sm">
@@ -314,7 +315,7 @@ export function ProfilePage() {
             </div>
           </Card>
 
-          <Card padding="none">
+          <Card padding="none" className="profile-section-card profile-quick-actions">
             <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)" }} onClick={requestLocation} disabled={geoBusy}>
               {geoBusy ? <Loader2 className="fcw-animate-spin" size={18} /> : geoActive ? <CheckCircle2 size={18} style={{ color: "var(--fcw-color-accent)" }} /> : geoStatus === "expired" ? <AlertTriangle size={18} style={{ color: "var(--fcw-amber-500)" }} /> : <MapPin size={18} style={{ color: "var(--fcw-color-primary)" }} />}
               <span className="fcw-flex-1 fcw-text-left">
@@ -381,16 +382,17 @@ export function ProfilePage() {
             </button>
           </Card>
 
-          <Card padding="lg">
-            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
+          <Card padding="lg" className="profile-section-card profile-danger-card">
+            <div className="profile-danger-heading">
               <h2 className="fcw-h3" style={{ margin: 0 }}>{t("profile.account.title")}</h2>
-              <p className="fcw-body-s fcw-text-secondary">{t("profile.account.description")}</p>
               <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
                 <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setShowDeleteConfirmation(true)}>
                   <Trash2 size={14} />
                   {t("profile.account.delete")}
                 </button>
               </div>
+            </div>
+            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
               {showDeleteConfirmation && (
                 <div className="fcw-flex-col fcw-radius-md" style={{ gap: "0.5rem", padding: "0.75rem", background: "var(--fcw-color-surface-secondary)" }}>
                   <p className="fcw-body-s">{t("profile.account.deleteConfirm")}</p>
@@ -407,6 +409,7 @@ export function ProfilePage() {
               {accountActionError && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{accountActionError}</p>}
             </div>
           </Card>
+          </section>
         </motion.div>
       </div>
     </main>

@@ -2,8 +2,9 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Home, MessageCircle, UserRound, Sun, Moon, LogOut, Building2, Settings, Shield } from "lucide-react";
+import { Building2, FileText, Headphones, Home, LogOut, MessageCircle, Moon, Settings, Shield, Sun, UserRound } from "lucide-react";
 import { buildRoute, ROUTES } from "../../../app/routes";
+import { SupportDrawer } from "../../../widgets/SupportDrawer/SupportDrawer";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { useTheme } from "../../../app/providers/ThemeProvider";
 import { LanguageSwitcher } from "../LanguageSwitcher/LanguageSwitcher";
@@ -20,11 +21,14 @@ export function Navigation() {
     membership => membership.businessId === state.activeBusinessId,
   ) ?? businessMemberships[0];
   const hasPlatformAccess = Boolean(state.session?.platformMembership);
+  const user = state.session?.user;
+  const userInitial = (user?.displayName || user?.email || "A").slice(0, 1).toUpperCase();
 
   // User menu
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const consumerDesktopLinks = [
     { to: ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
@@ -61,6 +65,11 @@ export function Navigation() {
   const handleLogout = async () => {
     await actions.logout();
     navigate(ROUTES.auth, { replace: true });
+  };
+
+  const handlePlatformSupport = () => {
+    setUserMenuOpen(false);
+    setSupportOpen(true);
   };
 
   return (
@@ -111,7 +120,7 @@ export function Navigation() {
                   style={{ borderRadius: "var(--fcw-radius-full)" }}
                   aria-label={t("nav.profile")}
                 >
-                  <UserRound size={18} />
+                  <span className="nav-account-avatar">{userInitial}</span>
                 </button>
             )}
           </div>
@@ -180,7 +189,7 @@ export function Navigation() {
                   }}
                   aria-label={t("nav.profile")}
                 >
-                  <UserRound size={18} />
+                  <span className="nav-account-avatar">{userInitial}</span>
                 </button>
             )}
           </div>
@@ -203,16 +212,24 @@ export function Navigation() {
             top: menuAnchor.top,
             right: menuAnchor.right,
             zIndex: 200,
-            minWidth: 180,
+            width: "min(320px, calc(100vw - 1rem))",
             backgroundColor: "var(--fcw-color-surface)",
             border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
             borderRadius: "var(--fcw-radius-md)",
             boxShadow: "var(--fcw-shadow-lg)",
-            padding: "0.25rem",
+            padding: "0.5rem",
             display: "flex",
             flexDirection: "column",
             gap: "0.125rem",
           }}>
+            <div className="nav-account-summary">
+              <span className="nav-account-avatar nav-account-avatar-lg">{userInitial}</span>
+              <span>
+                <strong>{user?.displayName || t("profile.displayNameFallback")}</strong>
+                <small>{user?.email || user?.phone || ""}</small>
+              </span>
+            </div>
+            <span className="nav-menu-label">{t("nav.menu.account")}</span>
             <button
               className="fcw-btn fcw-btn-ghost fcw-btn-sm"
               style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
@@ -227,7 +244,29 @@ export function Navigation() {
             >
               <Settings size={14} />{t("business.settings")}
             </button>
-            <div style={{ height: 1, backgroundColor: "var(--fcw-color-border)", margin: "0.125rem 0" }} />
+            <button
+              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
+              onClick={handlePlatformSupport}
+            >
+              <Headphones size={14} />{t("nav.menu.platformSupport")}
+            </button>
+            <span className="nav-menu-label">{t("nav.menu.legal")}</span>
+            <button
+              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
+              onClick={() => { setUserMenuOpen(false); navigate("/legal/user-terms"); }}
+            >
+              <FileText size={14} />{t("legal.user-terms.title")}
+            </button>
+            <button
+              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
+              onClick={() => { setUserMenuOpen(false); navigate("/legal/privacy"); }}
+            >
+              <Shield size={14} />{t("legal.privacy.title")}
+            </button>
+            <div style={{ height: 1, backgroundColor: "var(--fcw-color-border)", margin: "0.25rem 0" }} />
             <button
               className="fcw-btn fcw-btn-ghost fcw-btn-sm"
               style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%", color: "var(--fcw-color-error)" }}
@@ -264,6 +303,12 @@ export function Navigation() {
           </div>
         </div>
       </Modal>
+      <SupportDrawer
+        open={supportOpen}
+        businessId={selectedMembership?.businessId}
+        businessName={selectedMembership?.businessName}
+        onClose={() => setSupportOpen(false)}
+      />
     </>
   );
 }

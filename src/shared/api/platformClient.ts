@@ -139,3 +139,167 @@ export function moderateProduct(productId: string, hidden: boolean) {
     body: { hidden },
   });
 }
+
+export type CustomerRequestItem = {
+  id: string;
+  query: string;
+  scope: string;
+  city: string;
+  status: string;
+  matchedSuppliers: number;
+  replyCount: number;
+  createdAt: string;
+};
+
+export function listAllCustomerRequests() {
+  return apiRequest<CustomerRequestItem[]>("/api/v1/platform/customer-requests", { auth: true });
+}
+
+export type PlatformDashboardResponse = {
+  totalBusinesses: number;
+  totalActiveProducts: number;
+  totalActiveServices: number;
+  totalActiveDrops: number;
+  openSupportConversations: number;
+  pendingModerationItems: number;
+  totalUsers: number;
+};
+
+export function getPlatformDashboard() {
+  return apiRequest<PlatformDashboardResponse>("/api/v1/platform/dashboard", { auth: true });
+}
+
+export type PlatformBusinessRowResponse = {
+  businessId: string;
+  name: string;
+  legalName: string;
+  contactEmail: string;
+  branchCount: number;
+  memberCount: number;
+  productCount: number;
+  serviceCount: number;
+  dropCount: number;
+  moderationStatus: string;
+  catalogStatus: string;
+};
+
+export type PlatformBusinessListResponse = {
+  items: PlatformBusinessRowResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export function listPlatformBusinesses(page = 0, size = 20, query?: string) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (query) params.set("query", query);
+  return apiRequest<PlatformBusinessListResponse>(`/api/v1/platform/businesses?${params}`, { auth: true });
+}
+
+export type PlatformBusinessBranchDto = {
+  branchId: string;
+  name: string;
+  address: string;
+  onlineOnly: boolean;
+};
+
+export type PlatformBusinessDetailResponse = {
+  businessId: string;
+  name: string;
+  legalName: string;
+  bin: string;
+  countryCode: string;
+  preferredContactChannel: string;
+  preferredContactValue: string;
+  moderationStatus: string;
+  catalogStatus: string;
+  catalogScope: string;
+  branchCount: number;
+  memberCount: number;
+  productCount: number;
+  serviceCount: number;
+  dropCount: number;
+  branches: PlatformBusinessBranchDto[];
+};
+
+export function getPlatformBusinessDetail(businessId: string) {
+  return apiRequest<PlatformBusinessDetailResponse>(`/api/v1/platform/businesses/${businessId}`, { auth: true });
+}
+
+export function createPlatformBusinessProduct(businessId: string, data: {
+  name: string;
+  categoryLabel?: string;
+  description?: string;
+  sku?: string;
+  tags?: string[];
+  characteristics?: Record<string, string>;
+}) {
+  return apiRequest(`/api/v1/platform/businesses/${businessId}/products`, {
+    method: "POST",
+    auth: true,
+    body: data,
+  });
+}
+
+export function deletePlatformProduct(productId: string) {
+  return apiRequest<void>(`/api/v1/platform/products/${productId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+export function listPlatformSupportConversations() {
+  return apiRequest<ChatConversationListResponse>("/api/v1/platform/support/conversations", { auth: true });
+}
+
+export function getPlatformSupportMessages(conversationId: string) {
+  return apiRequest<ChatMessageListResponse>(`/api/v1/platform/support/conversations/${conversationId}/messages`, { auth: true });
+}
+
+export function sendPlatformSupportMessage(conversationId: string, text: string, attachmentUrl?: string) {
+  return apiRequest<ChatMessageDto>(`/api/v1/platform/support/conversations/${conversationId}/messages`, {
+    method: "POST",
+    auth: true,
+    body: { text, attachmentUrl },
+  });
+}
+
+export function closePlatformSupportConversation(conversationId: string) {
+  return apiRequest<ChatConversationDto>(`/api/v1/platform/support/conversations/${conversationId}/close`, { method: "POST", auth: true });
+}
+
+export type ProductModerationItem = {
+  productId: string;
+  productName: string;
+  businessId: string;
+  businessName: string;
+  imageUrl: string;
+  createdAt: string;
+  moderationNote: string;
+  moderationStatus: string;
+};
+
+export type ModerationQueuePage = {
+  content: ProductModerationItem[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+};
+
+export function listModerationQueue(page = 0, size = 20) {
+  return apiRequest<ModerationQueuePage>(`/api/v1/platform/moderation/queue?page=${page}&size=${size}`, { auth: true });
+}
+
+export function approveModerationItem(productId: string) {
+  return apiRequest<void>(`/api/v1/platform/moderation/queue/${productId}/approve`, { method: "POST", auth: true });
+}
+
+export function rejectModerationItem(productId: string, reason: string) {
+  return apiRequest<void>(`/api/v1/platform/moderation/queue/${productId}/reject`, {
+    method: "POST",
+    auth: true,
+    body: { reason },
+  });
+}

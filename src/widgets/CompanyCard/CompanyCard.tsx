@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, CheckCheck, Paperclip, FileText, Flag } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe, Instagram, MapPin, MessageCircle, X, Send, Loader2, CheckCheck, Paperclip, FileText, Flag } from "lucide-react";
 import type { ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
 import { useMotion } from "../../app/providers/MotionProvider";
-import { getPublicBusinessCard, startChatConversation, getChatMessages, sendChatMessage, uploadChatFile } from "../../shared/api/askClient";
+import { getBrandProfile, getPublicBusinessCard, resolveContactAction, startChatConversation, getChatMessages, sendChatMessage, uploadChatFile } from "../../shared/api/askClient";
 import { ReportDialog } from "../ReportDialog/ReportDialog";
-import type { BusinessCardDto, ChatMessageDto } from "../../shared/api/dto";
+import type { BrandProfileDto, BusinessCardDto, ChatMessageDto } from "../../shared/api/dto";
 
 interface Props {
   data: ResultCardData | null;
@@ -21,6 +21,7 @@ export function CompanyCard({ data, onClose }: Props) {
   const [chatMessage, setChatMessage] = useState("");
   const [cardData, setCardData] = useState<BusinessCardDto | null>(null);
   const [cardLoading, setCardLoading] = useState(false);
+  const [brandProfile, setBrandProfile] = useState<BrandProfileDto | null>(null);
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [chatError, setChatError] = useState("");
@@ -32,9 +33,14 @@ export function CompanyCard({ data, onClose }: Props) {
   useEffect(() => {
     if (!data?.businessId) return;
     setCardLoading(true);
-    getPublicBusinessCard(data.businessId)
-      .then(setCardData)
-      .catch(() => setCardData(null))
+    Promise.allSettled([
+      getPublicBusinessCard(data.businessId),
+      getBrandProfile(data.businessId),
+    ])
+      .then(([businessCardResult, brandProfileResult]) => {
+        setCardData(businessCardResult.status === "fulfilled" ? businessCardResult.value : null);
+        setBrandProfile(brandProfileResult.status === "fulfilled" ? brandProfileResult.value : null);
+      })
       .finally(() => setCardLoading(false));
   }, [data?.businessId]);
 
@@ -65,6 +71,18 @@ export function CompanyCard({ data, onClose }: Props) {
       setChatError(t("companyCard.chat.error"));
     } finally {
       setChatBusy(false);
+    }
+  };
+
+  const handleContactAction = async (contactActionId: string) => {
+    try {
+      const action = await resolveContactAction(contactActionId);
+      const target = action.redirectUrl || action.deepLink;
+      if (target) {
+        window.open(target, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      setChatError(t("companyCard.chat.error"));
     }
   };
 
@@ -405,6 +423,11 @@ export function CompanyCard({ data, onClose }: Props) {
 
                   {/* Info section */}
                   <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
+                    {brandProfile?.description && (
+                      <p className="fcw-body fcw-text-secondary" style={{ margin: 0, maxWidth: "62ch", lineHeight: 1.6 }}>
+                        {brandProfile.description}
+                      </p>
+                    )}
                     {data.location && (
                       <div className="fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}>
                         <MapPin size={14} style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }} />
@@ -422,6 +445,47 @@ export function CompanyCard({ data, onClose }: Props) {
                       </div>
                     )}
                   </div>
+
+                  {brandProfile && (
+                    <div className="brand-contact-actions">
+                      {brandProfile.instagramUrl && (
+                        <a href={brandProfile.instagramUrl} target="_blank" rel="noopener noreferrer">
+                          <Instagram size={17} />
+                          Instagram
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
+                      {brandProfile.telegramUrl && (
+                        <a href={brandProfile.telegramUrl} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle size={17} />
+                          Telegram
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
+                      {brandProfile.websiteUrl && (
+                        <a href={brandProfile.websiteUrl} target="_blank" rel="noopener noreferrer">
+                          <Globe size={17} />
+                          {t("profileEditor.website")}
+                          <ExternalLink size={13} />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  {data.contactActions && data.contactActions.length > 0 && (
+                    <div className="brand-contact-actions">
+                      {data.contactActions.map(action => (
+                        <button
+                          key={action.contactActionId}
+                          type="button"
+                          onClick={() => handleContactAction(action.contactActionId)}
+                        >
+                          <MessageCircle size={17} />
+                          {action.label || action.provider}
+                          <ExternalLink size={13} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
 
 
