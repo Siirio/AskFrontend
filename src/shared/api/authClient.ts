@@ -2,7 +2,7 @@ import { API_BASE_URL, apiRequest } from "./httpClient";
 import { setAccessToken } from "./authTokenStore";
 
 export type AuthChallenge = {
-  authChallengeId: string;
+  verificationId: string;
   role: string;
   purpose: string;
   channel: "EMAIL" | "SMS";
@@ -16,16 +16,16 @@ export type AuthSession = {
   tokenType?: string;
   expiresIn?: number;
   expiresAt: string;
-  remembered?: boolean;
-  activationRequired?: boolean;
+  isRemembered?: boolean;
+  isActivationRequired?: boolean;
   role?: string;
   startRoute?: string;
   user?: { userId: string; displayName: string; email?: string; phone?: string; status?: string };
   business?: { businessId: string; businessName: string; membershipId?: string; memberRole?: string; branchId?: string; branchName?: string };
   requiresRoleSelection?: boolean;
   requiresTwoFactor?: boolean;
-  authChallengeId?: string;
-  customerProfile?: { enabled: boolean };
+  verificationId?: string;
+  customerProfile?: { isEnabled: boolean };
   businessMemberships?: Array<{
     membershipId: string;
     businessId: string;
@@ -70,7 +70,7 @@ export function registerCustomer(
       passwordConfirmation: password,
       countryCode: "KZ",
       locale,
-      rememberMe: true,
+      isRememberMe: true,
     },
   });
 }
@@ -95,22 +95,22 @@ export function registerBusiness(params: {
       branchAddress: params.branchAddress,
       onlineOnly: false,
       acceptedBusinessRules: true,
-      rememberMe: true,
+      isRememberMe: true,
     },
   });
 }
 
-export function verifyCode(authChallengeId: string, code: string) {
+export function verifyCode(verificationId: string, code: string) {
   return apiRequest<AuthSession>("/api/v1/auth/verify", {
     method: "POST",
-    body: { authChallengeId, code },
+    body: { verificationId, code },
   });
 }
 
-export function verifyTwoFactor(authChallengeId: string, code: string) {
+export function verifyTwoFactor(verificationId: string, code: string) {
   return apiRequest<AuthSession>("/api/v1/auth/verify", {
     method: "POST",
-    body: { authChallengeId, code },
+    body: { verificationId, code },
   });
 }
 
@@ -161,11 +161,11 @@ export function requestEmailChange(newEmail: string) {
   });
 }
 
-export function confirmEmailChange(authChallengeId: string, code: string) {
+export function confirmEmailChange(verificationId: string, code: string) {
   return apiRequest<AuthSession>("/api/v1/auth/email-change/confirm", {
     method: "POST",
     auth: true,
-    body: { authChallengeId, code },
+    body: { verificationId, code },
   });
 }
 

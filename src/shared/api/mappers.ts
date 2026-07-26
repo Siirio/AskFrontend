@@ -10,7 +10,7 @@ const confidenceMap = {
 } as const;
 
 const kindMap = {
-  PRODUCT: "product",
+  ITEM: "item",
   SERVICE: "service",
   BUSINESS: "business",
 } as const;

@@ -15,6 +15,7 @@ import "./design-system/layout.css";
 import "./design-system/motion.css";
 import "./design-system/interaction.css";
 import "./app/styles.css";
+import "./app/wanted.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

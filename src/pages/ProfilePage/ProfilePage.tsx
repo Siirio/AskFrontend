@@ -150,7 +150,7 @@ export function ProfilePage() {
     });
     if (editForm.email && editForm.email !== user?.email) {
       const challenge = await requestEmailChange(editForm.email);
-      setEmailChallengeId(challenge.authChallengeId);
+      setEmailChallengeId(challenge.verificationId);
     } else {
       setProfileFormDirty(false);
     }

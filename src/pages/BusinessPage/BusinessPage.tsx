@@ -7,7 +7,7 @@ import {
   Package, Briefcase, Building2, UserRound,
   Sparkles, Plus, RefreshCw, Loader2,
   ChevronDown, Menu, X, MapPin, Trash2, Edit3, Check, Layout,
-  Upload, Reply, ChevronLeft, ChevronRight, MessageCircle, Paperclip, Zap
+  Upload, ChevronLeft, ChevronRight, MessageCircle, Zap, Tags
 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
@@ -17,13 +17,16 @@ import { Loading } from "../../shared/ui/Loading/Loading";
 import { useToast } from "../../shared/ui/Toast/Toast";
 import { Select } from "../../shared/ui/Select/Select";
 import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/CategoryAutocomplete";
-import { ImageUploader } from "../../shared/ui/ImageUploader/ImageUploader";
 import { DropsEditor } from "../../widgets/DropsEditor/DropsEditor";
 import { ProfileEditor } from "../../widgets/ProfileEditor/ProfileEditor";
 import { BusinessCardBuilder } from "../../widgets/BusinessCardBuilder/BusinessCardBuilder";
 import { ProductImportWizard } from "../../widgets/ProductImportWizard/ProductImportWizard";
-import { ManagedImportRequestDialog } from "../../widgets/ManagedImportRequestDialog/ManagedImportRequestDialog";
+import { ProductsTab } from "./ProductsTab";
+import { ServicesTab } from "./ServicesTab";
+import { BranchEditor } from "./BranchEditor";
+import { ManagedImportRequestDialog, type LinkSourceType } from "../../widgets/ManagedImportRequestDialog/ManagedImportRequestDialog";
 import { ManagedImportChatDrawer } from "../../widgets/ManagedImportChatDrawer/ManagedImportChatDrawer";
+import { BusinessChatDrawer } from "../../widgets/BusinessChatDrawer/BusinessChatDrawer";
 import {
   getBrandProfile, listDrops,
   updateBrandProfile,
@@ -31,17 +34,17 @@ import {
   listProducts, createProduct, updateProduct, deleteProduct,
   listServices, createService, updateService,
   listBranches, createBranch, updateBranch,
-  listCategories, listStaff, createStaff, updateStaff, resetStaffPassword,
-  listEmployees, createEmployee,
-  listCities,
-  listBusinessChats, getBusinessChatMessages, sendBusinessChatMessage, markBusinessChatRead,
-  uploadChatFile,
+  listStaff, createStaff, updateStaff, resetStaffPassword,
+  listEmployees, createEmployee, deletePendingEmployee,
+  listCities, getBusiness,
+  listBusinessChats,
 } from "../../shared/api/askClient";
 import type {
   BrandProfileDto, BrandDropDto,
   BusinessProductDto, BusinessServiceDto, StaffDto,
-  ChatConversationDto, ChatMessageDto,
+  ChatConversationDto,
 } from "../../shared/api/dto";
+import type { BranchDto } from "../../shared/api/domainTypes";
 import { getManagedImportCatalogAccess, listBusinessManagedImports, type ManagedImportItem } from "../../shared/api/managedImportClient";
 import { requestAiEnrichment } from "../../shared/api/platformClient";
 import {
@@ -54,28 +57,6 @@ import { isValidEmail } from "../../shared/utils/validation";
 import { ROUTES } from "../../app/routes";
 
 type BusinessSection = "overview" | "products" | "services" | "drops" | "organization" | "events" | "business-card" | "import";
-
-interface CategoryInfo {
-  id: string;
-  name: string;
-  slug: string;
-  parentId: string | null;
-  children?: CategoryInfo[];
-}
-
-interface BranchInfo {
-  id: string;
-  businessId: string;
-  cityId: string;
-  cityName: string;
-  name: string;
-  address: string;
-  addressDetails: string;
-  onlineOnly: boolean;
-  status: string;
-  latitude: number;
-  longitude: number;
-}
 
 
 const DEFAULT_BRAND_COLOR = "#e8824e";
@@ -94,10 +75,6 @@ function emptyProfile(businessId: string): BrandProfileDto {
   };
 }
 
-function flattenCategories(items: CategoryInfo[]): CategoryInfo[] {
-  return items.flatMap(item => [item, ...flattenCategories(item.children || [])]);
-}
-
 function normalizeCityName(value: string) {
   return value
     .toLocaleLowerCase()
@@ -106,49 +83,51 @@ function normalizeCityName(value: string) {
     .trim();
 }
 
-function compressImage(file: File, maxW = 1200, quality = 0.75): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      let w = img.width;
-      let h = img.height;
-      if (w > maxW || h > maxW) {
-        const ratio = Math.min(maxW / w, maxW / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("Canvas unavailable")); return; }
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL("image/jpeg", quality));
-    };
-    img.onerror = () => reject(new Error("Failed to load image"));
-    img.src = URL.createObjectURL(file);
-  });
-}
-
-function handleImagePick(
-  file: File,
-  t: (key: string) => string,
-  toast: { show: (msg: string, type: string) => void },
-  setFormImage: (dataUrl: string) => void,
-  setPreview: (dataUrl: string) => void,
-) {
-  if (file.size > 2 * 1024 * 1024) {
-    toast.show(t("business.toast.imageTooLarge"), "error");
-    return;
+function parseAttributes(value: string) {
+  if (!value.trim()) return undefined;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (parsed == null || Array.isArray(parsed) || typeof parsed !== "object") {
+      return undefined;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return undefined;
   }
-  compressImage(file).then(dataUrl => {
-    setFormImage(dataUrl);
-    setPreview(dataUrl);
-  }).catch(() => {
-    toast.show(t("business.toast.imageProcessingError"), "error");
-  });
 }
 
+function formatAttributes(value?: Record<string, unknown> | null) {
+  return value && Object.keys(value).length > 0 ? JSON.stringify(value, null, 2) : "";
+}
+
+function emptyBranchForm() {
+  return { name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }> };
+}
+
+function formatOpeningTime(iso?: string, timeZoneId?: string) {
+  if (!iso) return "";
+  try {
+    const date = new Date(iso);
+    const options: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+    if (timeZoneId) options.timeZone = timeZoneId;
+    return date.toLocaleTimeString("ru-KZ", options);
+  } catch {
+    return "";
+  }
+}
+
+function formatOpeningLabel(summary: { state: string; timeZoneId?: string; nextOpensAt?: string; nextClosesAt?: string } | undefined, t: (key: string) => string) {
+  if (!summary) return "";
+  if (summary.state === "OPEN") {
+    const closeTime = formatOpeningTime(summary.nextClosesAt, summary.timeZoneId);
+    return closeTime ? `${t("business.branch.openNow")} до ${closeTime}` : t("business.branch.openNow");
+  }
+  if (summary.state === "CLOSED") {
+    const openTime = formatOpeningTime(summary.nextOpensAt, summary.timeZoneId);
+    return openTime ? `${t("business.branch.closedNow")} до ${openTime}` : t("business.branch.closedNow");
+  }
+  return "";
+}
 
 export function BusinessPage() {
   const { state, actions } = useAuth();
@@ -164,12 +143,11 @@ export function BusinessPage() {
   const membership = state.session?.businessMemberships?.find(
     item => item.businessId === businessId,
   );
-  const platformPermissions = state.session?.platformMembership?.permissions ?? [];
-  const isPlatformCandidate = platformPermissions.includes("EDIT_CATALOG_DURING_IMPORT");
+  const isPlatformCandidate = Boolean(state.session?.platformMembership);
   const [platformWorkspaceAccess, setPlatformWorkspaceAccess] = useState<boolean | null>(
     isPlatformCandidate ? null : false,
   );
-  const [platformCatalogScope, setPlatformCatalogScope] = useState<"PRODUCTS" | "SERVICES" | "BOTH" | null>(null);
+  const [platformBusinessScope, setPlatformBusinessScope] = useState<"ITEM" | "SERVICE" | "BOTH" | null>(null);
   const isPlatformWorkspace = !membership && platformWorkspaceAccess === true;
   const hasBusinessAccess = Boolean(membership || isPlatformWorkspace);
   const memberRole = membership?.role ?? (isPlatformWorkspace ? "PLATFORM_IMPORT" : "");
@@ -183,11 +161,11 @@ export function BusinessPage() {
       getManagedImportCatalogAccess(businessId)
         .then(result => {
           setPlatformWorkspaceAccess(result.allowed);
-          setPlatformCatalogScope(result.catalogScope);
+          setPlatformBusinessScope(result.businessScope);
         })
         .catch(() => {
           setPlatformWorkspaceAccess(false);
-          setPlatformCatalogScope(null);
+          setPlatformBusinessScope(null);
         });
     }
   }, [businessId, isPlatformCandidate, membership]);
@@ -203,9 +181,8 @@ export function BusinessPage() {
   const toast = useToast();
   const [profile, setProfile] = useState<BrandProfileDto>(() => emptyProfile(businessId));
   const [drops, setDrops] = useState<BrandDropDto[]>([]);
-  const [branches, setBranches] = useState<BranchInfo[]>([]);
+  const [branches, setBranches] = useState<BranchDto[]>([]);
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
-  const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("");
 
   // Products
@@ -214,12 +191,26 @@ export function BusinessPage() {
   const [productsTotal, setProductsTotal] = useState(0);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editProduct, setEditProduct] = useState<BusinessProductDto | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", price: "", categoryId: "", categoryLabel: "", imageUrl: "" });
+  const [productForm, setProductForm] = useState({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true });
   const [productsBusy, setProductsBusy] = useState(false);
   const [selectedProductOfferIds, setSelectedProductOfferIds] = useState<Set<string>>(new Set());
   const [aiEnrichmentBusy, setAiEnrichmentBusy] = useState(false);
   const [managedImportItems, setManagedImportItems] = useState<Record<string, ManagedImportItem>>({});
-  const [managedImportDialogScope, setManagedImportDialogScope] = useState<"PRODUCTS" | "SERVICES" | null>(null);
+  const [managedImportDialogScope, setManagedImportDialogScope] = useState<"ITEM" | "SERVICE" | "BOTH" | null>(() => {
+    const scope = searchParams.get("managedImport");
+    return scope === "ITEM" || scope === "SERVICE" || scope === "BOTH" ? scope : null;
+  });
+  const [onboardingSourceLinks] = useState<Partial<Record<LinkSourceType, string>>>(() => {
+    if (!businessId) return {};
+    const key = `ask.managedImportSources.${businessId}`;
+    try {
+      const stored = sessionStorage.getItem(key);
+      sessionStorage.removeItem(key);
+      return stored ? JSON.parse(stored) as Partial<Record<LinkSourceType, string>> : {};
+    } catch {
+      return {};
+    }
+  });
   const [managedImportChat, setManagedImportChat] = useState<ManagedImportItem | null>(null);
   const [productsLoadingPage, setProductsLoadingPage] = useState(false);
   const [newProductIds, setNewProductIds] = useState<Set<string>>(new Set());
@@ -227,7 +218,7 @@ export function BusinessPage() {
   const productsCacheRef = useRef<Map<number, { items: BusinessProductDto[]; totalElements: number }>>(new Map());
 
   useEffect(() => {
-    prevProductIdsRef.current = new Set(products.map(p => p.productOfferId));
+    prevProductIdsRef.current = new Set(products.map(p => p.productId));
   }, [products]);
 
   // Services
@@ -235,15 +226,14 @@ export function BusinessPage() {
   const [servicesBusy, setServicesBusy] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [editService, setEditService] = useState<BusinessServiceDto | null>(null);
-  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", scheduleType: "FIXED" as "FIXED" | "FLEXIBLE" | "APPOINTMENT", imageUrl: "" });
-  const [productImagePreview, setProductImagePreview] = useState("");
-  const [serviceImagePreview, setServiceImagePreview] = useState("");
+  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND" as "ON_DEMAND" | "SCHEDULED", scheduleText: "", attributesText: "", isActive: true });
 
   // Branches
   const [branchesBusy, setBranchesBusy] = useState(false);
   const [showBranchForm, setShowBranchForm] = useState(false);
+  const [showOnlineOnlyConfirm, setShowOnlineOnlyConfirm] = useState(false);
   const [editBranchId, setEditBranchId] = useState<string | null>(null);
-  const [branchForm, setBranchForm] = useState({ name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null });
+  const [branchForm, setBranchForm] = useState({ name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }> });
   const [staffByBranch, setStaffByBranch] = useState<Record<string, StaffDto[]>>({});
   const [staffForms, setStaffForms] = useState<Record<string, { displayName: string; email: string; role: string }>>({});
   const [staffBusy, setStaffBusy] = useState("");
@@ -258,20 +248,17 @@ export function BusinessPage() {
 
   // Overview
   const [importBranchId, setImportBranchId] = useState("");
-  const [importMode, setImportMode] = useState<"PRODUCT" | "SERVICE">("PRODUCT");
+  const [importMode, setImportMode] = useState<"ITEM" | "SERVICE">("ITEM");
   const [quickRailOpen, setQuickRailOpen] = useState(false);
   const [dropComposerRequest, setDropComposerRequest] = useState(0);
 
   // Catalog setup deadline
   const [catalogStatus, setCatalogStatus] = useState<BusinessCatalogStatus | null>(null);
+  const [businessOnlineOnly, setBusinessOnlineOnly] = useState(false);
   // Chats
   const [chatConversations, setChatConversations] = useState<ChatConversationDto[]>([]);
   const [chatsBusy, setChatsBusy] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessageDto[]>([]);
-  const [messagesBusy, setMessagesBusy] = useState(false);
-  const [replyText, setReplyText] = useState("");
-  const [replyFile, setReplyFile] = useState<File | null>(null);
 
   const activeBranchId = selectedBranchId || branches[0]?.id || "";
 
@@ -283,8 +270,8 @@ export function BusinessPage() {
         items
           .filter(item => item.status === "PENDING" || item.status === "ACTIVE")
           .forEach(item => {
-            if (item.catalogScope === "PRODUCTS" || item.catalogScope === "BOTH") map["PRODUCTS"] = item;
-            if (item.catalogScope === "SERVICES" || item.catalogScope === "BOTH") map["SERVICES"] = item;
+            if (item.businessScope === "ITEM" || item.businessScope === "BOTH") map.ITEM = item;
+            if (item.businessScope === "SERVICE" || item.businessScope === "BOTH") map.SERVICE = item;
           });
         setManagedImportItems(map);
       })
@@ -295,29 +282,29 @@ export function BusinessPage() {
     { key: "overview", label: t("business.overview"), icon: <Layout size={18} /> },
     { key: "products", label: t("business.products"), icon: <Package size={18} /> },
     { key: "services", label: t("business.services"), icon: <Briefcase size={18} /> },
-    { key: "drops", label: t("business.events"), icon: <Zap size={18} /> },
+    { key: "drops", label: t("business.events"), icon: <Tags size={18} /> },
     { key: "business-card", label: t("business.businessCard"), icon: <Sparkles size={18} /> },
-    ...(isWorker || isPlatformWorkspace ? [] : [
+    ...(isWorker || isPlatformWorkspace || businessOnlineOnly ? [] : [
       { key: "organization" as BusinessSection, label: t("business.organization"), icon: <Building2 size={18} /> },
     ]),
   ];
   const sidebarItems = isPlatformWorkspace
     ? businessSidebarItems.filter(item =>
-        (item.key === "products" && platformCatalogScope !== "SERVICES")
-        || (item.key === "services" && platformCatalogScope !== "PRODUCTS"))
+        (item.key === "products" && platformBusinessScope !== "SERVICE")
+        || (item.key === "services" && platformBusinessScope !== "ITEM"))
     : businessSidebarItems;
 
   useEffect(() => {
     if (!isPlatformWorkspace) return;
-    const allowedSections: BusinessSection[] = platformCatalogScope === "SERVICES"
+    const allowedSections: BusinessSection[] = platformBusinessScope === "SERVICE"
       ? ["services"]
-      : platformCatalogScope === "BOTH"
+      : platformBusinessScope === "BOTH"
         ? ["products", "services"]
         : ["products"];
     if (!allowedSections.includes(section)) {
       setSection(allowedSections[0]);
     }
-  }, [isPlatformWorkspace, platformCatalogScope, section]);
+  }, [isPlatformWorkspace, platformBusinessScope, section]);
 
   function formatStaffStatus(status: string) {
     if (status === "PENDING_ACTIVATION") return t("business.staffStatus.pendingActivation");
@@ -351,10 +338,8 @@ export function BusinessPage() {
       label: t("business.product.add"),
       icon: <Package size={16} />,
       onClick: () => {
-        if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; }
         setEditProduct(null);
-        setProductForm({ name: "", description: "", price: "", categoryId: flattenCategories(categories)[0]?.id || "", imageUrl: "" });
-        setProductImagePreview("");
+        setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true });
         setShowProductForm(true);
         setSection("products");
       },
@@ -363,10 +348,8 @@ export function BusinessPage() {
       label: t("business.service.add"),
       icon: <Briefcase size={16} />,
       onClick: () => {
-        if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; }
         setEditService(null);
-        setServiceForm({ name: "", description: "", basePrice: "", categoryId: flattenCategories(categories)[0]?.id || "", scheduleType: "FIXED", imageUrl: "" });
-        setServiceImagePreview("");
+        setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true });
         setShowServiceForm(true);
         setSection("services");
       },
@@ -375,24 +358,15 @@ export function BusinessPage() {
     { label: t("business.importData"), icon: <Upload size={16} />, onClick: () => setSection("import") },
   ];
 
-  useEffect(() => {
-    if (!showProductForm || section !== "products") return;
-    requestAnimationFrame(() => document.getElementById("new-product-form")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [section, showProductForm]);
-
-  useEffect(() => {
-    if (!showServiceForm || section !== "services") return;
-    requestAnimationFrame(() => document.getElementById("new-service-form")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [section, showServiceForm]);
-
   const loadCoreData = useCallback(async () => {
     if (!businessId) return;
     setBusy(true);
     try {
-      const [profileRes, dropsRes, branchesRes] = await Promise.allSettled([
+      const [profileRes, dropsRes, branchesRes, businessRes] = await Promise.allSettled([
         getBrandProfile(businessId),
         listDrops(businessId),
         listBranches(businessId),
+        getBusiness(businessId).catch(() => null),
       ]);
       if (profileRes.status === "fulfilled") setProfile(profileRes.value);
       if (dropsRes.status === "fulfilled") setDrops(dropsRes.value);
@@ -401,6 +375,9 @@ export function BusinessPage() {
         setSelectedBranchId(current => current || branchesRes.value[0]?.id || "");
         setImportBranchId(current => current || branchesRes.value[0]?.id || "");
       }
+      if (businessRes.status === "fulfilled" && businessRes.value) {
+        setBusinessOnlineOnly(Boolean(businessRes.value.onlineOnly));
+      }
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.loadError"), "error");
     } finally {
@@ -408,22 +385,8 @@ export function BusinessPage() {
     }
   }, [businessId]);
 
-  const loadCategories = useCallback(async () => {
-    try {
-      const res = await listCategories();
-      setCategories(res);
-      const firstCategory = flattenCategories(res)[0];
-      if (firstCategory) {
-        setProductForm(current => current.categoryId ? current : { ...current, categoryId: firstCategory.id });
-        setServiceForm(current => current.categoryId ? current : { ...current, categoryId: firstCategory.id });
-      }
-    } catch {
-      setCategories([]);
-    }
-  }, []);
-
   const loadProducts = useCallback(async () => {
-    if (!activeBranchId) return;
+    if (!businessId) return;
     const cached = productsCacheRef.current.get(productsPage);
     if (cached) {
       setProducts(cached.items);
@@ -432,49 +395,48 @@ export function BusinessPage() {
     }
     setProductsLoadingPage(true);
     try {
-      const res = await listProducts(activeBranchId, { page: productsPage, size: 10 });
+      const res = await listProducts(businessId, { branchId: selectedBranchId || undefined, page: productsPage, size: 10 });
       productsCacheRef.current.set(productsPage, { items: res.items, totalElements: res.totalElements });
       setProducts(res.items);
       setProductsTotal(res.totalElements);
-    } catch { /* empty */ } finally {
+    } catch (e) {
+      console.error("loadProducts failed", e);
+    } finally {
       setProductsLoadingPage(false);
     }
-  }, [activeBranchId, productsPage]);
+  }, [businessId, selectedBranchId, productsPage]);
 
-  const handleImportCompleted = useCallback(async () => {
-    const targetBranchId = importBranchId || activeBranchId;
-    if (!targetBranchId) return;
-    if (targetBranchId !== selectedBranchId) {
-      setSelectedBranchId(targetBranchId);
-    }
+  const reloadFirstProductPage = useCallback(async () => {
     productsCacheRef.current.clear();
     setProductsLoadingPage(true);
     try {
-      const res = await listProducts(targetBranchId, { page: 0, size: 10 });
-      const newItems = res.items.filter(p => !prevProductIdsRef.current.has(p.productOfferId));
+      const res = await listProducts(businessId, { branchId: selectedBranchId || undefined, page: 0, size: 10 });
+      const newItems = res.items.filter(p => !prevProductIdsRef.current.has(p.productId));
       setProducts(res.items);
       setProductsTotal(res.totalElements);
       setProductsPage(0);
       if (newItems.length > 0) {
-        setNewProductIds(new Set(newItems.map(p => p.productOfferId)));
+        setNewProductIds(new Set(newItems.map(p => p.productId)));
         setTimeout(() => setNewProductIds(new Set()), 5000);
       }
       setSection("products");
     } catch { /* empty */ } finally {
       setProductsLoadingPage(false);
     }
-  }, [activeBranchId, importBranchId, selectedBranchId]);
+  }, [businessId, selectedBranchId]);
 
   const loadServices = useCallback(async () => {
-    if (!activeBranchId) return;
+    if (!businessId) return;
     setServicesBusy(true);
     try {
-      const res = await listServices(activeBranchId, { page: 0, size: 20 });
+      const res = await listServices(businessId, { branchId: selectedBranchId || undefined, page: 0, size: 20 });
       setServices(res.items);
-    } catch { /* empty */ } finally {
+    } catch (e) {
+      console.error("loadServices failed", e);
+    } finally {
       setServicesBusy(false);
     }
-  }, [activeBranchId]);
+  }, [businessId, selectedBranchId]);
 
   const loadBranches = useCallback(async () => {
     if (!businessId) return;
@@ -544,8 +506,22 @@ export function BusinessPage() {
     }
   };
 
+  const handleDeletePendingEmployee = async (employee: StaffDto) => {
+    if (!businessId || employee.status !== "PENDING_ACTIVATION") return;
+    setEmployeesBusy(true);
+    try {
+      await deletePendingEmployee(businessId, employee.id);
+      setEmployees(current => current.filter(item => item.id !== employee.id));
+      await loadBranches();
+      toast.show(t("business.toast.pendingEmployeeDeleted"), "success");
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : t("business.toast.pendingEmployeeDeleteError"), "error");
+    } finally {
+      setEmployeesBusy(false);
+    }
+  };
+
   useEffect(() => { if (hasBusinessAccess) loadCoreData(); }, [hasBusinessAccess, loadCoreData]);
-  useEffect(() => { if (hasBusinessAccess) loadCategories(); }, [hasBusinessAccess, loadCategories]);
   useEffect(() => {
     listCities().then(setCities).catch(() => setCities([]));
   }, []);
@@ -569,22 +545,9 @@ export function BusinessPage() {
     }
   }, [businessId]);
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    if (!businessId) return;
-    setMessagesBusy(true);
-    try {
-      const res = await getBusinessChatMessages(conversationId, businessId);
-      setChatMessages(res.items);
-    } catch { setChatMessages([]); } finally {
-      setMessagesBusy(false);
-    }
-  }, [businessId]);
-
   const handleSelectConversation = useCallback((conversationId: string) => {
     setSelectedConversationId(conversationId);
-    loadMessages(conversationId);
-    if (businessId) markBusinessChatRead(conversationId, businessId).catch(() => {});
-  }, [businessId, loadMessages]);
+  }, []);
 
   useEffect(() => {
     if (hasBusinessAccess
@@ -599,20 +562,6 @@ export function BusinessPage() {
     initialConversationId,
     selectedConversationId,
   ]);
-
-  const handleSendReply = useCallback(async () => {
-    if (!businessId || !selectedConversationId || (!replyText.trim() && !replyFile)) return;
-    try {
-      const attachmentUrl = replyFile
-        ? await uploadChatFile(selectedConversationId, replyFile)
-        : undefined;
-      await sendBusinessChatMessage(selectedConversationId, businessId, replyText.trim(), attachmentUrl);
-      setReplyText("");
-      setReplyFile(null);
-      loadMessages(selectedConversationId);
-      loadChats();
-    } catch { /* empty */ }
-  }, [businessId, selectedConversationId, replyText, replyFile, loadMessages, loadChats]);
 
   useEffect(() => { if (hasBusinessAccess) { loadChats(); } }, [hasBusinessAccess, loadChats]);
 
@@ -671,8 +620,7 @@ export function BusinessPage() {
 
   // Product CRUD
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", price: "", categoryId: "", categoryLabel: "", imageUrl: "" });
-    setProductImagePreview("");
+    setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true });
     setEditProduct(null);
     setShowProductForm(false);
   };
@@ -688,18 +636,26 @@ export function BusinessPage() {
       toast.show(t("business.toast.selectCategory"), "error");
       return;
     }
+    if (!productForm.deepLink.trim()) {
+      toast.show(t("business.toast.productLinkRequired"), "error");
+      return;
+    }
     try {
-      await createProduct(activeBranchId, {
+      await createProduct(businessId, {
+        branchId: selectedBranchId || undefined,
         name: productForm.name,
-        description: productForm.description || undefined,
+        description: productForm.description,
+        deepLink: productForm.deepLink.trim(),
         price: productForm.price !== "" ? Number(productForm.price) : undefined,
         categoryId: catId,
-        categoryLabel: catLabel || undefined,
-        imageUrl: productForm.imageUrl || undefined,
+        categoryName: catLabel || undefined,
+        tags: productForm.tags.split(",").map(value => value.trim()).filter(Boolean),
+        attributes: parseAttributes(productForm.attributesText) ?? {},
+        isActive: true,
       });
       productsCacheRef.current.clear();
       resetProductForm();
-      loadProducts();
+      await reloadFirstProductPage();
       toast.show(t("business.toast.productCreated"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.productCreateError"), "error");
@@ -707,13 +663,18 @@ export function BusinessPage() {
   };
 
   const handleUpdateProduct = async () => {
-    if (!activeBranchId || !editProduct) return;
+    if (!businessId || !editProduct) return;
     try {
-      await updateProduct(activeBranchId, editProduct.productId, {
+      await updateProduct(editProduct.productId, {
         name: productForm.name || undefined,
-        description: productForm.description || undefined,
+        description: productForm.description,
+        deepLink: productForm.deepLink,
         price: productForm.price !== "" ? Number(productForm.price) : undefined,
-        imageUrl: productForm.imageUrl || undefined,
+        categoryId: productForm.categoryId || undefined,
+        categoryName: productForm.categoryLabel.trim() || undefined,
+        tags: productForm.tags.split(",").map(value => value.trim()).filter(Boolean),
+        attributes: parseAttributes(productForm.attributesText) ?? {},
+        isActive: productForm.isActive,
       });
       productsCacheRef.current.clear();
       resetProductForm();
@@ -725,11 +686,10 @@ export function BusinessPage() {
   };
 
   const handleDeleteProduct = async (product: BusinessProductDto) => {
-    const branchId = product.branchId || activeBranchId;
-    if (!branchId) return;
+    if (!businessId) return;
     try {
       productsCacheRef.current.clear();
-      await deleteProduct(branchId, product.productId);
+      await deleteProduct(product.productId);
       loadProducts();
       toast.show(t("business.toast.productDeleted"), "success");
     } catch (e) {
@@ -742,22 +702,34 @@ export function BusinessPage() {
     setProductForm({
       name: p.name,
       description: p.description || "",
+      deepLink: p.deepLink || "",
       price: p.price != null ? String(p.price) : "",
       categoryId: p.categoryId || "",
       categoryLabel: p.categoryLabel || "",
-      imageUrl: p.imageUrl || "",
+      tags: (p.tags || []).join(", "),
+      attributesText: formatAttributes(p.attributes),
+      isActive: p.isActive,
     });
-    setProductImagePreview(p.imageUrl || "");
     setShowProductForm(false);
   };
 
-  const handleAiEnrichment = async (offerIds: string[]) => {
-    if (!isPlatformWorkspace || offerIds.length === 0) return;
+  const handleAiEnrichment = async (targetType: "PRODUCT" | "SERVICE" | "UNIQUE_OFFER", aggregateIds: string[]) => {
+    if (!isPlatformWorkspace || aggregateIds.length === 0) return;
     setAiEnrichmentBusy(true);
     try {
-      const result = await requestAiEnrichment("PRODUCT", offerIds);
+      const result = await requestAiEnrichment(targetType, aggregateIds);
       setSelectedProductOfferIds(new Set());
-      toast.show(`AI enrichment поставлен в очередь: ${result.queuedCount}`, "success");
+      if (targetType === "PRODUCT") {
+        productsCacheRef.current.clear();
+        await loadProducts();
+      }
+      if (targetType === "SERVICE") {
+        await loadServices();
+      }
+      if (targetType === "UNIQUE_OFFER" && businessId) {
+        setDrops(await listDrops(businessId));
+      }
+      toast.show(`AI enrichment: ${result.enrichedCount}`, "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
     } finally {
@@ -767,8 +739,7 @@ export function BusinessPage() {
 
   // Service CRUD
   const resetServiceForm = () => {
-    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", scheduleType: "FIXED", imageUrl: "" });
-    setServiceImagePreview("");
+    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true });
     setEditService(null);
     setShowServiceForm(false);
   };
@@ -785,16 +756,20 @@ export function BusinessPage() {
       return;
     }
     try {
-      await createService(activeBranchId, {
+      await createService(businessId, {
+        branchId: selectedBranchId || undefined,
         categoryId: catId,
-        categoryLabel: catLabel || undefined,
+        categoryName: catLabel || undefined,
         name: serviceForm.name,
-        description: serviceForm.description || undefined,
+        description: serviceForm.description,
         basePrice: serviceForm.basePrice !== "" ? Number(serviceForm.basePrice) : undefined,
-        imageUrl: serviceForm.imageUrl || undefined,
+        serviceMode: serviceForm.serviceMode,
+        scheduleText: serviceForm.scheduleText,
+        attributes: parseAttributes(serviceForm.attributesText) ?? {},
+        isActive: true,
       });
       resetServiceForm();
-      loadServices();
+      await loadServices();
       toast.show(t("business.toast.serviceCreated"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.serviceCreateError"), "error");
@@ -802,13 +777,18 @@ export function BusinessPage() {
   };
 
   const handleUpdateService = async () => {
-    if (!activeBranchId || !editService) return;
+    if (!businessId || !editService) return;
     try {
-      await updateService(activeBranchId, editService.serviceOfferingId, {
+      await updateService(businessId, editService.serviceOfferingId, {
         name: serviceForm.name || undefined,
-        description: serviceForm.description || undefined,
+        description: serviceForm.description,
         basePrice: serviceForm.basePrice !== "" ? Number(serviceForm.basePrice) : undefined,
-        imageUrl: serviceForm.imageUrl || undefined,
+        serviceMode: serviceForm.serviceMode,
+        scheduleText: serviceForm.scheduleText,
+        categoryId: serviceForm.categoryId || undefined,
+        categoryName: serviceForm.categoryLabel.trim() || undefined,
+        attributes: parseAttributes(serviceForm.attributesText) ?? {},
+        isActive: serviceForm.isActive,
       });
       resetServiceForm();
       loadServices();
@@ -826,11 +806,12 @@ export function BusinessPage() {
       basePrice: s.basePrice != null ? String(s.basePrice) : "",
       categoryId: s.categoryId || "",
       categoryLabel: s.categoryLabel || "",
-      scheduleType: (s as any).scheduleType || "FIXED",
-      imageUrl: s.imageUrl || "",
+      serviceMode: s.serviceMode,
+      scheduleText: s.scheduleText || "",
+      attributesText: formatAttributes(s.attributes),
+      isActive: s.isActive,
     });
     setShowServiceForm(false);
-    setServiceImagePreview(s.imageUrl || "");
   };
 
   // Branch CRUD
@@ -857,17 +838,22 @@ export function BusinessPage() {
         address: branchForm.address || undefined,
         addressDetails: branchForm.addressDetails || undefined,
         cityId: branchForm.cityId || undefined,
-        onlineOnly: false,
         latitude: branchForm.latitude,
         longitude: branchForm.longitude,
+        timeZoneId: branchForm.timeZoneId || undefined,
+        weeklyHours: branchForm.weeklyHours.length > 0 ? branchForm.weeklyHours : undefined,
+        specialHours: branchForm.specialHours.length > 0 ? branchForm.specialHours : undefined,
       });
-      setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
+      setBranchForm(emptyBranchForm());
       setShowBranchForm(false);
       setSelectedBranchId(created.id);
       setImportBranchId(created.id);
       loadBranches();
       toast.show(t("business.toast.branchCreated"), "success");
     } catch (e) {
+      if (e instanceof ApiError && e.errorCode === "BRANCH_NOT_ALLOWED_ONLINE_ONLY") {
+        setBusinessOnlineOnly(true);
+      }
       toast.show(e instanceof ApiError ? e.message : t("business.toast.branchCreateError"), "error");
     }
   };
@@ -879,15 +865,18 @@ export function BusinessPage() {
       return;
     }
     try {
-      await updateBranch(businessId, editBranchId, {
+      await updateBranch(editBranchId, {
         name: branchForm.name.trim() || undefined,
         address: branchForm.address || undefined,
         addressDetails: branchForm.addressDetails || undefined,
         cityId: branchForm.cityId || undefined,
         latitude: branchForm.latitude ?? undefined,
         longitude: branchForm.longitude ?? undefined,
+        timeZoneId: branchForm.timeZoneId || undefined,
+        weeklyHours: branchForm.weeklyHours.length > 0 ? branchForm.weeklyHours : undefined,
+        specialHours: branchForm.specialHours.length > 0 ? branchForm.specialHours : undefined,
       });
-      setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
+      setBranchForm(emptyBranchForm());
       setEditBranchId(null);
       loadBranches();
       toast.show(t("business.toast.branchUpdated"), "success");
@@ -967,11 +956,11 @@ export function BusinessPage() {
   );
 
   return (
-    <main id="main-content">
-      <div style={{ display: "flex", minHeight: "calc(100vh - 56px)" }}>
+    <main id="main-content" className="ask-business-page">
+      <div className="ask-business-shell" style={{ display: "flex", minHeight: "calc(100vh - 56px)" }}>
         {/* Desktop sidebar */}
         <aside
-          className="fcw-hidden-mobile"
+          className="fcw-hidden-mobile ask-business-sidebar"
           style={{
             width: "220px",
             flexShrink: 0,
@@ -985,29 +974,38 @@ export function BusinessPage() {
 
         {!isWorker && (
           <>
-            <div
+            <button
               className="fcw-hidden-mobile"
-              onMouseEnter={() => setQuickRailOpen(true)}
+              type="button"
+              onClick={() => setQuickRailOpen(open => !open)}
+              aria-expanded={quickRailOpen}
+              aria-label={t("business.quickActions")}
               style={{
                 position: "fixed",
                 right: 0,
-                top: 0,
-                width: 12,
-                height: "100vh",
+                top: 96,
+                width: 38,
+                height: 42,
                 zIndex: 21,
+                border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                borderRight: "none",
+                borderRadius: "var(--fcw-radius-md) 0 0 var(--fcw-radius-md)",
+                backgroundColor: "var(--fcw-color-surface)",
+                color: "var(--fcw-color-primary)",
+                cursor: "pointer",
               }}
-            />
+            >
+              {quickRailOpen ? <X size={17} /> : <Zap size={17} />}
+            </button>
             <motion.aside
               className="fcw-hidden-mobile"
-              onMouseLeave={() => setQuickRailOpen(false)}
-              onMouseEnter={() => setQuickRailOpen(true)}
               initial={false}
               animate={{ x: quickRailOpen ? 0 : 200 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 position: "fixed",
                 right: 0,
-                top: 96,
+                top: 144,
                 zIndex: 20,
                 width: 192,
                 border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
@@ -1069,8 +1067,8 @@ export function BusinessPage() {
         </AnimatePresence>
 
         {/* Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="fcw-container" style={{ paddingTop: "var(--fcw-space-md)", paddingBottom: "var(--fcw-space-section)" }}>
+        <div className="ask-business-content" style={{ flex: 1, minWidth: 0 }}>
+          <div className="fcw-container ask-business-container" style={{ paddingTop: "var(--fcw-space-md)", paddingBottom: "var(--fcw-space-section)" }}>
             {/* Mobile section selector */}
             <div className="fcw-hidden-desktop fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)", gap: "0.5rem" }}>
               <button className="fcw-btn fcw-btn-ghost fcw-btn-icon" onClick={() => setSidebarOpen(true)} aria-label={t("business.menu")}>
@@ -1089,9 +1087,13 @@ export function BusinessPage() {
                       padding: "0.25rem 0.625rem",
                       fontSize: "var(--fcw-font-size-body-s)",
                       whiteSpace: "nowrap",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
                     }}
                     onClick={() => setSection(item.key)}
                   >
+                    {item.icon}
                     {item.label}
                   </button>
                 ))}
@@ -1104,7 +1106,7 @@ export function BusinessPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div style={{
+              <div className="ask-business-header" style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "0.75rem",
@@ -1150,29 +1152,49 @@ export function BusinessPage() {
                 )}
               </div>
 
-              {catalogStatus && catalogStatus.status !== "COMPLETED" && (
+              {catalogStatus && catalogStatus.verificationStatus && catalogStatus.verificationStatus !== "APPROVED" && (
                 <Card padding="md" style={{
                   marginBottom: "var(--fcw-space-md)",
-                  borderColor: catalogStatus.status === "RESTRICTED" ? "var(--fcw-color-error)" : "var(--fcw-amber-500)",
-                  backgroundColor: catalogStatus.status === "RESTRICTED"
+                  borderColor: catalogStatus.verificationStatus === "REJECTED" ? "var(--fcw-color-error)" : "var(--fcw-amber-500)",
+                  backgroundColor: catalogStatus.verificationStatus === "REJECTED"
                     ? "color-mix(in srgb, var(--fcw-color-error) 6%, transparent)"
                     : "color-mix(in srgb, var(--fcw-amber-500) 8%, transparent)",
                 }}>
                   <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem", alignItems: "center" }}>
                     <div className="fcw-flex-col" style={{ gap: "0.25rem", minWidth: 0 }}>
                       <span className="fcw-body fcw-weight-semibold">
-                        {catalogStatus.status === "RESTRICTED"
+                        {t(`business.verification.status.${catalogStatus.verificationStatus}`)}
+                      </span>
+                      <span className="fcw-body-s fcw-text-secondary">
+                        {t(`business.verification.description.${catalogStatus.verificationStatus}`)}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              )}
+              {catalogStatus && catalogStatus.catalogStatus !== "COMPLETED" && (
+                <Card padding="md" style={{
+                  marginBottom: "var(--fcw-space-md)",
+                  borderColor: catalogStatus.catalogStatus === "RESTRICTED" ? "var(--fcw-color-error)" : "var(--fcw-amber-500)",
+                  backgroundColor: catalogStatus.catalogStatus === "RESTRICTED"
+                    ? "color-mix(in srgb, var(--fcw-color-error) 6%, transparent)"
+                    : "color-mix(in srgb, var(--fcw-amber-500) 8%, transparent)",
+                }}>
+                  <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem", alignItems: "center" }}>
+                    <div className="fcw-flex-col" style={{ gap: "0.25rem", minWidth: 0 }}>
+                      <span className="fcw-body fcw-weight-semibold">
+                        {catalogStatus.catalogStatus === "RESTRICTED"
                           ? t("business.catalogSetup.restrictedTitle")
-                          : catalogStatus.status === "REVIEW_REQUIRED"
+                          : catalogStatus.catalogStatus === "REVIEW_REQUIRED"
                             ? t("business.catalogSetup.reviewTitle")
                           : t("business.catalogSetup.deadlineTitle", {
-                              days: Math.max(0, Math.ceil((new Date(catalogStatus.deadlineAt).getTime() - Date.now()) / 86400000)),
+                              days: Math.max(0, Math.ceil((new Date(catalogStatus.catalogSetupDeadlineAt ?? catalogStatus.catalogSetupStartedAt ?? "").getTime() - Date.now()) / 86400000)),
                             })}
                       </span>
                       <span className="fcw-body-s fcw-text-secondary">
-                        {catalogStatus.status === "RESTRICTED"
+                        {catalogStatus.catalogStatus === "RESTRICTED"
                           ? t("business.catalogSetup.restrictedDescription")
-                          : catalogStatus.status === "REVIEW_REQUIRED"
+                          : catalogStatus.catalogStatus === "REVIEW_REQUIRED"
                             ? t("business.catalogSetup.reviewDescription")
                           : t("business.catalogSetup.deadlineDescription")}
                       </span>
@@ -1189,9 +1211,41 @@ export function BusinessPage() {
               >
                 {/* Overview */}
                 {section === "overview" && (
-                  <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
-                    <div style={{ display: "flex", gap: "var(--fcw-space-md)", alignItems: "flex-start" }}>
-                    <Card padding="lg" style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fcw-flex-col ask-business-overview" style={{ gap: "var(--fcw-space-md)" }}>
+                    <div className="ask-business-welcome">
+                      <h1>{t("business.overview")}</h1>
+                      <p>{membership?.businessName || t("business.companyCabinet")}</p>
+                    </div>
+                    <div className="ask-business-metrics">
+                      <button type="button" onClick={() => setSection("products")}>
+                        <span><Package size={25} /></span>
+                        <span><small>{t("business.products")}</small><strong>{productsTotal}</strong><em>Всего товаров</em></span>
+                      </button>
+                      <button type="button" onClick={() => setSection("services")}>
+                        <span><Briefcase size={25} /></span>
+                        <span><small>{t("business.services")}</small><strong>{services.length}</strong><em>Активные услуги</em></span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const conversation = chatConversations.find(item => item.businessUnreadCount > 0) ?? chatConversations[0];
+                          if (conversation) handleSelectConversation(conversation.conversationId);
+                        }}
+                      >
+                        <span><MessageCircle size={25} /></span>
+                        <span>
+                          <small>{t("business.chats.title")}</small>
+                          <strong>{chatConversations.reduce((count, item) => count + item.businessUnreadCount, 0)}</strong>
+                          <em>Непрочитанные</em>
+                        </span>
+                      </button>
+                    </div>
+                    <div className="ask-business-inbox" style={{ display: "flex", gap: "var(--fcw-space-md)", alignItems: "flex-start" }}>
+                    <Card padding="lg" className="ask-business-inbox-card" style={{ flex: 1, minWidth: 0 }}>
+                      <div className="ask-business-inbox-card__heading">
+                        <h2>{t("business.chats.title")}</h2>
+                        <span>{chatConversations.length}</span>
+                      </div>
                       {chatConversations.length === 0 && (
                         <EmptyState title={t("business.chats.empty")} description={t("business.chats.emptyDesc")} />
                       )}
@@ -1201,7 +1255,7 @@ export function BusinessPage() {
                           {chatConversations.map(conv => (
                             <div
                               key={conv.conversationId}
-                              className="fcw-flex-between fcw-items-center"
+                              className="fcw-flex-between fcw-items-center ask-business-inbox-row"
                               style={{ gap: "0.75rem", padding: "0.75rem", borderRadius: "var(--fcw-radius-md)", background: selectedConversationId === conv.conversationId ? "color-mix(in srgb, var(--fcw-color-primary) 10%, var(--fcw-color-surface-secondary))" : "var(--fcw-color-surface-secondary)", cursor: "pointer" }}
                               onClick={() => handleSelectConversation(conv.conversationId)}
                             >
@@ -1227,595 +1281,78 @@ export function BusinessPage() {
                       )}
                     </Card>
 
-                    {selectedConversationId && (
-                      <motion.div
-                        initial={{ width: 0, opacity: 0 }}
-                        animate={{ width: 380, opacity: 1 }}
-                        exit={{ width: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                        style={{
-                          flexShrink: 0,
-                          borderRadius: "var(--fcw-radius-lg)",
-                          border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                          backgroundColor: "var(--fcw-color-surface)",
-                          overflow: "hidden",
-                          display: "flex",
-                          flexDirection: "column",
-                          height: "calc(100vh - 180px)",
-                          minHeight: 400,
-                        }}
-                      >
-                        <div className="fcw-flex-between" style={{ padding: "0.75rem 1rem", borderBottom: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", flexShrink: 0 }}>
-                          <span className="fcw-body fcw-weight-semibold" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {chatConversations.find(c => c.conversationId === selectedConversationId)?.subject || t("business.chats.title")}
-                          </span>
-                          <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => setSelectedConversationId(null)}>
-                            <X size={16} />
-                          </button>
-                        </div>
-                        <div style={{ flex: 1, overflow: "auto", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                          {messagesBusy && <Loading size="sm" />}
-                          {!messagesBusy && chatMessages.length === 0 && (
-                            <span className="fcw-body-s fcw-text-tertiary" style={{ textAlign: "center", padding: "var(--fcw-space-lg) 0" }}>{t("business.chats.noMessages")}</span>
-                          )}
-                          {!messagesBusy && chatMessages.map(msg => (
-                            <div key={msg.messageId} style={{
-                              alignSelf: msg.senderType === "BUSINESS" ? "flex-end" : "flex-start",
-                              maxWidth: "85%",
-                              padding: "0.5rem 0.75rem",
-                              borderRadius: "var(--fcw-radius-md)",
-                              backgroundColor: msg.senderType === "BUSINESS" ? "color-mix(in srgb, var(--fcw-color-primary) 12%, var(--fcw-color-surface))" : "var(--fcw-color-surface-secondary)",
-                              border: msg.senderType === "BUSINESS" ? "var(--fcw-border-width-thin) solid color-mix(in srgb, var(--fcw-color-primary) 25%, transparent)" : "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                            }}>
-                              <span className="fcw-body-s" style={{ wordBreak: "break-word" }}>{msg.text}</span>
-                              {msg.attachmentUrl && (
-                                <a className="fcw-body-s" href={msg.attachmentUrl} target="_blank" rel="noreferrer" style={{ display: "block" }}>
-                                  Вложение
-                                </a>
-                              )}
-                              <span className="fcw-body-xs fcw-text-tertiary" style={{ display: "block", marginTop: "0.25rem" }}>
-                                {new Date(msg.createdAt).toLocaleTimeString("ru-KZ", { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", flexShrink: 0 }}>
-                          <label className="fcw-btn fcw-btn-secondary fcw-btn-sm">
-                            <Paperclip size={14} />
-                            <input type="file" style={{ display: "none" }} onChange={event => setReplyFile(event.target.files?.[0] || null)} />
-                          </label>
-                          <input
-                            className="fcw-input fcw-input-sm"
-                            placeholder={t("business.chats.replyPlaceholder")}
-                            value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") handleSendReply(); }}
-                            style={{ flex: 1 }}
-                          />
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleSendReply} disabled={!replyText.trim() && !replyFile}>
-                            <Reply size={14} />
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
                   </div>
                 )}
 
                 {/* Products */}
                 {section === "products" && (
-                  <div>
-                    <div className="fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)" }}>
-                      <div>
-                        <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.products")}</h2>
-                        {productsTotal > 0 && (
-                          <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>{t("business.total", { count: productsTotal })}</p>
-                        )}
-                      </div>
-                      {!isWorker && (
-                        <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                          {!isPlatformWorkspace && (isOwner || isManager) && (
-                            managedImportItems["PRODUCTS"] ? (
-                              <button
-                                className="fcw-btn fcw-btn-primary fcw-btn-sm"
-                                onClick={() => setManagedImportChat(managedImportItems["PRODUCTS"])}
-                              >
-                                <MessageCircle size={16} />
-                                {t("managedImport.openChat")}
-                              </button>
-                            ) : (
-                              <button
-                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                onClick={() => setManagedImportDialogScope("PRODUCTS")}
-                              >
-                                <MessageCircle size={16} />
-                                {t("managedImport.requestProducts")}
-                              </button>
-                            )
-                          )}
-                          {isPlatformWorkspace && selectedProductOfferIds.size > 0 && (
-                            <button
-                              className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                              onClick={() => handleAiEnrichment(Array.from(selectedProductOfferIds))}
-                              disabled={aiEnrichmentBusy}
-                            >
-                              {aiEnrichmentBusy ? <Loader2 size={16} className="fcw-spin" /> : <Sparkles size={16} />}
-                              AI enrichment ({selectedProductOfferIds.size})
-                            </button>
-                          )}
-                          <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("PRODUCT"); setSection("import"); }}>
-                            <Upload size={16} />{t("business.import.title")}
-                          </button>
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } resetProductForm(); setProductImagePreview(""); setShowProductForm(true); }}>
-                            <Plus size={16} />{t("business.product.add")}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {!activeBranchId && (
-                      <EmptyState title={t("business.noBranches")} description={t("business.noBranchesDesc")} />
-                    )}
-
-                    {activeBranchId && products.length === 0 && productsLoadingPage && <Loading size="sm" text={t("business.loadingProducts")} />}
-
-                    {activeBranchId && !productsLoadingPage && products.length === 0 && !showProductForm && (
-                      <EmptyState
-                        title={t("business.noProducts")}
-                        description={t("business.noProductsDesc")}
-                        action={!isWorker ? (
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } setProductImagePreview(""); setShowProductForm(true); }}>
-                            <Plus size={16} />{t("business.product.add")}
-                          </button>
-                        ) : undefined}
-                      />
-                    )}
-
-                    {(activeBranchId || showProductForm) && (products.length > 0 || showProductForm) && (
-                      <div className="fcw-flex-col" style={{ gap: "0.25rem", minHeight: 440, opacity: productsLoadingPage ? 0.6 : 1, transition: "opacity 150ms" }}>
-                        <AnimatePresence>
-                          {showProductForm && !editProduct && (
-                            <motion.div
-                              id="new-product-form"
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.25 }}
-                              style={{ overflow: "hidden" }}
-                            >
-                              <Card padding="md">
-                                <div className="fcw-flex-col" style={{ gap: "0.75rem", maxWidth: 520 }}>
-                                  <ImageUploader
-                                    value={productForm.imageUrl}
-                                    onChange={dataUrl => { setProductForm(p => ({ ...p, imageUrl: dataUrl })); setProductImagePreview(dataUrl); }}
-                                    onRemove={() => { setProductForm(p => ({ ...p, imageUrl: "" })); setProductImagePreview(""); }}
-                                  />
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.name")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      maxLength={255}
-                                      placeholder={t("business.product.namePlaceholder")}
-                                      value={productForm.name}
-                                      onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.category")}</label>
-                                    <CategoryAutocomplete
-                                      value={productForm.categoryLabel}
-                                      categoryId={productForm.categoryId || null}
-                                      onChange={(label, catId) => setProductForm(p => ({ ...p, categoryLabel: label, categoryId: catId || "" }))}
-                                      businessId={businessId}
-                                      placeholder={t("business.product.categoryPlaceholder")}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.price")}</label>
-                                    <div style={{ position: "relative" }}>
-                                      <input
-                                        className="fcw-input"
-                                        type="text"
-                                        inputMode="decimal"
-                                        placeholder={t("business.product.pricePlaceholder")}
-                                        value={productForm.price}
-                                        onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))}
-                                        style={{ paddingRight: 28 }}
-                                      />
-                                      <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--fcw-muted)", fontSize: 14 }}>{t("business.product.priceSuffix")}</span>
-                                    </div>
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.description")}</label>
-                                    <textarea
-                                      className="fcw-textarea"
-                                      maxLength={2000}
-                                      rows={3}
-                                      placeholder={t("business.product.descriptionPlaceholder")}
-                                      value={productForm.description}
-                                      onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                    <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateProduct}>
-                                      <Check size={14} />{t("business.create")}
-                                    </button>
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>{t("business.cancel")}</button>
-                                  </div>
-                                </div>
-                              </Card>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {products.map(p => (
-                          <div key={p.productOfferId}
-                            className={newProductIds.has(p.productOfferId) ? "fcw-animate-glass-highlight" : ""}
-                            style={{
-                              display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
-                              padding: "0.5rem 0.75rem",
-                              backgroundColor: "var(--fcw-color-surface)",
-                              border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                              borderRadius: "var(--fcw-radius-md)",
-                              position: "relative",
-                              overflow: "hidden",
-                            }}>
-                            {editProduct?.productOfferId === p.productOfferId ? (
-                              <Card padding="md" style={{ width: "100%" }}>
-                                <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                                  <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                    <Edit3 size={16} style={{ color: "var(--fcw-color-primary)" }} />
-                                    {t("business.product.editTitle")}
-                                  </h3>
-                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: "0.75rem" }}>
-                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                      <label className="fcw-label">{t("business.product.name")}</label>
-                                      <input className="fcw-input" maxLength={255} value={productForm.name} onChange={e => setProductForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.product.namePlaceholder")} />
-                                    </div>
-                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                      <label className="fcw-label">{t("business.product.price")}</label>
-                                      <input className="fcw-input" type="text" inputMode="decimal" value={productForm.price} onChange={e => setProductForm(v => ({ ...v, price: e.target.value }))} placeholder={t("business.product.pricePlaceholder")} />
-                                    </div>
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.description")}</label>
-                                    <textarea className="fcw-textarea" maxLength={2000} rows={2} value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.product.descriptionPlaceholder")} />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.product.imageLabel")}</label>
-                                    <input
-                                      type="file"
-                                      accept="image/jpeg,image/png,image/webp"
-                                      onChange={e => {
-                                        const file = e.target.files?.[0];
-                                        if (file) handleImagePick(file, t, toast, dataUrl => setProductForm(v => ({ ...v, imageUrl: dataUrl })), setProductImagePreview);
-                                      }}
-                                      style={{ maxWidth: 320 }}
-                                    />
-                                    {productImagePreview && (
-                                      <img src={productImagePreview} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: "var(--fcw-radius-sm)", marginTop: "0.25rem" }} />
-                                    )}
-                                  </div>
-                                  <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                    <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateProduct}><Check size={14} />{t("business.save")}</button>
-                                    {isPlatformWorkspace && (
-                                      <button
-                                        className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                        onClick={() => handleAiEnrichment([p.productOfferId])}
-                                        disabled={aiEnrichmentBusy}
-                                      >
-                                        <Sparkles size={14} />AI enrichment
-                                      </button>
-                                    )}
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetProductForm}>{t("business.cancel")}</button>
-                                  </div>
-                                </div>
-                              </Card>
-                            ) : (
-                            <>
-                              {isPlatformWorkspace && (
-                                <input
-                                  type="checkbox"
-                                  checked={selectedProductOfferIds.has(p.productOfferId)}
-                                  onChange={event => setSelectedProductOfferIds(current => {
-                                    const next = new Set(current);
-                                    if (event.target.checked) next.add(p.productOfferId);
-                                    else next.delete(p.productOfferId);
-                                    return next;
-                                  })}
-                                  aria-label={`Выбрать ${p.name}`}
-                                />
-                              )}
-                              <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "120px" }}>
-                                {p.name}
-                              </span>
-                              {p.categoryLabel && (
-                                <span className="fcw-body-s fcw-text-tertiary">{p.categoryLabel}</span>
-                              )}
-                              {!p.enabled && (
-                                <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>{t("business.hidden")}</span>
-                              )}
-                              <div style={{ flex: 1 }} />
-                              <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap" }}>
-                                {p.price > 0 ? `${p.price.toLocaleString("ru-KZ")} ₸` : "—"}
-                              </span>
-                              {!isWorker && (
-                                <div className="fcw-flex" style={{ gap: "0.25rem" }}>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => openEditProduct(p)} aria-label={t("business.editAria")}>
-                                    <Edit3 size={14} />
-                                  </button>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => handleDeleteProduct(p)} aria-label={t("business.deleteAria")}>
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              )}
-                            </>
-                            )}
-                          </div>
-                        ))}
-
-                        {productsTotal > 10 && (
-                          <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", justifyContent: "center", paddingTop: "0.5rem" }}>
-                            <button
-                              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-                              onClick={() => setProductsPage(p => Math.max(0, p - 1))}
-                              disabled={productsPage === 0}
-                            >
-                              <ChevronLeft size={16} />
-                            </button>
-                            {Array.from({ length: Math.ceil(productsTotal / 10) }, (_, i) => (
-                              <button
-                                key={i}
-                                className="fcw-btn fcw-btn-sm"
-                                style={{
-                                  minWidth: 32,
-                                  justifyContent: "center",
-                                  backgroundColor: i === productsPage ? "var(--fcw-color-primary)" : "transparent",
-                                  color: i === productsPage ? "#fff" : "var(--fcw-color-text-secondary)",
-                                  border: i === productsPage ? "none" : "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                                }}
-                                onClick={() => setProductsPage(i)}
-                              >
-                                {i + 1}
-                              </button>
-                            ))}
-                            <button
-                              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-                              onClick={() => setProductsPage(p => Math.min(Math.ceil(productsTotal / 10) - 1, p + 1))}
-                              disabled={productsPage >= Math.ceil(productsTotal / 10) - 1}
-                            >
-                              <ChevronRight size={16} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <ProductsTab
+                    businessId={businessId}
+                    products={products}
+                    productsTotal={productsTotal}
+                    productsPage={productsPage}
+                    productsLoadingPage={productsLoadingPage}
+                    showProductForm={showProductForm}
+                    editProduct={editProduct}
+                    productForm={productForm}
+                    activeBranchId={activeBranchId}
+                    branches={branches}
+                    selectedProductOfferIds={selectedProductOfferIds}
+                    managedImportItems={managedImportItems}
+                    aiEnrichmentBusy={aiEnrichmentBusy}
+                    isWorker={isWorker}
+                    isOwner={isOwner}
+                    isManager={isManager}
+                    isPlatformWorkspace={isPlatformWorkspace}
+                    reduced={reduced}
+                    setProductsPage={setProductsPage}
+                    setShowProductForm={setShowProductForm}
+                    setProductForm={setProductForm}
+                    setSelectedProductOfferIds={setSelectedProductOfferIds}
+                    setManagedImportDialogScope={setManagedImportDialogScope}
+                    setManagedImportChat={setManagedImportChat}
+                    setEditProduct={setEditProduct}
+                    setImportMode={setImportMode}
+                    setSection={setSection}
+                    handleCreateProduct={handleCreateProduct}
+                    handleUpdateProduct={handleUpdateProduct}
+                    handleDeleteProduct={handleDeleteProduct}
+                    resetProductForm={resetProductForm}
+                    handleAiEnrichment={handleAiEnrichment}
+                    t={t}
+                  />
                 )}
 
                 {/* Services */}
                 {section === "services" && (
-                  <div>
-                    <div className="fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)" }}>
-                      <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.services")}</h2>
-                      {!isWorker && (
-                        <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-                          {!isPlatformWorkspace && (isOwner || isManager) && (
-                            managedImportItems["SERVICES"] ? (
-                              <button
-                                className="fcw-btn fcw-btn-primary fcw-btn-sm"
-                                onClick={() => setManagedImportChat(managedImportItems["SERVICES"])}
-                              >
-                                <MessageCircle size={16} />
-                                {t("managedImport.openChat")}
-                              </button>
-                            ) : (
-                              <button
-                                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                                onClick={() => setManagedImportDialogScope("SERVICES")}
-                              >
-                                <MessageCircle size={16} />
-                                {t("managedImport.requestServices")}
-                              </button>
-                            )
-                          )}
-                          <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => { setImportMode("SERVICE"); setSection("import"); }}>
-                            <Upload size={16} />{t("business.import.titleServices")}
-                          </button>
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } resetServiceForm(); setServiceImagePreview(""); setShowServiceForm(true); }}>
-                            <Plus size={16} />{t("business.service.add")}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {!activeBranchId && (
-                      <EmptyState title={t("business.noBranches")} description={t("business.noBranchesDesc")} />
-                    )}
-
-                    {activeBranchId && servicesBusy && <Loading size="sm" text={t("business.loadingServices")} />}
-
-                    {activeBranchId && !servicesBusy && services.length === 0 && !showServiceForm && (
-                      <EmptyState
-                        title={t("business.noServices")}
-                        description={t("business.noServicesDesc")}
-                        action={!isWorker ? (
-                          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { if (!activeBranchId) { toast.show(t("business.toast.branchRequired"), "error"); return; } setServiceImagePreview(""); setShowServiceForm(true); }}>
-                            <Plus size={16} />{t("business.service.add")}
-                          </button>
-                        ) : undefined}
-                      />
-                    )}
-
-                    {(activeBranchId || showServiceForm) && !servicesBusy && (
-                      <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                        <AnimatePresence>
-                          {showServiceForm && !editService && (
-                            <motion.div
-                              id="new-service-form"
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.25 }}
-                              style={{ overflow: "hidden" }}
-                            >
-                              <Card padding="md">
-                                <div className="fcw-flex-col" style={{ gap: "0.75rem", maxWidth: 520 }}>
-                                  <ImageUploader
-                                    value={serviceForm.imageUrl}
-                                    onChange={dataUrl => { setServiceForm(s => ({ ...s, imageUrl: dataUrl })); setServiceImagePreview(dataUrl); }}
-                                    onRemove={() => { setServiceForm(s => ({ ...s, imageUrl: "" })); setServiceImagePreview(""); }}
-                                  />
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.service.name")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      maxLength={255}
-                                      placeholder={t("business.service.namePlaceholder")}
-                                      value={serviceForm.name}
-                                      onChange={e => setServiceForm(s => ({ ...s, name: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.service.category")}</label>
-                                    <CategoryAutocomplete
-                                      value={serviceForm.categoryLabel}
-                                      categoryId={serviceForm.categoryId || null}
-                                      onChange={(label, catId) => setServiceForm(s => ({ ...s, categoryLabel: label, categoryId: catId || "" }))}
-                                      businessId={businessId}
-                                      placeholder={t("business.service.categoryPlaceholder")}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex" style={{ gap: "0.75rem" }}>
-                                    <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: 1 }}>
-                                      <label className="fcw-label">{t("business.service.price")}</label>
-                                      <div style={{ position: "relative" }}>
-                                        <input
-                                          className="fcw-input"
-                                          type="text"
-                                          inputMode="decimal"
-                                          placeholder={t("business.service.pricePlaceholder")}
-                                          value={serviceForm.basePrice}
-                                          onChange={e => setServiceForm(s => ({ ...s, basePrice: e.target.value }))}
-                                          style={{ paddingRight: 28 }}
-                                        />
-                                        <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--fcw-muted)", fontSize: 14 }}>{t("business.product.priceSuffix")}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.service.description")}</label>
-                                    <textarea
-                                      className="fcw-textarea"
-                                      maxLength={2000}
-                                      rows={3}
-                                      placeholder={t("business.service.descriptionPlaceholder")}
-                                      value={serviceForm.description}
-                                      onChange={e => setServiceForm(s => ({ ...s, description: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                    <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateService}>
-                                      <Check size={14} />{t("business.create")}
-                                    </button>
-                                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetServiceForm}>{t("business.cancel")}</button>
-                                  </div>
-                                </div>
-                              </Card>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {services.map(s => (
-                          <div key={s.serviceBranchOfferId} style={{
-                            display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
-                            padding: "0.5rem 0.75rem",
-                            backgroundColor: "var(--fcw-color-surface)",
-                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                            borderRadius: "var(--fcw-radius-md)",
-                          }}>
-                            {editService?.serviceBranchOfferId === s.serviceBranchOfferId ? (
-                              <div className="fcw-flex-col" style={{ gap: "0.75rem", width: "100%" }}>
-                                <div className="fcw-flex-col" style={{ gap: "0.25rem", maxWidth: "260px" }}>
-                                  <label className="fcw-label">{t("business.service.schedule")}</label>
-                                  <Select
-                                    options={[
-                                      { value: "FIXED", label: t("business.scheduleFixed") },
-                                      { value: "FLEXIBLE", label: t("business.scheduleFlexible") },
-                                      { value: "APPOINTMENT", label: t("business.scheduleAppointment") },
-                                    ]}
-                                    value={serviceForm.scheduleType}
-                                    onChange={v => setServiceForm(v2 => ({ ...v2, scheduleType: v as "FIXED" | "FLEXIBLE" | "APPOINTMENT" }))}
-                                  />
-                                </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(110px, 160px) minmax(110px, 160px)", gap: "0.75rem" }}>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.service.name")}</label>
-                                    <input className="fcw-input" maxLength={255} value={serviceForm.name} onChange={e => setServiceForm(v => ({ ...v, name: e.target.value }))} placeholder={t("business.service.namePlaceholder")} />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.service.price")}</label>
-                                    <input className="fcw-input" type="text" inputMode="decimal" value={serviceForm.basePrice} onChange={e => setServiceForm(v => ({ ...v, basePrice: e.target.value }))} placeholder={t("business.service.pricePlaceholder")} />
-                                  </div>
-                                  {serviceForm.scheduleType === "FLEXIBLE" && (
-                                    <span className="fcw-body-s fcw-text-tertiary" style={{ alignSelf: "center" }}>{t("business.scheduleFlexibleHint")}</span>
-                                  )}
-                                </div>
-                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                  <label className="fcw-label">{t("business.service.description")}</label>
-                                  <textarea className="fcw-textarea" maxLength={2000} rows={2} value={serviceForm.description} onChange={e => setServiceForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.service.descriptionPlaceholder")} />
-                                </div>
-                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                  <label className="fcw-label">{t("business.service.imageLabel")}</label>
-                                  <input
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    onChange={e => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleImagePick(file, t, toast, dataUrl => setServiceForm(v => ({ ...v, imageUrl: dataUrl })), setServiceImagePreview);
-                                    }}
-                                    style={{ maxWidth: 320 }}
-                                  />
-                                  {serviceImagePreview && (
-                                    <img src={serviceImagePreview} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: "var(--fcw-radius-sm)", marginTop: "0.25rem" }} />
-                                  )}
-                                </div>
-                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateService}><Check size={14} />{t("business.save")}</button>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={resetServiceForm}>{t("business.cancel")}</button>
-                                </div>
-                              </div>
-                            ) : (
-                            <>
-                              <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "120px" }}>
-                                {s.name}
-                              </span>
-                              {(s as any).scheduleType && (s as any).scheduleType !== "FIXED" && (
-                                <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>
-                                  {(s as any).scheduleType === "FLEXIBLE" ? t("business.scheduleFlexibleLabel") : t("business.scheduleAppointmentLabel")}
-                                </span>
-                              )}
-                              {!s.active && (
-                                <span className="fcw-label" style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }}>{t("business.inactive")}</span>
-                              )}
-                              <div style={{ flex: 1 }} />
-                              <span className="fcw-body fcw-weight-bold" style={{ color: "var(--fcw-color-primary)", whiteSpace: "nowrap" }}>
-                                {s.basePrice > 0 ? `${s.basePrice.toLocaleString("ru-KZ")} ₸` : "—"}
-                              </span>
-                              {!isWorker && (
-                                <div className="fcw-flex" style={{ gap: "0.25rem" }}>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => openEditService(s)} aria-label={t("business.editAria")}>
-                                    <Edit3 size={14} />
-                                  </button>
-                                </div>
-                              )}
-                            </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <ServicesTab
+                    businessId={businessId}
+                    services={services}
+                    servicesBusy={servicesBusy}
+                    showServiceForm={showServiceForm}
+                    editService={editService}
+                    serviceForm={serviceForm}
+                    managedImportItems={managedImportItems}
+                    aiEnrichmentBusy={aiEnrichmentBusy}
+                    isWorker={isWorker}
+                    isOwner={isOwner}
+                    isManager={isManager}
+                    isPlatformWorkspace={isPlatformWorkspace}
+                    reduced={reduced}
+                    setShowServiceForm={setShowServiceForm}
+                    setServiceForm={setServiceForm}
+                    setManagedImportDialogScope={setManagedImportDialogScope}
+                    setManagedImportChat={setManagedImportChat}
+                    setEditService={setEditService}
+                    setImportMode={setImportMode}
+                    setSection={setSection}
+                    handleCreateService={handleCreateService}
+                    handleUpdateService={handleUpdateService}
+                    resetServiceForm={resetServiceForm}
+                    handleAiEnrichment={handleAiEnrichment}
+                    t={t}
+                  />
                 )}
 
                 {/* Drops / Unique Offers */}
@@ -1827,6 +1364,10 @@ export function BusinessPage() {
                       onCancel={handleCancelDrop}
                       onDelete={handleDeleteDrop}
                       busy={busy}
+                      onAiEnrichment={isPlatformWorkspace
+                        ? drop => handleAiEnrichment("UNIQUE_OFFER", [drop.id])
+                        : undefined}
+                      aiEnrichmentBusy={aiEnrichmentBusy}
                     />
                   </div>
                 )}
@@ -1855,12 +1396,16 @@ export function BusinessPage() {
                             {branches.length === 0 ? t("business.noBranches") : `${branches.length} ${branches.length === 1 ? t("business.branch.name") : t("business.branches").toLowerCase()}`}
                           </p>
                         </div>
-                        {isOwner && (
+                        {(isOwner || isManager) && (
                           <button
                             className="fcw-btn fcw-btn-primary fcw-btn-sm"
                             onClick={() => {
+                              if (businessOnlineOnly) {
+                                setShowOnlineOnlyConfirm(true);
+                                return;
+                              }
                               setEditBranchId(null);
-                              setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
+                              setBranchForm(emptyBranchForm());
                               setShowBranchForm(v => !v);
                             }}
                           >
@@ -1871,7 +1416,7 @@ export function BusinessPage() {
 
                       {branchesBusy && <Loading size="sm" />}
 
-                      {!branchesBusy && branches.length === 0 && !showBranchForm && (
+                      {!branchesBusy && branches.length === 0 && !showBranchForm && !showOnlineOnlyConfirm && (
                         <EmptyState
                           title={t("business.noBranches")}
                           description={t("business.noBranchesDesc")}
@@ -1879,86 +1424,54 @@ export function BusinessPage() {
                       )}
 
                       <AnimatePresence>
-                        {showBranchForm && !editBranchId && (
+                        {showOnlineOnlyConfirm && (
                           <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25 }}
-                            style={{ overflow: "hidden", marginBottom: "var(--fcw-space-sm)" }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            style={{
+                              position: "fixed", inset: 0, zIndex: 1000,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              backgroundColor: "rgba(0,0,0,0.5)",
+                            }}
+                            onClick={() => setShowOnlineOnlyConfirm(false)}
                           >
-                            <Card padding="md">
+                            <Card padding="lg" style={{ maxWidth: 480, margin: "1rem" }} onClick={e => e.stopPropagation()}>
                               <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                                <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                  <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                                  {t("business.branch.add")}
-                                </h3>
-                                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                  <label className="fcw-label">{t("business.branch.name")}</label>
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.branch.name")}
-                                    value={branchForm.name}
-                                    onChange={e => setBranchForm(p => ({ ...p, name: e.target.value }))}
-                                  />
-                                </div>
-                                <div className="fcw-flex-col" style={{ gap: "0.375rem" }}>
-                                  <span className="fcw-body-s fcw-weight-medium" style={{ color: "var(--fcw-color-text-secondary)" }}>
-                                    {t("business.branch.location")}
-                                  </span>
-                                  <MapLocationPicker
-                                    initialLat={branchForm.latitude ?? undefined}
-                                    initialLng={branchForm.longitude ?? undefined}
-                                    onChange={(lat, lng, address, cityName) => {
-                                      const cityId = cities.find(city =>
-                                        normalizeCityName(city.name) === normalizeCityName(cityName || "")
-                                      )?.id || "";
-                                      setBranchForm(p => ({
-                                        ...p,
-                                        latitude: lat,
-                                        longitude: lng,
-                                        address: address || "",
-                                        cityId,
-                                      }));
-                                    }}
-                                  />
-                                  {(branchForm.address || branchForm.cityId) && (
-                                    <span className="fcw-body-s fcw-text-secondary">
-                                      {[cities.find(city => city.id === branchForm.cityId)?.name, branchForm.address].filter(Boolean).join(", ")}
-                                    </span>
-                                  )}
-                                  <input
-                                    className="fcw-input"
-                                    placeholder={t("business.branch.addressDetails")}
-                                    value={branchForm.addressDetails}
-                                    onChange={e => setBranchForm(p => ({ ...p, addressDetails: e.target.value }))}
-                                  />
-                                  {branchForm.latitude != null && branchForm.longitude != null && (
-                                    <a
-                                      className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-                                      style={{ textDecoration: "none", alignSelf: "flex-start" }}
-                                      href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <MapPin size={14} />{t("business.branch.openIn2gis")}
-                                    </a>
-                                  )}
-                                </div>
-                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateBranch}>
-                                    <Check size={14} />{t("business.create")}
+                                <h3 className="fcw-h3" style={{ margin: 0 }}>{t("business.branch.onlineOnlyConfirmTitle")}</h3>
+                                <p className="fcw-body" style={{ color: "var(--fcw-color-text-secondary)" }}>{t("business.branch.onlineOnlyConfirmDesc")}</p>
+                                <div className="fcw-flex fcw-justify-end" style={{ gap: "0.5rem" }}>
+                                  <button className="fcw-btn fcw-btn-ghost" onClick={() => setShowOnlineOnlyConfirm(false)}>
+                                    {t("business.branch.onlineOnlyCancel")}
                                   </button>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => {
-                                    setShowBranchForm(false);
-                                    setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
-                                  }}>{t("business.cancel")}</button>
+                                  <button className="fcw-btn fcw-btn-primary" onClick={() => {
+                                    setShowOnlineOnlyConfirm(false);
+                                    setEditBranchId(null);
+                                    setBranchForm(emptyBranchForm());
+                                    setShowBranchForm(true);
+                                  }}>
+                                    {t("business.branch.onlineOnlyConfirm")}
+                                  </button>
                                 </div>
                               </div>
                             </Card>
                           </motion.div>
                         )}
                       </AnimatePresence>
+
+                      <BranchEditor
+                        open={showBranchForm && !editBranchId}
+                        form={branchForm}
+                        cities={cities}
+                        onChange={setBranchForm}
+                        onClose={() => {
+                          setShowBranchForm(false);
+                          setBranchForm(emptyBranchForm());
+                        }}
+                        onCreate={handleCreateBranch}
+                        t={t}
+                      />
 
                       {!branchesBusy && branches.map(b => (
                         <div key={b.id} style={{ marginBottom: "var(--fcw-space-2xs)" }}>
@@ -2013,7 +1526,7 @@ export function BusinessPage() {
                                     <a
                                       className="fcw-btn fcw-btn-ghost fcw-btn-sm"
                                       style={{ textDecoration: "none", alignSelf: "flex-start" }}
-                                      href={`https://2gis.kz/geo/${branchForm.longitude},${branchForm.latitude}`}
+                                      href={`https://www.openstreetmap.org/?mlat=${branchForm.latitude}&mlon=${branchForm.longitude}#map=17/${branchForm.latitude}/${branchForm.longitude}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                     >
@@ -2021,13 +1534,98 @@ export function BusinessPage() {
                                     </a>
                                   )}
                                 </div>
+                                <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                                  <span className="fcw-label">{t("business.branch.timeZoneId")}</span>
+                                  <input type="text" className="fcw-input" placeholder="Asia/Almaty" value={branchForm.timeZoneId} onChange={e => setBranchForm(form => ({ ...form, timeZoneId: e.target.value }))} />
+                                </label>
+                                <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+                                  <span className="fcw-label">{t("business.branch.weeklyHours")}</span>
+                                  {branchForm.weeklyHours.map((h, i) => (
+                                    <div key={i} className="fcw-flex" style={{ gap: "0.375rem", alignItems: "center" }}>
+                                      <select className="fcw-input" style={{ width: "80px" }} value={h.dayOfWeek}
+                                        onChange={e => setBranchForm(f => ({
+                                          ...f,
+                                          weeklyHours: f.weeklyHours.map((r, j) => j === i ? { ...r, dayOfWeek: e.target.value } : r),
+                                        }))}>
+                                        <option value="">—</option>
+                                        {["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"].map(d =>
+                                          <option key={d} value={d}>{t(`business.branch.day.${d.toLowerCase()}`)}</option>
+                                        )}
+                                      </select>
+                                      <input type="time" className="fcw-input" style={{ width: "110px" }} value={h.opensAt}
+                                        onChange={e => setBranchForm(f => ({
+                                          ...f,
+                                          weeklyHours: f.weeklyHours.map((r, j) => j === i ? { ...r, opensAt: e.target.value } : r),
+                                        }))} />
+                                      <span className="fcw-body-s">—</span>
+                                      <input type="time" className="fcw-input" style={{ width: "110px" }} value={h.closesAt}
+                                        onChange={e => setBranchForm(f => ({
+                                          ...f,
+                                          weeklyHours: f.weeklyHours.map((r, j) => j === i ? { ...r, closesAt: e.target.value } : r),
+                                        }))} />
+                                      <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" style={{ color: "var(--fcw-color-error)" }}
+                                        onClick={() => setBranchForm(f => ({ ...f, weeklyHours: f.weeklyHours.filter((_, j) => j !== i) }))}>
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                    onClick={() => setBranchForm(f => ({ ...f, weeklyHours: [...f.weeklyHours, { dayOfWeek: "", opensAt: "", closesAt: "" }] }))}>
+                                    <Plus size={14} />{t("business.branch.addHoursRow")}
+                                  </button>
+                                </div>
+                                <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+                                  <span className="fcw-label">{t("business.branch.specialHours")}</span>
+                                  {branchForm.specialHours.map((h, i) => (
+                                    <div key={i} className="fcw-flex-col" style={{ gap: "0.375rem" }}>
+                                      <div className="fcw-flex" style={{ gap: "0.375rem", alignItems: "center" }}>
+                                        <input type="date" className="fcw-input" style={{ width: "140px" }} value={h.date}
+                                          onChange={e => setBranchForm(f => ({
+                                            ...f,
+                                            specialHours: f.specialHours.map((r, j) => j === i ? { ...r, date: e.target.value } : r),
+                                          }))} />
+                                        <label className="fcw-flex" style={{ gap: "0.25rem", alignItems: "center", fontSize: "var(--fcw-font-size-body-s)" }}>
+                                          <input type="checkbox" checked={h.closed}
+                                            onChange={e => setBranchForm(f => ({
+                                              ...f,
+                                              specialHours: f.specialHours.map((r, j) => j === i ? { ...r, closed: e.target.checked } : r),
+                                            }))} />
+                                          {t("business.branch.closedAllDay")}
+                                        </label>
+                                        <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" style={{ color: "var(--fcw-color-error)" }}
+                                          onClick={() => setBranchForm(f => ({ ...f, specialHours: f.specialHours.filter((_, j) => j !== i) }))}>
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                      {!h.closed && (
+                                        <div className="fcw-flex" style={{ gap: "0.375rem", alignItems: "center" }}>
+                                          <input type="time" className="fcw-input" style={{ width: "110px" }} value={h.opensAt}
+                                            onChange={e => setBranchForm(f => ({
+                                              ...f,
+                                              specialHours: f.specialHours.map((r, j) => j === i ? { ...r, opensAt: e.target.value } : r),
+                                            }))} />
+                                          <span className="fcw-body-s">—</span>
+                                          <input type="time" className="fcw-input" style={{ width: "110px" }} value={h.closesAt}
+                                            onChange={e => setBranchForm(f => ({
+                                              ...f,
+                                              specialHours: f.specialHours.map((r, j) => j === i ? { ...r, closesAt: e.target.value } : r),
+                                            }))} />
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                                    onClick={() => setBranchForm(f => ({ ...f, specialHours: [...f.specialHours, { date: "", closed: false, opensAt: "", closesAt: "" }] }))}>
+                                    <Plus size={14} />{t("business.branch.addHoursRow")}
+                                  </button>
+                                </div>
                                 <div className="fcw-flex" style={{ gap: "0.5rem" }}>
                                   <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleUpdateBranch}>
                                     <Check size={14} />{t("business.save")}
                                   </button>
                                   <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => {
                                     setEditBranchId(null);
-                                    setBranchForm({ name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
+                                    setBranchForm(emptyBranchForm());
                                   }}>{t("business.cancel")}</button>
                                 </div>
                               </div>
@@ -2065,14 +1663,14 @@ export function BusinessPage() {
                                       {b.cityName}
                                     </span>
                                   )}
-                                  {b.onlineOnly && (
+                                  {b.openingSummary && (
                                     <span className="fcw-label" style={{
-                                      color: "var(--fcw-color-primary)",
+                                      color: b.openingSummary.state === "OPEN" ? "var(--fcw-color-success)" : "var(--fcw-color-text-secondary)",
                                       border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
                                       borderRadius: "var(--fcw-radius-full)",
                                       padding: "0.125rem 0.5rem",
                                     }}>
-                                      {t("business.branch.onlineOnly")}
+                                      {formatOpeningLabel(b.openingSummary, t)}
                                     </span>
                                   )}
                                 </div>
@@ -2104,7 +1702,7 @@ export function BusinessPage() {
                                     }} />
                                   </button>
                                 )}
-                                {isOwner && (
+                                {(isOwner || isManager) && (
                                   <button
                                     className="fcw-btn fcw-btn-ghost fcw-btn-sm"
                                     style={{ flexShrink: 0 }}
@@ -2113,6 +1711,9 @@ export function BusinessPage() {
                                       setBranchForm({
                                         name: b.name, address: b.address || "", addressDetails: b.addressDetails || "", cityId: b.cityId || "",
                                         latitude: b.latitude ?? null, longitude: b.longitude ?? null,
+                                        timeZoneId: b.timeZoneId || "",
+                                        weeklyHours: (b.weeklyHours || []).map(h => ({ dayOfWeek: h.dayOfWeek, opensAt: h.opensAt, closesAt: h.closesAt })),
+                                        specialHours: (b.specialHours || []).map(h => ({ date: h.date, closed: h.closed ?? false, opensAt: h.opensAt || "", closesAt: h.closesAt || "" })),
                                       });
                                       setShowBranchForm(false);
                                     }}
@@ -2475,6 +2076,17 @@ export function BusinessPage() {
                               {t("business.staff.tempPassword")}: {emp.tempPassword}
                             </span>
                           )}
+                          {emp.status === "PENDING_ACTIVATION" && (isOwner || isManager) && (
+                            <button
+                              type="button"
+                              className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm"
+                              onClick={() => handleDeletePendingEmployee(emp)}
+                              aria-label={t("business.employee.deletePending")}
+                              title={t("business.employee.deletePending")}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </section>
@@ -2484,11 +2096,12 @@ export function BusinessPage() {
                 {/* Import data */}
                 {section === "import" && (
                   <ProductImportWizard
+                    businessId={businessId}
                     branches={branches}
                     activeBranchId={importBranchId || activeBranchId}
                     onBranchChange={setImportBranchId}
                     onBackToProducts={() => setSection(importMode === "SERVICE" ? "services" : "products")}
-                    onImported={handleImportCompleted}
+                    onImported={reloadFirstProductPage}
                     importMode={importMode}
                     allowAiTools={isPlatformWorkspace}
                   />
@@ -2507,10 +2120,14 @@ export function BusinessPage() {
       <ManagedImportRequestDialog
         open={managedImportDialogScope !== null}
         businessId={businessId}
-        scope={managedImportDialogScope ?? "PRODUCTS"}
+        scope={managedImportDialogScope ?? "ITEM"}
         defaultContactValue={state.session?.user?.email ?? ""}
+        initialSourceLinks={onboardingSourceLinks}
         onClose={() => setManagedImportDialogScope(null)}
-        onSubmitted={item => setManagedImportItems(current => ({ ...current, [item.catalogScope]: item }))}
+        onSubmitted={item => setManagedImportItems(current => {
+          if (item.businessScope !== "BOTH") return { ...current, [item.businessScope]: item };
+          return { ...current, ITEM: item, SERVICE: item };
+        })}
       />
       <ManagedImportChatDrawer
         open={managedImportChat !== null}
@@ -2518,6 +2135,12 @@ export function BusinessPage() {
         businessId={businessId}
         businessName={membership?.businessName}
         onClose={() => setManagedImportChat(null)}
+      />
+      <BusinessChatDrawer
+        businessId={businessId}
+        conversation={chatConversations.find(item => item.conversationId === selectedConversationId) ?? null}
+        onClose={() => setSelectedConversationId(null)}
+        onActivity={loadChats}
       />
     </main>
   );

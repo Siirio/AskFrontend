@@ -27,12 +27,13 @@ interface BranchOption {
 }
 
 interface ProductImportWizardProps {
+  businessId: string;
   branches: BranchOption[];
   activeBranchId: string;
   onBranchChange: (branchId: string) => void;
   onBackToProducts: () => void;
   onImported: () => void;
-  importMode: "PRODUCT" | "SERVICE";
+  importMode: "ITEM" | "SERVICE";
   allowAiTools: boolean;
 }
 
@@ -87,27 +88,27 @@ const SERVICE_DEMO_TABLE_ROWS = [
   ["Маникюр с покрытием", "Ногтевой сервис", "12 000", "90 мин", "Аппаратный маникюр + гель-лак", "маникюр; гель-лак"],
 ];
 
-function getDemoTableRows(mode: "PRODUCT" | "SERVICE") {
-  return mode === "PRODUCT" ? PRODUCT_DEMO_TABLE_ROWS : SERVICE_DEMO_TABLE_ROWS;
+function getDemoTableRows(mode: "ITEM" | "SERVICE") {
+  return mode === "ITEM" ? PRODUCT_DEMO_TABLE_ROWS : SERVICE_DEMO_TABLE_ROWS;
 }
 
 function isAutodumpFile(file: File) {
   return /\.(txt|md|pdf)$/i.test(file.name);
 }
 
-function getFieldOptions(mode: "PRODUCT" | "SERVICE") {
-  return mode === "PRODUCT" ? PRODUCT_FIELD_OPTIONS : SERVICE_FIELD_OPTIONS;
+function getFieldOptions(mode: "ITEM" | "SERVICE") {
+  return mode === "ITEM" ? PRODUCT_FIELD_OPTIONS : SERVICE_FIELD_OPTIONS;
 }
 
-function getRecommendedColumns(mode: "PRODUCT" | "SERVICE") {
-  return mode === "PRODUCT" ? PRODUCT_RECOMMENDED_COLUMNS : SERVICE_RECOMMENDED_COLUMNS;
+function getRecommendedColumns(mode: "ITEM" | "SERVICE") {
+  return mode === "ITEM" ? PRODUCT_RECOMMENDED_COLUMNS : SERVICE_RECOMMENDED_COLUMNS;
 }
 
 function normalizeUploadResponse(value: ProductImportUploadResponse | { sessionId?: string; status?: string; draftsCreated?: number }) {
   return value as ProductImportUploadResponse & { sessionId?: string };
 }
 
-function fieldLabel(field: ProductImportTargetField, mode: "PRODUCT" | "SERVICE") {
+function fieldLabel(field: ProductImportTargetField, mode: "ITEM" | "SERVICE") {
   return getFieldOptions(mode).find(option => option.value === field)?.label || field;
 }
 
@@ -119,7 +120,7 @@ function draftTitle(draft: AutodumpDraftDto) {
   return draft.normalizedTitle || draft.title || "Без названия";
 }
 
-export function ProductImportWizard({ branches, activeBranchId, onBranchChange, onBackToProducts, onImported, importMode, allowAiTools }: ProductImportWizardProps) {
+export function ProductImportWizard({ businessId, branches, activeBranchId, onBranchChange, onBackToProducts, onImported, importMode, allowAiTools }: ProductImportWizardProps) {
   const [step, setStep] = useState<ImportStep>("upload");
   const [fileMode, setFileMode] = useState<ImportMode>("table");
   const [file, setFile] = useState<File | null>(null);
@@ -131,11 +132,11 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  const isProduct = importMode === "PRODUCT";
+  const isProduct = importMode === "ITEM";
   const itemLabel = isProduct ? "товар" : "услуга";
   const itemLabelPlural = isProduct ? "товаров" : "услуг";
   const itemLabelAccusative = isProduct ? "товары" : "услуги";
-  const branchName = branches.find(branch => branch.id === activeBranchId)?.name || "Филиал";
+  const branchName = branches.find(branch => branch.id === activeBranchId)?.name || "Весь бизнес";
   const nameMapped = mappings.some(mapping => mapping.targetField === "NAME");
   const characteristics = mappings.filter(mapping => mapping.targetField === "CHARACTERISTIC");
   const ignored = mappings.filter(mapping => mapping.targetField === "IGNORE");
@@ -180,11 +181,11 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   };
 
   const uploadFile = async (nextFile = file) => {
-    if (!nextFile || !activeBranchId) return;
+    if (!nextFile || !businessId || (isAutodumpFile(nextFile) && !activeBranchId)) return;
     setBusy(true);
     setMessage("");
     try {
-      const response = normalizeUploadResponse(await uploadProductImport(activeBranchId, nextFile, importMode));
+      const response = normalizeUploadResponse(await uploadProductImport(businessId, activeBranchId || undefined, nextFile, importMode));
       if (allowAiTools && isAutodumpFile(nextFile)) {
         const nextSessionId = response.sessionId || "";
         setFileMode("autodump");
@@ -213,11 +214,11 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   };
 
   const continueToPreview = async () => {
-    if (!upload || !activeBranchId || !nameMapped) return;
+    if (!upload || !businessId || !nameMapped) return;
     setBusy(true);
     setMessage("");
     try {
-      const nextPreview = await mapProductImport(activeBranchId, upload.importId, mappings);
+      const nextPreview = await mapProductImport(businessId, upload.importId, mappings);
       setPreview(nextPreview);
       setStep("preview");
     } catch (error) {
@@ -228,11 +229,11 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
   };
 
   const importTableRows = async () => {
-    if (!upload || !activeBranchId) return;
+    if (!upload || !businessId) return;
     setBusy(true);
     setMessage("");
     try {
-      const result = await approveProductImport(activeBranchId, upload.importId);
+      const result = await approveProductImport(businessId, upload.importId);
       setMessage(`Импортировано ${itemLabelPlural}: ${result.productsCreated}`);
       onImported();
     } catch (error) {
@@ -307,7 +308,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
             <div>
               <h2 className="fcw-h2" style={{ margin: 0 }}>Импорт {itemLabelPlural} из Excel</h2>
               <p className="fcw-body fcw-text-secondary" style={{ margin: "0.35rem 0 0" }}>
-                Импорт применяется к текущему филиалу: {branchName}
+                Область импорта: {branchName}. Филиал можно указать позже.
               </p>
             </div>
             <div
@@ -352,7 +353,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
             </div>
 
             {file && (
-              <button className="fcw-btn fcw-btn-primary" onClick={() => uploadFile()} disabled={busy || !activeBranchId} style={{ width: "100%" }}>
+              <button className="fcw-btn fcw-btn-primary" onClick={() => uploadFile()} disabled={busy || !businessId || (fileMode === "autodump" && !activeBranchId)} style={{ width: "100%" }}>
                 {busy ? <Loader2 className="fcw-animate-spin" size={16} /> : <PackageCheck size={16} />}
                 Превратить в {itemLabelAccusative}
               </button>
@@ -376,7 +377,7 @@ export function ProductImportWizard({ branches, activeBranchId, onBranchChange, 
 
             <div className="fcw-flex" style={{ gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
               <Select
-                options={branches.map(branch => ({ value: branch.id, label: branch.name }))}
+                options={[{ value: "", label: "Весь бизнес" }, ...branches.map(branch => ({ value: branch.id, label: branch.name }))]}
                 value={activeBranchId}
                 onChange={onBranchChange}
                 style={{ width: "min(100%, 320px)" }}

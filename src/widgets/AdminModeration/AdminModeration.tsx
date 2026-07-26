@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, X, Loader2, ChevronLeft, ChevronRight, Eye, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   listModerationQueue,
@@ -9,11 +9,16 @@ import {
   listCatalogReviews,
   reviewCatalog,
   resolveReport,
-  moderateBusiness,
   moderateProduct,
+  listPendingVerifications,
+  getVerificationDetail,
+  reviewVerification,
   type ProductModerationItem,
   type ContentReportItem,
   type CatalogReviewItem,
+  type VerificationListResponse,
+  type VerificationDetailResponse,
+  type VerificationStatus,
 } from "../../shared/api/platformClient";
 import { Card } from "../../shared/ui/Card/Card";
 import { Modal } from "../../shared/ui/Modal/Modal";
@@ -41,6 +46,13 @@ export function AdminModeration() {
   const [rejectTarget, setRejectTarget] = useState<ProductModerationItem | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  const [verifications, setVerifications] = useState<VerificationListResponse[]>([]);
+  const [verificationsLoading, setVerificationsLoading] = useState(true);
+  const [verificationPriorityFilter, setVerificationPriorityFilter] = useState<"STANDARD" | "EXPEDITED" | null>(null);
+  const [verificationDetail, setVerificationDetail] = useState<VerificationDetailResponse | null>(null);
+  const [verificationDetailBusy, setVerificationDetailBusy] = useState(false);
+  const [reviewComment, setReviewComment] = useState("");
+
   const loadQueue = (page: number) => {
     setQueueLoading(true);
     listModerationQueue(page, 20)
@@ -60,6 +72,46 @@ export function AdminModeration() {
     listOpenReports().then(setReports).catch(() => setReports([]));
     listCatalogReviews().then(setCatalogReviews).catch(() => setCatalogReviews([]));
   }, []);
+
+  const loadVerifications = (priority?: "STANDARD" | "EXPEDITED" | null) => {
+    setVerificationsLoading(true);
+    listPendingVerifications(priority ?? undefined)
+      .then(setVerifications)
+      .catch(() => setVerifications([]))
+      .finally(() => setVerificationsLoading(false));
+  };
+
+  useEffect(() => {
+    loadVerifications(verificationPriorityFilter);
+  }, [verificationPriorityFilter]);
+
+  const openVerificationDetail = async (businessId: string) => {
+    setVerificationDetailBusy(true);
+    setVerificationDetail(null);
+    try {
+      const detail = await getVerificationDetail(businessId);
+      setVerificationDetail(detail);
+    } catch {
+      setVerificationDetail(null);
+    } finally {
+      setVerificationDetailBusy(false);
+    }
+  };
+
+  const handleReviewVerification = async (businessId: string, status: VerificationStatus) => {
+    if (!reviewComment.trim() && status !== "APPROVED") return;
+    setVerificationDetailBusy(true);
+    try {
+      const result = await reviewVerification(businessId, { status, comment: reviewComment });
+      setVerificationDetail(result);
+      setVerifications(prev => prev.filter(v => v.businessId !== businessId));
+      setReviewComment("");
+    } catch (e) {
+      toast.show(e instanceof ApiError ? e.message : t("platform.moderation.error"), "error");
+    } finally {
+      setVerificationDetailBusy(false);
+    }
+  };
 
   const handleApprove = async (productId: string) => {
     setBusyId(productId);
@@ -116,14 +168,10 @@ export function AdminModeration() {
     }
   };
 
-  const handleModerateTarget = async (report: ContentReportItem, action: "SUSPENDED" | "BANNED" | "HIDE") => {
+  const handleModerateTarget = async (report: ContentReportItem) => {
     setBusyId(report.id);
     try {
-      if (action === "HIDE") {
-        await moderateProduct(report.targetId, true);
-      } else {
-        await moderateBusiness(report.targetId, action);
-      }
+      await moderateProduct(report.targetId, true);
       toast.show(t("platform.moderation.applied"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("platform.moderation.error"), "error");
@@ -241,6 +289,186 @@ export function AdminModeration() {
         )}
       </section>
 
+      {permissions.has("MODERATE_CONTENT") && (
+        <section className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
+          <div className="fcw-flex-between">
+            <h2 className="fcw-h3" style={{ margin: 0 }}>{t("platform.verification.title")}</h2>
+            <div className="fcw-flex" style={{ gap: "0.5rem" }}>
+              <button
+                className={`fcw-btn fcw-btn-sm ${!verificationPriorityFilter ? "fcw-btn-primary" : "fcw-btn-secondary"}`}
+                onClick={() => setVerificationPriorityFilter(null)}
+              >
+                {t("platform.verification.filterAll")}
+              </button>
+              <button
+                className={`fcw-btn fcw-btn-sm ${verificationPriorityFilter === "STANDARD" ? "fcw-btn-primary" : "fcw-btn-secondary"}`}
+                onClick={() => setVerificationPriorityFilter("STANDARD")}
+              >
+                {t("platform.verification.priority.STANDARD")}
+              </button>
+              <button
+                className={`fcw-btn fcw-btn-sm ${verificationPriorityFilter === "EXPEDITED" ? "fcw-btn-primary" : "fcw-btn-secondary"}`}
+                onClick={() => setVerificationPriorityFilter("EXPEDITED")}
+              >
+                {t("platform.verification.priority.EXPEDITED")}
+              </button>
+            </div>
+          </div>
+          {verificationsLoading ? <Loading /> : verifications.length === 0 ? (
+            <Card padding="md">
+              <p className="fcw-body-s fcw-text-secondary">{t("platform.verification.empty")}</p>
+            </Card>
+          ) : (
+            verifications.map(v => (
+              <Card key={v.businessId} padding="lg">
+                <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem", alignItems: "center" }}>
+                  <div className="fcw-flex-col" style={{ gap: "0.125rem", minWidth: 0 }}>
+                    <span className="fcw-body fcw-weight-semibold">{v.businessName}</span>
+                    <span className="fcw-body-xs fcw-text-tertiary">
+                      {t(`platform.verification.status.${v.status}`)} · {t(`platform.verification.priority.${v.priority}`)} · {new Date(v.createdAt).toLocaleString("ru-KZ")}
+                    </span>
+                  </div>
+                  <button
+                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                    disabled={verificationDetailBusy}
+                    onClick={() => openVerificationDetail(v.businessId)}
+                  >
+                    <Eye size={14} />
+                    {t("platform.verification.review")}
+                  </button>
+                </div>
+              </Card>
+            ))
+          )}
+        </section>
+      )}
+
+      {verificationDetail && (
+        <Modal open onClose={() => { setVerificationDetail(null); setReviewComment(""); }}>
+          <div className="fcw-flex-col" style={{ gap: "1rem", padding: "1rem", minWidth: 420, maxWidth: 560 }}>
+            <div className="fcw-flex-between">
+              <h3 className="fcw-h3" style={{ margin: 0 }}>{verificationDetail.businessName}</h3>
+              <span className={`admin-badge admin-badge--${verificationDetail.status === "PENDING" ? "pending" : verificationDetail.status === "APPROVED" ? "approved" : verificationDetail.status === "REJECTED" ? "rejected" : "pending"}`}>
+                {t(`platform.verification.status.${verificationDetail.status}`)}
+              </span>
+            </div>
+            <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+              <span className="fcw-label">{t("platform.verification.proofs")}</span>
+              {verificationDetail.binIin && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.binIin")}</span>
+                  <span className="fcw-body-s">{verificationDetail.binIin}</span>
+                </div>
+              )}
+              {verificationDetail.phone && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.phone")}</span>
+                  <span className="fcw-body-s">{verificationDetail.phone}</span>
+                </div>
+              )}
+              {verificationDetail.corporateEmail && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.corporateEmail")}</span>
+                  <span className="fcw-body-s">{verificationDetail.corporateEmail}</span>
+                </div>
+              )}
+              {verificationDetail.twoGisUrl && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.twoGisUrl")}</span>
+                  <a href={verificationDetail.twoGisUrl} target="_blank" rel="noopener noreferrer" className="fcw-body-s">{verificationDetail.twoGisUrl}</a>
+                </div>
+              )}
+              {verificationDetail.kaspiUrl && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.kaspiUrl")}</span>
+                  <a href={verificationDetail.kaspiUrl} target="_blank" rel="noopener noreferrer" className="fcw-body-s">{verificationDetail.kaspiUrl}</a>
+                </div>
+              )}
+              {verificationDetail.ozonUrl && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.ozonUrl")}</span>
+                  <a href={verificationDetail.ozonUrl} target="_blank" rel="noopener noreferrer" className="fcw-body-s">{verificationDetail.ozonUrl}</a>
+                </div>
+              )}
+              {verificationDetail.wildberriesUrl && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.wildberriesUrl")}</span>
+                  <a href={verificationDetail.wildberriesUrl} target="_blank" rel="noopener noreferrer" className="fcw-body-s">{verificationDetail.wildberriesUrl}</a>
+                </div>
+              )}
+              {verificationDetail.websiteUrl && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.websiteUrl")}</span>
+                  <a href={verificationDetail.websiteUrl} target="_blank" rel="noopener noreferrer" className="fcw-body-s">{verificationDetail.websiteUrl}</a>
+                </div>
+              )}
+              {verificationDetail.instagramUrl && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.instagramUrl")}</span>
+                  <span className="fcw-body-s">{verificationDetail.instagramUrl}</span>
+                </div>
+              )}
+              {verificationDetail.telegramUrl && (
+                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
+                  <span className="fcw-body-xs fcw-text-tertiary">{t("platform.verification.field.telegramUrl")}</span>
+                  <span className="fcw-body-s">{verificationDetail.telegramUrl}</span>
+                </div>
+              )}
+            </div>
+            {verificationDetail.history.length > 0 && (
+              <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+                <span className="fcw-label">{t("platform.verification.history")}</span>
+                {verificationDetail.history.map((h, i) => (
+                  <div key={i} className="fcw-flex-col" style={{ gap: "0.125rem", padding: "0.5rem", background: "var(--fcw-surface-secondary)", borderRadius: "var(--fcw-radius-sm)" }}>
+                    <span className="fcw-body-xs fcw-text-tertiary">
+                      {h.fromStatus ? t(`platform.verification.status.${h.fromStatus}`) : "—"} → {t(`platform.verification.status.${h.toStatus}`)} · {new Date(h.createdAt).toLocaleString("ru-KZ")}
+                    </span>
+                    {h.comment && <span className="fcw-body-s">{h.comment}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {verificationDetail.status === "PENDING" && (
+              <>
+                <textarea
+                  className="fcw-input"
+                  rows={2}
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                  placeholder={t("platform.verification.comment")}
+                />
+                <div className="fcw-flex" style={{ gap: "0.5rem", justifyContent: "flex-end" }}>
+                  <button
+                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                    disabled={verificationDetailBusy}
+                    onClick={() => handleReviewVerification(verificationDetail.businessId, "NEEDS_INFO")}
+                  >
+                    <AlertTriangle size={14} />
+                    {t("platform.verification.requestInfo")}
+                  </button>
+                  <button
+                    className="fcw-btn fcw-btn-secondary fcw-btn-sm"
+                    disabled={verificationDetailBusy}
+                    onClick={() => handleReviewVerification(verificationDetail.businessId, "REJECTED")}
+                  >
+                    <X size={14} />
+                    {t("platform.verification.reject")}
+                  </button>
+                  <button
+                    className="fcw-btn fcw-btn-primary fcw-btn-sm"
+                    disabled={verificationDetailBusy || !reviewComment.trim()}
+                    onClick={() => handleReviewVerification(verificationDetail.businessId, "APPROVED")}
+                  >
+                    <ShieldCheck size={14} />
+                    {t("platform.verification.approve")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+
       {catalogReviews.length > 0 && (
         <section className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
           <h2 className="fcw-h3" style={{ margin: 0 }}>{t("platform.moderation.catalogReviews")}</h2>
@@ -295,18 +523,8 @@ export function AdminModeration() {
                     {t("platform.moderation.dismiss")}
                   </button>
                   {report.targetType === "PRODUCT" && permissions.has("MODERATE_CONTENT") && (
-                    <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={busyId === report.id} onClick={() => handleModerateTarget(report, "HIDE")}>
+                    <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={busyId === report.id} onClick={() => handleModerateTarget(report)}>
                       {t("platform.moderation.hideProduct")}
-                    </button>
-                  )}
-                  {report.targetType === "BUSINESS" && permissions.has("SUSPEND_BUSINESS") && (
-                    <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={busyId === report.id} onClick={() => handleModerateTarget(report, "SUSPENDED")}>
-                      {t("platform.moderation.suspend")}
-                    </button>
-                  )}
-                  {report.targetType === "BUSINESS" && permissions.has("BAN_BUSINESS") && (
-                    <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={busyId === report.id} onClick={() => handleModerateTarget(report, "BANNED")}>
-                      {t("platform.moderation.ban")}
                     </button>
                   )}
                 </div>
@@ -317,7 +535,7 @@ export function AdminModeration() {
       )}
 
       {rejectTarget && (
-        <Modal onClose={() => setRejectTarget(null)}>
+        <Modal open onClose={() => setRejectTarget(null)}>
           <div className="fcw-flex-col" style={{ gap: "1rem", padding: "1rem", minWidth: 360 }}>
             <h3 className="fcw-h3" style={{ margin: 0 }}>{t("platform.moderation.rejectTitle")}</h3>
             <p className="fcw-body-s fcw-text-secondary">

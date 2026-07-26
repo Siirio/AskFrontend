@@ -196,7 +196,9 @@ API responses should support:
 - Manual replies may show status, price, comment, branch address, contact actions, map links, and explicit supplier notes.
 - Do not show exact stock quantity, courier availability, delivery SLA, guaranteed slots, or booking certainty unless supplier input or trusted integration data supports it.
 - Integration-backed facts should be visually distinguishable enough that users understand the source.
-- Temporary password is shown to owner ONLY in create/response/reset-password API responses and only while staff status is `PENDING_ACTIVATION` or `PASSWORD_RESET_REQUIRED`. After activation, `tempPassword` is `null`.
+- Temporary password is shown to authorized owners/managers in create, reset, and staff-list responses while password change is required. It remains available after a later owner/manager login and becomes `null` immediately after the staff user sets a permanent password.
+- `DELETE /api/v1/businesses/{businessId}/staff/{membershipId}` removes only a still-unactivated staff account; activated staff cannot be deleted through this pending-activation action.
+- AI enrichment controls are rendered only inside the assigned platform member's active managed-import workspace and never after ordinary Item, Service, or UniqueOffer creation.
 - Staff use the unified `/auth/login` — there is no separate staff login endpoint.
 
 ## Search V2 / Generative UI
@@ -283,6 +285,12 @@ Privacy-safe contact resolution through one-time tokens. Frontend never receives
 
 Constrained page builder for brand mini-sites. Brands assemble pages from pre-defined blocks.
 
+### Seller Onboarding and Managed Import
+
+Seller onboarding and managed import use the entity-backed `BusinessScope` values `ITEM`, `SERVICE`, and `BOTH` in frontend state, query parameters, request bodies, responses, and backend DTOs. Legal form `NONE` requires at least one valid HTTP(S) verification source. The managed-import request dialog displays only `preferredContactChannel` and `preferredContactValue`; the value must match email, Telegram `@username`, or WhatsApp phone structure. Managed-import payloads use optional `selectedSourceTypes` and never use `sourceTypes`, `catalogScope`, `PRODUCTS`, or `SERVICES` as aliases for these entity terms.
+
+Activation gives the assigned platform member immediate Item/Service access only for that Business and scope for seven days. Frontend access checks use the active grant response and never a global catalog-edit flag.
+
 ### Brand Profile
 
 `GET /api/v1/businesses/{businessId}/brand-profile` (public):
@@ -341,12 +349,12 @@ Excel-импорт товаров: бекенд владеет парсинго�
 1. **Upload** — фронтенд отправляет `.xlsx` файл (multipart/form-data). Бекенд парсит Excel, генерирует auto-mappings, сохраняет сырые строки, возвращает `UploadResponse` с `importId`, колонками, sample rows (до 3), suggested target fields с confidence, статус `MAPPING_REQUIRED`.
 2. **Mapping** — фронтенд отправляет `MappingRequest` (массив sourceColumn → targetField + characteristicName). Бекенд заменяет mapping'и, нормализует все строки, вычисляет статусы VALID/WARNING/INVALID, возвращает `PreviewResponse` со статусом `PREVIEW_READY`.
 3. **Preview** — GET для повторного получения preview без изменения mapping.
-4. **Approve** — бекенд создает `Product` + `ProductOffer` для текущего филиала для каждой валидной строки, обновляет `SearchDocument`, возвращает `ApproveResponse` со статусом `IMPORTED`.
+4. **Approve** — бекенд создает business-owned `Item` для каждой валидной строки, опционально связывает его с выбранным филиалом, обновляет `SearchDocument`, возвращает `ApproveResponse` со статусом `IMPORTED`.
 5. **Cancel** — бекенд помечает импорт как `CANCELLED`.
 
 ### Endpoints
 
-Base: `/api/v1/business-admin/branches/{branchId}/product-imports`
+Base: `/api/v1/businesses/{businessId}/item-imports`. Multipart upload is authenticated and sends canonical `type=ITEM|SERVICE`; `branchId` is optional import metadata.
 
 | Step | Method | URL | Request | Response |
 |------|--------|-----|---------|----------|
@@ -414,3 +422,9 @@ Base: `/api/v1/business-admin/branches/{branchId}/product-imports`
 - Map action should not appear when branch address is unknown.
 - Browser prototypes may use web URLs; native clients may use deep links.
 - For service requests, the chat is the primary channel for time negotiation. Confirmation, time change, or cancellation actions by the business create **system event messages** in the conversation — these are visible to both customer and business in the chat history.
+## Catalog creation visibility
+
+- Item and Service create responses represent committed persistence.
+- Business Item and Service lists are ordered newest first.
+- A normal active Item is synchronously auto-approved and published immediately; a prohibited-keyword autoban saves it as rejected and excludes it from search.
+- An active Service publishes immediately without a moderation approval gate.

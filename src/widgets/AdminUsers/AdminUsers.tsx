@@ -13,16 +13,14 @@ import { ApiError } from "../../shared/api/httpClient";
 const ALL_PERMISSIONS = [
   "MANAGE_PLATFORM_USERS",
   "MANAGE_MANAGED_IMPORTS",
-  "EDIT_CATALOG_DURING_IMPORT",
-  "USE_AI_CATALOG_TOOLS",
-  "PUBLISH_CATALOG_DURING_IMPORT",
+  "USE_AI_ITEMS_SERVICES_TOOLS",
+  "PUBLISH_ITEMS_SERVICES_DURING_IMPORT",
   "MANAGE_SUPPORT_CHATS",
   "MODERATE_CONTENT",
-  "SUSPEND_BUSINESS",
-  "BAN_BUSINESS",
 ] as const;
 
 const PLATFORM_ROLES = ["SUPER_ADMIN", "ADMIN", "MODERATOR"] as const;
+const BUSINESS_SCOPED_CATALOG_PERMISSION = "EDIT_ITEMS_SERVICES_DURING_IMPORT";
 
 export function AdminUsers() {
   const { t } = useTranslation();
@@ -49,7 +47,11 @@ export function AdminUsers() {
   const startEdit = (user: PlatformMembershipItem) => {
     setEditId(user.id);
     setShowForm(true);
-    setForm({ email: user.email, role: user.role, permissions: [...user.permissions] });
+    setForm({
+      email: user.email,
+      role: user.role,
+      permissions: user.permissions.filter(permission => permission !== BUSINESS_SCOPED_CATALOG_PERMISSION),
+    });
   };
 
   const submit = async () => {
@@ -119,7 +121,11 @@ export function AdminUsers() {
                 size="sm"
                 options={PLATFORM_ROLES.map(role => ({ value: role, label: t(`platform.users.role.${role}`) }))}
                 value={form.role}
-                onChange={value => setForm(f => ({ ...f, role: value }))}
+                onChange={value => setForm(f => ({
+                  ...f,
+                  role: value,
+                  permissions: value === "SUPER_ADMIN" ? [...ALL_PERMISSIONS] : f.permissions,
+                }))}
               />
               <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
                 {ALL_PERMISSIONS.map(permission => {
@@ -156,7 +162,10 @@ export function AdminUsers() {
                   {user.email} · {t(`platform.users.role.${user.role}`)} · {user.status}
                 </span>
                 <span className="fcw-body-xs fcw-text-tertiary">
-                  {user.permissions.map(p => t(`platform.permissions.${p}`)).join(", ")}
+                  {user.permissions
+                    .filter(permission => permission !== BUSINESS_SCOPED_CATALOG_PERMISSION)
+                    .map(permission => t(`platform.permissions.${permission}`))
+                    .join(", ")}
                 </span>
               </div>
               <div className="fcw-flex" style={{ gap: "0.5rem", flexShrink: 0 }}>

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Globe, Instagram, MessageCircle, Palette } from "lucide-react";
+import { Globe, Image, Instagram, Loader2, Mail, MessageCircle, Palette, Phone, Upload } from "lucide-react";
 import { Card } from "../../shared/ui/Card/Card";
 import type { BrandProfileDto } from "../../shared/api/dto";
+import { uploadBusinessProfileCover, uploadBusinessProfileLogo } from "../../shared/api/askClient";
 
 const BRAND_COLOR_PRESETS = [
   "#e8824e", "#4e8ce8", "#e84e4e", "#4ee882",
@@ -21,7 +22,25 @@ interface ProfileEditorProps {
 export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: ProfileEditorProps) {
   const { t } = useTranslation();
   const [avatarShape, setAvatarShape] = useState<"circle" | "square">("circle");
+  const [mediaBusy, setMediaBusy] = useState<"logo" | "cover" | null>(null);
+  const [mediaError, setMediaError] = useState("");
   const update = (patch: Partial<BrandProfileDto>) => onChange({ ...profile, ...patch });
+
+  const uploadMedia = async (kind: "logo" | "cover", file?: File) => {
+    if (!file || !profile.businessId) return;
+    setMediaBusy(kind);
+    setMediaError("");
+    try {
+      const updated = kind === "logo"
+        ? await uploadBusinessProfileLogo(profile.businessId, file)
+        : await uploadBusinessProfileCover(profile.businessId, file);
+      onChange({ ...profile, ...updated });
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : t("common.error"));
+    } finally {
+      setMediaBusy(null);
+    }
+  };
 
   if (readOnly) {
     return (
@@ -50,9 +69,8 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
   }
 
   return (
-    <Card padding="lg">
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1fr)", gap: "var(--fcw-space-lg)" }}>
-        {/* Left column: avatar + brand color + logo URL */}
+    <Card padding="lg" className="ask-profile-editor">
+      <div className="ask-profile-editor__grid" style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1fr)", gap: "var(--fcw-space-lg)" }}>
         <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
             <div
@@ -127,13 +145,21 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
             </div>
           </label>
 
-          <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-            <span className="fcw-label">{t("profileEditor.logoUrl")}</span>
-            <input className="fcw-input" value={profile.logoUrl || ""} onChange={e => update({ logoUrl: e.target.value })} placeholder="https://..." />
-          </label>
+          <div className="ask-profile-media-fields">
+            <label>
+              <span><Upload size={14} /> Логотип</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => uploadMedia("logo", event.target.files?.[0])} disabled={mediaBusy !== null} />
+              <strong>{mediaBusy === "logo" ? <Loader2 className="fcw-animate-spin" size={16} /> : "Выбрать файл"}</strong>
+            </label>
+            <label>
+              <span><Image size={14} /> Обложка</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => uploadMedia("cover", event.target.files?.[0])} disabled={mediaBusy !== null} />
+              <strong>{mediaBusy === "cover" ? <Loader2 className="fcw-animate-spin" size={16} /> : "Выбрать файл"}</strong>
+            </label>
+          </div>
+          {mediaError && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)", margin: 0 }}>{mediaError}</p>}
         </div>
 
-        {/* Right column: description + social links */}
         <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
           <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
             <span className="fcw-label">{t("profileEditor.description")}</span>
@@ -141,6 +167,14 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
           </label>
 
           <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+            <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Phone size={12} />Телефон</span>
+              <input className="fcw-input" value={profile.number || ""} onChange={e => update({ number: e.target.value })} placeholder="+7 700 000 00 00" />
+            </label>
+            <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Mail size={12} />Email</span>
+              <input className="fcw-input" type="email" value={profile.email || ""} onChange={e => update({ email: e.target.value })} placeholder="hello@business.kz" />
+            </label>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
               <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Globe size={12} />{t("profileEditor.website")}</span>
               <input className="fcw-input" value={profile.websiteUrl || ""} onChange={e => update({ websiteUrl: e.target.value })} placeholder="https://..." />

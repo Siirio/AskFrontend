@@ -525,6 +525,42 @@ a {
   font-size: 0.8rem;
 }
 
+.business-chat-drawer__file {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.5rem 1rem;
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.78rem;
+  border-top: 1px solid var(--fcw-color-border);
+}
+
+.business-chat-drawer__file span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.business-chat-drawer__file button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  place-items: center;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.business-chat-drawer .support-message a {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: var(--fcw-color-primary);
+  font-size: 0.78rem;
+}
+
 .managed-import-dialog,
 .seller-catalog-step,
 .seller-managed-import-details {

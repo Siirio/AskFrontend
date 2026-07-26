@@ -6,11 +6,11 @@ import type {
   ChatMessageListResponse,
 } from "./dto";
 
-export function requestAiEnrichment(documentType: "PRODUCT" | "SERVICE", aggregateIds: string[]) {
-  return apiRequest<{ queuedCount: number }>("/api/v1/platform/ai-enrichment", {
+export function requestAiEnrichment(targetType: "PRODUCT" | "SERVICE" | "UNIQUE_OFFER", aggregateIds: string[]) {
+  return apiRequest<{ enrichedCount: number }>("/api/v1/platform/ai-enrichment", {
     method: "POST",
     auth: true,
-    body: { documentType, aggregateIds },
+    body: { targetType, aggregateIds },
   });
 }
 
@@ -124,14 +124,6 @@ export function resolveReport(
   });
 }
 
-export function moderateBusiness(businessId: string, status: "ACTIVE" | "SUSPENDED" | "BANNED") {
-  return apiRequest<void>(`/api/v1/platform/businesses/${businessId}/moderation`, {
-    method: "PATCH",
-    auth: true,
-    body: { status },
-  });
-}
-
 export function moderateProduct(productId: string, hidden: boolean) {
   return apiRequest<void>(`/api/v1/platform/products/${productId}/moderation`, {
     method: "PATCH",
@@ -179,7 +171,6 @@ export type PlatformBusinessRowResponse = {
   productCount: number;
   serviceCount: number;
   dropCount: number;
-  moderationStatus: string;
   catalogStatus: string;
 };
 
@@ -201,7 +192,6 @@ export type PlatformBusinessBranchDto = {
   branchId: string;
   name: string;
   address: string;
-  onlineOnly: boolean;
 };
 
 export type PlatformBusinessDetailResponse = {
@@ -210,11 +200,8 @@ export type PlatformBusinessDetailResponse = {
   legalName: string;
   bin: string;
   countryCode: string;
-  preferredContactChannel: string;
-  preferredContactValue: string;
-  moderationStatus: string;
   catalogStatus: string;
-  catalogScope: string;
+  businessScope: "ITEM" | "SERVICE" | "BOTH";
   branchCount: number;
   memberCount: number;
   productCount: number;
@@ -301,5 +288,66 @@ export function rejectModerationItem(productId: string, reason: string) {
     method: "POST",
     auth: true,
     body: { reason },
+  });
+}
+
+export type VerificationStatus = "PENDING" | "NEEDS_INFO" | "APPROVED" | "REJECTED";
+export type VerificationPriority = "STANDARD" | "EXPEDITED";
+
+export type VerificationListResponse = {
+  businessId: string;
+  businessName: string;
+  status: VerificationStatus;
+  priority: VerificationPriority;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VerificationHistoryItem = {
+  fromStatus: VerificationStatus | null;
+  toStatus: VerificationStatus;
+  toPriority: VerificationPriority | null;
+  changedBy: string;
+  comment: string;
+  createdAt: string;
+};
+
+export type VerificationDetailResponse = {
+  businessId: string;
+  businessName: string;
+  status: VerificationStatus;
+  priority: VerificationPriority;
+  binIin: string;
+  twoGisUrl: string;
+  kaspiUrl: string;
+  ozonUrl: string;
+  wildberriesUrl: string;
+  websiteUrl: string;
+  instagramUrl: string;
+  telegramUrl: string;
+  phone: string;
+  corporateEmail: string;
+  createdAt: string;
+  updatedAt: string;
+  history: VerificationHistoryItem[];
+};
+
+export function listPendingVerifications(priority?: VerificationPriority) {
+  const qs = priority ? `?priority=${encodeURIComponent(priority)}` : "";
+  return apiRequest<VerificationListResponse[]>(`/api/v1/platform/verifications${qs}`, { auth: true });
+}
+
+export function getVerificationDetail(businessId: string) {
+  return apiRequest<VerificationDetailResponse>(`/api/v1/platform/verifications/${businessId}`, { auth: true });
+}
+
+export function reviewVerification(
+  businessId: string,
+  data: { status: VerificationStatus; comment: string },
+) {
+  return apiRequest<VerificationDetailResponse>(`/api/v1/platform/verifications/${businessId}/review`, {
+    method: "POST",
+    auth: true,
+    body: data,
   });
 }

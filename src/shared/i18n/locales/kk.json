@@ -48,13 +48,11 @@
   "platform.users.role.MODERATOR": "Модератор",
   "platform.permissions.MANAGE_PLATFORM_USERS": "Платформа пайдаланушыларын басқару",
   "platform.permissions.MANAGE_MANAGED_IMPORTS": "Басқарылатын импорттарды басқару",
-  "platform.permissions.EDIT_CATALOG_DURING_IMPORT": "Импорт кезінде каталогты өңдеу",
-  "platform.permissions.PUBLISH_CATALOG_DURING_IMPORT": "Импорт кезінде каталогты жариялау",
-  "platform.permissions.USE_AI_CATALOG_TOOLS": "Каталогтың AI құралдары",
+  "platform.permissions.EDIT_ITEMS_SERVICES_DURING_IMPORT": "Импорт кезінде тауарлар мен қызметтерді өңдеу",
+  "platform.permissions.PUBLISH_ITEMS_SERVICES_DURING_IMPORT": "Импорт кезінде тауарлар мен қызметтерді жариялау",
+  "platform.permissions.USE_AI_ITEMS_SERVICES_TOOLS": "Тауарлар мен қызметтердің AI құралдары",
   "platform.permissions.MANAGE_SUPPORT_CHATS": "Қолдау чаттарын басқару",
   "platform.permissions.MODERATE_CONTENT": "Контентті модерациялау",
-  "platform.permissions.SUSPEND_BUSINESS": "Бизнесті тоқтата тұру",
-  "platform.permissions.BAN_BUSINESS": "Бизнесті бұғаттау",
   "platform.moderation.title": "Ашық шағымдар",
   "platform.moderation.empty": "Ашық шағымдар жоқ",
   "platform.moderation.resolve": "Қабылдау",
@@ -430,6 +428,7 @@
   "seller.step3.title": "Каталогты баптау",
   "seller.step4.title": "Шарттарды растау",
   "seller.businessName": "Бизнес атауы",
+  "seller.legalName": "Заңды атауы",
   "seller.legalForm.KZ_IP": "ЖК",
   "seller.legalForm.KZ_TOO": "ЖШС",
   "seller.legalForm.NONE": "Құқықтық нысансыз",
@@ -600,16 +599,21 @@
   "business.allBranches": "Барлық филиалдар",
   "business.branch.add": "Филиал қосу",
   "business.branch.edit": "Филиалды өңдеу",
+  "business.branch.onlineOnlyConfirmTitle": "Бизнесті офлайн режимге ауыстыру?",
+  "business.branch.onlineOnlyConfirmDesc": "Сіздің бизнесіңіз қазір «тек онлайн» режимінде. Физикалық филиал қосу оны физикалық орындары бар кәдімгі режимге ауыстырады. Бұл әрекет автоматты түрде қайтарылмайды.",
+  "business.branch.onlineOnlyConfirm": "Филиал қосу және ауыстыру",
+  "business.branch.onlineOnlyCancel": "Бас тарту",
   "business.branch.name": "Филиал атауы",
   "business.branch.address": "Мекенжай",
   "business.branch.addressDetails": "Нақтылау: кіреберіс, қабат, кеңсе",
-  "business.branch.onlineOnly": "Тек онлайн",
   "business.branch.location": "Орналасуы *",
   "business.branch.pickOnMap": "Картадан көрсетіңіз",
   "business.branch.latitude": "Ендік",
   "business.branch.longitude": "Бойлық",
-  "business.branch.openIn2gis": "2GIS-те ашу",
+  "business.branch.openIn2gis": "Картада ашу",
   "business.branch.searchPlace": "Орынды іздеу...",
+  "business.branch.findPlace": "Табу",
+  "business.branch.locationNotFound": "Орын табылмады. Мекенжайды нақтылаңыз немесе картадан нүктені белгілеңіз.",
   "business.branch.noMapKey": "Карта API кілті орнатылмаған. Әкімшіге хабарласыңыз.",
   "business.branch.city": "Қала",
   "business.product.editTitle": "Тауарды өңдеу",
@@ -716,6 +720,8 @@
   "business.toast.branchLocationRequired": "Картадан орынды көрсетіңіз",
   "business.toast.selectCity": "Қаланы таңдаңыз",
   "business.toast.staffAdded": "Қызметкер қосылды. Уақытша құпия сөз қызметкер карточкасында көрсетілген.",
+  "business.toast.pendingEmployeeDeleted": "Белсендіруді күтіп тұрған қызметкер жойылды.",
+  "business.toast.pendingEmployeeDeleteError": "Белсендіруді күтіп тұрған қызметкерді жою мүмкін болмады.",
   "business.toast.invitationSent": "Шақыру жіберілді",
   "business.toast.staffAddError": "Қызметкер қосу қатесі",
   "business.toast.passwordReset": "Жаңа уақытша құпия сөз жасалды.",
@@ -755,6 +761,10 @@
   "business.chats.statDeclined": "Бас тартылды",
   "business.chats.emptyDesc": "Филиал бойынша жаңа өтінімдер осында пайда болады.",
   "business.chats.noMessages": "Хабарлама жоқ",
+  "business.chats.customer": "Клиент",
+  "business.chats.attachment": "Тіркемені ашу",
+  "business.chats.loadError": "Чатты жүктеу мүмкін болмады",
+  "business.chats.sendError": "Хабарламаны жіберу мүмкін болмады",
   "business.chats.justNow": "жаңа ғана",
   "business.chats.minAgo": "{{n}} мин. бұрын",
   "business.chats.hoursAgo": "{{n}} сағ. бұрын",
@@ -767,6 +777,7 @@
   "business.currentRole": "Ағымдағы рөл",
   "business.employees": "Қызметкерлер",
   "business.employee.add": "Қызметкерді қосу",
+  "business.employee.deletePending": "Белсендіру сұрауын жою",
   "business.employee.empty": "Қызметкерлер жоқ",
   "business.employee.manager": "Менеджер",
   "business.employee.worker": "Қызметкер",
@@ -972,8 +983,9 @@
   "managedImport.requested": "Сұрау жіберілді",
   "managedImport.requestProducts": "Тауарларды импорттауға көмек",
   "managedImport.requestServices": "Қызметтерді импорттауға көмек",
-  "managedImport.scope.PRODUCTS": "тауарлар",
-  "managedImport.scope.SERVICES": "қызметтер",
+  "managedImport.scope.ITEM": "тауарлар",
+  "managedImport.scope.SERVICE": "қызметтер",
+  "managedImport.scope.BOTH": "тауарлар мен қызметтер",
   "managedImport.title": "Ask командасымен {{catalog}} импорттау",
   "managedImport.serviceLabel": "Басқарылатын импорт қызметі",
   "managedImport.benefitTitle": "Дереккөзді беріп, дайын {{catalog}} каталогын алыңыз",
@@ -985,9 +997,23 @@
   "managedImport.benefit.publish": "Жариялау алдында нәтижені келісеміз",
   "managedImport.contactChannel": "Сізбен қалай байланысуға болады",
   "managedImport.contactValue": "Байланыс",
+  "managedImport.contactValidation.EMAIL": "Дұрыс email мекенжайын енгізіңіз.",
+  "managedImport.contactValidation.TELEGRAM": "Telegram @ белгісінен басталып, пайдаланушы атын қамтуы керек.",
+  "managedImport.contactValidation.WHATSAPP": "WhatsApp нөмірін халықаралық форматта енгізіңіз.",
   "managedImport.sources": "Каталог көздері",
   "managedImport.sourceLinks": "Дереккөз сілтемелері",
   "managedImport.sourceLinksPlaceholder": "Сайт, бұлттық бума, әлеуметтік желі немесе басқа сілтеме",
+  "managedImport.sourcePrompt": "Бұл бере алатын барлық сілтемелеріңіз бе? Дереккөзді таңдап, сілтемесін қосыңыз; тағы қосуға болады.",
+  "managedImport.sourceSelect": "Дереккөз түрін таңдаңыз",
+  "managedImport.removeSource": "Дереккөзді жою",
+  "managedImport.sourceType.WEBSITE": "Сайт",
+  "managedImport.sourceType.KASPI": "Kaspi",
+  "managedImport.sourceType.OZON": "Ozon",
+  "managedImport.sourceType.WILDBERRIES": "Wildberries",
+  "managedImport.sourceType.TWO_GIS": "2GIS",
+  "managedImport.sourceType.INSTAGRAM": "Instagram",
+  "managedImport.sourceType.TELEGRAM": "Telegram",
+  "managedImport.sourceType.OTHER": "Басқа сілтеме",
   "managedImport.sourceNotes": "Маңызды мәліметтер",
   "managedImport.sourceNotesPlaceholder": "Мысалы: тек өзекті позицияларды импорттау",
   "managedImport.legal": "Дереккөздерді заңды түрде беріп,",
@@ -995,14 +1021,14 @@
   "managedImport.submit": "{{catalog}} импортын сұрау",
   "managedImport.sent": "Сұрау жіберілді. Ask командасы дереккөздерді бағалағаннан кейін хабарласады.",
   "managedImport.error": "Импорт сұрауын жіберу мүмкін болмады",
-  "seller.catalogScope.title": "Бизнесіңіз не ұсынады?",
-  "seller.catalogScope.description": "Бұл кабинет пен каталогты дұрыс баптауға көмектеседі.",
-  "seller.catalogScope.PRODUCTS": "Тауарлар",
-  "seller.catalogScope.PRODUCTS.description": "Физикалық тауарлар мен ассортимент",
-  "seller.catalogScope.SERVICES": "Қызметтер",
-  "seller.catalogScope.SERVICES.description": "Жұмыстар, кеңестер және жазылу",
-  "seller.catalogScope.BOTH": "Тауарлар мен қызметтер",
-  "seller.catalogScope.BOTH.description": "Бір бизнестегі екі бағыт",
+  "seller.businessScope.title": "Бизнесіңіз не ұсынады?",
+  "seller.businessScope.description": "Бұл кабинет пен каталогты дұрыс баптауға көмектеседі.",
+  "seller.businessScope.ITEM": "Тауарлар",
+  "seller.businessScope.ITEM.description": "Физикалық тауарлар мен ассортимент",
+  "seller.businessScope.SERVICE": "Қызметтер",
+  "seller.businessScope.SERVICE.description": "Жұмыстар, кеңестер және жазылу",
+  "seller.businessScope.BOTH": "Тауарлар мен қызметтер",
+  "seller.businessScope.BOTH.description": "Бір бизнестегі екі бағыт",
   "seller.catalog.manualDescription": "Позицияларды өзім қосамын немесе дайын файл жүктеймін",
   "seller.catalog.managedDescription": "Ask командасы {{catalog}} каталогын жинауға және дайындауға көмектеседі",
   "seller.managedBenefitTitle": "Қолмен көшіруге уақыт жұмсамаңыз"
@@ -1038,7 +1064,7 @@
   ,"profile.title": "Профиль және баптаулар"
   ,"profile.description": "Жеке деректерді, құпиялылықты және брендтерге қолжетімділікті басқарыңыз. Компания ақпараты бизнес кабинетінде бөлек өңделеді."
   ,"chats.conversations.type.PLATFORM_SUPPORT": "Ask қолдауы"
-  ,"seller.validation.businessContact": "Бизнес атауын және байланыс дерегін көрсетіңіз."
+  ,"seller.validation.businessContact": "Бизнес атауы мен санатын көрсетіңіз."
   ,"seller.validation.importSource": "Каталог импорты үшін кемінде бір дереккөзді таңдаңыз."
   ,"business.toast.branchRequired": "Алдымен филиалды жасаңыз немесе таңдаңыз."
   ,"business.toast.imageTooLarge": "Сурет 2 МБ дейін болуы керек."
@@ -1046,6 +1072,42 @@
   ,"category.autocomplete.standardGroup": "Стандартты санаттар"
   ,"category.autocomplete.yourGroup": "Сіздің санаттарыңыз"
   ,"category.autocomplete.noMatch": "Сәйкес санаттар жоқ"
+  ,"category.autocomplete.createCustom": "«{{value}}» жеке санатын сақтау"
+  ,"business.product.deepLink": "Тауар сілтемесі"
+  ,"business.product.deepLinkPlaceholder": "Тауар бетінің сілтемесі немесе диплинк"
+  ,"business.product.tags": "Тегтер"
+  ,"business.product.tagsPlaceholder": "Үтір арқылы"
+  ,"business.product.enabled": "Тауар белсенді"
+  ,"business.attributes": "Қосымша сипаттамалар"
+  ,"business.attributesPlaceholder": "{\"Түс\":\"Қара\",\"Өлшем\":\"M\"}"
+  ,"business.service.mode": "Қызмет форматы"
+  ,"business.service.onDemand": "Сұраныс бойынша"
+  ,"business.service.scheduled": "Кесте бойынша"
+  ,"business.service.active": "Қызмет белсенді"
+  ,"business.branch.timeZoneId": "Уақыт белдеуі"
+  ,"business.branch.openNow": "Ашық"
+  ,"business.branch.closedNow": "Жабық"
+  ,"business.branch.closedChatNotice": "Дүкен қазір жабық, ашылған кезде жауап береді"
+  ,"business.branch.weeklyHours": "Жұмыс уақыты"
+  ,"business.branch.specialHours": "Ерекше күндер"
+  ,"business.branch.addHoursRow": "+ Қосу"
+  ,"business.branch.day.monday": "Дс"
+  ,"business.branch.day.tuesday": "Сс"
+  ,"business.branch.day.wednesday": "Ср"
+  ,"business.branch.day.thursday": "Бс"
+  ,"business.branch.day.friday": "Жм"
+  ,"business.branch.day.saturday": "Сб"
+  ,"business.branch.day.sunday": "Жк"
+  ,"business.branch.opensAt": "Ашылуы"
+  ,"business.branch.closesAt": "Жабылуы"
+  ,"business.branch.closedAllDay": "Күні бойы жабық"
+  ,"business.branch.date": "Күні"
+  ,"drops.coverUrl": "Мұқаба"
+  ,"drops.coverUrlPlaceholder": "Сурет сілтемесі"
+  ,"drops.discountPercent": "Жеңілдік, %"
+  ,"drops.discountAmount": "Жеңілдік сомасы"
+  ,"drops.currency": "Валюта"
+  ,"drops.enabled": "Ұсыныс белсенді"
   ,"imageUploader.addPhoto": "Фото қосу"
   ,"imageUploader.replace": "Ауыстыру"
   ,"imageUploader.delete": "Жою"
@@ -1053,5 +1115,90 @@
   ,"business.toast.imageProcessingError": "Суретті өңдеу мүмкін болмады."
   ,"business.toast.productNameRequired": "Тауар атауын көрсетіңіз."
   ,"business.toast.serviceNameRequired": "Қызмет атауын көрсетіңіз."
-  ,"seller.validation.legalDetails": "Таңдалған нысан үшін ЖСН/БСН және заңды атауды толтырыңыз немесе «Нысаны көрсетілмеген» нұсқасын таңдаңыз."
+  ,"seller.validation.legalDetails": "Таңдалған нысан үшін ЖСН/БСН және заңды атауды көрсетіңіз."
+  ,"seller.validation.category": "Бизнес санатын көрсетіңіз."
+  ,"seller.verification.title": "Бизнесті растау"
+  ,"seller.verification.description": "Заңды нысаны көрсетілмеген бизнес кемінде бір жарамды тексеру сілтемесін беруі керек."
+  ,"seller.validation.verificationSource": "http:// немесе https:// деп басталатын кемінде бір жарамды сілтеме қосыңыз."
+  ,"seller.verification.addSource": "Сілтеме қосу үшін дереккөзді таңдаңыз"
+  ,"seller.verification.binIin": "БСН / ЖСН"
+  ,"seller.verification.phone": "Байланыс телефоны"
+  ,"seller.verification.corporateEmail": "Корпоративтік email"
+  ,"seller.verification.twoGisUrl": "2GIS сілтемесі"
+  ,"seller.verification.kaspiUrl": "Kaspi сілтемесі"
+  ,"seller.verification.ozonUrl": "Ozon сілтемесі"
+  ,"seller.verification.wildberriesUrl": "Wildberries сілтемесі"
+  ,"seller.verification.websiteUrl": "Сайт"
+  ,"seller.verification.instagramUrl": "Instagram"
+  ,"seller.verification.telegramUrl": "Telegram"
+  ,"seller.onlineOnly": "Тек онлайн (физикалық филиалсыз)"
+  ,"seller.onlineOnly.description": "Бизнестің физикалық орны жоқ — тауарлар немесе қызметтер қашықтан ұсынылады"
+  ,"business.verification.status.PENDING": "Бизнес тексерілуде"
+  ,"business.verification.status.NEEDS_INFO": "Қосымша ақпарат қажет"
+  ,"business.verification.status.REJECTED": "Верификация қабылданбады"
+  ,"business.verification.description.PENDING": "Деректеріңіз тексерілуде. Бұл 24 сағатқа дейін уақыт алуы мүмкін."
+  ,"business.verification.description.NEEDS_INFO": "Ask командасы қосымша мәліметтер сұрады. Қолдау чатын тексеріңіз."
+  ,"business.verification.description.REJECTED": "Тексеру сәтсіз аяқталды. Түсініктеме алу үшін қолдау қызметіне хабарласыңыз."
+  ,"platform.verification.title": "Бизнестерді верификациялау"
+  ,"platform.verification.empty": "Верификацияға бизнес жоқ"
+  ,"platform.verification.filterAll": "Барлығы"
+  ,"platform.verification.review": "Тексеру"
+  ,"platform.verification.approve": "Мақұлдау"
+  ,"platform.verification.reject": "Қабылдамау"
+  ,"platform.verification.requestInfo": "Деректерді сұрау"
+  ,"platform.verification.comment": "Түсініктеме..."
+  ,"platform.verification.proofs": "Растайтын деректер"
+  ,"platform.verification.history": "Тексеру тарихы"
+  ,"platform.verification.status.PENDING": "Күтілуде"
+  ,"platform.verification.status.NEEDS_INFO": "Деректер қажет"
+  ,"platform.verification.status.APPROVED": "Расталды"
+  ,"platform.verification.status.REJECTED": "Қабылданбады"
+  ,"platform.verification.priority.STANDARD": "Стандартты"
+  ,"platform.verification.priority.EXPEDITED": "Жедел"
+  ,"platform.verification.field.binIin": "БСН / ЖСН"
+  ,"platform.verification.field.phone": "Телефон"
+  ,"platform.verification.field.corporateEmail": "Корпоративтік email"
+  ,"platform.verification.field.twoGisUrl": "2GIS"
+  ,"platform.verification.field.kaspiUrl": "Kaspi"
+  ,"platform.verification.field.ozonUrl": "Ozon"
+  ,"platform.verification.field.wildberriesUrl": "Wildberries"
+  ,"platform.verification.field.websiteUrl": "Сайт"
+  ,"platform.verification.field.instagramUrl": "Instagram"
+  ,"platform.verification.field.telegramUrl": "Telegram"
+  ,"business.additional": "Қосымша"
+  ,"business.continue": "Жалғастыру"
+  ,"business.back": "Артқа"
+  ,"business.product.editorDescription": "Алдымен негізгі ақпаратты қосыңыз. Сипаттама мен сипаттамалар міндетті емес."
+  ,"business.product.mainDetails": "Негізгі ақпарат"
+  ,"business.product.mainDetailsDescription": "Бұл деректер пайдаланушыға ұсынысты түсінуге және сатып алуға өтуге көмектеседі."
+  ,"business.product.deepLinkRequiredHint": "Пайдаланушы мәліметтерді көре немесе тапсырыс бере алатын тауар бетіне тікелей сілтеме көрсетіңіз."
+  ,"business.product.additionalDescription": "Нақты іздеу үшін сипаттама, тегтер және сипаттамалар."
+  ,"business.service.editorDescription": "Алдымен не ұсынатыныңызды және қызметтің қалай көрсетілетінін көрсетіңіз."
+  ,"business.service.mainDetails": "Негізгі ақпарат"
+  ,"business.service.mainDetailsDescription": "Атауы, санаты, бағасы және форматы іздеуде көрсетіледі."
+  ,"business.service.scheduleHint": "Мысалы: жұмыс күндері 10:00-ден 19:00-ге дейін немесе тек алдын ала жазылу бойынша."
+  ,"business.service.additionalDescription": "Қызметті таңдауға көмектесетін сипаттама мен сипаттамалар."
+  ,"business.toast.productLinkRequired": "Тауар сілтемесін көрсетіңіз"
+  ,"business.branch.editorDescription": "Алдымен картадан нақты орынды таңдаңыз, содан кейін жұмыс уақытын реттеңіз."
+  ,"business.branch.stepAddress": "Мекенжай"
+  ,"business.branch.stepHours": "Жұмыс уақыты"
+  ,"business.branch.locationTitle": "Филиал қайда орналасқан"
+  ,"business.branch.locationDescription": "Мекенжайды табыңыз немесе картаға белгі қойыңыз. Қала мен мекенжай автоматты түрде толтырылады."
+  ,"business.branch.namePlaceholder": "Мысалы: Абай көшесіндегі дүкен"
+  ,"business.branch.selectedAddress": "Таңдалған мекенжай"
+  ,"business.branch.hoursTitle": "Филиал қашан жұмыс істейді"
+  ,"business.branch.hoursDescription": "Қалыпты кестені қосыңыз. Мерекелер мен ерекшеліктерді бөлек көрсетуге болады."
+  ,"business.branch.timeZonePlaceholder": "Мысалы: Asia/Almaty"
+  ,"business.branch.specialHoursDescription": "Мерекелер, демалыс күндері және өзгертілген жұмыс уақыты."
+  ,"drops.nameRequired": "Бірегей ұсыныстың атауын енгізіңіз"
+  ,"drops.editorDescription": "Ұсынысты қадаммен жинап, жарияламас бұрын тексеріңіз."
+  ,"drops.stepDetails": "Негізгі"
+  ,"drops.stepPublication": "Жариялау"
+  ,"drops.stepReview": "Тексеру"
+  ,"drops.detailsTitle": "Не ұсынасыз"
+  ,"drops.detailsDescription": "Пайдаланушыға түсінікті түрді таңдап, ұсынысты қысқаша сипаттаңыз."
+  ,"drops.publicationTitle": "Қашан және қалай көрсету керек"
+  ,"drops.publicationDescription": "Мерзімді, мұқабаны және акция шарттарын көрсетіңіз."
+  ,"drops.reviewTitle": "Ұсынысты тексеріңіз"
+  ,"drops.reviewDescription": "Жасалғаннан кейін ұсыныс көрсетілген мерзімге сәйкес қолжетімді болады."
 }

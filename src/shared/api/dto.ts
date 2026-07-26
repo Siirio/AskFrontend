@@ -1,6 +1,6 @@
 export type SearchResultDto = {
   id: string;
-  type: "PRODUCT" | "SERVICE" | "BUSINESS";
+  type: "ITEM" | "SERVICE" | "BUSINESS";
   name: string;
   supplier_name?: string;
   supplierName?: string;
@@ -69,21 +69,33 @@ export type ContactResolveDto = {
 };
 
 export type SearchV2CardDto = {
-  component: "ProductCard" | "ServiceCard" | "DropCard" | "BusinessCandidateCard";
+  component: "ItemCard" | "ServiceCard";
   resultId: string;
-  businessId?: string | null;
-  businessName?: string | null;
+  businessId: string;
+  businessName: string;
+  resultType: "ITEM" | "SERVICE";
   brandColor?: string | null;
   brandLogoUrl?: string | null;
   title: string;
+  summary?: string | null;
+  categoryLabel?: string | null;
   price?: number | null;
-  availability?: "IN_STOCK" | "NEEDS_CONFIRMATION" | "UNKNOWN" | string;
+  currency?: string | null;
+  businessProfile?: BrandProfileDto | null;
+  availability?: string | null;
   availabilityWarning?: string | null;
   matchReasons?: string[];
   badges?: string[];
   distanceMeters?: number | null;
   branchName?: string | null;
-  contactActions?: ContactActionDto[];
+  branchAddress?: string | null;
+  branchCity?: string | null;
+  openingSummary?: {
+    state?: "OPEN" | "CLOSED" | "UNKNOWN" | string;
+    label?: string | null;
+    closesAt?: string | null;
+    opensAt?: string | null;
+  } | null;
 };
 
 export type SearchV2SectionDto = {
@@ -103,7 +115,7 @@ export type SearchConstraintDto = {
 
 export type SearchV2ResponseDto = {
   rawQuery: string;
-  scope: string;
+  mode: "ITEM" | "SERVICE";
   understoodQuery: string;
   sections: SearchV2SectionDto[];
   interpretedConstraints: SearchConstraintDto[];
@@ -115,7 +127,7 @@ export type SearchV2ResponseDto = {
 
 export type BrandProfileDto = {
   id?: string;
-  businessId: string;
+  businessId?: string;
   businessName?: string;
   brandColor?: string;
   logoUrl?: string;
@@ -125,6 +137,8 @@ export type BrandProfileDto = {
   instagramUrl?: string;
   telegramUrl?: string;
   websiteUrl?: string;
+  number?: string;
+  email?: string;
 };
 
 export type StorefrontBlockDto = {
@@ -152,6 +166,10 @@ export type BrandDropDto = {
   type: string;
   status: string;
   coverUrl?: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  isEnabled?: boolean;
+  currency?: string;
   productCount?: number;
   tags?: string[];
   productIds?: string[];
@@ -241,17 +259,16 @@ export type SupplierTaskDetailDto = {
 
 export type BusinessProductDto = {
   productId: string;
-  productOfferId: string;
-  branchId: string;
+  branchId: string | null;
   categoryId: string | null;
   categoryLabel: string | null;
   name: string;
   description: string;
-  sku: string;
+  deepLink?: string | null;
   tags: string[];
+  attributes?: Record<string, unknown> | null;
   price: number;
-  enabled: boolean;
-  imageUrl: string;
+  isActive: boolean;
   updatedAt: string;
 };
 
@@ -265,16 +282,16 @@ export type BusinessProductListDto = {
 
 export type BusinessServiceDto = {
   serviceOfferingId: string;
-  serviceBranchOfferId: string;
-  branchId: string;
+  branchId: string | null;
   categoryId: string | null;
   categoryLabel: string | null;
   name: string;
   description: string;
+  serviceMode: "ON_DEMAND" | "SCHEDULED";
   basePrice: number;
   scheduleText: string;
-  active: boolean;
-  imageUrl: string;
+  attributes?: Record<string, unknown> | null;
+  isActive: boolean;
   updatedAt: string;
 };
 

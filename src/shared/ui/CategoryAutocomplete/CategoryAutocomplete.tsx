@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { autocompleteCategories, type CategorySuggestion } from "../../api/askClient";
+import { autocompleteCategories, createCategory, type CategorySuggestion, type CategoryType } from "../../api/askClient";
 
 type Props = {
   value: string;
   categoryId: string | null;
   onChange: (categoryLabel: string, categoryId: string | null) => void;
-  businessId?: string;
+  onInputChange?: (value: string) => void;
+  type: CategoryType;
+  allowFreeText?: boolean;
   placeholder?: string;
 };
 
-export function CategoryAutocomplete({ value, categoryId, onChange, businessId, placeholder }: Props) {
+export function CategoryAutocomplete({ value, categoryId, onChange, onInputChange, type, allowFreeText = true, placeholder }: Props) {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
@@ -20,34 +22,30 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     setInputValue(value);
   }, [value]);
 
   const fetchSuggestions = useCallback(async (q: string) => {
-    if (!q.trim()) {
-      setStandard([]);
-      setCustom([]);
-      return;
-    }
     setLoading(true);
     try {
-      const result = await autocompleteCategories(q.trim(), businessId);
-      setStandard(result.standard);
-      setCustom(result.custom);
+      const result = await autocompleteCategories(q.trim(), type);
+      setStandard(result.suggestions.filter(item => item.source === "SYSTEM"));
+      setCustom(result.suggestions.filter(item => item.source === "USER"));
     } catch {
       setStandard([]);
       setCustom([]);
     } finally {
       setLoading(false);
     }
-  }, [businessId]);
+  }, [type]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setInputValue(v);
+    onInputChange?.(v);
     setActiveIndex(-1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(v), 200);
@@ -62,11 +60,27 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
   };
 
   const commitFreeText = () => {
+    if (!allowFreeText) return;
     const trimmed = inputValue.trim();
     if (!trimmed) return;
     onChange(trimmed, null);
     setIsOpen(false);
     setActiveIndex(-1);
+  };
+
+  const createCustom = async () => {
+    const name = inputValue.trim();
+    if (!allowFreeText || !name || loading) return;
+    setLoading(true);
+    try {
+      const category = await createCategory(name, type);
+      setInputValue(category.name);
+      onChange(category.name, category.id);
+      setIsOpen(false);
+      setActiveIndex(-1);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -76,8 +90,8 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
       e.preventDefault();
       if (isOpen && all.length > 0 && activeIndex >= 0) {
         selectSuggestion(all[activeIndex]);
-      } else {
-        commitFreeText();
+      } else if (allowFreeText) {
+        void createCustom();
       }
       return;
     }
@@ -99,7 +113,7 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
 
   const handleBlur = () => {
     const trimmed = inputValue.trim();
-    if (trimmed && trimmed !== value) {
+    if (allowFreeText && trimmed && trimmed !== value) {
       onChange(trimmed, null);
     }
     setIsOpen(false);
@@ -117,7 +131,10 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
   }, []);
 
   const allSuggestions = [...standard, ...custom];
-  const showDropdown = isOpen && allSuggestions.length > 0;
+  const canCreateCustom = allowFreeText
+    && inputValue.trim().length > 0
+    && !allSuggestions.some(item => item.label.toLocaleLowerCase() === inputValue.trim().toLocaleLowerCase());
+  const showDropdown = isOpen && (allSuggestions.length > 0 || canCreateCustom);
 
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
@@ -127,7 +144,7 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
         type="text"
         value={inputValue}
         onChange={handleInputChange}
-        onFocus={() => { if (inputValue) fetchSuggestions(inputValue); setIsOpen(true); }}
+        onFocus={() => { fetchSuggestions(inputValue); setIsOpen(true); }}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder ?? t("category.autocomplete.placeholder")}
@@ -150,8 +167,8 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
             left: 0,
             right: 0,
             zIndex: 50,
-            background: "var(--fcw-surface)",
-            border: "1px solid var(--fcw-border)",
+            background: "var(--fcw-color-surface)",
+            border: "1px solid var(--fcw-color-border)",
             borderRadius: 8,
             boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
             maxHeight: 240,
@@ -170,7 +187,7 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
               className={activeIndex === i ? "category-autocomplete-item active" : "category-autocomplete-item"}
               style={{
                 display: "block", width: "100%", textAlign: "left", padding: "8px 12px",
-                background: activeIndex === i ? "var(--fcw-hover)" : "transparent",
+                background: activeIndex === i ? "var(--fcw-color-surface-secondary)" : "var(--fcw-color-surface)",
                 border: "none", cursor: "pointer", fontSize: 14,
               }}
               onMouseDown={e => { e.preventDefault(); selectSuggestion(s); }}
@@ -192,7 +209,7 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
                 className={activeIndex === idx ? "category-autocomplete-item active" : "category-autocomplete-item"}
                 style={{
                   display: "block", width: "100%", textAlign: "left", padding: "8px 12px",
-                  background: activeIndex === idx ? "var(--fcw-hover)" : "transparent",
+                  background: activeIndex === idx ? "var(--fcw-color-surface-secondary)" : "var(--fcw-color-surface)",
                   border: "none", cursor: "pointer", fontSize: 14,
                 }}
                 onMouseDown={e => { e.preventDefault(); selectSuggestion(s); }}
@@ -202,6 +219,29 @@ export function CategoryAutocomplete({ value, categoryId, onChange, businessId, 
               </button>
             );
           })}
+          {canCreateCustom && (
+            <button
+              type="button"
+              className="category-autocomplete-item"
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                padding: "9px 12px",
+                background: "color-mix(in srgb, var(--fcw-color-primary) 8%, var(--fcw-color-surface))",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 14,
+                color: "var(--fcw-color-primary)",
+              }}
+              onMouseDown={event => {
+                event.preventDefault();
+                void createCustom();
+              }}
+            >
+              {t("category.autocomplete.createCustom", { value: inputValue.trim() })}
+            </button>
+          )}
         </div>
       )}
     </div>

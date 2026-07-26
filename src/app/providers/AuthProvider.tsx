@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setChallenge(null);
     setRequiresTwoFactor(false);
     setTwoFactorChallengeId(null);
-    setActivationRequired(Boolean(nextSession.activationRequired));
+    setActivationRequired(Boolean(nextSession.isActivationRequired));
     setRegistrationJustCompleted(Boolean(nextSession.requiresRoleSelection));
   }, []);
 
@@ -116,9 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError("");
     try {
       const result = await loginWithPassword(email, password);
-      if (result.requiresTwoFactor && result.authChallengeId) {
+      if (result.requiresTwoFactor && result.verificationId) {
         setRequiresTwoFactor(true);
-        setTwoFactorChallengeId(result.authChallengeId);
+        setTwoFactorChallengeId(result.verificationId);
         return;
       }
       acceptSession(result);
@@ -164,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     setError("");
     try {
-      acceptSession(await verifyCode(challenge.authChallengeId, code));
+      acceptSession(await verifyCode(challenge.verificationId, code));
       if (wasRegistration) {
         setRegistrationJustCompleted(true);
       }

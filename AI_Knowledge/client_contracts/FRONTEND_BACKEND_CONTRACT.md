@@ -40,6 +40,10 @@ There are three distinct entry paths into the system. They are not three equal "
 
 Customer registration does not send a legal-acceptance flag. After contact verification, role selection requires a dedicated `POST /api/v1/legal/registration-acceptances`: customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
 
+Authenticated seller setup uses `POST /api/v1/business/onboarding`. It requires a business name, a selected or free-text business category, country, legal form, and entity-backed `businessScope`: `ITEM`, `SERVICE`, or `BOTH`. For `KZ_IP` and `KZ_TOO`, the UI also sends the 12-digit legal identifier (IIN/BIN) and legal name; it must not request verification source links. For `NONE`, at least one valid HTTP(S) verification source is mandatory. When the owner selects Ask managed import, the business cabinet opens a dialog containing only `preferredContactChannel` and `preferredContactValue`; source links collected during onboarding are submitted without being shown again.
+
+Business-category autocomplete calls `GET /api/v1/categories?q=<text>&type=BUSINESS` and renders its `suggestions` only. Product and service forms use `ITEM` and `SERVICE` respectively; no UI may substitute a catalog scope for this category type.
+
 Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth/manager/register`. Staff accounts are created by owners inside the business cabinet.
 
 ## Unified Login
@@ -212,6 +216,9 @@ The AI intent structurer returns a SearchPlan JSON. Backend validates and execut
 | `badges` | [String] | Quality badges |
 | `distanceMeters` | Integer | Distance (nullable) |
 | `branchName` | String | Branch display name |
+| `branchAddress` | String | Branch street address |
+| `branchCity` | String | Branch city name |
+| `openingSummary` | Object | `{ state, timeZoneId, evaluatedAt, nextOpensAt, nextClosesAt }` — computed branch opening state |
 | `hasActiveDrop` | Boolean | Brand has active drop |
 | `contactActions` | [ContactActionSummary] | Available contact actions (Telegram, WhatsApp, Chat, etc.) |
 
@@ -310,16 +317,46 @@ When a brand has an active drop, its product cards receive `hasActiveDrop: true`
 - Browser prototypes may use web URLs; native clients may use deep links.
 
 ## 2026-07-18 managed catalog updates
-- Branch DTOs include `addressDetails`; 2GIS selection supplies address, city, latitude, and longitude.
+- Branch DTOs include `addressDetails`, `timeZoneId`, `weeklyHours`, and `specialHours`. OWNER and MANAGER may edit them. Map interaction or a supported map link supplies internal latitude and longitude; numeric coordinate fields are never rendered.
 - Catalog setup has no manual completion endpoint and may return `REVIEW_REQUIRED`.
-- Managed-import activation starts an assigned seven-day workspace scoped to `PRODUCTS`, `SERVICES`, or `BOTH` and a file-capable chat; there is no manual completion endpoint.
+- Managed-import activation immediately starts an assigned seven-day, per-Business workspace scoped to `ITEM`, `SERVICE`, or `BOTH` and a file-capable chat. It does not depend on a global catalog-edit permission; there is no manual completion endpoint.
 - Business import accepts `.xlsx`; assigned platform import additionally exposes TXT/MD/PDF Autodump.
-- `POST /api/v1/platform/ai-enrichment` queues selected aggregate IDs.
+- `POST /api/v1/platform/ai-enrichment` enriches selected `PRODUCT`, `SERVICE`, or `UNIQUE_OFFER` aggregate IDs from their own text fields and returns `enrichedCount`; the platform UI refreshes the affected data immediately.
 - Account export was removed; account deletion remains.
 
-## 2026-07-19 OAuth and catalog-scope updates
+## 2026-07-19 OAuth and business-scope updates
 - `GET /api/v1/auth/session` accepts the OAuth bridge cookie or a Bearer token and returns `access_token`, `token_type`, `expires_in`, plus the normal session context. The bridge cookie is cleared by the response.
 - Successful password, OTP, activation, and OAuth exchange responses return an HS256 JWT whose `sid` remains tied to the revocable backend session.
 - Frontend stores the access token in session storage. Requests with a token send `Authorization: Bearer ...`, use `credentials: omit`, and do not rely on auth cookies.
-- Seller onboarding requires `catalog_scope`: `PRODUCTS`, `SERVICES`, or `BOTH`.
-- Managed-import creation requires the same scope. `GET /api/v1/platform/managed-imports/businesses/{businessId}/catalog-access` returns both `allowed` and `catalog_scope`.
+- Seller onboarding requires `businessScope`: `ITEM`, `SERVICE`, or `BOTH`.
+- Managed-import creation uses the same `businessScope`, optional `selectedSourceTypes`, and required channel-valid `preferredContactChannel` plus `preferredContactValue`. `GET /api/v1/platform/managed-imports/businesses/{businessId}/items-services-access` returns `allowed` and `businessScope`.
+
+## 2026-07-24 Phase 2 domain model alignment — branches, schedules, online business
+
+### Business onlineOnly
+
+- `BusinessDto` includes `onlineOnly?: boolean`. When `true`, the business has no physical branches and the Organization section in the business cabinet is hidden.
+- Seller onboarding sends `onlineOnly: boolean` in the `POST /api/v1/business/onboarding` body. When `true`, the business is created without a branch and the owner is routed directly to the business cabinet.
+- `GET /api/v1/businesses/{businessId}` returns `BusinessDto` with `onlineOnly`, `businessScope`, `id`, and `name`.
+- Attempting to create a branch for an onlineOnly business returns error code `BRANCH_NOT_ALLOWED_ONLINE_ONLY` (400). Frontend catches this and flips the local `businessOnlineOnly` state, preventing further branch-creation attempts.
+- Before an onlineOnly business creates its first branch, a confirmation dialog warns the owner that adding a physical branch switches the business to offline mode — an irreversible change.
+
+### Branch schedule model
+
+- `BranchDto` includes `timeZoneId?: string` (IANA timezone like `Asia/Almaty`), `weeklyHours?: WeeklyOpeningIntervalDto[]`, and `specialHours?: SpecialOpeningIntervalDto[]`.
+- `WeeklyOpeningIntervalDto`: `{ dayOfWeek, opensAt, closesAt }` — all strings.
+- `SpecialOpeningIntervalDto`: `{ date, closed?, opensAt?, closesAt? }` — date overrides for holidays or special events.
+- `BranchOpeningSummaryDto`: `{ state: "OPEN" | "CLOSED" | "UNKNOWN", timeZoneId?, evaluatedAt, nextOpensAt?, nextClosesAt? }` — computed by backend `BranchOpeningHoursPolicy`.
+- Frontend formats opening times using `Intl.DateTimeFormat` with the branch's IANA timezone; no manual UTC offset math.
+- Search result cards carry `openingSummary` for distance-aware open/closed display.
+- Schedule editors in branch create/edit forms use dayOfWeek dropdowns + time inputs for weeklyHours, and date pickers + closed checkbox + conditional time inputs for specialHours. Both support add/remove rows.
+
+### Search openNow filter
+
+- `POST /api/v1/search` accepts `filters.openNow?: boolean`. When `true`, backend filters results to branches currently open (per `BranchOpeningHoursPolicy`).
+- ResultsPage renders an `openNow` toggle button (Clock icon) in the sort rail sidebar. Toggling it resets to page 0 and re-fetches.
+
+### Domain types (frontend)
+
+- `src/shared/api/domainTypes.ts` centralizes: `BusinessScope`, `WeeklyOpeningIntervalDto`, `SpecialOpeningIntervalDto`, `BranchOpeningSummaryDto`, `BranchDto`, `BusinessDto`, `CreateBranchData`, `UpdateBranchData`.
+- All API client functions use these types instead of inline interfaces. Branch form state aligns with `CreateBranchData`/`UpdateBranchData`.

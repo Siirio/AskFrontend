@@ -1,56 +1,184 @@
-import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, Store } from "lucide-react";
-import { useMotion } from "../../app/providers/MotionProvider";
-import { Card } from "../../shared/ui/Card/Card";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Globe,
+  Instagram,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Phone,
+  Share2,
+  Store,
+} from "lucide-react";
+import { buildRoute, ROUTES } from "../../app/routes";
+import { useAuth } from "../../app/providers/AuthProvider";
+import { getBrandProfile, startChatConversation } from "../../shared/api/askClient";
+import type { BrandProfileDto } from "../../shared/api/dto";
 
 export function StorefrontPage() {
-  const { t } = useTranslation();
+  const { businessId = "" } = useParams();
   const navigate = useNavigate();
-  const { reduced } = useMotion();
+  const { state } = useAuth();
+  const [profile, setProfile] = useState<BrandProfileDto | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!businessId) {
+      setBusy(false);
+      return;
+    }
+    setBusy(true);
+    getBrandProfile(businessId)
+      .then(setProfile)
+      .catch(reason => setError(reason instanceof Error ? reason.message : "Не удалось загрузить профиль"))
+      .finally(() => setBusy(false));
+  }, [businessId]);
+
+  const openChat = async () => {
+    if (!state.authenticated) {
+      navigate(ROUTES.auth);
+      return;
+    }
+    try {
+      const conversation = await startChatConversation(businessId, profile?.businessName || "Обращение");
+      navigate(buildRoute(ROUTES.chats, {}, { conversation: conversation.conversationId }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Не удалось открыть чат");
+    }
+  };
+
+  if (busy) {
+    return (
+      <main id="main-content" className="ask-storefront-loading">
+        <Loader2 className="fcw-animate-spin" size={30} />
+      </main>
+    );
+  }
+
+  if (!profile || error) {
+    return (
+      <main id="main-content" className="ask-page">
+        <div className="ask-empty ask-surface">
+          <div>
+            <Store size={42} />
+            <h2>Профиль бизнеса недоступен</h2>
+            <p>{error || "Бизнес ещё не заполнил публичную информацию"}</p>
+            <button type="button" className="ask-secondary-button" onClick={() => navigate(-1)}>
+              <ArrowLeft size={17} />
+              Назад
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main id="main-content">
-      <div className="fcw-container" style={{ paddingTop: "var(--fcw-space-xl)", paddingBottom: "var(--fcw-space-xl)" }}>
-        <button
-          className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-          style={{ marginBottom: "var(--fcw-space-lg)", color: "var(--fcw-color-text-secondary)" }}
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft size={16} />
-          {t("storefront.back")}
-        </button>
+    <main id="main-content" className="ask-storefront-page">
+      <button type="button" className="ask-storefront-back" onClick={() => navigate(-1)}>
+        <ArrowLeft size={17} />
+        Назад к поиску
+      </button>
 
-        <motion.div
-          initial={reduced ? {} : { opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <Card padding="lg" className="fcw-text-center">
+      <div className="ask-storefront-layout">
+        <article className="ask-storefront-main">
+          <header className="ask-storefront-identity ask-surface">
             <div
-              className="fcw-flex-center"
+              className="ask-storefront-logo"
               style={{
-                width: "64px",
-                height: "64px",
-                borderRadius: "var(--fcw-radius-xl)",
-                backgroundColor: "var(--fcw-color-surface-tertiary)",
-                margin: "0 auto 1.5rem auto",
+                backgroundColor: profile.brandColor || undefined,
+                backgroundImage: profile.logoUrl ? `url(${profile.logoUrl})` : undefined,
               }}
             >
-              <Store size={28} style={{ color: "var(--fcw-color-text-tertiary)" }} />
+              {!profile.logoUrl && <Store size={32} />}
             </div>
-            <h1 className="fcw-h2" style={{ margin: "0 0 0.5rem 0" }}>
-              {t("storefront.title")}
-            </h1>
-            <p className="fcw-body fcw-text-secondary" style={{ margin: "0 0 0.25rem 0", maxWidth: "420px", marginLeft: "auto", marginRight: "auto" }}>
-              {t("storefront.description")}
-            </p>
-            <p className="fcw-body-s" style={{ color: "var(--fcw-color-primary)", margin: 0 }}>
-              {t("storefront.comingSoon")}
-            </p>
-          </Card>
-        </motion.div>
+            <div>
+              <h1>{profile.businessName || "Бизнес"}</h1>
+              {profile.description && <p>{profile.description}</p>}
+            </div>
+            <div className="ask-storefront-share">
+              <button
+                type="button"
+                aria-label="Поделиться"
+                onClick={() => navigator.share?.({ title: profile.businessName, url: window.location.href })}
+              >
+                <Share2 size={19} />
+              </button>
+            </div>
+          </header>
+
+          <section
+            className="ask-storefront-cover ask-surface"
+            style={{
+              backgroundColor: profile.brandColor || undefined,
+              backgroundImage: profile.coverUrl ? `url(${profile.coverUrl})` : undefined,
+            }}
+          >
+            {!profile.coverUrl && (
+              <div>
+                <Store size={54} />
+                <span>{profile.businessName}</span>
+              </div>
+            )}
+          </section>
+
+          {profile.description && (
+            <section className="ask-storefront-about ask-surface">
+              <h2>О компании</h2>
+              <p>{profile.description}</p>
+            </section>
+          )}
+        </article>
+
+        <aside className="ask-storefront-contact">
+          <button type="button" className="ask-primary-button" onClick={openChat}>
+            <MessageCircle size={19} />
+            Написать в чат
+          </button>
+
+          <section className="ask-surface">
+            <h2>Контакты</h2>
+            {profile.number && (
+              <a href={`tel:${profile.number}`}>
+                <Phone size={19} />
+                <span><small>Телефон</small>{profile.number}</span>
+              </a>
+            )}
+            {profile.email && (
+              <a href={`mailto:${profile.email}`}>
+                <Mail size={19} />
+                <span><small>Email</small>{profile.email}</span>
+              </a>
+            )}
+            {profile.instagramUrl && (
+              <a href={profile.instagramUrl} target="_blank" rel="noreferrer">
+                <Instagram size={19} />
+                <span><small>Социальная сеть</small>Instagram</span>
+                <ExternalLink size={14} />
+              </a>
+            )}
+            {profile.telegramUrl && (
+              <a href={profile.telegramUrl} target="_blank" rel="noreferrer">
+                <MessageCircle size={19} />
+                <span><small>Мессенджер</small>Telegram</span>
+                <ExternalLink size={14} />
+              </a>
+            )}
+            {profile.websiteUrl && (
+              <a href={profile.websiteUrl} target="_blank" rel="noreferrer">
+                <Globe size={19} />
+                <span><small>Сайт</small>{profile.websiteUrl.replace(/^https?:\/\//, "")}</span>
+                <ExternalLink size={14} />
+              </a>
+            )}
+            {!profile.number && !profile.email && !profile.instagramUrl && !profile.telegramUrl && !profile.websiteUrl && (
+              <p>Бизнес пока не добавил публичные контакты</p>
+            )}
+          </section>
+        </aside>
       </div>
     </main>
   );

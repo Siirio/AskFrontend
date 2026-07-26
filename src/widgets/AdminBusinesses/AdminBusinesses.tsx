@@ -76,7 +76,6 @@ export function AdminBusinesses({ onSelectBusiness }: Props) {
                   <th>{t("platform.businesses.columns.products")}</th>
                   <th>{t("platform.businesses.columns.services")}</th>
                   <th>{t("platform.businesses.columns.drops")}</th>
-                  <th>{t("platform.businesses.columns.moderation")}</th>
                   <th>{t("platform.businesses.columns.catalog")}</th>
                 </tr>
               </thead>
@@ -101,11 +100,6 @@ export function AdminBusinesses({ onSelectBusiness }: Props) {
                     <td className="fcw-body-s">{biz.productCount}</td>
                     <td className="fcw-body-s">{biz.serviceCount}</td>
                     <td className="fcw-body-s">{biz.dropCount}</td>
-                    <td>
-                      <span className={`admin-badge admin-badge--${biz.moderationStatus.toLowerCase()}`}>
-                        {biz.moderationStatus}
-                      </span>
-                    </td>
                     <td>
                       <span className="fcw-body-xs fcw-text-secondary">
                         {biz.catalogStatus || "-"}

@@ -6,7 +6,7 @@ This file is the durable reference for the full Ask frontend remake. Use it befo
 
 ## Source Priority
 
-1. `C:\MyProjects\Team\Ask\AskFrontend\AGENTS.md` and this reference stack carry the current graphite/ivory/orange visual remake brief after the root prompt was deleted.
+1. `C:\MyProjects\Team\Ask\AskFrontend\AGENTS.md` and this reference stack carry the current warm ivory/orange wanted-reference brief with an equivalent graphite dark theme.
 2. `C:\MyProjects\Team\Ask\AskFrontend\AI_Knowledge\product_ux\EXPECTED_UX_UI_FLOW_FRONTEND.md` remains the behavioral UX source of truth.
 3. `C:\MyProjects\Team\Ask\AskFrontend\AI_Knowledge\client_contracts\FRONTEND_BACKEND_CONTRACT_FRONTEND.md` and backend `AI_Knowledge/backend_tasks/*.md` define API and state boundaries.
 4. `DESIGN_AND_VISUALS_FRONTEND.md` is deleted in the current working tree and its old light/teal direction is stale for this remake.
@@ -17,7 +17,7 @@ If these sources conflict, use `AGENTS.md` and this reference stack for visual s
 
 - Keep the frontend a PWA.
 - Keep search-first customer flow: `Поиск`, `История`, `Профиль`.
-- Preserve raw query and locked `PRODUCT`/`SERVICE` scope after submit.
+- Preserve raw query and locked `ITEM`/`SERVICE` scope after submit.
 - Do not create standalone business search.
 - Do not sort by price by default; default sorting is intent/relevance.
 - Do not invent stock, freshness, availability, ratings, partner status, courier promises, or guaranteed booking slots.
@@ -29,12 +29,12 @@ If these sources conflict, use `AGENTS.md` and this reference stack for visual s
 
 ## Visual Direction
 
-- Dark graphite/charcoal base, warm ivory foreground, restrained orange accent.
-- Premium native-mobile feel similar to PLATA-style financial apps: tactile controls, bottom sheets, crisp transitions, focused screens, compact but calm density.
-- The product-specific narrative device is request-to-trust: a messy raw search becomes structured intent, relevant branches, and clear next actions.
-- Use one signature interaction, not effects everywhere. Best candidate: search intent/result transition that makes the raw query resolve into scoped result layers.
+- Light mode uses warm ivory canvas and surfaces with restrained orange emphasis; dark mode uses graphite/charcoal with the same structure and hierarchy.
+- Light mode is the default. Theme switching changes semantic tokens only and must not produce different features or layouts.
+- Desktop follows the approved wanted references: centered pill navigation, generous warm canvas, rounded low-contrast surfaces, compact search/result density, three-column chat, editorial storefront, and operational business cabinet.
+- Mobile keeps the same content order with bottom navigation, drawers, and single-column detail transitions.
+- The product-specific narrative device is request-to-trust: a messy raw search becomes structured intent, relevant offers, and clear next actions.
 - Business cabinet should feel operational and dense, not like a marketing landing page.
-- Mobile is primary; desktop can expand into a command-center layout.
 
 ## Component Rules
 
@@ -92,7 +92,7 @@ Implementation must include:
 
 - Auth split layout: customer/business, register/login/verify, role errors, password/contact validation, real loading/error states.
 - Customer search: raw query, city/category scope, product/service segmented mode, results, suitable suppliers, chats after real chat, empty/history/snapshot states.
-- Product result cards: brand-aware, anti-marketplace, no fake availability, clear branch/contact actions.
+- Product result cards: brand-aware, anti-marketplace, no fake availability, clear branch/chat actions.
 - Service result cards: desired time and request-to-book truth, no fake guaranteed slots.
 - Business `Обзор`: request/activity inbox, branch context, clear next action, no separate top-level `Заявки`.
 - Products and services: create/edit/enable/disable/delete, category controls, empty and import prompts.
@@ -137,9 +137,7 @@ organization/
 
 ## Final Verification Before Shipping
 
-- `npm run build`
-- Playwright screenshots for mobile, tablet, desktop, and wide desktop.
-- Browser check for no overlaps, no horizontal overflow, no default scrollbars/selects/errors on premium surfaces, and no clipped Russian text.
-- Reduced-motion check.
-- PWA installability/service worker check.
-- API contract check against auth, search, business product/service, activity, and import endpoints.
+- Static TypeScript check.
+- Browser checks when the task explicitly includes automated visual verification.
+- Reduced-motion and responsive CSS must remain implemented even when the user requests manual click-through testing.
+- API contract check against auth, search, business product/service, chat, profile, branch, and import endpoints.

@@ -186,39 +186,48 @@
    ============================================ */
 
 [data-fcw-mode="ask"] {
-  --fcw-color-surface: #fff8f0;
-  --fcw-color-surface-secondary: #f6efe6;
-  --fcw-color-surface-tertiary: #ede5db;
-  --fcw-color-text: #211b17;
-  --fcw-color-text-secondary: #675c54;
-  --fcw-color-text-tertiary: #8d8177;
-  --fcw-color-primary: #e8824e;
-  --fcw-color-primary-hover: #c97040;
+  --fcw-color-canvas: #f7f2ec;
+  --fcw-color-surface: #fffdf9;
+  --fcw-color-surface-secondary: #f4eee7;
+  --fcw-color-surface-tertiary: #ebe3da;
+  --fcw-color-text: #1f1b18;
+  --fcw-color-text-secondary: #625b55;
+  --fcw-color-text-tertiary: #837a72;
+  --fcw-color-primary: #f47b35;
+  --fcw-color-primary-hover: #da6425;
   --fcw-color-primary-text: #ffffff;
-  --fcw-color-accent: #2d8a2d;
+  --fcw-color-accent: #319458;
+  --fcw-color-warning: #b96a12;
+  --fcw-color-info: #3976b8;
   --fcw-color-error: #dc2626;
-  --fcw-color-success: #2d8a2d;
-  --fcw-color-border: rgba(33, 27, 23, 0.12);
-  --fcw-color-border-hover: rgba(33, 27, 23, 0.24);
+  --fcw-color-success: #319458;
+  --fcw-color-border: rgba(44, 35, 28, 0.12);
+  --fcw-color-border-hover: rgba(44, 35, 28, 0.25);
   --fcw-font-display: 'Inter', system-ui, -apple-system, sans-serif;
   --fcw-font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --fcw-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --fcw-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --fcw-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --fcw-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.14);
+  --fcw-shadow-sm: 0 2px 6px rgba(73, 50, 34, 0.07);
+  --fcw-shadow-md: 0 8px 20px rgba(73, 50, 34, 0.09);
+  --fcw-shadow-lg: 0 16px 38px rgba(73, 50, 34, 0.12);
+  --fcw-shadow-xl: 0 28px 60px rgba(73, 50, 34, 0.16);
+  --ask-nav-height: 82px;
+  --ask-sidebar-width: 284px;
+  --ask-control-height: 50px;
 }
 
 [data-fcw-mode="ask"][data-theme="dark"] {
-  --fcw-color-surface: #090a09;
-  --fcw-color-surface-secondary: #101110;
-  --fcw-color-surface-tertiary: #171816;
+  --fcw-color-canvas: #0d0e0d;
+  --fcw-color-surface: #151615;
+  --fcw-color-surface-secondary: #1d1e1c;
+  --fcw-color-surface-tertiary: #282824;
   --fcw-color-text: #f4eee6;
-  --fcw-color-text-secondary: #b8b0a6;
-  --fcw-color-text-tertiary: #8a827a;
-  --fcw-color-primary: #e8824e;
-  --fcw-color-primary-hover: #f0a878;
-  --fcw-color-primary-text: #170b05;
+  --fcw-color-text-secondary: #c3bbb1;
+  --fcw-color-text-tertiary: #999086;
+  --fcw-color-primary: #ff8845;
+  --fcw-color-primary-hover: #ffa06c;
+  --fcw-color-primary-text: #1a0d06;
   --fcw-color-accent: #72d16b;
+  --fcw-color-warning: #f2aa50;
+  --fcw-color-info: #79aee7;
   --fcw-color-error: #ff4e3b;
   --fcw-color-success: #72d16b;
   --fcw-color-border: rgba(244, 238, 230, 0.24);

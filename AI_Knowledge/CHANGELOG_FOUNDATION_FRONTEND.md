@@ -1,5 +1,80 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-26 — Durable catalog creation
+
+- Product creation now reloads the committed first page instead of depending on a temporary optimistic row.
+- Product and Service cabinet lists rely on Backend `createdAt DESC` ordering so new entries remain visible after hard reload.
+- Normal active Items and Services publish immediately; only a matched Item autoban keeps an Item out of public search.
+
+## 2026-07-26 — Native entity creation
+
+- Replaced inline Item and Service creation cards with responsive right-side editors.
+- Made the Item deep link a required primary field and kept optional catalog metadata under progressive disclosure.
+- Added an address-first, two-step Branch creation workspace with internal map coordinates.
+- Rebuilt UniqueOffer creation as a three-step details, publication, and review composer.
+- Preserved existing AskBackend contracts and default active behavior.
+
+## 2026-07-24 — Phase 2 domain model alignment: branches, schedules, online business
+
+Aligned frontend with backend Phase 1 domain model changes. Backend renamed `Business.isOnline` → `onlineOnly`, replaced `workingHourStart/End` with `timeZoneId` + `weeklyHours`/`specialHours` ElementCollections, and created `BranchOpeningHoursPolicy` for computed opening state.
+
+### Domain type definitions
+
+- Created `src/shared/api/domainTypes.ts` — centralized domain types replacing inline interfaces across API clients and components: `BusinessScope`, `BranchDto`, `BusinessDto`, `WeeklyOpeningIntervalDto`, `SpecialOpeningIntervalDto`, `BranchOpeningSummaryDto`, `CreateBranchData`, `UpdateBranchData`.
+- Updated `askClient.ts` branch functions to use domain types; added `getBusiness()` and `openNow` search filter.
+
+### Branch schedule editors
+
+- Added `weeklyHours` and `specialHours` editors to branch create/edit forms in BusinessPage with full CRUD UI (add row, remove row, dayOfWeek dropdown, time inputs, date picker, closed checkbox).
+- `emptyBranchForm()` helper initializes form state with empty `weeklyHours: []` and `specialHours: []`.
+- Branch form state uses `timeZoneId` (IANA string) instead of removed `workingHourStart/End`.
+
+### Customer-facing opening state
+
+- ResultsPage renders `openingSummary` from search results — formatted via `Intl.DateTimeFormat` with branch timezone.
+- `formatOpeningTime()` and `formatOpeningLabel()` helpers in BusinessPage for branch management display.
+
+### Search openNow filter
+
+- ResultsPage sort rail includes `openNow` toggle (Clock icon) that sends `filters.openNow: true` to search API.
+
+### Seller onboarding onlineOnly flow
+
+- Added `onlineOnly: boolean` to `SellerOnboardingData` type and onboarding API body.
+- Added onlineOnly checkbox to step 1 of SellerOnboardingPage with description in all three locales.
+- `onlineOnly` flows through to `POST /api/v1/business/onboarding` via `...base` spread.
+
+### OnlineOnly gating in business cabinet
+
+- BusinessPage fetches `getBusiness()` to read `onlineOnly` status; hides Organization sidebar tab for onlineOnly businesses.
+- "Add Branch" button shows mode-change confirmation dialog when business is onlineOnly, warning the owner that adding a physical branch is irreversible.
+- `handleCreateBranch` catches `BRANCH_NOT_ALLOWED_ONLINE_ONLY` error code and flips local `businessOnlineOnly` state.
+
+### Contract drift cleanup
+
+- Removed stale `business.branch.onlineOnly` i18n keys from en.json and kk.json.
+- Added ~25 new i18n keys across ru/en/kk for schedule editors, onlineOnly toggle, confirmation dialog, and opening state labels.
+
+### Docs updated
+
+- `FRONTEND_BACKEND_CONTRACT.md`: added 2026-07-24 section covering business onlineOnly, branch schedule model, search openNow filter, and domain types.
+- `CHANGELOG_FOUNDATION_FRONTEND.md`: this entry.
+
+## 2026-07-23 — Catalog persistence, import, branch location, and platform access
+
+- Restored Bearer-authenticated `.xlsx` upload and canonical `ITEM`/`SERVICE` import mapping, preview, and approval.
+- Product and Service edit forms now reload and persist categories, attributes, active state, schedule fields, tags, and Item deep links.
+- Category inputs load SYSTEM and USER suggestions dynamically and provide an explicit USER-category creation action.
+- Branch OWNER and MANAGER forms persist working hours; coordinates remain hidden and are derived from map selection or supported map links.
+- Managed-import activation is the seven-day per-Business catalog entitlement. Platform support staff can inspect customer-business support conversations.
+
+## 2026-07-22 — Entity terminology and managed-import contact flow
+
+- Seller onboarding and managed import use entity-backed `BusinessScope` values `ITEM`, `SERVICE`, and `BOTH` across frontend and backend contracts.
+- Legal form `NONE` requires at least one valid HTTP(S) verification source before onboarding can continue.
+- The managed-import dialog displays only the contact channel and channel-validated contact value; collected sources remain in the request without being shown again.
+- Managed-import requests use optional `selectedSourceTypes` and no longer send endpoint-only legal, country, or locale fields.
+
 ## 2026-07-18 — Identity and managed-import review fixes
 
 - Protected deep links wait for cookie-session bootstrap before applying route guards.
@@ -316,3 +391,14 @@ Completed the frontend part of the identity/onboarding/managed-import/compliance
 - Seller onboarding asks PRODUCTS, SERVICES, or BOTH before manual setup versus managed import.
 - Product and service cabinet tabs open a scoped managed-import request with benefits, price state, sources, contact details, and legal acceptance.
 - Kept the graphite, ivory, and orange palette while tightening typography, card motion, forms, responsive onboarding, and modal hierarchy.
+
+## 2026-07-26 — Wanted-reference frontend redesign
+
+- Rebuilt the customer home, search results, chats, public business profile, auth, and business cabinet around the approved warm ivory/orange reference layout.
+- Added a token-driven graphite dark theme with identical information architecture and component behavior; light mode is now the default.
+- Removed the oversized latest-request dashboard card and unsupported search/profile claims.
+- Search now submits canonical `ITEM` or `SERVICE` mode, real backend filters, relevance sorting by default, and renders only fields returned by search cards.
+- Customer and business chat surfaces now use the unified conversation APIs without unsupported status mutations or legacy request panels.
+- Business profile editing now uses the real profile API and multipart logo/cover upload endpoints.
+- Product and service attributes use guided key/value controls instead of exposed JSON.
+- Corrected item and branch update routes to `/api/v1/items/{itemId}` and `/api/v1/branches/{branchId}`.

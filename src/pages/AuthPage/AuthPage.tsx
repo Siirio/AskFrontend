@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Search, Building2 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
@@ -30,6 +30,7 @@ export function AuthPage() {
   const { state, actions } = useAuth();
   const { reduced } = useMotion();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,12 +49,22 @@ export function AuthPage() {
     if (sessionStorage.getItem("ask.sellerOnboardingDraft")) {
       return <Navigate to={ROUTES.sellerOnboarding} replace />;
     }
+    const requestedPath = (location.state as { from?: unknown } | null)?.from;
+    const returnTo = typeof requestedPath === "string"
+      && requestedPath.startsWith("/")
+      && !requestedPath.startsWith("//")
+      && requestedPath !== ROUTES.auth
+      ? requestedPath
+      : null;
+    if (returnTo) {
+      return <Navigate to={returnTo} replace />;
+    }
     const startRoute = state.session?.startRoute;
     if (startRoute === "BUSINESS_CABINET" && state.session?.business) {
       return <Navigate to={buildRoute(ROUTES.business, { businessId: state.session.business.businessId })} replace />;
     }
     if (startRoute === "CLIENT_SEARCH") {
-      return <Navigate to={ROUTES.results} replace />;
+      return <Navigate to={ROUTES.home} replace />;
     }
     return <Navigate to={ROUTES.home} replace />;
   }
@@ -457,7 +468,7 @@ export function AuthPage() {
   return (
     <main
       id="main-content"
-      className="fcw-flex-center"
+      className="fcw-flex-center ask-auth-page"
       style={{
         minHeight: "100vh",
         padding: "var(--fcw-space-lg)",
@@ -466,8 +477,11 @@ export function AuthPage() {
           : "var(--fcw-space-lg)",
       }}
     >
+      <button type="button" className="ask-auth-wordmark" onClick={() => navigate(ROUTES.home)}>
+        ASK
+      </button>
       <motion.div
-        className="fcw-card fcw-p-xl"
+        className="fcw-card fcw-p-xl ask-auth-card"
         style={{ width: "100%", maxWidth: "440px" }}
         initial={reduced ? {} : { opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

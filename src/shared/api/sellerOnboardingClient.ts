@@ -1,47 +1,75 @@
 import { apiRequest } from "./httpClient";
+import type { BusinessScope } from "../utils/validation";
 
 export type SellerOnboardingData = {
   businessName: string;
+  categoryId: string;
+  categoryName: string;
   countryCode: "KZ";
   legalForm: "KZ_IP" | "KZ_TOO" | "NONE";
   legalIdentifier: string;
   legalName: string;
-  preferredContactChannel: "WHATSAPP" | "TELEGRAM" | "EMAIL";
-  preferredContactValue: string;
-  pickupAvailable: boolean;
-  deliveryScope: "NO_DELIVERY" | "SELECTED_CITIES" | "KAZAKHSTAN" | "WORLDWIDE" | "CONTACT_SELLER";
-  selectedCityIds: string[];
-  deliveryTermsRu: string;
-  deliveryTermsKk: string;
-  deliveryTermsEn: string;
   catalogSetupMode: "MANUAL" | "ASK_MANAGED_IMPORT";
-  catalogScope: "PRODUCTS" | "SERVICES" | "BOTH";
-  catalogSources: string[];
-  sourceLinks: string;
-  sourceNotes: string;
+  businessScope: BusinessScope;
+  onlineOnly: boolean;
   locale: string;
+  twoGisUrl: string;
+  kaspiUrl: string;
+  ozonUrl: string;
+  wildberriesUrl: string;
+  websiteUrl: string;
+  instagramUrl: string;
+  telegramUrl: string;
 };
 
 export type SellerOnboardingResult = {
   businessId: string;
   catalogSetupMode: "MANUAL" | "ASK_MANAGED_IMPORT";
-  catalogDeadlineAt: string;
-  conversationId?: string;
   startRoute: "BUSINESS_CABINET" | "MANAGED_IMPORT";
 };
 
 export function completeSellerOnboarding(data: SellerOnboardingData) {
-  return apiRequest<SellerOnboardingResult>("/api/v1/seller/onboarding", {
+  const {
+    legalIdentifier,
+    locale: _locale,
+    twoGisUrl,
+    kaspiUrl,
+    ozonUrl,
+    wildberriesUrl,
+    websiteUrl,
+    instagramUrl,
+    telegramUrl,
+    ...base
+  } = data;
+  const sourceLinks = {
+    twoGisUrl,
+    kaspiUrl,
+    ozonUrl,
+    wildberriesUrl,
+    websiteUrl,
+    instagramUrl,
+    telegramUrl,
+  };
+  const body = data.legalForm === "NONE"
+    ? { ...base, ...Object.fromEntries(Object.entries(sourceLinks).filter(([, value]) => value.trim())) }
+    : { ...base, legalIdentifier };
+
+  return apiRequest<SellerOnboardingResult>("/api/v1/business/onboarding", {
     method: "POST",
     auth: true,
-    body: data,
+    body,
   });
 }
 
 export type BusinessCatalogStatus = {
   businessId: string;
-  status: "IN_PROGRESS" | "REVIEW_REQUIRED" | "COMPLETED" | "RESTRICTED";
-  deadlineAt: string;
+  catalogStatus: "IN_PROGRESS" | "REVIEW_REQUIRED" | "COMPLETED" | "RESTRICTED";
+  verificationStatus: "PENDING" | "NEEDS_INFO" | "APPROVED" | "REJECTED" | null;
+  verificationPriority: "STANDARD" | "EXPEDITED" | null;
+  catalogSetupStartedAt: string | null;
+  catalogSetupDeadlineAt: string | null;
+  catalogSetupCompletedAt: string | null;
+  catalogReady: boolean;
 };
 
 export function getBusinessCatalogStatus(businessId: string) {

@@ -18,3 +18,36 @@
 - Unlock condition: Explicit user request to change this behavior or evidence that the core execution pipeline changed.
 - Created: 2026-07-06
 
+## LOCKED: Requirements authority and conflict handling
+
+**Approved signal:** User clarification on 2026-07-22.
+
+**Protected behavior:** The user's current instructions together with applicable `AI_Knowledge` feature documentation jointly define intended behavior. Applicable feature documentation must be read before behavior is diagnosed or changed. Existing code is not proof of correctness unless the exact behavior is explicitly locked as working or documented as approved.
+
+**Conflict rule:** Stop and ask the user when instructions, documentation, or locks conflict, or when material behavior, data, authorization, or acceptance criteria are missing. Never silently choose existing code or an assumption.
+
+**Allowed changes:** Synchronize documentation and locks after the user resolves the conflict or approves changed behavior.
+
+## LOCKED: Canonical entity terminology across layers
+
+**Approved signal:** User correction on 2026-07-22.
+
+**Protected behavior:** Frontend state, URL/query values, API clients and documentation use entity terminology unchanged. `BusinessScope` is only `ITEM`, `SERVICE`, or `BOTH`; managed-import payloads use `selectedSourceTypes`.
+
+**Scope:** Seller onboarding, managed import and platform business access.
+
+## LOCKED: Business-scoped managed-import workspace
+
+**Approved signal:** User clarification on 2026-07-23.
+
+**Protected behavior:** Activating a managed-import request immediately gives the assigned platform member access to that Business for the request's `ITEM`, `SERVICE`, or `BOTH` scope for seven days. The frontend uses the business-specific access response and never a global catalog-edit permission.
+
+**Scope:** BusinessPage platform workspace, managedImportClient, platform permission UI.
+
+## LOCKED: Hidden map-derived coordinates and branch hours
+
+**Approved signal:** User clarification on 2026-07-23.
+
+**Protected behavior:** OWNER and MANAGER may edit branch working hours. Latitude and longitude remain internal values derived from map interaction or supported map links and are never rendered as numeric inputs or values.
+
+**Scope:** Branch forms, MapLocationPicker, mapLocationResolver, branch API payloads.

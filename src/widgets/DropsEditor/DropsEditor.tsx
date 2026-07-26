@@ -1,27 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Check, Plus, Trash2, Calendar, Tag, Loader2, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Check, Loader2, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
-import { Select } from "../../shared/ui/Select/Select";
+import { EditorProgress, EditorSection, EntityEditor } from "../../shared/ui/EntityEditor/EntityEditor";
 import type { BrandDropDto } from "../../shared/api/dto";
-
-function formatDate(value?: string | null, t?: (key: string) => string): string {
-  if (!value) return t?.("drops.noDate") || "—";
-  return new Intl.DateTimeFormat("ru-KZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
 
 function formatDateShort(value?: string | null): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("ru-KZ", { day: "2-digit", month: "short" }).format(new Date(value));
 }
-
-const DROP_TYPE_CONFIG = {
-  NEW_COLLECTION: { icon: "✨", color: "#f59e0b" },
-  LIMITED_RELEASE: { icon: "💎", color: "#8b5cf6" },
-  SEASONAL: { icon: "🌸", color: "#f472b6" },
-  PROMO: { icon: "🎯", color: "#ef4444" },
-} as const;
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "drops.statusActive",
@@ -37,6 +24,8 @@ interface DropsEditorProps {
   busy: boolean;
   readOnly?: boolean;
   openRequest?: number;
+  onAiEnrichment?: (drop: BrandDropDto) => Promise<void>;
+  aiEnrichmentBusy?: boolean;
 }
 
 interface DropForm {
@@ -46,86 +35,137 @@ interface DropForm {
   startDate: string;
   endDate: string;
   tags: string;
+  coverUrl: string;
+  discountPercent: string;
+  discountAmount: string;
+  currency: string;
 }
 
-const emptyForm: DropForm = { name: "", type: "NEW_COLLECTION", description: "", startDate: "", endDate: "", tags: "" };
+const emptyForm: DropForm = {
+  name: "",
+  type: "NEW_COLLECTION",
+  description: "",
+  startDate: "",
+  endDate: "",
+  tags: "",
+  coverUrl: "",
+  discountPercent: "",
+  discountAmount: "",
+  currency: "KZT",
+};
 
-export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnly, openRequest }: DropsEditorProps) {
+export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnly, openRequest, onAiEnrichment, aiEnrichmentBusy }: DropsEditorProps) {
   const { t } = useTranslation();
   const [form, setForm] = useState<DropForm>(emptyForm);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [step, setStep] = useState(0);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const update = (patch: Partial<DropForm>) => setForm(f => ({ ...f, ...patch }));
+  const update = (patch: Partial<DropForm>) => setForm(current => ({ ...current, ...patch }));
 
-  useEffect(() => {
-    if (!openRequest || readOnly) return;
-    setForm(emptyForm);
-    setSaveState("idle");
-    setErrorMessage("");
-    setDrawerOpen(true);
-  }, [openRequest, readOnly]);
-
-  const DROP_TYPES = [
-    { key: "NEW_COLLECTION", label: t("drops.typeNewCollection"), desc: t("drops.typeNewCollectionDesc") },
-    { key: "LIMITED_RELEASE", label: t("drops.typeLimitedRelease"), desc: t("drops.typeLimitedReleaseDesc") },
-    { key: "SEASONAL", label: t("drops.typeSeasonal"), desc: t("drops.typeSeasonalDesc") },
-    { key: "PROMO", label: t("drops.typePromo"), desc: t("drops.typePromoDesc") },
+  const dropTypes = [
+    { key: "NEW_COLLECTION", label: t("drops.typeNewCollection"), description: t("drops.typeNewCollectionDesc") },
+    { key: "LIMITED_RELEASE", label: t("drops.typeLimitedRelease"), description: t("drops.typeLimitedReleaseDesc") },
+    { key: "SEASONAL", label: t("drops.typeSeasonal"), description: t("drops.typeSeasonalDesc") },
+    { key: "PROMO", label: t("drops.typePromo"), description: t("drops.typePromoDesc") },
   ];
 
-  const resetForm = () => {
+  const openEditor = () => {
     setForm(emptyForm);
-    setDrawerOpen(false);
+    setStep(0);
+    setSaveState("idle");
+    setErrorMessage("");
+    setEditorOpen(true);
+  };
+
+  const closeEditor = () => {
+    setEditorOpen(false);
+    setStep(0);
     setSaveState("idle");
     setErrorMessage("");
   };
 
-  const handleCreate = async () => {
-    if (!form.name.trim()) return;
-    if (form.startDate && form.endDate && new Date(form.endDate) <= new Date(form.startDate)) {
-      setSaveState("error");
+  useEffect(() => {
+    if (!openRequest || readOnly) return;
+    openEditor();
+  }, [openRequest, readOnly]);
+
+  const datesValid = !form.startDate || !form.endDate || new Date(form.endDate) > new Date(form.startDate);
+
+  const goForward = () => {
+    if (step === 0 && !form.name.trim()) {
+      setErrorMessage(t("drops.nameRequired"));
+      return;
+    }
+    if (step === 1 && !datesValid) {
       setErrorMessage(t("drops.errorDateOrder"));
+      return;
+    }
+    setErrorMessage("");
+    setStep(current => Math.min(current + 1, 2));
+  };
+
+  const handleCreate = async () => {
+    if (!form.name.trim() || !datesValid) {
+      setSaveState("error");
+      setErrorMessage(!form.name.trim() ? t("drops.nameRequired") : t("drops.errorDateOrder"));
       return;
     }
     setSaveState("saving");
     setErrorMessage("");
     try {
       await onCreate({
-        name: form.name,
+        name: form.name.trim(),
         type: form.type,
         status: "ACTIVE",
-        description: form.description,
+        description: form.description.trim(),
         startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
         tags: form.tags.split(",").map(tag => tag.trim()).filter(Boolean),
+        coverUrl: form.coverUrl.trim() || undefined,
+        discountPercent: form.discountPercent ? Number(form.discountPercent) : undefined,
+        discountAmount: form.discountAmount ? Number(form.discountAmount) : undefined,
+        currency: form.currency,
+        isEnabled: true,
       });
-      setForm(emptyForm);
       setSaveState("saved");
-      setTimeout(() => { setSaveState("idle"); setDrawerOpen(false); }, 600);
-    } catch (err: unknown) {
+      closeEditor();
+    } catch (error: unknown) {
       setSaveState("error");
-      setErrorMessage(err instanceof Error ? err.message : t("drops.errorCreate"));
+      setErrorMessage(error instanceof Error ? error.message : t("drops.errorCreate"));
     }
   };
 
-  const hasActiveDrops = drops.some(d => d.status === "ACTIVE");
-  const selectedType = DROP_TYPES.find(dt => dt.key === form.type);
-  const typeConfig = DROP_TYPE_CONFIG[form.type as keyof typeof DROP_TYPE_CONFIG] || DROP_TYPE_CONFIG.NEW_COLLECTION;
+  const selectedType = dropTypes.find(type => type.key === form.type);
+  const footer = step < 2 ? (
+    <>
+      <button className="fcw-btn fcw-btn-secondary" onClick={step === 0 ? closeEditor : () => setStep(current => current - 1)}>
+        {step > 0 && <ArrowLeft size={16} />}{step === 0 ? t("business.cancel") : t("business.back")}
+      </button>
+      <button className="fcw-btn fcw-btn-primary" onClick={goForward} disabled={step === 0 && !form.name.trim()}>
+        {t("business.continue")}<ArrowRight size={16} />
+      </button>
+    </>
+  ) : (
+    <>
+      <button className="fcw-btn fcw-btn-secondary" onClick={() => setStep(1)}><ArrowLeft size={16} />{t("business.back")}</button>
+      <button className="fcw-btn fcw-btn-primary" onClick={handleCreate} disabled={busy || saveState === "saving"}>
+        {saveState === "saving" ? <Loader2 className="fcw-animate-spin" size={16} /> : <Check size={16} />}
+        {saveState === "saving" ? t("drops.saving") : t("drops.create")}
+      </button>
+    </>
+  );
 
   return (
     <div>
       <div className="fcw-flex-between" style={{ marginBottom: "var(--fcw-space-md)" }}>
         <div>
           <h2 className="fcw-h2" style={{ margin: 0 }}>{t("business.events")}</h2>
-          <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>
-            {t("business.activeDrops", { count: drops.filter(d => d.status === "ACTIVE").length })}
+          <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0" }}>
+            {t("business.activeDrops", { count: drops.filter(drop => drop.status === "ACTIVE").length })}
           </p>
         </div>
-        {!readOnly && (
-          <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { setForm(emptyForm); setSaveState("idle"); setErrorMessage(""); setDrawerOpen(true); }}>
-            <Plus size={16} />{t("drops.create")}
-          </button>
-        )}
+        {!readOnly && <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={openEditor}><Plus size={16} />{t("drops.create")}</button>}
       </div>
 
       {drops.length === 0 ? (
@@ -133,191 +173,110 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
           title={t("drops.empty")}
           description={t("drops.emptyDesc")}
           icon={<Sparkles size={36} style={{ color: "var(--fcw-color-text-tertiary)" }} />}
-          action={!readOnly ? (
-            <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => { setForm(emptyForm); setSaveState("idle"); setErrorMessage(""); setDrawerOpen(true); }}>
-              <Plus size={16} />{t("drops.create")}
-            </button>
-          ) : undefined}
+          action={!readOnly ? <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={openEditor}><Plus size={16} />{t("drops.create")}</button> : undefined}
         />
       ) : (
-        <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+        <div className="ask-drop-list">
           {drops.map(drop => {
-            const tc = DROP_TYPE_CONFIG[drop.type as keyof typeof DROP_TYPE_CONFIG] || DROP_TYPE_CONFIG.NEW_COLLECTION;
-            const dt = DROP_TYPES.find(dt => dt.key === drop.type);
+            const type = dropTypes.find(item => item.key === drop.type);
             return (
-              <div
-                key={drop.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                  padding: "0.625rem 0.875rem",
-                  backgroundColor: "var(--fcw-color-surface)",
-                  border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                  borderRadius: "var(--fcw-radius-md)",
-                }}
-              >
-                <div style={{
-                  width: 10, height: 10, borderRadius: "50%",
-                  backgroundColor: tc.color, flexShrink: 0,
-                }} />
-                <span className="fcw-body fcw-weight-medium" style={{ minWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {drop.name}
-                </span>
-                <span className="fcw-label" style={{
-                  color: "#fff",
-                  backgroundColor: tc.color,
-                  padding: "0.1rem 0.5rem",
-                  borderRadius: "var(--fcw-radius-full)",
-                  fontSize: "0.6875rem",
-                  flexShrink: 0,
-                }}>
-                  {dt?.label || drop.type}
-                </span>
-                <span className="fcw-body-s fcw-text-secondary fcw-flex fcw-items-center" style={{ gap: "0.25rem", flexShrink: 0 }}>
-                  <Calendar size={12} />
-                  {formatDateShort(drop.startDate)}
-                  {drop.endDate && <> → {formatDateShort(drop.endDate)}</>}
-                </span>
-                {drop.tags && drop.tags.length > 0 && (
-                  <span className="fcw-body-s fcw-text-tertiary" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {drop.tags.join(", ")}
-                  </span>
-                )}
-                <span className="fcw-label" style={{
-                  color: drop.status === "ACTIVE" ? "var(--fcw-color-success)" : "var(--fcw-color-text-tertiary)",
-                  flexShrink: 0,
-                  fontSize: "0.6875rem",
-                }}>
-                  {t(STATUS_LABELS[drop.status] || "drops.statusActive")}
-                </span>
-                <div style={{ flex: 1 }} />
-                {!readOnly && drop.status === "ACTIVE" && (
-                  <div className="fcw-flex" style={{ gap: "0.25rem", flexShrink: 0 }}>
-                    <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => onCancel(drop)} aria-label={t("drops.cancel")}>
-                      <X size={15} />
-                    </button>
-                    <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => onDelete(drop)} aria-label={t("drops.delete")}>
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                )}
+              <div className="ask-drop-row" key={drop.id}>
+                <span className="ask-drop-row__mark" />
+                <div className="ask-drop-row__identity">
+                  <strong>{drop.name}</strong>
+                  <span>{type?.label || drop.type}</span>
+                </div>
+                <span className="ask-drop-row__dates"><Calendar size={14} />{formatDateShort(drop.startDate)}{drop.endDate && ` — ${formatDateShort(drop.endDate)}`}</span>
+                <span className="ask-drop-row__status">{t(STATUS_LABELS[drop.status] || "drops.statusActive")}</span>
+                <div className="ask-drop-row__actions">
+                  {onAiEnrichment && <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => onAiEnrichment(drop)} disabled={aiEnrichmentBusy} aria-label="AI enrichment">{aiEnrichmentBusy ? <Loader2 className="fcw-animate-spin" size={15} /> : <Sparkles size={15} />}</button>}
+                  {!readOnly && drop.status === "ACTIVE" && (
+                    <>
+                      <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => onCancel(drop)} aria-label={t("drops.cancel")}><X size={15} /></button>
+                      <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => onDelete(drop)} aria-label={t("drops.delete")}><Trash2 size={15} /></button>
+                    </>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      <AnimatePresence>
-        {drawerOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", zIndex: 90 }}
-              onClick={resetForm}
-            />
-            <motion.aside
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                position: "fixed",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                maxHeight: "90vh",
-                width: "100%",
-                backgroundColor: "var(--fcw-color-surface)",
-                borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                borderRadius: "var(--fcw-radius-lg) var(--fcw-radius-lg) 0 0",
-                zIndex: 91,
-                display: "flex",
-                flexDirection: "column",
-                overflowY: "auto",
-              }}
-            >
-              <div className="fcw-flex-between" style={{ padding: "1rem 1.25rem", borderBottom: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", flexShrink: 0 }}>
-                <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0 }}>{t("drops.newDrop")}</h3>
-                <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={resetForm}>
-                  <X size={18} />
+      <EntityEditor
+        open={editorOpen}
+        variant="workspace"
+        eyebrow={t("business.events")}
+        title={t("drops.newDrop")}
+        description={t("drops.editorDescription")}
+        onClose={closeEditor}
+        closeLabel={t("business.cancel")}
+        footer={footer}
+      >
+        <EditorProgress steps={[t("drops.stepDetails"), t("drops.stepPublication"), t("drops.stepReview")]} current={step} />
+        {step === 0 && (
+          <EditorSection title={t("drops.detailsTitle")} description={t("drops.detailsDescription")}>
+            <div className="ask-drop-types">
+              {dropTypes.map(type => (
+                <button type="button" key={type.key} className={form.type === type.key ? "is-selected" : ""} onClick={() => update({ type: type.key })}>
+                  <strong>{type.label}</strong>
+                  <span>{type.description}</span>
                 </button>
-              </div>
-
-              <div className="fcw-flex-col" style={{ gap: "1rem", padding: "1.25rem", flex: 1, minHeight: 0, overflowY: "auto" }}>
-                <div>
-                  <span className="fcw-label" style={{ marginBottom: "0.5rem", display: "block" }}>{t("drops.type")}</span>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.375rem" }}>
-                    {DROP_TYPES.map(dt => (
-                      <button
-                        key={dt.key}
-                        type="button"
-                        className="fcw-btn fcw-btn-sm"
-                        style={{
-                          justifyContent: "flex-start",
-                          gap: "0.5rem",
-                          border: form.type === dt.key ? "2px solid var(--fcw-color-primary)" : "2px solid var(--fcw-color-border)",
-                          background: form.type === dt.key ? "color-mix(in srgb, var(--fcw-color-primary) 8%, transparent)" : "var(--fcw-color-surface)",
-                          borderRadius: "var(--fcw-radius-md)",
-                          padding: "0.625rem 0.75rem",
-                        }}
-                        onClick={() => update({ type: dt.key })}
-                      >
-                        <span style={{ fontSize: "1.25rem" }}>{(DROP_TYPE_CONFIG as any)[dt.key]?.icon || "📌"}</span>
-                        <div style={{ textAlign: "left" }}>
-                          <div className="fcw-body-s fcw-weight-medium">{dt.label}</div>
-                          <div className="fcw-body-s fcw-text-tertiary" style={{ fontSize: "0.6875rem" }}>{dt.desc}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                  <span className="fcw-label">{t("drops.name")}</span>
-                  <input className="fcw-input" value={form.name} onChange={e => update({ name: e.target.value })} placeholder={t("drops.namePlaceholder")} autoFocus />
-                </label>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                  <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                    <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}><Calendar size={11} />{t("drops.start")}</span>
-                    <input type="datetime-local" className="fcw-input" value={form.startDate} onChange={e => update({ startDate: e.target.value })} />
-                  </label>
-                  <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                    <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}><Calendar size={11} />{t("drops.end")}</span>
-                    <input type="datetime-local" className="fcw-input" value={form.endDate} onChange={e => update({ endDate: e.target.value })} />
-                  </label>
-                </div>
-
-                <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                  <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}><Tag size={11} />{t("drops.tags")}</span>
-                  <input className="fcw-input" value={form.tags} onChange={e => update({ tags: e.target.value })} placeholder={t("drops.tagsPlaceholder")} />
-                </label>
-
-                <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                  <span className="fcw-label">{t("drops.description")}</span>
-                  <textarea className="fcw-textarea" value={form.description} onChange={e => update({ description: e.target.value })} rows={3} />
-                </label>
-
-                {saveState === "error" && errorMessage && (
-                  <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)", margin: 0 }}>{errorMessage}</p>
-                )}
-              </div>
-
-              <div className="fcw-flex" style={{ gap: "0.5rem", padding: "1rem 1.25rem", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)", flexShrink: 0 }}>
-                <button className="fcw-btn fcw-btn-primary" onClick={handleCreate} disabled={busy || saveState === "saving" || !form.name.trim()} style={{ flex: 1 }}>
-                  {saveState === "saving" ? <Loader2 className="fcw-animate-spin" size={16} /> : saveState === "saved" ? <Check size={16} /> : <Plus size={16} />}
-                  {saveState === "saving" ? t("drops.saving") : saveState === "saved" ? t("drops.saved") : saveState === "error" ? t("drops.tryAgain") : t("drops.create")}
-                </button>
-                <button className="fcw-btn fcw-btn-secondary" onClick={resetForm}>{t("business.cancel")}</button>
-              </div>
-            </motion.aside>
-          </>
+              ))}
+            </div>
+            <div className="ask-editor-field">
+              <label className="ask-editor-required">{t("drops.name")}</label>
+              <input className="fcw-input" autoFocus value={form.name} onChange={event => update({ name: event.target.value })} placeholder={t("drops.namePlaceholder")} />
+            </div>
+            <div className="ask-editor-field">
+              <label>{t("drops.description")}</label>
+              <textarea className="fcw-textarea" rows={4} value={form.description} onChange={event => update({ description: event.target.value })} />
+            </div>
+          </EditorSection>
         )}
-      </AnimatePresence>
+        {step === 1 && (
+          <EditorSection title={t("drops.publicationTitle")} description={t("drops.publicationDescription")}>
+            <div className="ask-editor-grid">
+              <div className="ask-editor-field">
+                <label>{t("drops.start")}</label>
+                <input type="datetime-local" className="fcw-input" value={form.startDate} onChange={event => update({ startDate: event.target.value })} />
+              </div>
+              <div className="ask-editor-field">
+                <label>{t("drops.end")}</label>
+                <input type="datetime-local" className="fcw-input" value={form.endDate} onChange={event => update({ endDate: event.target.value })} />
+              </div>
+              <div className="ask-editor-field ask-editor-field--wide">
+                <label>{t("drops.coverUrl")}</label>
+                <input className="fcw-input" type="url" value={form.coverUrl} onChange={event => update({ coverUrl: event.target.value })} placeholder={t("drops.coverUrlPlaceholder")} />
+              </div>
+              <div className="ask-editor-field ask-editor-field--wide">
+                <label>{t("drops.tags")}</label>
+                <input className="fcw-input" value={form.tags} onChange={event => update({ tags: event.target.value })} placeholder={t("drops.tagsPlaceholder")} />
+              </div>
+              <div className="ask-editor-field">
+                <label>{t("drops.discountPercent")}</label>
+                <input className="fcw-input" type="number" min="0" max="100" value={form.discountPercent} onChange={event => update({ discountPercent: event.target.value })} />
+              </div>
+              <div className="ask-editor-field">
+                <label>{t("drops.discountAmount")}</label>
+                <input className="fcw-input" type="number" min="0" value={form.discountAmount} onChange={event => update({ discountAmount: event.target.value })} />
+              </div>
+            </div>
+          </EditorSection>
+        )}
+        {step === 2 && (
+          <EditorSection title={t("drops.reviewTitle")} description={t("drops.reviewDescription")}>
+            <div className="ask-editor-summary">
+              <div><small>{t("drops.type")}</small><strong>{selectedType?.label}</strong></div>
+              <div><small>{t("drops.name")}</small><strong>{form.name}</strong></div>
+              <div><small>{t("drops.start")}</small><strong>{form.startDate ? formatDateShort(form.startDate) : t("drops.noDate")}</strong></div>
+              <div><small>{t("drops.end")}</small><strong>{form.endDate ? formatDateShort(form.endDate) : t("drops.noDate")}</strong></div>
+            </div>
+            {form.description && <p className="fcw-body fcw-text-secondary" style={{ margin: 0 }}>{form.description}</p>}
+          </EditorSection>
+        )}
+        {errorMessage && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)", margin: "18px 0 0" }}>{errorMessage}</p>}
+      </EntityEditor>
     </div>
   );
 }

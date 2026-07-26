@@ -9,9 +9,10 @@ interface CitySelectorProps {
   value: string;
   onChange: (city: string) => void;
   compact?: boolean;
+  buttonClassName?: string;
 }
 
-export function CitySelector({ value, onChange, compact }: CitySelectorProps) {
+export function CitySelector({ value, onChange, compact, buttonClassName }: CitySelectorProps) {
   const { t } = useTranslation();
   const { reduced } = useMotion();
   const [open, setOpen] = useState(false);
@@ -23,11 +24,9 @@ export function CitySelector({ value, onChange, compact }: CitySelectorProps) {
     setBusy(true);
     listCities()
       .then(setCities)
-      .catch(() => {
-        setCities([{ id: "1", name: t("citySelector.almaty") }, { id: "2", name: t("citySelector.astana") }, { id: "3", name: t("citySelector.shymkent") }]);
-      })
+      .catch(() => setCities([]))
       .finally(() => setBusy(false));
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -48,8 +47,8 @@ export function CitySelector({ value, onChange, compact }: CitySelectorProps) {
     <div ref={ref} style={{ position: "relative", flexShrink: 0 }}>
       <button
         type="button"
-        className="fcw-flex fcw-items-center fcw-glassmorph"
-        style={{
+        className={buttonClassName || "fcw-flex fcw-items-center fcw-glassmorph"}
+        style={buttonClassName ? undefined : {
           gap: "0.375rem",
           padding: compact ? "0.375rem 0.625rem" : "0.75rem 1rem",
           borderRadius: compact ? "var(--fcw-radius-full)" : "var(--fcw-radius-xl)",

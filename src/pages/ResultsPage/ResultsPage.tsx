@@ -1,275 +1,423 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Filter,
+  Globe,
+  MapPin,
+  MessageCircle,
+  Search,
+  SlidersHorizontal,
+  Store,
+  X,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowDownNarrowWide, ArrowLeft, ChevronLeft, ChevronRight, Navigation, Plus, Sparkles } from "lucide-react";
-import { SearchBar } from "../../shared/ui/SearchBar/SearchBar";
-import { SegmentedControl, type SegmentedOption } from "../../shared/ui/SegmentedControl/SegmentedControl";
-import { ResultCard, type ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
-import { CompanyCard } from "../../widgets/CompanyCard/CompanyCard";
-import { Loading } from "../../shared/ui/Loading/Loading";
-import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
-import { useMotion } from "../../app/providers/MotionProvider";
-import { searchAskV2 } from "../../shared/api/askClient";
-import type { SearchConstraintDto, SearchV2CardDto, SearchV2SectionDto } from "../../shared/api/dto";
+import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
+import {
+  searchAskV2,
+  startChatConversation,
+  type SearchExplicitFilters,
+} from "../../shared/api/askClient";
+import type { SearchV2CardDto } from "../../shared/api/dto";
+import { ResultCard, type ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
 
-type SearchMode = "products" | "services";
-type SortKey = "intent_match" | "distance" | "price_asc";
+type SearchMode = "ITEM" | "SERVICE";
+type SortKey = "relevance" | "distance" | "price_asc";
 
-type ResultSection = Omit<SearchV2SectionDto, "cards"> & { cards: ResultCardData[] };
+const PAGE_SIZE = 20;
 
-const SEARCH_PAGE_SIZE = 20;
+function toMoney(value: number | null | undefined, currency?: string | null) {
+  if (value === null || value === undefined) return undefined;
+  const suffix = currency === "KZT" || !currency ? "₸" : currency;
+  return `${new Intl.NumberFormat("ru-KZ").format(value)} ${suffix}`;
+}
+
+function mapCard(card: SearchV2CardDto): ResultCardData {
+  return {
+    id: card.resultId,
+    resultType: card.resultType,
+    title: card.title,
+    summary: card.summary ?? undefined,
+    category: card.categoryLabel ?? undefined,
+    price: toMoney(card.price, card.currency),
+    location: card.branchAddress ?? card.branchName ?? undefined,
+    city: card.branchCity ?? undefined,
+    distance: card.distanceMeters ? `${(card.distanceMeters / 1000).toFixed(1)} км` : undefined,
+    imageUrl: card.brandLogoUrl ?? card.businessProfile?.logoUrl ?? undefined,
+    brandName: card.businessName,
+    brandColor: card.brandColor ?? undefined,
+    businessId: card.businessId,
+    availability: card.availability ?? undefined,
+    availabilityWarning: card.availabilityWarning ?? undefined,
+    matchReasons: card.matchReasons ?? [],
+    badges: card.badges ?? [],
+    openingLabel: card.openingSummary?.label ?? undefined,
+    openingState: card.openingSummary?.state,
+    businessProfile: card.businessProfile,
+  };
+}
 
 export function ResultsPage() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { reduced } = useMotion();
-  const query = searchParams.get("query") || "";
-  const mode = (searchParams.get("mode") || "products") as SearchMode;
-  const city = searchParams.get("city") || t("citySelector.almaty");
+  const navigate = useNavigate();
+  const { state } = useAuth();
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get("query") ?? "";
+  const initialMode: SearchMode = searchParams.get("mode") === "SERVICE" ? "SERVICE" : "ITEM";
+  const initialCity = searchParams.get("city") ?? "";
 
-  const [sections, setSections] = useState<ResultSection[]>(() => {
-    try {
-      const stored = sessionStorage.getItem("ask.lastResults");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.query === query && parsed.mode === mode && parsed.city === city) {
-          return parsed.sections || [];
-        }
-      }
-    } catch { /* ignore corrupt session storage */ }
-    return [];
-  });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [sort, setSort] = useState<SortKey>("intent_match");
+  const [query, setQuery] = useState(initialQuery);
+  const [mode] = useState<SearchMode>(initialMode);
+  const [sort, setSort] = useState<SortKey>("relevance");
   const [page, setPage] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<SearchExplicitFilters>({
+    city: initialCity || undefined,
+    country: "KZ",
+  });
+  const [draftFilters, setDraftFilters] = useState<SearchExplicitFilters>({
+    city: initialCity || undefined,
+    country: "KZ",
+  });
+  const [cards, setCards] = useState<ResultCardData[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [hasNext, setHasNext] = useState(false);
-  const [constraints, setConstraints] = useState<SearchConstraintDto[]>([]);
-  const [overlayCard, setOverlayCard] = useState<ResultCardData | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  const sortOptions: SegmentedOption<SortKey>[] = [
-    { key: "intent_match", label: t("results.sort.relevance"), icon: <Sparkles size={16} /> },
-    { key: "distance", label: t("results.sort.distance"), icon: <Navigation size={16} /> },
-    { key: "price_asc", label: t("results.sort.priceAsc"), icon: <ArrowDownNarrowWide size={16} /> },
-  ];
-
-  function mapCard(card: SearchV2CardDto): ResultCardData {
-    const contactAction = card.contactActions?.[0];
-    return {
-      id: card.resultId,
-      title: card.title || t("results.noTitle"),
-      subtitle: undefined,
-      price: card.price ? `${card.price.toLocaleString("ru-KZ")} ${t("currency.short")}` : undefined,
-      location: card.branchName ?? undefined,
-      imageUrl: card.brandLogoUrl ?? undefined,
-      brandName: card.businessName ?? undefined,
-      brandColor: card.brandColor ?? undefined,
-      distance: card.distanceMeters ? `${(card.distanceMeters / 1000).toFixed(1)} ${t("results.km")}` : undefined,
-      verified: false,
-      matchScore: undefined,
-      type: card.component,
-      hasContactAction: Boolean(contactAction),
-      contactActionId: contactAction?.contactActionId,
-      contactActions: card.contactActions || [],
-      businessId: card.businessId,
-      availabilityWarning: card.availabilityWarning ?? undefined,
-      matchReasons: card.matchReasons || [],
-    };
-  }
-
-  function constraintLabel(constraint: SearchConstraintDto) {
-    return t(`results.constraints.${constraint.key}`, { defaultValue: constraint.key });
-  }
-
-  function constraintValue(constraint: SearchConstraintDto) {
-    if (constraint.key === "scope") {
-      return t(`results.constraints.scope.${constraint.value.toLowerCase()}`, { defaultValue: constraint.value });
-    }
-    return constraint.value;
-  }
-
-  const scopeKey = mode === "products" ? "product" : "service";
+  const selected = cards.find(card => card.id === selectedId) ?? cards[0] ?? null;
 
   useEffect(() => {
-    if (!query) return;
+    if (!initialQuery.trim()) return;
+    let active = true;
     setBusy(true);
     setError("");
-    searchAskV2({ rawQuery: query, scope: scopeKey, city, sort, page, pageSize: SEARCH_PAGE_SIZE })
-      .then(res => {
-        const nextSections = res.sections.map(section => ({ ...section, cards: section.cards.map(mapCard) }));
-        setSections(nextSections);
-        setConstraints(res.interpretedConstraints || []);
-        setTotal(res.total);
-        setHasNext(res.hasNext);
-        try {
-          sessionStorage.setItem("ask.lastResults", JSON.stringify({ query, mode, city, sections: nextSections, sort, page }));
-        } catch { /* ignore quota */ }
+    searchAskV2({
+      rawQuery: initialQuery,
+      mode,
+      sort,
+      page,
+      pageSize: PAGE_SIZE,
+      explicitFilters: filters,
+    })
+      .then(response => {
+        if (!active) return;
+        const nextCards = response.sections.flatMap(section => section.cards.map(mapCard));
+        setCards(nextCards);
+        setTotal(response.total);
+        setHasNext(response.hasNext);
+        setSelectedId(current => nextCards.some(card => card.id === current) ? current : nextCards[0]?.id ?? null);
       })
-      .catch(e => setError(e instanceof Error ? e.message : t("results.error.title")))
-      .finally(() => setBusy(false));
-  }, [query, scopeKey, city, sort, page]);
+      .catch(reason => {
+        if (!active) return;
+        setCards([]);
+        setError(reason instanceof Error ? reason.message : t("results.error.title"));
+      })
+      .finally(() => {
+        if (active) setBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialQuery, mode, sort, page, filters, t]);
 
-  const handleSearch = (newQuery: string) => {
-    try { sessionStorage.removeItem("ask.lastResults"); } catch { /* ignore */ }
-    navigate(buildRoute(ROUTES.results, {}, { query: newQuery, mode, city }));
+  const activeFilterCount = useMemo(
+    () => Object.entries(filters).filter(([, value]) => value !== undefined && value !== "" && value !== false).length - 1,
+    [filters],
+  );
+
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const rawQuery = query.trim();
+    if (!rawQuery) return;
+    navigate(buildRoute(ROUTES.results, {}, {
+      query: rawQuery,
+      mode,
+      city: filters.city ?? "",
+    }));
   };
 
-  const resultCount = sections.reduce((count, section) => count + section.cards.length, 0);
-  const isEmpty = !busy && !error && resultCount === 0 && query;
+  const openChat = async (card: ResultCardData) => {
+    if (!state.authenticated) {
+      navigate(ROUTES.auth);
+      return;
+    }
+    if (!card.businessId) return;
+    try {
+      const conversation = await startChatConversation(card.businessId, card.title);
+      navigate(buildRoute(ROUTES.chats, {}, { conversation: conversation.conversationId }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("results.error.title"));
+    }
+  };
+
+  const applyFilters = () => {
+    setPage(0);
+    setFilters(draftFilters);
+    setFiltersOpen(false);
+  };
 
   return (
-    <main id="main-content">
-      <section
-        className="fcw-sticky fcw-z-sticky"
-        style={{
-          top: "56px",
-          backdropFilter: "var(--fcw-blur-glass)",
-          WebkitBackdropFilter: "var(--fcw-blur-glass)",
-          backgroundColor: "color-mix(in srgb, var(--fcw-color-surface) 88%, transparent)",
-          borderBottom: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-        }}
-      >
-        <div className="fcw-container" style={{ paddingTop: "var(--fcw-space-sm)", paddingBottom: "var(--fcw-space-sm)" }}>
-          <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", marginBottom: "0.625rem" }}>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-icon"
-              onClick={() => navigate(-1)}
-              aria-label={t("results.back")}
-              style={{ flexShrink: 0 }}
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <div className="fcw-flex-1" style={{ minWidth: 0 }}>
-              <SearchBar key={`s-${query}`} onSearch={handleSearch} initialQuery={query} busy={busy} />
-            </div>
-            <button
-              className="fcw-btn fcw-btn-primary fcw-btn-sm"
-              onClick={() => { try { sessionStorage.removeItem("ask.lastResults"); } catch { /* ignore */ } navigate(ROUTES.home); }}
-              style={{ gap: "0.5rem", flexShrink: 0 }}
-            >
-              <Plus size={16} />
-              {t("results.newRequest")}
-            </button>
+    <main id="main-content" className="ask-results-page">
+      <form className="ask-results-search" onSubmit={submitSearch}>
+        <button type="button" className="ask-icon-button" onClick={() => navigate(ROUTES.home)} aria-label={t("results.back")}>
+          <ArrowLeft size={20} />
+        </button>
+        <label>
+          <Search size={22} />
+          <input value={query} onChange={event => setQuery(event.target.value)} aria-label={t("home.search.ariaLabel")} />
+          <button type="button" onClick={() => setFiltersOpen(value => !value)} aria-label="Фильтры">
+            <SlidersHorizontal size={18} />
+            {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
+          </button>
+        </label>
+        <button type="submit" className="ask-primary-button">{t("searchBar.button")}</button>
+      </form>
+
+      <div className="ask-results-layout">
+        <aside className={`ask-results-filters ask-surface${filtersOpen ? " is-open" : ""}`}>
+          <div className="ask-results-filters__header">
+            <h2>Фильтры</h2>
+            <button type="button" onClick={() => setFiltersOpen(false)} aria-label="Закрыть"><X size={18} /></button>
           </div>
 
-        </div>
-      </section>
+          <label className="ask-filter-field">
+            <span>Категория</span>
+            <input
+              className="ask-field"
+              value={draftFilters.category ?? ""}
+              onChange={event => setDraftFilters(current => ({ ...current, category: event.target.value || undefined }))}
+              placeholder={mode === "ITEM" ? "Например, рюкзаки" : "Например, ремонт"}
+            />
+          </label>
 
-      <section className="fcw-section-sm">
-        <div className="fcw-container">
-          <div className="results-window">
-            <div className="results-center">
-              {busy && (
-                <div style={{ padding: "4rem 0" }}>
-                  <Loading size="lg" text={t("results.searching")} />
-                </div>
-              )}
+          <label className="ask-filter-field">
+            <span>Город</span>
+            <span className="ask-filter-field__icon">
+              <MapPin size={16} />
+              <input
+                className="ask-field"
+                value={draftFilters.city ?? ""}
+                onChange={event => setDraftFilters(current => ({ ...current, city: event.target.value || undefined }))}
+                placeholder="Алматы"
+              />
+            </span>
+          </label>
 
-              {error && (
-                <EmptyState
-                  title={t("results.error.title")}
-                  description={error}
-                  action={
-                    <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={() => handleSearch(query)}>
-                      {t("results.error.retry")}
-                    </button>
-                  }
-                />
-              )}
+          <label className="ask-filter-field">
+            <span>Страна</span>
+            <span className="ask-filter-field__icon">
+              <Globe size={16} />
+              <input className="ask-field" value="Казахстан" disabled />
+            </span>
+          </label>
 
-              {isEmpty && (
-                <EmptyState
-                  title={t("results.empty.title")}
-                  description={t("results.empty.description")}
-                />
-              )}
+          <fieldset className="ask-filter-price">
+            <legend>Цена, ₸</legend>
+            <input
+              className="ask-field"
+              type="number"
+              min="0"
+              value={draftFilters.minPrice ?? ""}
+              onChange={event => setDraftFilters(current => ({
+                ...current,
+                minPrice: event.target.value ? Number(event.target.value) : undefined,
+              }))}
+              placeholder="от"
+            />
+            <span>—</span>
+            <input
+              className="ask-field"
+              type="number"
+              min="0"
+              value={draftFilters.maxPrice ?? ""}
+              onChange={event => setDraftFilters(current => ({
+                ...current,
+                maxPrice: event.target.value ? Number(event.target.value) : undefined,
+              }))}
+              placeholder="до"
+            />
+          </fieldset>
 
-              {!busy && !error && resultCount > 0 && (
-            <motion.div
-              className="fcw-flex-col"
-              style={{ gap: "0.75rem" }}
-              initial={reduced ? {} : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
+          <label className="ask-filter-toggle">
+            <span>
+              <strong>Открыто сейчас</strong>
+              <small>Только с подтверждённым расписанием</small>
+            </span>
+            <input
+              type="checkbox"
+              checked={draftFilters.openNow ?? false}
+              onChange={event => setDraftFilters(current => ({ ...current, openNow: event.target.checked || undefined }))}
+            />
+          </label>
+
+          <label className="ask-filter-field">
+            <span>Радиус поиска</span>
+            <select
+              className="ask-field"
+              value={draftFilters.radiusMeters ?? ""}
+              onChange={event => setDraftFilters(current => ({
+                ...current,
+                radiusMeters: event.target.value ? Number(event.target.value) : undefined,
+              }))}
             >
-              {constraints.length > 0 && (
-                <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.375rem" }} aria-label={t("results.constraints.label")}>
-                  {constraints.map(constraint => (
-                    <span key={`${constraint.key}-${constraint.value}`} className="fcw-badge fcw-badge-neutral">
-                      {constraintLabel(constraint)}: {constraintValue(constraint)}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {sections.map((section, sectionIndex) => (
-                <section key={`${section.kind}-${section.type}`} className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                  <div>
-                    <h2 className="fcw-heading-sm">
-                      {section.kind === "EXACT" ? t("results.sections.exact") : t("results.sections.alternatives")}
-                    </h2>
-                    {section.kind === "ALTERNATIVE" && (
-                      <p className="fcw-body-s fcw-text-secondary" style={{ marginTop: "0.25rem" }}>
-                        {section.reason || t("results.sections.alternativeReason")}
-                      </p>
-                    )}
-                  </div>
-                  {section.cards.map((card, cardIndex) => (
-                    <ResultCard
-                      key={card.id}
-                      data={card}
-                      index={sectionIndex * SEARCH_PAGE_SIZE + cardIndex}
-                      reduced={reduced}
-                      onClick={() => setOverlayCard(card)}
-                      onBrandClick={() => setOverlayCard(card)}
-                      onChat={() => setOverlayCard(card)}
-                    />
-                  ))}
-                </section>
-              ))}
-              <div className="fcw-flex fcw-items-center fcw-justify-between" style={{ gap: "0.75rem", marginTop: "0.5rem" }}>
-                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={page === 0} onClick={() => setPage(current => current - 1)}>
-                  <ChevronLeft size={16} />
-                  {t("results.pagination.previous")}
-                </button>
-                <span className="fcw-body-s fcw-text-secondary">
-                  {t("results.pagination.summary", { page: page + 1, total })}
-                </span>
-                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" disabled={!hasNext} onClick={() => setPage(current => current + 1)}>
-                  {t("results.pagination.next")}
-                  <ChevronRight size={16} />
+              <option value="">Без ограничения</option>
+              <option value="3000">3 км</option>
+              <option value="10000">10 км</option>
+              <option value="30000">30 км</option>
+            </select>
+          </label>
+
+          <button type="button" className="ask-primary-button ask-results-filters__apply" onClick={applyFilters}>
+            <Filter size={17} />
+            Показать результаты
+          </button>
+        </aside>
+
+        <section className="ask-results-list ask-surface">
+          <header className="ask-results-list__header">
+            <strong>Найдено: {total}</strong>
+            <label>
+              <span>Сортировка:</span>
+              <select value={sort} onChange={event => { setPage(0); setSort(event.target.value as SortKey); }}>
+                <option value="relevance">По релевантности</option>
+                <option value="distance">По расстоянию</option>
+                <option value="price_asc">Сначала дешевле</option>
+              </select>
+            </label>
+          </header>
+
+          {busy && (
+            <div className="ask-results-skeletons" aria-label={t("results.searching")}>
+              {Array.from({ length: 4 }).map((_, index) => <span key={index} />)}
+            </div>
+          )}
+
+          {!busy && error && (
+            <div className="ask-empty">
+              <div>
+                <Filter size={36} />
+                <h2>{t("results.error.title")}</h2>
+                <p>{error}</p>
+                <button type="button" className="ask-primary-button" onClick={() => setFilters(current => ({ ...current }))}>
+                  {t("results.error.retry")}
                 </button>
               </div>
-            </motion.div>
-              )}
-
             </div>
+          )}
 
-            <aside className="results-sort-rail" aria-label={t("results.sort.railLabel")}>
-              <span className="fcw-label fcw-text-tertiary" style={{ marginBottom: "0.5rem", display: "block" }}>{t("results.sort.label")}</span>
-              <SegmentedControl
-                options={sortOptions}
-                value={sort}
-                onChange={nextSort => { setPage(0); setSort(nextSort); }}
-                layoutId="resultsSortPill"
-                ariaLabel={t("results.sort.ariaLabel")}
-                vertical
-                iconOnly
-              />
-            </aside>
-          </div>
-        </div>
-      </section>
+          {!busy && !error && cards.length === 0 && (
+            <div className="ask-empty">
+              <div>
+                <Search size={38} />
+                <h2>{t("results.empty.title")}</h2>
+                <p>{t("results.empty.description")}</p>
+              </div>
+            </div>
+          )}
 
-      <div className="fcw-hidden-desktop" style={{ height: "64px" }} aria-hidden="true" />
+          {!busy && !error && cards.map(card => (
+            <ResultCard
+              key={card.id}
+              data={card}
+              selected={selected?.id === card.id}
+              onClick={() => {
+                if (card.businessId) {
+                  navigate(buildRoute(ROUTES.storefront, { businessId: card.businessId }));
+                  return;
+                }
+                setSelectedId(card.id);
+              }}
+              onChat={() => openChat(card)}
+            />
+          ))}
 
-      <CompanyCard
-        data={overlayCard}
-        onClose={() => setOverlayCard(null)}
-      />
+          {!busy && !error && cards.length > 0 && (
+            <footer className="ask-results-pagination">
+              <button type="button" disabled={page === 0} onClick={() => setPage(current => current - 1)}>
+                <ChevronLeft size={17} />
+                Назад
+              </button>
+              <span>{page + 1}</span>
+              <button type="button" disabled={!hasNext} onClick={() => setPage(current => current + 1)}>
+                Далее
+                <ChevronRight size={17} />
+              </button>
+            </footer>
+          )}
+        </section>
+
+        <aside className={`ask-result-detail ask-surface${selected ? " is-open" : ""}`}>
+          {selected ? (
+            <>
+              <button type="button" className="ask-result-detail__close" onClick={() => setSelectedId(null)} aria-label="Закрыть">
+                <X size={18} />
+              </button>
+              <div
+                className="ask-result-detail__cover"
+                style={{
+                  backgroundColor: selected.brandColor || undefined,
+                  backgroundImage: selected.businessProfile?.coverUrl ? `url(${selected.businessProfile.coverUrl})` : undefined,
+                }}
+              >
+                {!selected.businessProfile?.coverUrl && <Store size={44} />}
+              </div>
+              <div className="ask-result-detail__content">
+                <span className="ask-result-detail__brand">{selected.brandName}</span>
+                <h2>{selected.title}</h2>
+                {selected.price && <strong className="ask-result-detail__price">{selected.price}</strong>}
+                {selected.summary && <p>{selected.summary}</p>}
+
+                {selected.matchReasons.length > 0 && (
+                  <section>
+                    <h3>Почему подходит</h3>
+                    <div className="ask-result-detail__tags">
+                      {selected.matchReasons.map(reason => <span key={reason}>{reason}</span>)}
+                    </div>
+                  </section>
+                )}
+
+                {(selected.location || selected.city) && (
+                  <div className="ask-result-detail__fact">
+                    <MapPin size={18} />
+                    <span>{[selected.location, selected.city].filter(Boolean).join(", ")}</span>
+                  </div>
+                )}
+
+                {selected.openingLabel && (
+                  <div className="ask-result-detail__fact">
+                    <Clock3 size={18} />
+                    <span>{selected.openingLabel}</span>
+                  </div>
+                )}
+
+                {selected.businessProfile?.description && (
+                  <section>
+                    <h3>О бизнесе</h3>
+                    <p>{selected.businessProfile.description}</p>
+                  </section>
+                )}
+              </div>
+              <footer className="ask-result-detail__actions">
+                <button type="button" className="ask-secondary-button" onClick={() => navigate(buildRoute(ROUTES.storefront, { businessId: selected.businessId ?? "" }))}>
+                  Открыть профиль
+                </button>
+                <button type="button" className="ask-primary-button" onClick={() => openChat(selected)}>
+                  <MessageCircle size={17} />
+                  Написать
+                </button>
+              </footer>
+            </>
+          ) : (
+            <div className="ask-empty"><p>Выберите результат</p></div>
+          )}
+        </aside>
+      </div>
     </main>
   );
 }

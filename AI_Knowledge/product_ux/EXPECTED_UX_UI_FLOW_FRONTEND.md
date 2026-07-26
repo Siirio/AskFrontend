@@ -1437,6 +1437,8 @@ Actions используют `SupplierResponseStatus` напрямую:
 - если есть сохраненный токен, frontend вызывает session endpoint;
 - при успехе (200) — пользователь попадает в свою роль;
 - при ошибке (401) — токен удаляется, пользователь направляется на экран входа.
+- до успешного восстановления или создания сессии маршруты поиска, результатов, чатов, профиля, витрины и кабинетов недоступны; frontend направляет пользователя на `/auth` и после входа возвращает на исходный внутренний URL.
+- выбор города изменяет географический контекст поиска и не открывает профиль пользователя; профиль бизнеса является отдельной публичной сущностью и открывается из результата по `businessId`.
 
 ---
 
@@ -1518,7 +1520,7 @@ Actions используют `SupplierResponseStatus` напрямую:
 - название филиала;
 - город филиала;
 - адрес филиала (опционально для онлайн-магазина);
-- признак онлайн-магазина (`onlineOnly`);
+- признак онлайн-бизнеса (`onlineOnly`);
 - принятие правил Ask для бизнеса;
 - `Запомнить меня`.
 
@@ -1728,3 +1730,10 @@ Do not show internal AI confidence, raw score, rating-first rank, cheapest-first
 - Это MVP или future feature?
 
 Если ответов нет, не придумывать маркетплейсную логику, а оставить поведение простым и search-first.
+## Native entity creation
+
+- Frequent Item and Service creation opens in a right-side editor with required fields first and optional metadata under progressive disclosure.
+- Item deep link is required and remains visible in the primary creation section.
+- Branch creation uses a focused address-first flow followed by opening hours; map coordinates remain internal implementation data.
+- UniqueOffer creation uses a staged composer for details, publication settings, and final review without introducing a calendar-event model.
+- Item and Service creation never displays an active control. Both are created active, while activation can be changed only during later editing.

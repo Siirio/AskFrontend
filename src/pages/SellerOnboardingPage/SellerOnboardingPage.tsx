@@ -1,44 +1,53 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Briefcase, Check, ChevronLeft, ChevronRight, FileUp, Handshake, Info, MapPinned, Package, ShieldCheck } from "lucide-react";
+import { Briefcase, Check, ChevronLeft, ChevronRight, FileUp, Handshake, Info, Package, ShieldCheck } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
-import { listCities } from "../../shared/api/askClient";
 import { acceptLegalDocuments } from "../../shared/api/legalClient";
 import {
   completeSellerOnboarding,
   type SellerOnboardingData,
 } from "../../shared/api/sellerOnboardingClient";
 import { Card } from "../../shared/ui/Card/Card";
+import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/CategoryAutocomplete";
 import { Loading } from "../../shared/ui/Loading/Loading";
+import { hasValidBusinessVerificationSource, isValidHttpUrl } from "../../shared/utils/validation";
 
 const DRAFT_KEY = "ask.sellerOnboardingDraft";
-const SOURCE_TYPES = [
-  "TELEGRAM", "INSTAGRAM", "KASPI", "WILDBERRIES", "OZON", "WEBSITE", "EXCEL",
-  "CSV", "PDF", "MARKDOWN", "TXT", "NOTES", "OTHER",
-];
+const SOURCE_LINKS = [
+  ["twoGisUrl", "seller.verification.twoGisUrl", "2GIS"],
+  ["kaspiUrl", "seller.verification.kaspiUrl", "Kaspi"],
+  ["ozonUrl", "seller.verification.ozonUrl", "Ozon"],
+  ["wildberriesUrl", "seller.verification.wildberriesUrl", "Wildberries"],
+  ["websiteUrl", "seller.verification.websiteUrl", "Сайт"],
+  ["instagramUrl", "seller.verification.instagramUrl", "Instagram"],
+  ["telegramUrl", "seller.verification.telegramUrl", "Telegram"],
+] as const satisfies ReadonlyArray<readonly [
+  keyof Pick<SellerOnboardingData, "twoGisUrl" | "kaspiUrl" | "ozonUrl" | "wildberriesUrl" | "websiteUrl" | "instagramUrl" | "telegramUrl">,
+  string,
+  string,
+]>;
 
 const INITIAL_DATA: SellerOnboardingData = {
   businessName: "",
+  categoryId: "",
+  categoryName: "",
   countryCode: "KZ",
   legalForm: "NONE",
   legalIdentifier: "",
   legalName: "",
-  preferredContactChannel: "WHATSAPP",
-  preferredContactValue: "",
-  pickupAvailable: false,
-  deliveryScope: "NO_DELIVERY",
-  selectedCityIds: [],
-  deliveryTermsRu: "",
-  deliveryTermsKk: "",
-  deliveryTermsEn: "",
   catalogSetupMode: "MANUAL",
-  catalogScope: "BOTH",
-  catalogSources: [],
-  sourceLinks: "",
-  sourceNotes: "",
+  businessScope: "BOTH",
+  onlineOnly: false,
   locale: "ru",
+  twoGisUrl: "",
+  kaspiUrl: "",
+  ozonUrl: "",
+  wildberriesUrl: "",
+  websiteUrl: "",
+  instagramUrl: "",
+  telegramUrl: "",
 };
 
 function readDraft(): SellerOnboardingData {
@@ -46,8 +55,11 @@ function readDraft(): SellerOnboardingData {
     const draft = sessionStorage.getItem(DRAFT_KEY);
     if (!draft) return INITIAL_DATA;
     const restored = { ...INITIAL_DATA, ...JSON.parse(draft) } as SellerOnboardingData;
-    if (restored.legalForm === "KZ_IP" && !restored.legalIdentifier && !restored.legalName) {
+    if (restored.legalForm !== "NONE" && !restored.legalIdentifier) {
       restored.legalForm = "NONE";
+    }
+    if (!restored.categoryName && "categoryLabel" in restored) {
+      restored.categoryName = (restored as SellerOnboardingData & { categoryLabel?: string }).categoryLabel ?? "";
     }
     return restored;
   } catch {
@@ -61,18 +73,16 @@ export function SellerOnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<SellerOnboardingData>(() => readDraft());
-  const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [addedSourceKeys, setAddedSourceKeys] = useState<Array<(typeof SOURCE_LINKS)[number][0]>>(() =>
+    SOURCE_LINKS.filter(([key]) => Boolean(data[key])).map(([key]) => key),
+  );
 
   useEffect(() => {
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data));
   }, [data]);
-
-  useEffect(() => {
-    listCities().then(setCities).catch(() => setCities([]));
-  }, []);
 
   if (!state.sessionReady) {
     return <Loading />;
@@ -91,32 +101,45 @@ export function SellerOnboardingPage() {
     value: SellerOnboardingData[K],
   ) => setData(current => ({ ...current, [key]: value }));
 
-  const toggleSource = (source: string) => {
-    update("catalogSources", data.catalogSources.includes(source)
-      ? data.catalogSources.filter(item => item !== source)
-      : [...data.catalogSources, source]);
+  const selectCategory = (label: string, categoryId: string | null) => {
+    if (!categoryId) {
+      return;
+    }
+    setData(current => ({ ...current, categoryId, categoryName: label }));
   };
 
-  const toggleCity = (cityId: string) => {
-    update("selectedCityIds", data.selectedCityIds.includes(cityId)
-      ? data.selectedCityIds.filter(item => item !== cityId)
-      : [...data.selectedCityIds, cityId]);
+  const addSource = (key: (typeof SOURCE_LINKS)[number][0]) => {
+    setAddedSourceKeys(current => current.includes(key) ? current : [...current, key]);
+  };
+
+  const removeSource = (key: (typeof SOURCE_LINKS)[number][0]) => {
+    setAddedSourceKeys(current => current.filter(item => item !== key));
+    update(key, "");
+  };
+
+  const verificationSources = Object.fromEntries(
+    SOURCE_LINKS.map(([key]) => [key, data[key]]),
+  );
+
+  const validateBusinessDetails = () => {
+    if (!data.businessName.trim() || (!data.categoryId && !data.categoryName.trim())) {
+      setError(t("seller.validation.businessContact"));
+      return false;
+    }
+    if (data.legalForm !== "NONE" && (!/^[0-9]{12}$/.test(data.legalIdentifier) || !data.legalName.trim())) {
+      setError(t("seller.validation.legalDetails"));
+      return false;
+    }
+    if (data.legalForm === "NONE" && !hasValidBusinessVerificationSource(verificationSources)) {
+      setError(t("seller.validation.verificationSource"));
+      return false;
+    }
+    return true;
   };
 
   const submit = async () => {
-    if (!data.businessName.trim() || !data.preferredContactValue.trim()) {
+    if (!validateBusinessDetails()) {
       setStep(1);
-      setError(t("seller.validation.businessContact"));
-      return;
-    }
-    if (data.legalForm !== "NONE" && (!data.legalIdentifier.trim() || !data.legalName.trim())) {
-      setStep(1);
-      setError(t("seller.validation.legalDetails"));
-      return;
-    }
-    if (data.catalogSetupMode === "ASK_MANAGED_IMPORT" && data.catalogSources.length === 0) {
-      setStep(3);
-      setError(t("seller.validation.importSource"));
       return;
     }
     setBusy(true);
@@ -131,9 +154,21 @@ export function SellerOnboardingPage() {
       sessionStorage.removeItem(DRAFT_KEY);
       await actions.refreshSession();
       const businessRoute = buildRoute(ROUTES.business, { businessId: result.businessId });
-      navigate(result.startRoute === "MANAGED_IMPORT" && result.conversationId
-        ? `${businessRoute}?conversationId=${encodeURIComponent(result.conversationId)}`
-        : businessRoute);
+      if (data.catalogSetupMode === "ASK_MANAGED_IMPORT") {
+        const sourceUrls = Object.fromEntries(Object.entries({
+          TWO_GIS: data.twoGisUrl,
+          KASPI: data.kaspiUrl,
+          OZON: data.ozonUrl,
+          WILDBERRIES: data.wildberriesUrl,
+          WEBSITE: data.websiteUrl,
+          INSTAGRAM: data.instagramUrl,
+          TELEGRAM: data.telegramUrl,
+        }).filter(([, value]) => value.trim()));
+        sessionStorage.setItem(`ask.managedImportSources.${result.businessId}`, JSON.stringify(sourceUrls));
+        navigate(`${businessRoute}?managedImport=${encodeURIComponent(data.businessScope)}`);
+        return;
+      }
+      navigate(businessRoute);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("seller.error"));
     } finally {
@@ -143,16 +178,7 @@ export function SellerOnboardingPage() {
 
   const goNext = () => {
     setError("");
-    if (step === 1 && (!data.businessName.trim() || !data.preferredContactValue.trim())) {
-      setError(t("seller.validation.businessContact"));
-      return;
-    }
-    if (step === 1 && data.legalForm !== "NONE" && (!data.legalIdentifier.trim() || !data.legalName.trim())) {
-      setError(t("seller.validation.legalDetails"));
-      return;
-    }
-    if (step === 3 && data.catalogSetupMode === "ASK_MANAGED_IMPORT" && data.catalogSources.length === 0) {
-      setError(t("seller.validation.importSource"));
+    if (step === 1 && !validateBusinessDetails()) {
       return;
     }
     setStep(current => current + 1);
@@ -171,6 +197,14 @@ export function SellerOnboardingPage() {
             {step === 1 && (
               <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
                 <input className="fcw-input" value={data.businessName} onChange={event => update("businessName", event.target.value)} placeholder={t("seller.businessName")} />
+                <CategoryAutocomplete
+                  value={data.categoryName}
+                  categoryId={data.categoryId || null}
+                  onChange={selectCategory}
+                  onInputChange={categoryName => setData(current => ({ ...current, categoryId: "", categoryName }))}
+                  type="BUSINESS"
+                  placeholder={t("seller.category", { defaultValue: "Выберите категорию бизнеса" })}
+                />
                 <select className="fcw-input" value={data.legalForm} onChange={event => update("legalForm", event.target.value as SellerOnboardingData["legalForm"])}>
                   <option value="KZ_IP">{t("seller.legalForm.KZ_IP")}</option>
                   <option value="KZ_TOO">{t("seller.legalForm.KZ_TOO")}</option>
@@ -178,82 +212,84 @@ export function SellerOnboardingPage() {
                 </select>
                 {data.legalForm !== "NONE" && (
                   <>
-                    <input className="fcw-input" value={data.legalIdentifier} onChange={event => update("legalIdentifier", event.target.value)} placeholder={data.legalForm === "KZ_IP" ? t("seller.iin") : t("seller.bin")} />
-                    <input className="fcw-input" value={data.legalName} onChange={event => update("legalName", event.target.value)} placeholder={data.legalForm === "KZ_IP" ? t("seller.ipName") : t("seller.tooName")} />
+                    <input
+                      className="fcw-input"
+                      inputMode="numeric"
+                      maxLength={12}
+                      value={data.legalIdentifier}
+                      onChange={event => update("legalIdentifier", event.target.value.replace(/\D/g, "").slice(0, 12))}
+                      placeholder={data.legalForm === "KZ_IP" ? t("seller.iin") : t("seller.bin")}
+                    />
+                    <input className="fcw-input" value={data.legalName} onChange={event => update("legalName", event.target.value)} placeholder={t("seller.legalName")} />
                   </>
                 )}
-                <select className="fcw-input" value={data.preferredContactChannel} onChange={event => update("preferredContactChannel", event.target.value as SellerOnboardingData["preferredContactChannel"])}>
-                  <option value="WHATSAPP">WhatsApp</option>
-                  <option value="TELEGRAM">Telegram</option>
-                  <option value="EMAIL">Email</option>
-                </select>
-                <input
-                  className="fcw-input"
-                  value={data.preferredContactValue}
-                  onChange={event => update("preferredContactValue", event.target.value)}
-                  placeholder={t(`seller.contactValue.${data.preferredContactChannel}`)}
-                />
+                <label className="seller-online-only-toggle">
+                  <input
+                    type="checkbox"
+                    checked={data.onlineOnly}
+                    onChange={event => update("onlineOnly", event.target.checked)}
+                  />
+                  <span>
+                    <strong>{t("seller.onlineOnly")}</strong>
+                    <small>{t("seller.onlineOnly.description")}</small>
+                  </span>
+                </label>
+                {data.legalForm === "NONE" && (
+                  <div className="fcw-flex-col" style={{ gap: "0.5rem", marginTop: "0.5rem" }}>
+                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                      <span className="fcw-label">{t("seller.verification.title")}</span>
+                      <span className="fcw-body-xs fcw-text-tertiary">{t("seller.verification.description")}</span>
+                    </div>
+                    {addedSourceKeys.map(key => {
+                      const [, translationKey, fallback] = SOURCE_LINKS.find(([sourceKey]) => sourceKey === key)!;
+                      return (
+                        <div key={key} className="fcw-flex" style={{ gap: "0.5rem" }}>
+                          <input
+                            className="fcw-input"
+                            type="url"
+                            value={data[key]}
+                            aria-invalid={Boolean(data[key]) && !isValidHttpUrl(data[key])}
+                            onChange={event => update(key, event.target.value)}
+                            placeholder={t(translationKey, { defaultValue: fallback })}
+                          />
+                          <button type="button" className="fcw-btn fcw-btn-ghost" onClick={() => removeSource(key)} aria-label={t("common.remove", { defaultValue: "Удалить" })}>×</button>
+                        </div>
+                      );
+                    })}
+                    {SOURCE_LINKS.some(([key]) => !addedSourceKeys.includes(key)) && (
+                      <select className="fcw-input" value="" onChange={event => addSource(event.target.value as (typeof SOURCE_LINKS)[number][0])}>
+                        <option value="">{t("seller.verification.addSource", { defaultValue: "Добавить ссылку для проверки" })}</option>
+                        {SOURCE_LINKS.filter(([key]) => !addedSourceKeys.includes(key)).map(([key, translationKey, fallback]) => (
+                          <option key={key} value={key}>{t(translationKey, { defaultValue: fallback })}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             {step === 2 && (
-              <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                <button
-                  type="button"
-                  className={`seller-pickup-option${data.pickupAvailable ? " is-selected" : ""}`}
-                  onClick={() => update("pickupAvailable", !data.pickupAvailable)}
-                  aria-pressed={data.pickupAvailable}
-                >
-                  <span className="seller-pickup-icon"><MapPinned size={22} /></span>
-                  <span>
-                    <strong>{t("seller.pickup")}</strong>
-                    <small>{t("seller.pickupDescription")}</small>
-                  </span>
-                  <span className="seller-pickup-status">
-                    {data.pickupAvailable ? <Check size={16} /> : null}
-                    {t(data.pickupAvailable ? "seller.pickupEnabled" : "seller.pickupDisabled")}
-                  </span>
-                </button>
-                <select className="fcw-input" value={data.deliveryScope} onChange={event => update("deliveryScope", event.target.value as SellerOnboardingData["deliveryScope"])}>
-                  {["NO_DELIVERY", "SELECTED_CITIES", "KAZAKHSTAN", "WORLDWIDE", "CONTACT_SELLER"].map(scope => (
-                    <option key={scope} value={scope}>{t(`seller.delivery.${scope}`)}</option>
-                  ))}
-                </select>
-                {data.deliveryScope === "SELECTED_CITIES" && (
-                  <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                    {cities.map(city => (
-                      <label key={city.id} className="fcw-btn fcw-btn-secondary fcw-btn-sm">
-                        <input type="checkbox" checked={data.selectedCityIds.includes(city.id)} onChange={() => toggleCity(city.id)} />
-                        {city.name}
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <textarea className="fcw-input" value={data.deliveryTermsRu} onChange={event => update("deliveryTermsRu", event.target.value)} placeholder={t("seller.deliveryTerms")} rows={4} />
-              </div>
-            )}
-
-            {step === 3 && (
               <div className="seller-catalog-step">
                 <div>
-                  <h3>{t("seller.catalogScope.title")}</h3>
-                  <p>{t("seller.catalogScope.description")}</p>
+                  <h3>{t("seller.businessScope.title")}</h3>
+                  <p>{t("seller.businessScope.description")}</p>
                 </div>
                 <div className="seller-scope-options">
                   {([
-                    ["PRODUCTS", Package],
-                    ["SERVICES", Briefcase],
+                    ["ITEM", Package],
+                    ["SERVICE", Briefcase],
                     ["BOTH", Handshake],
                   ] as const).map(([scope, Icon]) => (
                     <button
                       key={scope}
                       type="button"
-                      className={data.catalogScope === scope ? "is-selected" : ""}
-                      onClick={() => update("catalogScope", scope)}
+                      className={data.businessScope === scope ? "is-selected" : ""}
+                      onClick={() => update("businessScope", scope)}
                     >
                       <Icon size={20} />
-                      <span>{t(`seller.catalogScope.${scope}`)}</span>
-                      <small>{t(`seller.catalogScope.${scope}.description`)}</small>
+                      <span>{t(`seller.businessScope.${scope}`)}</span>
+                      <small>{t(`seller.businessScope.${scope}.description`)}</small>
                     </button>
                   ))}
                 </div>
@@ -278,7 +314,7 @@ export function SellerOnboardingPage() {
                     <FileUp size={18} />
                     <span>
                       <strong>{t("seller.catalog.ASK_MANAGED_IMPORT")}</strong>
-                      <small>{t("seller.catalog.managedDescription", { catalog: t(`seller.catalogScope.${data.catalogScope}`) })}</small>
+                      <small>{t("seller.catalog.managedDescription", { catalog: t(`seller.businessScope.${data.businessScope}`) })}</small>
                     </span>
                   </button>
                 </div>
@@ -288,26 +324,16 @@ export function SellerOnboardingPage() {
                       <Info size={18} />
                       <div>
                         <strong>{t("seller.managedBenefitTitle")}</strong>
-                        <p className="fcw-body-s">{t(data.catalogScope === "BOTH" ? "seller.managedInfoBoth" : "seller.managedInfo")}</p>
+                        <p className="fcw-body-s">{t(data.businessScope === "BOTH" ? "seller.managedInfoBoth" : "seller.managedInfo")}</p>
                         <span className="fcw-label">{t("managedImport.priceEstimate")}</span>
                       </div>
                     </div>
-                    <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                      {SOURCE_TYPES.map(source => (
-                        <label key={source} className="fcw-btn fcw-btn-secondary fcw-btn-sm">
-                          <input type="checkbox" checked={data.catalogSources.includes(source)} onChange={() => toggleSource(source)} />
-                          {t(`seller.source.${source}`, { defaultValue: source })}
-                        </label>
-                      ))}
-                    </div>
-                    <textarea className="fcw-input" value={data.sourceLinks} onChange={event => update("sourceLinks", event.target.value)} placeholder={t("seller.sourceLinks")} rows={3} />
-                    <textarea className="fcw-input" value={data.sourceNotes} onChange={event => update("sourceNotes", event.target.value)} placeholder={t("seller.sourceNotes")} rows={3} />
                   </div>
                 )}
               </div>
             )}
 
-            {step === 4 && (
+            {step === 3 && (
               <div className="seller-confirmation-step">
                 <div className="seller-confirmation-summary">
                   <div>
@@ -315,17 +341,8 @@ export function SellerOnboardingPage() {
                     <strong>{data.businessName || t("seller.confirmation.notSpecified")}</strong>
                   </div>
                   <div>
-                    <span>{t("seller.confirmation.fulfillment")}</span>
-                    <strong>
-                      {[
-                        data.pickupAvailable ? t("seller.pickup") : null,
-                        t(`seller.delivery.${data.deliveryScope}`),
-                      ].filter(Boolean).join(" · ")}
-                    </strong>
-                  </div>
-                  <div>
                     <span>{t("seller.confirmation.catalog")}</span>
-                    <strong>{t(`seller.catalogScope.${data.catalogScope}`)}</strong>
+                    <strong>{t(`seller.businessScope.${data.businessScope}`)}</strong>
                   </div>
                   <div>
                     <span>{t("seller.confirmation.setup")}</span>
@@ -354,7 +371,7 @@ export function SellerOnboardingPage() {
               <button className="fcw-btn fcw-btn-ghost" disabled={step === 1} onClick={() => setStep(current => current - 1)}>
                 <ChevronLeft size={16} />{t("seller.back")}
               </button>
-              {step < 4 ? (
+              {step < 3 ? (
                 <button className="fcw-btn fcw-btn-primary" onClick={goNext}>
                   {t("seller.next")}<ChevronRight size={16} />
                 </button>

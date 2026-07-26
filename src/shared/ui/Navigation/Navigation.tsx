@@ -1,312 +1,215 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Building2, FileText, Headphones, Home, LogOut, MessageCircle, Moon, Settings, Shield, Sun, UserRound } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Building2,
+  FileText,
+  Headphones,
+  Home,
+  LogOut,
+  MessageCircle,
+  Moon,
+  Settings,
+  Shield,
+  Sun,
+  UserRound,
+} from "lucide-react";
 import { buildRoute, ROUTES } from "../../../app/routes";
 import { SupportDrawer } from "../../../widgets/SupportDrawer/SupportDrawer";
 import { useAuth } from "../../../app/providers/AuthProvider";
 import { useTheme } from "../../../app/providers/ThemeProvider";
+import { CitySelector } from "../CitySelector/CitySelector";
 import { LanguageSwitcher } from "../LanguageSwitcher/LanguageSwitcher";
 import { Modal } from "../Modal/Modal";
+
+type NavItem = {
+  to: string;
+  label: string;
+  icon: ReactNode;
+};
 
 export function Navigation() {
   const { t } = useTranslation();
   const { state, actions } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-
-  const businessMemberships = state.session?.businessMemberships ?? [];
-  const selectedMembership = businessMemberships.find(
-    membership => membership.businessId === state.activeBusinessId,
-  ) ?? businessMemberships[0];
-  const hasPlatformAccess = Boolean(state.session?.platformMembership);
-  const user = state.session?.user;
-  const userInitial = (user?.displayName || user?.email || "A").slice(0, 1).toUpperCase();
-
-  // User menu
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-
-  const consumerDesktopLinks = [
-    { to: ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
-    { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={18} /> },
-    ...(selectedMembership ? [{
-      to: buildRoute(ROUTES.business, { businessId: selectedMembership.businessId }),
-      label: t("nav.business"),
-      icon: <Building2 size={18} />,
-    }] : []),
-    ...(hasPlatformAccess ? [{
-      to: ROUTES.platform,
-      label: t("nav.platform"),
-      icon: <Shield size={18} />,
-    }] : []),
-  ];
-
-  const consumerMobileLinks = [
-    { to: ROUTES.home, label: t("nav.main"), icon: <Home size={20} /> },
-    { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={20} /> },
-    ...(selectedMembership ? [{
-      to: buildRoute(ROUTES.business, { businessId: selectedMembership.businessId }),
-      label: t("nav.business"),
-      icon: <Building2 size={20} />,
-    }] : []),
-    ...(hasPlatformAccess ? [{
-      to: ROUTES.platform,
-      label: t("nav.platform"),
-      icon: <Shield size={20} />,
-    }] : []),
-    { to: ROUTES.profile, label: t("nav.profile"), icon: <UserRound size={20} /> },
-  ];
+  const [city, setCity] = useState(
+    () => window.localStorage.getItem("ask.city") || t("citySelector.almaty"),
+  );
 
   if (!state.authenticated) return null;
-  const handleLogout = async () => {
+
+  const memberships = state.session?.businessMemberships ?? [];
+  const membership = memberships.find(item => item.businessId === state.activeBusinessId) ?? memberships[0];
+  const hasPlatformAccess = Boolean(state.session?.platformMembership);
+  const user = state.session?.user;
+  const initial = (user?.displayName || user?.email || "A").slice(0, 1).toUpperCase();
+
+  const primaryItems: NavItem[] = [
+    { to: ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
+    { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={18} /> },
+    ...(membership
+      ? [{
+          to: buildRoute(ROUTES.business, { businessId: membership.businessId }),
+          label: t("nav.business"),
+          icon: <BriefcaseBusiness size={18} />,
+        }]
+      : []),
+  ];
+
+  const mobileItems: NavItem[] = [
+    ...primaryItems,
+    { to: ROUTES.profile, label: t("nav.profile"), icon: <UserRound size={19} /> },
+  ];
+
+  const logout = async () => {
     await actions.logout();
     navigate(ROUTES.auth, { replace: true });
   };
 
-  const handlePlatformSupport = () => {
-    setUserMenuOpen(false);
-    setSupportOpen(true);
+  const selectCity = (value: string) => {
+    setCity(value);
+    window.localStorage.setItem("ask.city", value);
   };
 
   return (
     <>
-      {/* Desktop top nav */}
-      <nav
-        className="fcw-fixed fcw-z-sticky fcw-w-full fcw-border-bottom fcw-hidden-mobile"
-        style={{
-          top: 0, left: 0, right: 0, height: "56px",
-          backdropFilter: "var(--fcw-blur-glass)",
-          WebkitBackdropFilter: "var(--fcw-blur-glass)",
-          backgroundColor: "color-mix(in srgb, var(--fcw-color-surface) 88%, transparent)",
-        }}
-      >
-        <div className="fcw-container fcw-h-full fcw-flex-between">
-          <div className="fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-weight-bold"
-              style={{ fontSize: "var(--fcw-font-size-body-l)", color: "var(--fcw-color-primary)", padding: "0 0.5rem" }}
-              onClick={() => navigate(ROUTES.home)}
-            >
-              ASK
-            </button>
-            {consumerDesktopLinks.map(link => (
-              <NavLink
-                key={link.label}
-                to={link.to}
-                className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-                style={({ isActive }) => ({
-                  color: isActive ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-                })}
-              >
-                {link.icon}
-                <span className="fcw-body-s">{link.label}</span>
-              </NavLink>
-            ))}
-          </div>
-
-          <div className="fcw-flex fcw-items-center" style={{ gap: "0.25rem" }}>
-            {state.session && (
-                <button
-                  className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm"
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setMenuAnchor({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-                    setUserMenuOpen(v => !v);
-                  }}
-                  style={{ borderRadius: "var(--fcw-radius-full)" }}
-                  aria-label={t("nav.profile")}
-                >
-                  <span className="nav-account-avatar">{userInitial}</span>
-                </button>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* Desktop spacer */}
-      <div className="fcw-hidden-mobile" style={{ height: "56px" }} aria-hidden="true" />
-
-      {/* Mobile bottom nav */}
-      <nav
-        className="fcw-fixed fcw-z-sticky fcw-w-full fcw-hidden-desktop fcw-border-top"
-        style={{
-          bottom: 0, left: 0, right: 0, height: "64px",
-          backdropFilter: "var(--fcw-blur-glass)",
-          WebkitBackdropFilter: "var(--fcw-blur-glass)",
-          backgroundColor: "color-mix(in srgb, var(--fcw-color-surface) 92%, transparent)",
-          paddingBottom: "env(safe-area-inset-bottom, 0)",
-        }}
-      >
-        <div className="fcw-flex fcw-h-full" style={{ gap: 0 }}>
-          {consumerMobileLinks.map(link => (
-            <NavLink
-              key={link.label}
-              to={link.to}
-              className="fcw-flex-1 fcw-flex-center fcw-flex-col"
-              style={({ isActive }) => ({
-                color: isActive ? "var(--fcw-color-primary)" : "var(--fcw-color-text-tertiary)",
-                textDecoration: "none",
-                gap: "2px",
-              })}
-            >
-              {link.icon}
-              <span className="fcw-label" style={{ fontSize: "0.625rem", letterSpacing: "0.03em" }}>{link.label}</span>
-            </NavLink>
-          ))}
-        </div>
-      </nav>
-
-      {/* Mobile top bar — minimal, logo + controls */}
-      <nav
-        className="fcw-fixed fcw-z-sticky fcw-w-full fcw-hidden-desktop"
-        style={{
-          top: 0, left: 0, right: 0, height: "48px",
-          backdropFilter: "var(--fcw-blur-glass)",
-          WebkitBackdropFilter: "var(--fcw-blur-glass)",
-          backgroundColor: "color-mix(in srgb, var(--fcw-color-surface) 88%, transparent)",
-        }}
-      >
-        <div className="fcw-flex-between fcw-h-full" style={{ padding: "0 var(--fcw-space-sm)" }}>
-          <button
-            className="fcw-btn fcw-btn-ghost fcw-weight-bold"
-            style={{ fontSize: "var(--fcw-font-size-body)", color: "var(--fcw-color-primary)", padding: "0 0.25rem" }}
-            onClick={() => navigate(ROUTES.home)}
-          >
+      <header className="ask-shell-nav">
+        <div className="ask-shell-nav__inner">
+          <button type="button" className="ask-wordmark" onClick={() => navigate(ROUTES.home)}>
             ASK
           </button>
-          <div className="fcw-flex fcw-items-center" style={{ gap: "0.125rem" }}>
-            {state.session && (
-                <button
-                  className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm"
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setMenuAnchor({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-                    setUserMenuOpen(v => !v);
-                  }}
-                  aria-label={t("nav.profile")}
-                >
-                  <span className="nav-account-avatar">{userInitial}</span>
-                </button>
-            )}
+
+          <nav className="ask-primary-nav" aria-label={t("nav.main")}>
+            {primaryItems.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => `ask-primary-nav__link${isActive ? " is-active" : ""}`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="ask-shell-nav__actions">
+            <CitySelector value={city} onChange={selectCity} compact buttonClassName="ask-city-pill" />
+            <button
+              type="button"
+              className="ask-profile-button"
+              aria-label={t("nav.profile")}
+              onClick={event => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setMenuAnchor({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                setMenuOpen(value => !value);
+              }}
+            >
+              <span aria-hidden="true">{initial}</span>
+            </button>
           </div>
         </div>
+      </header>
+
+      <nav className="ask-mobile-nav" aria-label={t("nav.main")}>
+        {mobileItems.map(item => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) => isActive ? "is-active" : ""}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
       </nav>
 
-      {/* Mobile spacers */}
-      <div className="fcw-hidden-desktop" style={{ height: "48px" }} aria-hidden="true" />
-      <div className="fcw-hidden-desktop" style={{ height: "64px" }} aria-hidden="true" />
-
-      {/* User Dropdown — portalled to body to escape nav backdrop-filter stacking context */}
-      {userMenuOpen && menuAnchor && createPortal(
+      {menuOpen && menuAnchor && createPortal(
         <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 199 }}
-            onClick={() => setUserMenuOpen(false)}
+          <button
+            type="button"
+            aria-label={t("common.close")}
+            onClick={() => setMenuOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 198, background: "transparent", border: 0 }}
           />
-          <div style={{
-            position: "fixed",
-            top: menuAnchor.top,
-            right: menuAnchor.right,
-            zIndex: 200,
-            width: "min(320px, calc(100vw - 1rem))",
-            backgroundColor: "var(--fcw-color-surface)",
-            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-            borderRadius: "var(--fcw-radius-md)",
-            boxShadow: "var(--fcw-shadow-lg)",
-            padding: "0.5rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.125rem",
-          }}>
-            <div className="nav-account-summary">
-              <span className="nav-account-avatar nav-account-avatar-lg">{userInitial}</span>
+          <div
+            className="ask-account-menu"
+            style={{ position: "fixed", top: menuAnchor.top, right: menuAnchor.right, zIndex: 199 }}
+          >
+            <div className="ask-account-menu__identity">
+              <span className="ask-account-menu__avatar">{initial}</span>
               <span>
                 <strong>{user?.displayName || t("profile.displayNameFallback")}</strong>
                 <small>{user?.email || user?.phone || ""}</small>
               </span>
             </div>
-            <span className="nav-menu-label">{t("nav.menu.account")}</span>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
-              onClick={() => { setUserMenuOpen(false); navigate(ROUTES.profile); }}
-            >
-              <UserRound size={14} />{t("business.account")}
+            <button type="button" onClick={() => { setMenuOpen(false); navigate(ROUTES.profile); }}>
+              <UserRound size={17} />
+              {t("business.account")}
             </button>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
-              onClick={() => { setSettingsModalOpen(true); setUserMenuOpen(false); }}
-            >
-              <Settings size={14} />{t("business.settings")}
+            {membership && (
+              <button type="button" onClick={() => {
+                setMenuOpen(false);
+                navigate(buildRoute(ROUTES.business, { businessId: membership.businessId }));
+              }}>
+                <Building2 size={17} />
+                {membership.businessName}
+              </button>
+            )}
+            {hasPlatformAccess && (
+              <button type="button" onClick={() => { setMenuOpen(false); navigate(ROUTES.platform); }}>
+                <Shield size={17} />
+                {t("nav.platform")}
+              </button>
+            )}
+            <button type="button" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}>
+              <Settings size={17} />
+              {t("business.settings")}
             </button>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
-              onClick={handlePlatformSupport}
-            >
-              <Headphones size={14} />{t("nav.menu.platformSupport")}
+            <button type="button" onClick={() => { setMenuOpen(false); setSupportOpen(true); }}>
+              <Headphones size={17} />
+              {t("nav.menu.platformSupport")}
             </button>
-            <span className="nav-menu-label">{t("nav.menu.legal")}</span>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
-              onClick={() => { setUserMenuOpen(false); navigate("/legal/user-terms"); }}
-            >
-              <FileText size={14} />{t("legal.user-terms.title")}
+            <button type="button" onClick={() => { setMenuOpen(false); navigate("/legal/user-terms"); }}>
+              <FileText size={17} />
+              {t("legal.user-terms.title")}
             </button>
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%" }}
-              onClick={() => { setUserMenuOpen(false); navigate("/legal/privacy"); }}
-            >
-              <Shield size={14} />{t("legal.privacy.title")}
-            </button>
-            <div style={{ height: 1, backgroundColor: "var(--fcw-color-border)", margin: "0.25rem 0" }} />
-            <button
-              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-              style={{ justifyContent: "flex-start", gap: "0.5rem", width: "100%", color: "var(--fcw-color-error)" }}
-              onClick={() => { setUserMenuOpen(false); handleLogout(); }}
-            >
-              <LogOut size={14} />{t("business.signOut")}
+            <button type="button" className="is-danger" onClick={logout}>
+              <LogOut size={17} />
+              {t("business.signOut")}
             </button>
           </div>
         </>,
         document.body,
       )}
 
-      {/* Settings Modal */}
-      <Modal open={settingsModalOpen} onClose={() => setSettingsModalOpen(false)} title={t("business.settings")} size="sm">
-        <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
-          <div className="fcw-flex-between fcw-items-center">
-            <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
-              {theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
-              <span className="fcw-body fcw-weight-medium">{t("business.theme")}</span>
-            </div>
-            <button
-              className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-              onClick={toggle}
-              style={{ gap: "0.375rem" }}
-            >
-              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title={t("business.settings")} size="sm">
+        <div className="ask-settings-list">
+          <div>
+            <span>{theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}</span>
+            <strong>{t("business.theme")}</strong>
+            <button type="button" className="ask-secondary-button" onClick={toggle}>
               {theme === "dark" ? t("business.themeLight") : t("business.themeDark")}
             </button>
           </div>
-
-          <div className="fcw-flex-between fcw-items-center">
-            <span className="fcw-body fcw-weight-medium">{t("business.language")}</span>
+          <div>
+            <span><Settings size={18} /></span>
+            <strong>{t("business.language")}</strong>
             <LanguageSwitcher />
           </div>
         </div>
       </Modal>
+
       <SupportDrawer
         open={supportOpen}
-        businessId={selectedMembership?.businessId}
-        businessName={selectedMembership?.businessName}
+        businessId={membership?.businessId}
+        businessName={membership?.businessName}
         onClose={() => setSupportOpen(false)}
       />
     </>

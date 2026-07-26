@@ -1,4 +1,5 @@
 import { apiRequest } from "./httpClient";
+import type { BusinessScope, ContactChannel } from "../utils/validation";
 
 export type ManagedImportItem = {
   id: string;
@@ -7,9 +8,9 @@ export type ManagedImportItem = {
   requestedByUserId: string;
   requestedByName: string;
   status: "PENDING" | "ACTIVE" | "COMPLETED";
-  catalogScope: "PRODUCTS" | "SERVICES" | "BOTH";
-  sourceTypes: string[];
-  preferredContactChannel: string;
+  businessScope: BusinessScope;
+  selectedSourceTypes: string[];
+  preferredContactChannel: ContactChannel;
   preferredContactValue: string;
   sourceLinks?: string;
   sourceNotes?: string;
@@ -28,23 +29,18 @@ export function listPlatformManagedImports() {
 export function requestManagedImportHelp(
   businessId: string,
   request: {
-    catalogScope: "PRODUCTS" | "SERVICES" | "BOTH";
-    sourceTypes: string[];
-    preferredContactChannel: "WHATSAPP" | "TELEGRAM" | "EMAIL";
+    businessScope: BusinessScope;
+    selectedSourceTypes: string[];
+    preferredContactChannel: ContactChannel;
     preferredContactValue: string;
     sourceLinks: string;
-    sourceNotes: string;
-    legalAccepted: boolean;
+    sourceNotes?: string;
   },
 ) {
   return apiRequest<ManagedImportItem>(`/api/v1/businesses/${businessId}/managed-imports`, {
     method: "POST",
     auth: true,
-    body: {
-      ...request,
-      countryCode: "KZ",
-      locale: "ru",
-    },
+    body: request,
   });
 }
 
@@ -63,8 +59,8 @@ export function activateManagedImport(requestId: string) {
 }
 
 export function getManagedImportCatalogAccess(businessId: string) {
-  return apiRequest<{ allowed: boolean; catalogScope: "PRODUCTS" | "SERVICES" | "BOTH" }>(
-    `/api/v1/platform/managed-imports/businesses/${businessId}/catalog-access`,
+  return apiRequest<{ allowed: boolean; businessScope: BusinessScope }>(
+    `/api/v1/platform/managed-imports/businesses/${businessId}/items-services-access`,
     { auth: true },
   );
 }

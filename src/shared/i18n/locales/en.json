@@ -48,13 +48,11 @@
   "platform.users.role.MODERATOR": "Moderator",
   "platform.permissions.MANAGE_PLATFORM_USERS": "Manage platform users",
   "platform.permissions.MANAGE_MANAGED_IMPORTS": "Manage managed imports",
-  "platform.permissions.EDIT_CATALOG_DURING_IMPORT": "Edit catalog during import",
-  "platform.permissions.PUBLISH_CATALOG_DURING_IMPORT": "Publish catalog during import",
-  "platform.permissions.USE_AI_CATALOG_TOOLS": "Catalog AI tools",
+  "platform.permissions.EDIT_ITEMS_SERVICES_DURING_IMPORT": "Edit items and services during import",
+  "platform.permissions.PUBLISH_ITEMS_SERVICES_DURING_IMPORT": "Publish items and services during import",
+  "platform.permissions.USE_AI_ITEMS_SERVICES_TOOLS": "Item and service AI tools",
   "platform.permissions.MANAGE_SUPPORT_CHATS": "Manage support chats",
   "platform.permissions.MODERATE_CONTENT": "Moderate content",
-  "platform.permissions.SUSPEND_BUSINESS": "Suspend business",
-  "platform.permissions.BAN_BUSINESS": "Ban business",
   "platform.moderation.title": "Open reports",
   "platform.moderation.empty": "No open reports",
   "platform.moderation.resolve": "Resolve",
@@ -430,6 +428,7 @@
   "seller.step3.title": "Catalog setup",
   "seller.step4.title": "Legal confirmation",
   "seller.businessName": "Business name",
+  "seller.legalName": "Legal name",
   "seller.legalForm.KZ_IP": "Individual entrepreneur (ИП)",
   "seller.legalForm.KZ_TOO": "Limited liability partnership (ТОО)",
   "seller.legalForm.NONE": "No legal form specified",
@@ -600,16 +599,21 @@
   "business.allBranches": "All branches",
   "business.branch.add": "Add branch",
   "business.branch.edit": "Edit branch",
+  "business.branch.onlineOnlyConfirmTitle": "Switch business to offline mode?",
+  "business.branch.onlineOnlyConfirmDesc": "Your business is currently set to \"online only.\" Adding a physical branch will switch it to regular mode with physical locations. This action cannot be automatically undone.",
+  "business.branch.onlineOnlyConfirm": "Add branch and switch",
+  "business.branch.onlineOnlyCancel": "Cancel",
   "business.branch.name": "Branch name",
   "business.branch.address": "Address",
   "business.branch.addressDetails": "Details: entrance, floor, office",
-  "business.branch.onlineOnly": "Online only",
   "business.branch.location": "Location *",
   "business.branch.pickOnMap": "Pick on map",
   "business.branch.latitude": "Latitude",
   "business.branch.longitude": "Longitude",
-  "business.branch.openIn2gis": "Open in 2GIS",
+  "business.branch.openIn2gis": "Open map",
   "business.branch.searchPlace": "Search place...",
+  "business.branch.findPlace": "Find",
+  "business.branch.locationNotFound": "Location not found. Refine the address or place the pin on the map.",
   "business.branch.noMapKey": "Map API key is not set. Contact the administrator.",
   "business.branch.city": "City",
   "business.product.editTitle": "Edit product",
@@ -716,6 +720,8 @@
   "business.toast.branchLocationRequired": "Pick a location on the map",
   "business.toast.selectCity": "Select a city",
   "business.toast.staffAdded": "Staff member added. Temporary password shown in the staff card.",
+  "business.toast.pendingEmployeeDeleted": "Pending staff activation removed.",
+  "business.toast.pendingEmployeeDeleteError": "Could not remove the pending staff activation.",
   "business.toast.invitationSent": "Invitation sent",
   "business.toast.staffAddError": "Staff creation error",
   "business.toast.passwordReset": "New temporary password created.",
@@ -755,6 +761,10 @@
   "business.chats.statDeclined": "Declined",
   "business.chats.emptyDesc": "New inquiries for the branch will appear here.",
   "business.chats.noMessages": "No messages",
+  "business.chats.customer": "Customer",
+  "business.chats.attachment": "Open attachment",
+  "business.chats.loadError": "Could not load the chat",
+  "business.chats.sendError": "Could not send the message",
   "business.chats.justNow": "just now",
   "business.chats.minAgo": "{{n}} min ago",
   "business.chats.hoursAgo": "{{n}} h ago",
@@ -767,6 +777,7 @@
   "business.currentRole": "Current role",
   "business.employees": "Employees",
   "business.employee.add": "Add Employee",
+  "business.employee.deletePending": "Remove activation request",
   "business.employee.empty": "No employees",
   "business.employee.manager": "Manager",
   "business.employee.worker": "Worker",
@@ -972,8 +983,9 @@
   "managedImport.requested": "Request sent",
   "managedImport.requestProducts": "Help importing products",
   "managedImport.requestServices": "Help importing services",
-  "managedImport.scope.PRODUCTS": "products",
-  "managedImport.scope.SERVICES": "services",
+  "managedImport.scope.ITEM": "products",
+  "managedImport.scope.SERVICE": "services",
+  "managedImport.scope.BOTH": "products and services",
   "managedImport.title": "Import {{catalog}} with the Ask team",
   "managedImport.serviceLabel": "Managed import service",
   "managedImport.benefitTitle": "Share the source and receive a ready {{catalog}} catalog",
@@ -985,9 +997,23 @@
   "managedImport.benefit.publish": "Agree the result before publishing",
   "managedImport.contactChannel": "How to contact you",
   "managedImport.contactValue": "Contact",
+  "managedImport.contactValidation.EMAIL": "Enter a valid email address.",
+  "managedImport.contactValidation.TELEGRAM": "Telegram must start with @ and include a username.",
+  "managedImport.contactValidation.WHATSAPP": "Enter a WhatsApp number in international format.",
   "managedImport.sources": "Catalog sources",
   "managedImport.sourceLinks": "Source links",
   "managedImport.sourceLinksPlaceholder": "Website, cloud folder, social profile, or another link",
+  "managedImport.sourcePrompt": "Are these all the links you can provide? Choose a source and add its link; you can add more.",
+  "managedImport.sourceSelect": "Choose a source type",
+  "managedImport.removeSource": "Remove source",
+  "managedImport.sourceType.WEBSITE": "Website",
+  "managedImport.sourceType.KASPI": "Kaspi",
+  "managedImport.sourceType.OZON": "Ozon",
+  "managedImport.sourceType.WILDBERRIES": "Wildberries",
+  "managedImport.sourceType.TWO_GIS": "2GIS",
+  "managedImport.sourceType.INSTAGRAM": "Instagram",
+  "managedImport.sourceType.TELEGRAM": "Telegram",
+  "managedImport.sourceType.OTHER": "Other link",
   "managedImport.sourceNotes": "Important details",
   "managedImport.sourceNotesPlaceholder": "For example: import only current items and preserve brand wording",
   "managedImport.legal": "I have the right to share these sources and accept the",
@@ -995,14 +1021,14 @@
   "managedImport.submit": "Request {{catalog}} import",
   "managedImport.sent": "Request sent. The Ask team will contact you after assessing the sources.",
   "managedImport.error": "Could not send the import request",
-  "seller.catalogScope.title": "What does your business offer?",
-  "seller.catalogScope.description": "This configures the workspace and helps Ask prepare the right catalog.",
-  "seller.catalogScope.PRODUCTS": "Products",
-  "seller.catalogScope.PRODUCTS.description": "Physical goods and product ranges",
-  "seller.catalogScope.SERVICES": "Services",
-  "seller.catalogScope.SERVICES.description": "Work, consultations, and appointments",
-  "seller.catalogScope.BOTH": "Products and services",
-  "seller.catalogScope.BOTH.description": "Both directions in one business",
+  "seller.businessScope.title": "What does your business offer?",
+  "seller.businessScope.description": "This configures the workspace and helps Ask prepare the right catalog.",
+  "seller.businessScope.ITEM": "Products",
+  "seller.businessScope.ITEM.description": "Physical goods and product ranges",
+  "seller.businessScope.SERVICE": "Services",
+  "seller.businessScope.SERVICE.description": "Work, consultations, and appointments",
+  "seller.businessScope.BOTH": "Products and services",
+  "seller.businessScope.BOTH.description": "Both directions in one business",
   "seller.catalog.manualDescription": "I will add items myself or upload a prepared file",
   "seller.catalog.managedDescription": "The Ask team will help collect and prepare your {{catalog}} catalog",
   "seller.managedBenefitTitle": "Skip the manual transfer"
@@ -1038,7 +1064,7 @@
   ,"profile.title": "Profile and settings"
   ,"profile.description": "Manage personal details, privacy, and access to your brands. Company information is edited separately in the business cabinet."
   ,"chats.conversations.type.PLATFORM_SUPPORT": "Ask Support"
-  ,"seller.validation.businessContact": "Enter the business name and a contact method."
+  ,"seller.validation.businessContact": "Enter the business name and category."
   ,"seller.validation.importSource": "Select at least one catalog import source."
   ,"business.toast.branchRequired": "Create or select a branch first."
   ,"business.toast.imageTooLarge": "Image must be under 2 MB."
@@ -1048,10 +1074,131 @@
   ,"category.autocomplete.standardGroup": "Standard categories"
   ,"category.autocomplete.yourGroup": "Your categories"
   ,"category.autocomplete.noMatch": "No matching categories"
+  ,"category.autocomplete.createCustom": "Save custom category “{{value}}”"
+  ,"business.product.deepLink": "Product link"
+  ,"business.product.deepLinkPlaceholder": "Product page URL or deep link"
+  ,"business.product.tags": "Tags"
+  ,"business.product.tagsPlaceholder": "Comma separated"
+  ,"business.product.enabled": "Product is active"
+  ,"business.attributes": "Additional attributes"
+  ,"business.attributesPlaceholder": "{\"Color\":\"Black\",\"Size\":\"M\"}"
+  ,"business.service.mode": "Service mode"
+  ,"business.service.onDemand": "On demand"
+  ,"business.service.scheduled": "Scheduled"
+  ,"business.service.active": "Service is active"
+  ,"business.branch.timeZoneId": "Time zone"
+  ,"business.branch.openNow": "Open now"
+  ,"business.branch.closedNow": "Closed"
+  ,"business.branch.closedChatNotice": "Store is currently closed, will respond when it opens"
+  ,"business.branch.weeklyHours": "Weekly hours"
+  ,"business.branch.specialHours": "Special dates"
+  ,"business.branch.addHoursRow": "+ Add"
+  ,"business.branch.day.monday": "Mon"
+  ,"business.branch.day.tuesday": "Tue"
+  ,"business.branch.day.wednesday": "Wed"
+  ,"business.branch.day.thursday": "Thu"
+  ,"business.branch.day.friday": "Fri"
+  ,"business.branch.day.saturday": "Sat"
+  ,"business.branch.day.sunday": "Sun"
+  ,"business.branch.opensAt": "Opens at"
+  ,"business.branch.closesAt": "Closes at"
+  ,"business.branch.closedAllDay": "Closed all day"
+  ,"business.branch.date": "Date"
+  ,"drops.coverUrl": "Cover"
+  ,"drops.coverUrlPlaceholder": "Image URL"
+  ,"drops.discountPercent": "Discount, %"
+  ,"drops.discountAmount": "Discount amount"
+  ,"drops.currency": "Currency"
+  ,"drops.enabled": "Offer is active"
   ,"imageUploader.addPhoto": "Add photo"
   ,"imageUploader.replace": "Replace"
   ,"imageUploader.delete": "Delete"
   ,"business.product.priceSuffix": "\u20B8"
   ,"business.toast.serviceNameRequired": "Enter a service name."
-  ,"seller.validation.legalDetails": "Enter the legal identifier and legal name for the selected form, or choose“No specified legal form”."
+  ,"seller.validation.legalDetails": "Enter the IIN/BIN and legal name for the selected legal form."
+  ,"seller.validation.category": "Specify the business category."
+  ,"seller.verification.title": "Business verification"
+  ,"seller.verification.description": "A business without a specified legal form must provide at least one valid verification link."
+  ,"seller.validation.verificationSource": "Add at least one valid link starting with http:// or https://."
+  ,"seller.verification.addSource": "Choose a source to add its link"
+  ,"seller.verification.binIin": "BIN / IIN"
+  ,"seller.verification.phone": "Contact phone"
+  ,"seller.verification.corporateEmail": "Corporate email"
+  ,"seller.verification.twoGisUrl": "2GIS link"
+  ,"seller.verification.kaspiUrl": "Kaspi link"
+  ,"seller.verification.ozonUrl": "Ozon link"
+  ,"seller.verification.wildberriesUrl": "Wildberries link"
+  ,"seller.verification.websiteUrl": "Website"
+  ,"seller.verification.instagramUrl": "Instagram"
+  ,"seller.verification.telegramUrl": "Telegram"
+  ,"seller.onlineOnly": "Online only (no physical branch)"
+  ,"seller.onlineOnly.description": "Business has no physical location — products or services are provided remotely"
+  ,"business.verification.status.PENDING": "Business under review"
+  ,"business.verification.status.NEEDS_INFO": "Additional information needed"
+  ,"business.verification.status.REJECTED": "Verification rejected"
+  ,"business.verification.description.PENDING": "Your details are being reviewed. This may take up to 24 hours."
+  ,"business.verification.description.NEEDS_INFO": "The Ask team requested additional information. Check the support chat."
+  ,"business.verification.description.REJECTED": "Verification failed. Contact support for details."
+  ,"platform.verification.title": "Business verification"
+  ,"platform.verification.empty": "No businesses pending verification"
+  ,"platform.verification.filterAll": "All"
+  ,"platform.verification.review": "Review"
+  ,"platform.verification.approve": "Approve"
+  ,"platform.verification.reject": "Reject"
+  ,"platform.verification.requestInfo": "Request info"
+  ,"platform.verification.comment": "Comment..."
+  ,"platform.verification.proofs": "Supporting data"
+  ,"platform.verification.history": "Verification history"
+  ,"platform.verification.status.PENDING": "Pending"
+  ,"platform.verification.status.NEEDS_INFO": "Needs info"
+  ,"platform.verification.status.APPROVED": "Approved"
+  ,"platform.verification.status.REJECTED": "Rejected"
+  ,"platform.verification.priority.STANDARD": "Standard"
+  ,"platform.verification.priority.EXPEDITED": "Expedited"
+  ,"platform.verification.field.binIin": "BIN / IIN"
+  ,"platform.verification.field.phone": "Phone"
+  ,"platform.verification.field.corporateEmail": "Corporate email"
+  ,"platform.verification.field.twoGisUrl": "2GIS"
+  ,"platform.verification.field.kaspiUrl": "Kaspi"
+  ,"platform.verification.field.ozonUrl": "Ozon"
+  ,"platform.verification.field.wildberriesUrl": "Wildberries"
+  ,"platform.verification.field.websiteUrl": "Website"
+  ,"platform.verification.field.instagramUrl": "Instagram"
+  ,"platform.verification.field.telegramUrl": "Telegram"
+  ,"business.additional": "Additional details"
+  ,"business.continue": "Continue"
+  ,"business.back": "Back"
+  ,"business.product.editorDescription": "Add the essential information first. Description and attributes are optional."
+  ,"business.product.mainDetails": "Main information"
+  ,"business.product.mainDetailsDescription": "These details help customers understand the offer and continue to purchase."
+  ,"business.product.deepLinkRequiredHint": "Provide a direct product page where customers can view details or place an order."
+  ,"business.product.additionalDescription": "Description, tags, and attributes for more accurate search."
+  ,"business.service.editorDescription": "Start with what you provide and how the service is delivered."
+  ,"business.service.mainDetails": "Main information"
+  ,"business.service.mainDetailsDescription": "Name, category, price, and format are shown to customers in search."
+  ,"business.service.scheduleHint": "For example: weekdays from 10:00 to 19:00 or by appointment only."
+  ,"business.service.additionalDescription": "Description and attributes that help customers choose the service."
+  ,"business.toast.productLinkRequired": "Add the product link"
+  ,"business.branch.editorDescription": "Select the real location first, then configure opening hours."
+  ,"business.branch.stepAddress": "Address"
+  ,"business.branch.stepHours": "Opening hours"
+  ,"business.branch.locationTitle": "Branch location"
+  ,"business.branch.locationDescription": "Search for an address or place a pin on the map. City and address are filled automatically."
+  ,"business.branch.namePlaceholder": "For example: Abai Street Store"
+  ,"business.branch.selectedAddress": "Selected address"
+  ,"business.branch.hoursTitle": "When the branch is open"
+  ,"business.branch.hoursDescription": "Add regular hours. Holidays and exceptions can be configured separately."
+  ,"business.branch.timeZonePlaceholder": "For example: Asia/Almaty"
+  ,"business.branch.specialHoursDescription": "Holidays, closed days, and adjusted opening hours."
+  ,"drops.nameRequired": "Enter the unique offer name"
+  ,"drops.editorDescription": "Build the offer step by step and review it before publishing."
+  ,"drops.stepDetails": "Details"
+  ,"drops.stepPublication": "Publication"
+  ,"drops.stepReview": "Review"
+  ,"drops.detailsTitle": "What you are offering"
+  ,"drops.detailsDescription": "Choose a customer-friendly type and briefly describe the offer."
+  ,"drops.publicationTitle": "When and how to show it"
+  ,"drops.publicationDescription": "Set the period, cover, and promotion terms when applicable."
+  ,"drops.reviewTitle": "Review the offer"
+  ,"drops.reviewDescription": "After creation, the offer becomes available according to the selected period."
 }

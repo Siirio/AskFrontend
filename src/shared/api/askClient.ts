@@ -1,6 +1,6 @@
-import { API_BASE_URL, apiRequest, getCsrfHeaders, transformKeys, ApiError } from "./httpClient";
+import { API_BASE_URL, apiRequest, getAuthHeaders, transformKeys, ApiError } from "./httpClient";
 import i18n from "../i18n/i18n";
-import { mapSearchResult, mapSupplierTask } from "./mappers";
+import { mapSupplierTask } from "./mappers";
 import type {
   BusinessProductDto, BusinessProductListDto,
   BusinessServiceDto, BusinessServiceListDto,
@@ -10,14 +10,17 @@ import type {
   ChatMessageDto, ChatMessageListResponse,
   ContactResolveDto,
   CustomerRequestDetailDto, CustomerRequestHistoryDto,
-  SearchResultDto,
   SearchV2ResponseDto,
   StaffDto,
   StorefrontPageDto,
-  StructuredSearchDto,
   SupplierTaskDetailDto,
   SupplierTaskDto
 } from "./dto";
+import type {
+  BranchDto,
+  CreateBranchData,
+  UpdateBranchData,
+} from "./domainTypes";
 
 export type ProductImportTargetField =
   | "NAME"
@@ -128,59 +131,35 @@ function getStoredUserLocation() {
   }
 }
 
-export async function searchAsk(query: string, scope: "all" | "product" | "service", city?: string, category?: string) {
-  const response = await apiRequest<StructuredSearchDto>("/api/v1/search", {
-    method: "POST",
-    body: {
-      rawQuery: query,
-      selectedMode: scope === "all" ? "AUTO" : scope.toUpperCase(),
-      selectedCategory: category || "",
-      city: city || "Астана",
-      userLocation: getStoredUserLocation(),
-      language: i18n.language || "ru",
-      sort: "intent_match",
-    },
-  });
-  return response.results.map(mapSearchResult);
-}
+export type SearchExplicitFilters = {
+  category?: string;
+  city?: string;
+  country?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  openNow?: boolean;
+  radiusMeters?: number;
+};
 
 export function searchAskV2(params: {
   rawQuery: string;
-  scope: "all" | "product" | "service";
-  city?: string;
-  selectedCategory?: string;
-  sort?: "intent_match" | "price_asc" | "distance";
+  mode: "ITEM" | "SERVICE";
+  sort?: "relevance" | "price_asc" | "distance";
   page?: number;
   pageSize?: number;
-  filters?: {
-    scope?: string;
-    category?: string;
-    city?: string;
-    minPrice?: number;
-    maxPrice?: number;
-  };
-  overrides?: {
-    scope?: string;
-    category?: string;
-    city?: string;
-    minPrice?: number;
-    maxPrice?: number;
-  };
+  explicitFilters?: SearchExplicitFilters;
 }) {
   return apiRequest<SearchV2ResponseDto>("/api/v1/search", {
     method: "POST",
     body: {
       rawQuery: params.rawQuery,
-      scope: params.scope,
-      selectedCategory: params.selectedCategory || "",
-      city: params.city || "Астана",
-      sort: params.sort || "intent_match",
-      page: params.page || 0,
+      mode: params.mode,
+      sort: params.sort || "relevance",
+      page: params.page ?? 0,
       pageSize: params.pageSize,
-      filters: params.filters,
-      overrides: params.overrides,
+      explicitFilters: params.explicitFilters,
       userLocation: getStoredUserLocation(),
-      language: i18n.language || "ru",
+      locale: i18n.language || "ru",
     },
   });
 }
@@ -243,46 +222,48 @@ export function respondToTask(branchId: string, taskId: string, data: { status: 
   });
 }
 
-export function listProducts(branchId: string, params?: { categoryId?: string; enabled?: boolean; query?: string; page?: number; size?: number }) {
+export function listProducts(businessId: string, params?: { branchId?: string; categoryId?: string; enabled?: boolean; query?: string; page?: number; size?: number }) {
   const qs = new URLSearchParams();
+  if (params?.branchId) qs.set("branchId", params.branchId);
   if (params?.categoryId) qs.set("categoryId", params.categoryId);
   if (params?.enabled !== undefined) qs.set("enabled", String(params.enabled));
   if (params?.query) qs.set("query", params.query);
   if (params?.page !== undefined) qs.set("page", String(params.page));
   if (params?.size !== undefined) qs.set("size", String(params.size));
   const q = qs.toString();
-  return apiRequest<BusinessProductListDto>(`/api/v1/business-admin/branches/${branchId}/products${q ? "?" + q : ""}`, { auth: true });
+  return apiRequest<BusinessProductListDto>(`/api/v1/businesses/${businessId}/items${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createProduct(branchId: string, data: { categoryId?: string; categoryLabel?: string; name: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[]; imageUrl?: string }) {
-  return apiRequest<BusinessProductDto>(`/api/v1/business-admin/branches/${branchId}/products`, { method: "POST", auth: true, body: data });
+export function createProduct(businessId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name: string; description?: string; deepLink?: string; price?: number; isActive?: boolean; tags?: string[]; attributes?: Record<string, unknown> }) {
+  return apiRequest<BusinessProductDto>(`/api/v1/businesses/${businessId}/items`, { method: "POST", auth: true, body: data });
 }
 
-export function updateProduct(branchId: string, productId: string, data: { categoryId?: string; name?: string; description?: string; sku?: string; price?: number; enabled?: boolean; tags?: string[]; imageUrl?: string }) {
-  return apiRequest<BusinessProductDto>(`/api/v1/business-admin/branches/${branchId}/products/${productId}`, { method: "PATCH", auth: true, body: data });
+export function updateProduct(productId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name?: string; description?: string; deepLink?: string; price?: number; isActive?: boolean; tags?: string[]; attributes?: Record<string, unknown> }) {
+  return apiRequest<BusinessProductDto>(`/api/v1/items/${productId}`, { method: "PATCH", auth: true, body: data });
 }
 
-export function deleteProduct(branchId: string, productId: string) {
-  return apiRequest<BusinessProductDto>(`/api/v1/business-admin/branches/${branchId}/products/${productId}`, { method: "DELETE", auth: true });
+export function deleteProduct(productId: string) {
+  return apiRequest<void>(`/api/v1/items/${productId}`, { method: "DELETE", auth: true });
 }
 
-export function listServices(branchId: string, params?: { categoryId?: string; active?: boolean; query?: string; page?: number; size?: number }) {
+export function listServices(businessId: string, params?: { branchId?: string; categoryName?: string; active?: boolean; query?: string; page?: number; size?: number }) {
   const qs = new URLSearchParams();
-  if (params?.categoryId) qs.set("categoryId", params.categoryId);
+  if (params?.branchId) qs.set("branchId", params.branchId);
+  if (params?.categoryName) qs.set("categoryName", params.categoryName);
   if (params?.active !== undefined) qs.set("active", String(params.active));
   if (params?.query) qs.set("query", params.query);
   if (params?.page !== undefined) qs.set("page", String(params.page));
   if (params?.size !== undefined) qs.set("size", String(params.size));
   const q = qs.toString();
-  return apiRequest<BusinessServiceListDto>(`/api/v1/business-admin/branches/${branchId}/services${q ? "?" + q : ""}`, { auth: true });
+  return apiRequest<BusinessServiceListDto>(`/api/v1/businesses/${businessId}/services${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createService(branchId: string, data: { categoryId?: string; categoryLabel?: string; name: string; description?: string; basePrice?: number; scheduleText?: string; active?: boolean; imageUrl?: string }) {
-  return apiRequest<BusinessServiceDto>(`/api/v1/business-admin/branches/${branchId}/services`, { method: "POST", auth: true, body: data });
+export function createService(businessId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name: string; description?: string; serviceMode: "ON_DEMAND" | "SCHEDULED"; basePrice?: number; scheduleText?: string; isActive?: boolean; attributes?: Record<string, unknown> }) {
+  return apiRequest<BusinessServiceDto>(`/api/v1/businesses/${businessId}/services`, { method: "POST", auth: true, body: data });
 }
 
-export function updateService(branchId: string, serviceOfferingId: string, data: { categoryId?: string; name?: string; description?: string; basePrice?: number; scheduleText?: string; active?: boolean; imageUrl?: string }) {
-  return apiRequest<BusinessServiceDto>(`/api/v1/business-admin/branches/${branchId}/services/${serviceOfferingId}`, { method: "PATCH", auth: true, body: data });
+export function updateService(businessId: string, serviceOfferingId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name?: string; description?: string; serviceMode?: "ON_DEMAND" | "SCHEDULED"; basePrice?: number; scheduleText?: string; isActive?: boolean; attributes?: Record<string, unknown> }) {
+  return apiRequest<BusinessServiceDto>(`/api/v1/businesses/${businessId}/services/${serviceOfferingId}`, { method: "PATCH", auth: true, body: data });
 }
 
 export function listStaff(businessId: string, branchId: string) {
@@ -309,6 +290,13 @@ export function listEmployees(businessId: string) {
   return apiRequest<StaffDto[]>(`/api/v1/businesses/${businessId}/staff`, { auth: true });
 }
 
+export function deletePendingEmployee(businessId: string, staffId: string) {
+  return apiRequest<void>(`/api/v1/businesses/${businessId}/staff/${staffId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
 export function listCities() {
   return apiRequest<Array<{ id: string; name: string }>>("/api/v1/cities");
 }
@@ -317,25 +305,34 @@ export function listCategories() {
   return apiRequest<Array<{ id: string; name: string; slug: string; parentId: string | null; children: Array<{ id: string; name: string; slug: string; parentId: string | null }> }>>("/api/v1/categories");
 }
 
-export type CategorySuggestion = { label: string; categoryId: string | null };
-export type CategoryAutocompleteResponse = { standard: CategorySuggestion[]; custom: CategorySuggestion[] };
+export type CategorySuggestion = { label: string; categoryId: string | null; source: "SYSTEM" | "USER" };
+export type CategoryType = "BUSINESS" | "ITEM" | "SERVICE";
+export type CategoryAutocompleteResponse = { suggestions: CategorySuggestion[] };
 
-export function autocompleteCategories(query: string, businessId?: string) {
+export function autocompleteCategories(query: string, type: CategoryType) {
   const qs = new URLSearchParams();
   if (query) qs.set("q", query);
-  if (businessId) qs.set("businessId", businessId);
-  return apiRequest<CategoryAutocompleteResponse>(`/api/v1/categories/autocomplete?${qs.toString()}`);
+  qs.set("type", type);
+  return apiRequest<CategoryAutocompleteResponse>(`/api/v1/categories?${qs.toString()}`);
 }
 
-export async function uploadProductImport(branchId: string, file: File, mode: "PRODUCT" | "SERVICE" = "PRODUCT") {
+export function createCategory(name: string, type: CategoryType) {
+  return apiRequest<{ id: string; name: string; slug: string; type: CategoryType; source: "USER" }>(
+    "/api/v1/categories",
+    { method: "POST", auth: true, body: { name, type } },
+  );
+}
+
+export async function uploadProductImport(businessId: string, branchId: string | undefined, file: File, mode: "ITEM" | "SERVICE" = "ITEM") {
   const form = new FormData();
   form.append("file", file);
   form.append("type", mode);
-  const headers = getCsrfHeaders();
+  if (branchId) form.append("branchId", branchId);
+  const headers = getAuthHeaders();
   const isAutodumpFile = /\.(txt|md|pdf)$/i.test(file.name);
   const path = isAutodumpFile
     ? `/api/v1/business-admin/branches/${branchId}/autodump-sessions/files`
-    : `/api/v1/business-admin/branches/${branchId}/product-imports`;
+    : `/api/v1/businesses/${businessId}/item-imports`;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers,
@@ -356,29 +353,29 @@ export async function uploadProductImport(branchId: string, file: File, mode: "P
   return transformKeys(await response.json()) as ProductImportUploadResponse | { sessionId?: string; status?: string; draftsCreated?: number };
 }
 
-export function mapProductImport(branchId: string, importId: string, mappings: ProductImportMappingEntry[]) {
-  return apiRequest<ProductImportPreviewResponse>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/mapping`, {
+export function mapProductImport(businessId: string, importId: string, mappings: ProductImportMappingEntry[]) {
+  return apiRequest<ProductImportPreviewResponse>(`/api/v1/businesses/${businessId}/item-imports/${importId}/mapping`, {
     method: "POST",
     auth: true,
     body: { mappings },
   });
 }
 
-export function getProductImportPreview(branchId: string, importId: string) {
-  return apiRequest<ProductImportPreviewResponse>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/preview`, {
+export function getProductImportPreview(businessId: string, importId: string) {
+  return apiRequest<ProductImportPreviewResponse>(`/api/v1/businesses/${businessId}/item-imports/${importId}/preview`, {
     auth: true,
   });
 }
 
-export function approveProductImport(branchId: string, importId: string) {
-  return apiRequest<ProductImportApproveResponse>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/approve`, {
+export function approveProductImport(businessId: string, importId: string) {
+  return apiRequest<ProductImportApproveResponse>(`/api/v1/businesses/${businessId}/item-imports/${importId}/approve`, {
     method: "POST",
     auth: true,
   });
 }
 
-export function cancelProductImport(branchId: string, importId: string) {
-  return apiRequest<{ importId: string; status: string }>(`/api/v1/business-admin/branches/${branchId}/product-imports/${importId}/cancel`, {
+export function cancelProductImport(businessId: string, importId: string) {
+  return apiRequest<{ importId: string; status: string }>(`/api/v1/businesses/${businessId}/item-imports/${importId}/cancel`, {
     method: "POST",
     auth: true,
   });
@@ -411,28 +408,65 @@ export function publishAutodumpSession(branchId: string, sessionId: string) {
   });
 }
 
-export function listBranches(businessId: string) {
-  return apiRequest<Array<{ id: string; businessId: string; cityId: string; cityName: string; name: string; address: string; addressDetails: string; onlineOnly: boolean; status: string; latitude: number; longitude: number }>>(`/api/v1/businesses/${businessId}/branches`, { auth: true });
+export async function listBranches(businessId: string) {
+  const res = await apiRequest<{ branches: BranchDto[] }>(`/api/v1/businesses/${businessId}/branches`, { auth: true });
+  return res.branches;
 }
 
-export function createBranch(businessId: string, data: { name: string; address?: string; addressDetails?: string; cityId?: string; onlineOnly?: boolean; latitude: number; longitude: number }) {
+export function createBranch(businessId: string, data: CreateBranchData) {
   return apiRequest<{ id: string; name: string }>(`/api/v1/businesses/${businessId}/branches`, { method: "POST", auth: true, body: data });
 }
 
-export function updateBranch(businessId: string, branchId: string, data: { name?: string; address?: string; addressDetails?: string; cityId?: string; onlineOnly?: boolean; latitude?: number; longitude?: number }) {
-  return apiRequest<{ id: string; name: string }>(`/api/v1/businesses/${businessId}/branches/${branchId}`, { method: "PATCH", auth: true, body: data });
+export function updateBranch(branchId: string, data: UpdateBranchData) {
+  return apiRequest<{ id: string; name: string }>(`/api/v1/branches/${branchId}`, { method: "PATCH", auth: true, body: data });
+}
+
+export function getBusiness(businessId: string) {
+  return apiRequest<import("./domainTypes").BusinessDto>(`/api/v1/businesses/${businessId}`, { auth: true });
 }
 
 export function getBrandProfile(businessId: string) {
-  return apiRequest<BrandProfileDto>(`/api/v1/businesses/${businessId}/brand-profile`);
+  return apiRequest<BrandProfileDto>(`/api/v1/businesses/${businessId}/business-profile`);
 }
 
 export function updateBrandProfile(businessId: string, data: Partial<BrandProfileDto>) {
-  return apiRequest<BrandProfileDto>(`/api/v1/businesses/${businessId}/brand-profile`, {
-    method: "PUT",
+  return apiRequest<BrandProfileDto>(`/api/v1/businesses/${businessId}/business-profile`, {
+    method: "PATCH",
     auth: true,
-    body: data,
+    body: {
+      brandColor: data.brandColor,
+      description: data.description,
+      number: data.number,
+      email: data.email,
+      instagramUrl: data.instagramUrl,
+      telegramUrl: data.telegramUrl,
+      websiteUrl: data.websiteUrl,
+    },
   });
+}
+
+async function uploadBusinessProfileMedia(businessId: string, kind: "logo" | "cover", file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`${API_BASE_URL}/api/v1/businesses/${businessId}/business-profile/${kind}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: form,
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new ApiError(response.status, message, null);
+  }
+  return response.json() as Promise<BrandProfileDto>;
+}
+
+export function uploadBusinessProfileLogo(businessId: string, file: File) {
+  return uploadBusinessProfileMedia(businessId, "logo", file);
+}
+
+export function uploadBusinessProfileCover(businessId: string, file: File) {
+  return uploadBusinessProfileMedia(businessId, "cover", file);
 }
 
 export function getStorefront(businessId: string) {
@@ -546,7 +580,7 @@ export async function uploadChatFile(conversationId: string, file: File) {
   const form = new FormData();
   form.append("conversationId", conversationId);
   form.append("file", file);
-  const headers = getCsrfHeaders();
+  const headers = getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}/api/v1/chat/upload`, {
     method: "POST",
     headers,
@@ -588,16 +622,4 @@ export function sendBusinessChatMessage(conversationId: string, businessId: stri
 
 export function markBusinessChatRead(conversationId: string, businessId: string) {
   return apiRequest<void>(`/api/v1/business-admin/chats/${conversationId}/read?businessId=${encodeURIComponent(businessId)}`, { method: "POST", auth: true });
-}
-
-export function updateChatStatus(conversationId: string, businessId: string, status: string) {
-  return apiRequest<void>(`/api/v1/business-admin/chats/${conversationId}/status?businessId=${encodeURIComponent(businessId)}&status=${encodeURIComponent(status)}`, { method: "PATCH", auth: true });
-}
-
-export function notifyBusinesses(searchQuery: string, businessIds: string[]) {
-  return apiRequest<void>("/api/v1/chat/system-notify", {
-    method: "POST",
-    auth: true,
-    body: { searchQuery, businessIds },
-  });
 }

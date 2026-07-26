@@ -130,12 +130,6 @@ export function AdminBusinessDetail({ businessId, onBack, onOpenChat }: Props) {
             <span className="fcw-body-xs fcw-text-tertiary">{t("platform.businesses.columns.members")}</span>
             <span className="fcw-body fcw-weight-semibold">{detail.memberCount}</span>
           </div>
-          <div className="fcw-flex-col" style={{ gap: "0.25rem", minWidth: 120 }}>
-            <span className="fcw-body-xs fcw-text-tertiary">{t("platform.businesses.columns.moderation")}</span>
-            <span className={`admin-badge admin-badge--${detail.moderationStatus.toLowerCase()}`}>
-              {detail.moderationStatus}
-            </span>
-          </div>
           {detail.bin && (
             <div className="fcw-flex-col" style={{ gap: "0.25rem", minWidth: 120 }}>
               <span className="fcw-body-xs fcw-text-tertiary">БИН</span>
@@ -214,7 +208,7 @@ export function AdminBusinessDetail({ businessId, onBack, onOpenChat }: Props) {
       )}
 
       {showAddProduct && (
-        <Modal onClose={() => setShowAddProduct(false)}>
+        <Modal open onClose={() => setShowAddProduct(false)}>
           <div className="fcw-flex-col" style={{ gap: "1rem", padding: "1rem", minWidth: 320 }}>
             <h3 className="fcw-h3" style={{ margin: 0 }}>{t("platform.businessDetail.addProductTitle")}</h3>
             <input

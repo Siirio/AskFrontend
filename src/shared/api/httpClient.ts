@@ -49,6 +49,13 @@ export function getCsrfHeaders(): Record<string, string> {
   return token ? { "X-XSRF-TOKEN": token } : {};
 }
 
+export function getAuthHeaders(): Record<string, string> {
+  const accessToken = getAccessToken();
+  return accessToken
+    ? { Authorization: `Bearer ${accessToken}` }
+    : getCsrfHeaders();
+}
+
 export class ApiError extends Error {
   status: number;
   errorCode: string | null;

@@ -48,13 +48,11 @@
   "platform.users.role.MODERATOR": "Модератор",
   "platform.permissions.MANAGE_PLATFORM_USERS": "Управление пользователями платформы",
   "platform.permissions.MANAGE_MANAGED_IMPORTS": "Управление управляемыми импортами",
-  "platform.permissions.EDIT_CATALOG_DURING_IMPORT": "Редактирование каталога при импорте",
-  "platform.permissions.PUBLISH_CATALOG_DURING_IMPORT": "Публикация каталога при импорте",
-  "platform.permissions.USE_AI_CATALOG_TOOLS": "AI-инструменты каталога",
+  "platform.permissions.EDIT_ITEMS_SERVICES_DURING_IMPORT": "Редактирование товаров и услуг при импорте",
+  "platform.permissions.PUBLISH_ITEMS_SERVICES_DURING_IMPORT": "Публикация товаров и услуг при импорте",
+  "platform.permissions.USE_AI_ITEMS_SERVICES_TOOLS": "AI-инструменты товаров и услуг",
   "platform.permissions.MANAGE_SUPPORT_CHATS": "Управление чатами поддержки",
   "platform.permissions.MODERATE_CONTENT": "Модерация контента",
-  "platform.permissions.SUSPEND_BUSINESS": "Приостановка бизнеса",
-  "platform.permissions.BAN_BUSINESS": "Блокировка бизнеса",
   "platform.moderation.title": "Открытые жалобы",
   "platform.moderation.empty": "Открытых жалоб нет",
   "platform.moderation.resolve": "Принять",
@@ -436,6 +434,7 @@
   "seller.step3.title": "Настройка каталога",
   "seller.step4.title": "Подтверждение условий",
   "seller.businessName": "Название бизнеса",
+  "seller.legalName": "Юридическое наименование",
   "seller.legalForm.KZ_IP": "ИП",
   "seller.legalForm.KZ_TOO": "ТОО",
   "seller.legalForm.NONE": "Без указанной формы",
@@ -606,16 +605,22 @@
   "business.allBranches": "Все филиалы",
   "business.branch.add": "Добавить филиал",
   "business.branch.edit": "Редактировать филиал",
+  "business.branch.onlineOnlyConfirmTitle": "Переключить бизнес в офлайн-режим?",
+  "business.branch.onlineOnlyConfirmDesc": "Сейчас ваш бизнес настроен как «только онлайн». Добавление физического филиала переведёт его в обычный режим с точками продаж. Это действие нельзя отменить автоматически.",
+  "business.branch.onlineOnlyConfirm": "Добавить филиал и переключить",
+  "business.branch.onlineOnlyCancel": "Отмена",
   "business.branch.name": "Название филиала",
   "business.branch.address": "Адрес",
   "business.branch.addressDetails": "Уточнение: подъезд, этаж, офис",
-  "business.branch.onlineOnly": "Только онлайн",
+
   "business.branch.location": "Местоположение *",
   "business.branch.pickOnMap": "Укажите на карте",
   "business.branch.latitude": "Широта",
   "business.branch.longitude": "Долгота",
-  "business.branch.openIn2gis": "Открыть в 2GIS",
+  "business.branch.openIn2gis": "Открыть на карте",
   "business.branch.searchPlace": "Поиск места...",
+  "business.branch.findPlace": "Найти",
+  "business.branch.locationNotFound": "Место не найдено. Уточните адрес или поставьте точку на карте.",
   "business.branch.noMapKey": "Ключ API карты не задан. Обратитесь к администратору.",
   "business.branch.city": "Город",
   "business.product.editTitle": "Редактирование товара",
@@ -722,6 +727,8 @@
   "business.toast.branchLocationRequired": "Укажите местоположение на карте",
   "business.toast.selectCity": "Выберите город",
   "business.toast.staffAdded": "Сотрудник добавлен. Временный пароль показан в карточке сотрудника.",
+  "business.toast.pendingEmployeeDeleted": "Ожидающий активации сотрудник удалён.",
+  "business.toast.pendingEmployeeDeleteError": "Не удалось удалить ожидающего активации сотрудника.",
   "business.toast.invitationSent": "Приглашение отправлено",
   "business.toast.staffAddError": "Ошибка добавления сотрудника",
   "business.toast.passwordReset": "Новый временный пароль создан.",
@@ -761,6 +768,10 @@
   "business.chats.statDeclined": "Отклонено",
   "business.chats.emptyDesc": "Новые обращения по филиалу появятся здесь.",
   "business.chats.noMessages": "Нет сообщений",
+  "business.chats.customer": "Клиент",
+  "business.chats.attachment": "Открыть вложение",
+  "business.chats.loadError": "Не удалось загрузить чат",
+  "business.chats.sendError": "Не удалось отправить сообщение",
   "business.chats.justNow": "только что",
   "business.chats.minAgo": "{{n}} мин. назад",
   "business.chats.hoursAgo": "{{n}} ч. назад",
@@ -773,6 +784,7 @@
   "business.currentRole": "Текущая роль",
   "business.employees": "Сотрудники",
   "business.employee.add": "Добавить сотрудника",
+  "business.employee.deletePending": "Удалить запрос на активацию",
   "business.employee.empty": "Нет сотрудников",
   "business.employee.manager": "Менеджер",
   "business.employee.worker": "Сотрудник",
@@ -979,8 +991,9 @@
   "managedImport.requested": "Запрос отправлен",
   "managedImport.requestProducts": "Помощь с импортом товаров",
   "managedImport.requestServices": "Помощь с импортом услуг",
-  "managedImport.scope.PRODUCTS": "товаров",
-  "managedImport.scope.SERVICES": "услуг",
+  "managedImport.scope.ITEM": "товаров",
+  "managedImport.scope.SERVICE": "услуг",
+  "managedImport.scope.BOTH": "товаров и услуг",
   "managedImport.title": "Импорт {{catalog}} с командой Ask",
   "managedImport.serviceLabel": "Услуга управляемого импорта",
   "managedImport.benefitTitle": "Передайте источник — получите готовый каталог {{catalog}}",
@@ -992,9 +1005,23 @@
   "managedImport.benefit.publish": "Согласуем результат перед публикацией",
   "managedImport.contactChannel": "Как с вами связаться",
   "managedImport.contactValue": "Контакт",
+  "managedImport.contactValidation.EMAIL": "Введите корректный email.",
+  "managedImport.contactValidation.TELEGRAM": "Telegram должен начинаться с @ и содержать имя пользователя.",
+  "managedImport.contactValidation.WHATSAPP": "Введите номер WhatsApp в международном формате.",
   "managedImport.sources": "Откуда брать каталог",
   "managedImport.sourceLinks": "Ссылки на источники",
   "managedImport.sourceLinksPlaceholder": "Сайт, облачная папка, соцсеть или другая ссылка",
+  "managedImport.sourcePrompt": "Это все ссылки, которые можете дать? Выберите источник и добавьте ссылку; можно добавить ещё.",
+  "managedImport.sourceSelect": "Выберите тип источника",
+  "managedImport.removeSource": "Удалить источник",
+  "managedImport.sourceType.WEBSITE": "Сайт",
+  "managedImport.sourceType.KASPI": "Kaspi",
+  "managedImport.sourceType.OZON": "Ozon",
+  "managedImport.sourceType.WILDBERRIES": "Wildberries",
+  "managedImport.sourceType.TWO_GIS": "2GIS",
+  "managedImport.sourceType.INSTAGRAM": "Instagram",
+  "managedImport.sourceType.TELEGRAM": "Telegram",
+  "managedImport.sourceType.OTHER": "Другая ссылка",
   "managedImport.sourceNotes": "Что важно учесть",
   "managedImport.sourceNotesPlaceholder": "Например: импортировать только актуальные позиции и сохранить ваши формулировки",
   "managedImport.legal": "Я передаю источники законно и принимаю",
@@ -1002,14 +1029,14 @@
   "managedImport.submit": "Запросить импорт {{catalog}}",
   "managedImport.sent": "Запрос отправлен. Команда Ask свяжется с вами после оценки источников.",
   "managedImport.error": "Не удалось отправить запрос на импорт",
-  "seller.catalogScope.title": "Что предлагает ваш бизнес?",
-  "seller.catalogScope.description": "Это настроит кабинет и поможет Ask правильно подготовить каталог.",
-  "seller.catalogScope.PRODUCTS": "Товары",
-  "seller.catalogScope.PRODUCTS.description": "Физические товары и ассортимент",
-  "seller.catalogScope.SERVICES": "Услуги",
-  "seller.catalogScope.SERVICES.description": "Работы, консультации и запись",
-  "seller.catalogScope.BOTH": "Товары и услуги",
-  "seller.catalogScope.BOTH.description": "Оба направления в одном бизнесе",
+  "seller.businessScope.title": "Что предлагает ваш бизнес?",
+  "seller.businessScope.description": "Это настроит кабинет и поможет Ask правильно подготовить каталог.",
+  "seller.businessScope.ITEM": "Товары",
+  "seller.businessScope.ITEM.description": "Физические товары и ассортимент",
+  "seller.businessScope.SERVICE": "Услуги",
+  "seller.businessScope.SERVICE.description": "Работы, консультации и запись",
+  "seller.businessScope.BOTH": "Товары и услуги",
+  "seller.businessScope.BOTH.description": "Оба направления в одном бизнесе",
   "seller.catalog.manualDescription": "Добавлю позиции сам или загружу подготовленный файл",
   "seller.catalog.managedDescription": "Команда Ask поможет собрать и подготовить каталог {{catalog}}",
   "seller.managedBenefitTitle": "Не тратьте время на ручной перенос"
@@ -1045,7 +1072,7 @@
   ,"profile.title": "Профиль и настройки"
   ,"profile.description": "Управляйте личными данными, приватностью и доступом к своим брендам. Информация компании редактируется отдельно в бизнес-кабинете."
   ,"chats.conversations.type.PLATFORM_SUPPORT": "Поддержка Ask"
-  ,"seller.validation.businessContact": "Укажите название бизнеса и контакт для связи."
+  ,"seller.validation.businessContact": "Укажите название и категорию бизнеса."
   ,"seller.validation.importSource": "Выберите хотя бы один источник для импорта каталога."
   ,"business.toast.branchRequired": "Сначала создайте или выберите филиал."
   ,"business.toast.imageTooLarge": "Изображение должно быть до 2 МБ."
@@ -1054,11 +1081,132 @@
   ,"category.autocomplete.standardGroup": "Стандартные категории"
   ,"category.autocomplete.yourGroup": "Ваши категории"
   ,"category.autocomplete.noMatch": "Нет подходящих категорий"
+  ,"category.autocomplete.createCustom": "Сохранить свою категорию «{{value}}»"
+  ,"business.product.deepLink": "Ссылка на товар"
+  ,"business.product.deepLinkPlaceholder": "Ссылка на карточку товара или диплинк"
+  ,"business.product.tags": "Теги"
+  ,"business.product.tagsPlaceholder": "Через запятую"
+  ,"business.product.enabled": "Товар активен"
+  ,"business.attributes": "Дополнительные характеристики"
+  ,"business.attributesPlaceholder": "{\"Цвет\":\"Чёрный\",\"Размер\":\"M\"}"
+  ,"business.service.mode": "Формат услуги"
+  ,"business.service.onDemand": "По запросу"
+  ,"business.service.scheduled": "По расписанию"
+  ,"business.service.active": "Услуга активна"
+  ,"business.branch.timeZoneId": "Часовой пояс"
+  ,"business.branch.openNow": "Открыто"
+  ,"business.branch.closedNow": "Закрыто"
+  ,"business.branch.closedChatNotice": "Магазин сейчас закрыт, ответит когда откроется"
+  ,"business.branch.weeklyHours": "Часы работы"
+  ,"business.branch.specialHours": "Особые даты"
+  ,"business.branch.addHoursRow": "+ Добавить"
+  ,"business.branch.day.monday": "Пн"
+  ,"business.branch.day.tuesday": "Вт"
+  ,"business.branch.day.wednesday": "Ср"
+  ,"business.branch.day.thursday": "Чт"
+  ,"business.branch.day.friday": "Пт"
+  ,"business.branch.day.saturday": "Сб"
+  ,"business.branch.day.sunday": "Вс"
+  ,"business.branch.opensAt": "Открытие"
+  ,"business.branch.closesAt": "Закрытие"
+  ,"business.branch.closedAllDay": "Закрыто весь день"
+  ,"business.branch.date": "Дата"
+  ,"drops.coverUrl": "Обложка"
+  ,"drops.coverUrlPlaceholder": "Ссылка на изображение"
+  ,"drops.discountPercent": "Скидка, %"
+  ,"drops.discountAmount": "Скидка, сумма"
+  ,"drops.currency": "Валюта"
+  ,"drops.enabled": "Предложение активно"
   ,"imageUploader.addPhoto": "Добавить фото"
   ,"imageUploader.replace": "Заменить"
   ,"imageUploader.delete": "Удалить"
   ,"business.product.priceSuffix": "\u20B8"
   ,"business.toast.productNameRequired": "Укажите название товара."
   ,"business.toast.serviceNameRequired": "Укажите название услуги."
-  ,"seller.validation.legalDetails": "Для выбранной формы заполните ИИН/БИН и юридическое наименование либо выберите вариант «Без указанной формы»."
+  ,"seller.validation.legalDetails": "Для выбранной формы укажите ИИН/БИН и юридическое наименование."
+  ,"seller.validation.category": "Укажите категорию бизнеса."
+  ,"seller.verification.title": "Подтверждение бизнеса"
+  ,"seller.verification.description": "Для бизнеса без указанной формы добавьте хотя бы одну действующую ссылку для проверки."
+  ,"seller.validation.verificationSource": "Добавьте хотя бы одну корректную ссылку, начинающуюся с http:// или https://."
+  ,"seller.verification.addSource": "Выберите источник, чтобы добавить ссылку"
+  ,"seller.verification.binIin": "БИН / ИИН"
+  ,"seller.verification.phone": "Телефон для связи"
+  ,"seller.verification.corporateEmail": "Корпоративный email"
+  ,"seller.verification.twoGisUrl": "Ссылка на 2GIS"
+  ,"seller.verification.kaspiUrl": "Ссылка на Kaspi"
+  ,"seller.verification.ozonUrl": "Ссылка на Ozon"
+  ,"seller.verification.wildberriesUrl": "Ссылка на Wildberries"
+  ,"seller.verification.websiteUrl": "Сайт"
+  ,"seller.verification.instagramUrl": "Instagram"
+  ,"seller.verification.telegramUrl": "Telegram"
+  ,"seller.onlineOnly": "Только онлайн (без физического филиала)"
+  ,"seller.onlineOnly.description": "У бизнеса нет физической точки — товары или услуги предоставляются удалённо"
+  ,"business.verification.status.PENDING": "Бизнес на проверке"
+  ,"business.verification.status.NEEDS_INFO": "Требуется дополнительная информация"
+  ,"business.verification.status.REJECTED": "Верификация отклонена"
+  ,"business.verification.description.PENDING": "Ваши данные проверяются. Это может занять до 24 часов."
+  ,"business.verification.description.NEEDS_INFO": "Команда Ask запросила дополнительные сведения. Проверьте чат поддержки."
+  ,"business.verification.description.REJECTED": "Проверка не пройдена. Свяжитесь с поддержкой для уточнения."
+  ,"platform.verification.title": "Верификация бизнесов"
+  ,"platform.verification.empty": "Нет бизнесов на верификации"
+  ,"platform.verification.filterAll": "Все"
+  ,"platform.verification.review": "Проверить"
+  ,"platform.verification.approve": "Одобрить"
+  ,"platform.verification.reject": "Отклонить"
+  ,"platform.verification.requestInfo": "Запросить данные"
+  ,"platform.verification.comment": "Комментарий..."
+  ,"platform.verification.proofs": "Подтверждающие данные"
+  ,"platform.verification.history": "История проверок"
+  ,"platform.verification.status.PENDING": "Ожидает"
+  ,"platform.verification.status.NEEDS_INFO": "Нужны данные"
+  ,"platform.verification.status.APPROVED": "Подтверждён"
+  ,"platform.verification.status.REJECTED": "Отклонён"
+  ,"platform.verification.priority.STANDARD": "Стандартный"
+  ,"platform.verification.priority.EXPEDITED": "Ускоренный"
+  ,"platform.verification.field.binIin": "БИН / ИИН"
+  ,"platform.verification.field.phone": "Телефон"
+  ,"platform.verification.field.corporateEmail": "Корпоративный email"
+  ,"platform.verification.field.twoGisUrl": "2GIS"
+  ,"platform.verification.field.kaspiUrl": "Kaspi"
+  ,"platform.verification.field.ozonUrl": "Ozon"
+  ,"platform.verification.field.wildberriesUrl": "Wildberries"
+  ,"platform.verification.field.websiteUrl": "Сайт"
+  ,"platform.verification.field.instagramUrl": "Instagram"
+  ,"platform.verification.field.telegramUrl": "Telegram"
+  ,"business.additional": "Дополнительно"
+  ,"business.continue": "Продолжить"
+  ,"business.back": "Назад"
+  ,"business.product.editorDescription": "Добавьте основную информацию. Описание и характеристики можно заполнить при необходимости."
+  ,"business.product.mainDetails": "Основная информация"
+  ,"business.product.mainDetailsDescription": "Эти данные помогают пользователю понять предложение и перейти к покупке."
+  ,"business.product.deepLinkRequiredHint": "Укажите прямую ссылку на страницу товара, где пользователь сможет посмотреть детали или оформить заказ."
+  ,"business.product.additionalDescription": "Описание, теги и характеристики для более точного поиска."
+  ,"business.service.editorDescription": "Сначала укажите, что вы делаете и как формируется услуга."
+  ,"business.service.mainDetails": "Основная информация"
+  ,"business.service.mainDetailsDescription": "Название, категория, цена и формат будут видны пользователю в поиске."
+  ,"business.service.scheduleHint": "Например: по будням с 10:00 до 19:00 или только по предварительной записи."
+  ,"business.service.additionalDescription": "Описание и характеристики, которые помогут подобрать услугу."
+  ,"business.toast.productLinkRequired": "Укажите ссылку на товар"
+  ,"business.branch.editorDescription": "Сначала выберите реальное место на карте, затем настройте рабочее время."
+  ,"business.branch.stepAddress": "Адрес"
+  ,"business.branch.stepHours": "Режим работы"
+  ,"business.branch.locationTitle": "Где находится филиал"
+  ,"business.branch.locationDescription": "Найдите адрес или поставьте точку на карте. Город и адрес заполнятся автоматически."
+  ,"business.branch.namePlaceholder": "Например: Магазин на Абая"
+  ,"business.branch.selectedAddress": "Выбранный адрес"
+  ,"business.branch.hoursTitle": "Когда филиал работает"
+  ,"business.branch.hoursDescription": "Добавьте обычный график. Праздники и исключения можно указать отдельно."
+  ,"business.branch.timeZonePlaceholder": "Например: Asia/Almaty"
+  ,"business.branch.specialHoursDescription": "Праздники, выходные и дни с изменённым графиком."
+  ,"drops.nameRequired": "Введите название уникального предложения"
+  ,"drops.editorDescription": "Соберите предложение по шагам и проверьте результат перед публикацией."
+  ,"drops.stepDetails": "Основное"
+  ,"drops.stepPublication": "Публикация"
+  ,"drops.stepReview": "Проверка"
+  ,"drops.detailsTitle": "Что вы предлагаете"
+  ,"drops.detailsDescription": "Выберите понятный пользователю тип и коротко опишите предложение."
+  ,"drops.publicationTitle": "Когда и как показывать"
+  ,"drops.publicationDescription": "Укажите период, обложку и условия акции, если они есть."
+  ,"drops.reviewTitle": "Проверьте предложение"
+  ,"drops.reviewDescription": "После создания предложение станет доступно пользователям согласно указанному периоду."
 }

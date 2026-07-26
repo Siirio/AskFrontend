@@ -1,4 +1,4 @@
-export type ResultKind = "product" | "service" | "business";
+export type ResultKind = "item" | "service" | "business";
 export type Confidence = "high" | "medium" | "low";
 export type SearchSection = "EXACT" | "OVER_BUDGET" | "WRONG_CITY" | "SIMILAR";
 
