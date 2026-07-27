@@ -78,8 +78,8 @@ export function VerifyCodeForm({
             t("verify.digitAria", { position, total })
           }
           onValueChange={setCode}
-          onComplete={() => {
-            if (!pending) void submit();
+          onComplete={(value) => {
+            if (!pending) void submit(value);
           }}
         />
       </Field>
