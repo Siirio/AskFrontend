@@ -184,6 +184,7 @@ export function BusinessPage() {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const [profile, setProfile] = useState<BrandProfileDto>(() => emptyProfile(businessId));
+  const [profileFieldErrors, setProfileFieldErrors] = useState<{ field: string; message: string }[]>([]);
   const [drops, setDrops] = useState<BrandDropDto[]>([]);
   const [branches, setBranches] = useState<BranchDto[]>([]);
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
@@ -577,12 +578,20 @@ export function BusinessPage() {
   const handleSaveProfile = async () => {
     if (!businessId) return;
     setBusy(true);
+    setProfileFieldErrors([]);
     try {
       const saved = await updateBrandProfile(businessId, profile);
       setProfile(saved);
       toast.show(t("business.toast.profileSaved"), "success");
     } catch (e) {
-      toast.show(e instanceof ApiError ? e.message : t("business.toast.saveError"), "error");
+      if (e instanceof ApiError) {
+        if (e.fieldErrors?.length) {
+          setProfileFieldErrors(e.fieldErrors);
+        }
+        toast.show(e.message, "error");
+      } else {
+        toast.show(t("business.toast.saveError"), "error");
+      }
     } finally {
       setBusy(false);
     }
@@ -1423,6 +1432,7 @@ export function BusinessPage() {
                       onSave={handleSaveProfile}
                       busy={busy}
                       readOnly={isWorker}
+                      fieldErrors={profileFieldErrors}
                     />
                   </div>
                 )}

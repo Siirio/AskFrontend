@@ -60,11 +60,13 @@ export function getAuthHeaders(): Record<string, string> {
 export class ApiError extends Error {
   status: number;
   errorCode: string | null;
+  fieldErrors?: { field: string; message: string }[];
 
-  constructor(status: number, message: string, errorCode: string | null = null) {
+  constructor(status: number, message: string, errorCode: string | null = null, fieldErrors?: { field: string; message: string }[]) {
     super(message);
     this.status = status;
     this.errorCode = errorCode;
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -97,14 +99,21 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     const text = await response.text().catch(() => "");
     let message = text;
     let errorCode: string | null = null;
+    let fieldErrors: { field: string; message: string }[] | undefined;
     try {
       const json = JSON.parse(text);
       if (json.message) message = json.message;
       errorCode = json.error_code || json.errorCode || null;
+      if (Array.isArray(json.errors)) {
+        fieldErrors = json.errors.map((e: { field?: string; message?: string }) => ({
+          field: e.field || "",
+          message: e.message || "",
+        }));
+      }
     } catch {
       // not JSON, use raw text
     }
-    throw new ApiError(response.status, message, errorCode);
+    throw new ApiError(response.status, message, errorCode, fieldErrors);
   }
 
   const json = await parseResponseBody(response);

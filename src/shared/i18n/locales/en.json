@@ -563,6 +563,7 @@
   "business.product.sku": "SKU",
   "business.product.tags": "Tags",
   "business.product.enabled": "Enabled",
+  "business.product.active": "Active",
   "business.product.save": "Save",
   "business.product.cancel": "Cancel",
   "business.product.delete": "Delete",

@@ -11,34 +11,80 @@ const BRAND_COLOR_PRESETS = [
   "#84cc16", "#6b7280", "#1e293b", "#0f172a",
 ];
 
+function normalizeUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return "https://" + trimmed;
+}
+
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+
+  let d = digits;
+  if (d.startsWith("8")) d = "7" + d.slice(1);
+  if (!d.startsWith("7")) d = "7" + d;
+  d = d.slice(0, 11);
+
+  let result = "+7";
+  if (d.length > 1) result += " (" + d.substring(1, Math.min(d.length, 4));
+  if (d.length >= 4) result += ") " + d.substring(4, Math.min(d.length, 7));
+  if (d.length >= 7) result += "-" + d.substring(7, Math.min(d.length, 9));
+  if (d.length >= 9) result += "-" + d.substring(9, 11);
+  return result;
+}
+
 interface ProfileEditorProps {
   profile: BrandProfileDto;
   onChange: (profile: BrandProfileDto) => void;
   onSave: () => Promise<void>;
   busy: boolean;
   readOnly?: boolean;
+  fieldErrors?: { field: string; message: string }[];
 }
 
-export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: ProfileEditorProps) {
+export function ProfileEditor({ profile, onChange, onSave, busy, readOnly, fieldErrors }: ProfileEditorProps) {
   const { t } = useTranslation();
   const [avatarShape, setAvatarShape] = useState<"circle" | "square">("circle");
   const [mediaBusy, setMediaBusy] = useState<"logo" | "cover" | null>(null);
   const [mediaError, setMediaError] = useState("");
   const update = (patch: Partial<BrandProfileDto>) => onChange({ ...profile, ...patch });
 
+  const [mediaPreview, setMediaPreview] = useState<{logo?: string; cover?: string}>({});
+
+  const fieldError = (field: string) => {
+    const err = fieldErrors?.find(e => e.field === field);
+    return err ? err.message : null;
+  };
+
+  const handleUrlBlur = (field: "instagramUrl" | "telegramUrl" | "websiteUrl") => {
+    const value = profile[field];
+    if (value) {
+      const normalized = normalizeUrl(value);
+      if (normalized !== value) update({ [field]: normalized });
+    }
+  };
+
   const uploadMedia = async (kind: "logo" | "cover", file?: File) => {
     if (!file || !profile.businessId) return;
     setMediaBusy(kind);
     setMediaError("");
+    const objectUrl = URL.createObjectURL(file);
+    const previewField = kind === "logo" ? "logoUrl" : "coverUrl";
+    setMediaPreview(prev => ({ ...prev, [kind]: objectUrl }));
     try {
       const updated = kind === "logo"
         ? await uploadBusinessProfileLogo(profile.businessId, file)
         : await uploadBusinessProfileCover(profile.businessId, file);
-      onChange({ ...profile, ...updated });
+      onChange({ ...profile, [previewField]: updated[previewField] });
+      setMediaPreview(prev => ({ ...prev, [kind]: undefined }));
     } catch (error) {
+      setMediaPreview(prev => ({ ...prev, [kind]: undefined }));
       setMediaError(error instanceof Error ? error.message : t("common.error"));
     } finally {
       setMediaBusy(null);
+      URL.revokeObjectURL(objectUrl);
     }
   };
 
@@ -82,8 +128,8 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
                 border: "2px solid var(--fcw-color-border)",
               }}
             >
-              {profile.logoUrl ? (
-                <img src={profile.logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {mediaPreview.logo || profile.logoUrl ? (
+                <img src={mediaPreview.logo || profile.logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "28px", fontWeight: 700 }}>
                   {(profile.businessName || "B")[0].toUpperCase()}
@@ -205,23 +251,54 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
           <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
               <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Phone size={12} />Телефон</span>
-              <input className="fcw-input" value={profile.number || ""} onChange={e => update({ number: e.target.value })} placeholder="+7 700 000 00 00" />
+              <input
+                className="fcw-input"
+                value={profile.number || ""}
+                onChange={e => {
+                  const formatted = formatPhoneNumber(e.target.value);
+                  update({ number: formatted });
+                }}
+                placeholder="+7 (700) 000-00-00"
+              />
+              {fieldError("number") && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{fieldError("number")}</span>}
             </label>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
               <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Mail size={12} />Email</span>
               <input className="fcw-input" type="email" value={profile.email || ""} onChange={e => update({ email: e.target.value })} placeholder="hello@business.kz" />
+              {fieldError("email") && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{fieldError("email")}</span>}
             </label>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
               <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Globe size={12} />{t("profileEditor.website")}</span>
-              <input className="fcw-input" value={profile.websiteUrl || ""} onChange={e => update({ websiteUrl: e.target.value })} placeholder="https://..." />
+              <input
+                className="fcw-input"
+                value={profile.websiteUrl || ""}
+                onChange={e => update({ websiteUrl: e.target.value })}
+                onBlur={() => handleUrlBlur("websiteUrl")}
+                placeholder="https://..."
+              />
+              {fieldError("websiteUrl") && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{fieldError("websiteUrl")}</span>}
             </label>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
               <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><Instagram size={12} />{t("profileEditor.instagram")}</span>
-              <input className="fcw-input" value={profile.instagramUrl || ""} onChange={e => update({ instagramUrl: e.target.value })} placeholder="https://instagram.com/..." />
+              <input
+                className="fcw-input"
+                value={profile.instagramUrl || ""}
+                onChange={e => update({ instagramUrl: e.target.value })}
+                onBlur={() => handleUrlBlur("instagramUrl")}
+                placeholder="https://instagram.com/..."
+              />
+              {fieldError("instagramUrl") && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{fieldError("instagramUrl")}</span>}
             </label>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
               <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}><MessageCircle size={12} />{t("profileEditor.telegram")}</span>
-              <input className="fcw-input" value={profile.telegramUrl || ""} onChange={e => update({ telegramUrl: e.target.value })} placeholder="https://t.me/..." />
+              <input
+                className="fcw-input"
+                value={profile.telegramUrl || ""}
+                onChange={e => update({ telegramUrl: e.target.value })}
+                onBlur={() => handleUrlBlur("telegramUrl")}
+                placeholder="https://t.me/..."
+              />
+              {fieldError("telegramUrl") && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{fieldError("telegramUrl")}</span>}
             </label>
           </div>
         </div>

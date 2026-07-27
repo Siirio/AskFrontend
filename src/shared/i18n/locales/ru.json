@@ -569,6 +569,7 @@
   "business.product.sku": "Артикул",
   "business.product.tags": "Теги",
   "business.product.enabled": "Включён",
+  "business.product.active": "Активен",
   "business.product.save": "Сохранить",
   "business.product.cancel": "Отмена",
   "business.product.delete": "Удалить",
