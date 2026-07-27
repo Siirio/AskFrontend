@@ -41,9 +41,22 @@ import { useRoleSelection } from "../hooks";
  */
 type RoleChoice = "customer" | "business";
 
+/**
+ * Where each answer LANDS. `business` pointed at `/app/business` until
+ * 2026-07-27 and that was a silent no-op: the session answering this modal is a
+ * fresh customer, so `RequireDashboardAccess` bounced it back to `/app` in a few
+ * milliseconds and the choice did nothing. (It was invisible in review because
+ * both halves were individually correct — the modal's target, and the guard.)
+ *
+ * It now points at seller REGISTRATION, which is what "I'm selling" has always
+ * meant — PRODUCT_VISION UF 3.1, "the seller is redirected to the business
+ * registration page". Creating the business is what promotes the account, and
+ * only then does /app/business open. That page lives outside the cabinet's guard
+ * group precisely so a customer can reach it.
+ */
 const ROLE_TARGET: Record<RoleChoice, string> = {
   customer: "/app",
-  business: "/app/business",
+  business: "/app/business/register",
 };
 
 function RoleCard({

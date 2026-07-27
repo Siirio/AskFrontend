@@ -44,7 +44,7 @@ export function RegisterForm({
   if (challenge) {
     return (
       <VerifyCodeForm
-        authChallengeId={challenge.authChallengeId}
+        authChallengeId={challenge.verificationId}
         sentTo={challenge.maskedDestination}
         onAuthenticated={onAuthenticated}
         onBack={reset}

@@ -7,9 +7,54 @@ re-verified line-by-line against the Java source (controller, processors,
 exception handler) AND end-to-end against the running backend 2026-07-17.
 
 **Wire format (D20):** the backend serializes JSON in **snake_case**
-(`access_token`, `auth_challenge_id`, `error_code`, …). Field names in this doc
+(`access_token`, `verification_id`, `error_code`, …). Field names in this doc
 are the Java/TS camelCase names; `shared/api` transforms keys at the transport
 boundary, so slice code only ever sees camelCase.
+
+> ## ⚠ 2026-07-27 — THIS CLIENT TARGETS THE BACKEND'S `dev` BRANCH (owner decision)
+>
+> The backend has two live shapes and they disagree. `../Ask_Backend` is checked out on
+> **`dev`**; the server on `localhost:2020` is still built from **`master`**. The owner's
+> call is to build against **`dev`**, because that is what will be deployed.
+>
+> | | `dev` — **our target** | `master` — what :2020 runs today |
+> |---|---|---|
+> | verify id field | **`verificationId`** | `authChallengeId` |
+> | seller onboarding | **`POST /api/v1/business/onboarding`** (Bearer) | does not exist — **404** |
+> | `GET /categories` | **flat**: `{suggestions:[{category_id,label,type,source}]}` | tree: `{id,name,slug,parent_id,children}` |
+> | business registration | the authenticated onboarding above | `POST /api/v1/auth/business/register` (unauthenticated, creates the whole account) |
+>
+> **CONSEQUENCE, stated so it is not rediscovered as a bug:** against the CURRENT :2020
+> build, sign-up's verify step and the whole of `/app/business/register` will fail. That is
+> the branch gap, not a defect in this client, and it clears when the backend redeploys
+> from `dev`. The verify failure now surfaces as its own message ("that request was
+> rejected… a fault on our side") instead of the misleading "the code is invalid or
+> expired" — see `VALIDATION_ERROR` in `hooks.ts`.
+>
+> **How this was established — and the lesson.** Both shapes were confirmed by curling the
+> RUNNING server, not by reading a checkout. Reading the `dev` source tree alone produced a
+> confident "correction" of `authChallengeId` → `verificationId` that broke sign-up on the
+> spot; the live server answered `400 VALIDATION_ERROR` naming `authChallengeId`. Neither
+> source is sole authority: **the checkout says where we are going, the running server says
+> what works right now, and you need both.** Record which branch you confirmed against.
+>
+> ```bash
+> curl -s -X POST localhost:2020/api/v1/auth/customer/register \
+>   -H 'Content-Type: application/json' \
+>   -d '{"display_name":"P","email":"p@x.com","password":"Password123!","password_confirmation":"Password123!"}'
+> ```
+>
+> In the `local` profile `test-mode: true`, so the response carries the plaintext `code`
+> and an UNMASKED email — that alone tells you which mode you are in.
+>
+> **What held on BOTH branches, so the fix built on it stands:** `suggestRoleExpansion` is
+> never assigned anywhere (`git grep` finds nothing on master; declared-but-never-built on
+> dev), and the live verify response confirms `suggest_role_expansion: null`. The live
+> register response does return `"purpose":"REGISTER"`. See "Role modal trigger" below.
+>
+> **Open, dev-only:** `dev`'s `CustomerRegisterRequest` drops `acceptedUserAgreement` and
+> renames `rememberMe` → `isRememberMe`. `master` still accepts the consent field, so the
+> consent stops being recorded the moment dev deploys. Backend/product question.
 
 ## Endpoints consumed by slice #1 (the customer path)
 
@@ -93,12 +138,29 @@ business OWNER. There is no account *export* (the backend removed it). Documente
 - **CustomerRegisterRequest**: `displayName?`, `email`, `password` (8–128), `passwordConfirmation` (must equal password — backend `@AssertTrue`), `acceptedUserAgreement` (must be true — backend `@AssertTrue`), `rememberMe?`
   - ⚠ `displayName` is optional in the DTO but **`app_user.display_name` is NOT NULL in the schema** — omitting it makes `verify` fail with 409 `DATA_CONFLICT` (proven live 2026-07-17). The form therefore REQUIRES the name until backend reconciles DTO and schema. Raised with backend.
 - **LoginRequest**: `email`, `password` (both `@NotBlank`)
-- **VerifyCodeRequest**: `authChallengeId` (UUID), `code` (`\d{6}`)
+- **VerifyCodeRequest**: **`verificationId`** (UUID, `@NotNull`), `code` (`\d{6}`) — renamed 2026-07-27, see the warning at the top
 
 ## Response DTOs
 
-- **AuthChallengeResponse**: authChallengeId, role, purpose, channel, maskedDestination, expiresAt, **code?** (populated ONLY in backend verification test-mode; prod omits it and emails the code)
-- **AuthSessionResponse**: accessToken, tokenType, **expiresIn** (`expires_in`, token lifetime in seconds — added 2026-07-19), expiresAt, remembered, activationRequired, role, startRoute, user (AuthUserResponse), business? (AuthBusinessContextResponse), requiresRoleSelection?, availableRoles? (RoleOption[]), allRoles? (string[]), requiresTwoFactor?, authChallengeId?, **suggestRoleExpansion?** (set after a new single-role signup → the role-modal trigger)
+- **AuthChallengeResponse** (Java: `VerificationResponse`): **`verificationId`**, role, **`purpose`** (`VerificationPurpose` — `LOGIN` · `REGISTER` · `EMAIL_CHANGE`; set from `challenge.getPurpose().name()`), channel, maskedDestination, expiresAt, **code?** (populated ONLY in backend verification test-mode; prod omits it and emails the code)
+- **AuthSessionResponse**: accessToken, tokenType, **expiresIn** (`expires_in`, token lifetime in seconds — added 2026-07-19), expiresAt, remembered, activationRequired, role, startRoute, user (AuthUserResponse), business? (AuthBusinessContextResponse), requiresRoleSelection?, availableRoles? (RoleOption[]), allRoles? (string[]), requiresTwoFactor?, **`verificationId?`** (the 2FA challenge id — renamed), **suggestRoleExpansion? — DECLARED BUT NEVER SENT** (see below)
+
+### Role modal trigger (corrected 2026-07-27)
+
+`suggestRoleExpansion` was the documented trigger and is dead: declared on the DTO, assigned
+nowhere. The modal is now armed by **`purpose === "REGISTER"` on the challenge** — real
+backend data from the same flow, returned by `POST /auth/customer/register`. The two are
+OR'd (`useVerifyStep`), so the day the backend starts populating `suggestRoleExpansion`
+nothing on this side has to change.
+
+A log-in 2FA challenge deliberately carries no purpose (`useLoginFlow` builds that Challenge
+by hand from the login response), so signing in never re-opens a choice already answered.
+
+**Google OAuth is NOT covered by this fix.** `/oauth/callback` still arms the modal only on
+`suggestRoleExpansion`, and the callback has no equivalent "this is a first sign-up" signal —
+a Google user's first session is indistinguishable from their tenth on the wire. So a
+Google-first account currently gets no role modal. Raised with backend (ROADMAP cross-repo
+table); do not guess a client-side substitute (P9.4).
   - GET /session under a **Bearer** token returns `accessToken: null` (the token is already stored); under the **OAuth bridge cookie** it returns a REAL `access_token` (the exchange). `role` is the bare enum name ("CUSTOMER") rather than the authority ("ROLE_CUSTOMER") returned by verify — the client maps both (`roleToKind`).
 - **AuthUserResponse**: userId, displayName (**nullable** — registration accepts an empty name and the backend stores null), email, status — **no `phone`** (removed from AppUser in backend V8; identity lock)
 - **AuthBusinessContextResponse**: businessId, businessName, branchId, branchName, membershipId, memberRole

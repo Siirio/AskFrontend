@@ -18,7 +18,7 @@
   "app": {
     "nav": {
       "aria": "Main",
-      "brand": "ASK — home",
+      "brand": "ASK - home",
       "home": "Home",
       "chats": "Chats",
       "dashboard": "Dashboard"
@@ -68,7 +68,12 @@
       "agreement": "I agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>",
       "agreementAria": "I agree to the Terms of Service and Privacy Policy",
       "showPassword": "Show password",
-      "hidePassword": "Hide password"
+      "hidePassword": "Hide password",
+      "strength": {
+        "weak": "Weak",
+        "medium": "Medium",
+        "strong": "Strong"
+      }
     },
     "placeholders": {
       "name": "How should we address you",
@@ -110,7 +115,8 @@
       "invalidCredentials": "Incorrect email or password.",
       "accountNotActive": "This account is not active.",
       "nameRequired": "Enter your name.",
-      "roleSelection": "This email is linked to several roles. Choosing a role at sign-in is not available yet."
+      "roleSelection": "This email is linked to several roles. Choosing a role at sign-in is not available yet.",
+      "requestRejected": "That request was rejected before it reached your account. This is a fault on our side, not your code - please try again."
     },
     "roleModal": {
       "title": "Where would you like to start?",
@@ -120,6 +126,85 @@
       "customerHint": "Find products and services nearby",
       "businessHint": "Present your company to customers",
       "continue": "Continue"
+    }
+  },
+  "businessCabinet": {
+    "register": {
+      "pageTitle": "Register a business",
+      "title": "Set up your business on ASK",
+      "subtitle": "Tell us who you are and what you sell. You can add branches, products and services once your cabinet is open."
+    },
+    "fields": {
+      "businessName": "Business name",
+      "category": "What does your business do?",
+      "scope": "What do you sell?",
+      "legalForm": "Legal form",
+      "legalIdentifier": {
+        "KZ_IP": "IIN",
+        "KZ_TOO": "BIN"
+      },
+      "legalName": "Registered name",
+      "verification": "Where do you already sell or publish?"
+    },
+    "hints": {
+      "legalForm": "This decides what we need to confirm your business.",
+      "legalIdentifier": "12 digits, exactly as registered.",
+      "legalName": "The name on the registration, if it differs from the one above.",
+      "verification": "Pick the places that are yours and paste the links. One is enough."
+    },
+    "placeholders": {
+      "businessName": "For example, Aigul Flowers",
+      "category": "Start typing - for example, flowers",
+      "legalIdentifier": "123456789012",
+      "legalName": "IP Aigul Nurlankyzy",
+      "link": "https://"
+    },
+    "scopes": {
+      "ITEM": "Products",
+      "SERVICE": "Services",
+      "BOTH": "Both"
+    },
+    "legalForms": {
+      "KZ_IP": "IP",
+      "KZ_TOO": "TOO",
+      "NONE": "Not registered yet"
+    },
+    "legalFormHints": {
+      "KZ_IP": "Individual entrepreneur",
+      "KZ_TOO": "Limited liability partnership",
+      "NONE": "Confirm with links instead"
+    },
+    "sources": {
+      "twoGisUrl": "2GIS",
+      "kaspiUrl": "Kaspi",
+      "ozonUrl": "Ozon",
+      "wildberriesUrl": "Wildberries",
+      "websiteUrl": "Website",
+      "instagramUrl": "Instagram",
+      "telegramUrl": "Telegram"
+    },
+    "category": {
+      "loading": "Looking for matches",
+      "selected": "Category selected"
+    },
+    "actions": {
+      "createBusiness": "Create business"
+    },
+    "states": {
+      "loading": "Loading…",
+      "creating": "Creating your business…"
+    },
+    "errors": {
+      "nameRequired": "Enter your business name.",
+      "categoryRequired": "Choose or type what your business does.",
+      "legalFormRequired": "Choose a legal form.",
+      "legalIdentifierFormat": "Enter exactly 12 digits.",
+      "legalNameRequired": "Enter the registered name.",
+      "verificationRequired": "Add at least one valid link.",
+      "linkRequired": "Add the link, or remove this option.",
+      "linkFormat": "The link must start with http:// or https://",
+      "onboardingInvalid": "Some details are missing or invalid. Check the form and try again.",
+      "network": "Something went wrong. Check your connection and try again."
     }
   },
   "common": {

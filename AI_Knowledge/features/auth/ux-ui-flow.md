@@ -41,6 +41,36 @@ the field's end, `Eye`/`EyeOff` lucide icons, show/hide labels in ru/kk/en. On
 the register form password and confirmation share ONE visibility state: either
 eye flips both fields together (owner request 2026-07-17); login owns its own.
 
+**Password strength meter (owner request 2026-07-27, adopting neumorui's
+PasswordInput).** `PasswordInput` gained an opt-in `showStrength`, set on exactly
+ONE field in the product: sign-up's new password. Not the confirmation (a
+transcription of the field above it) and not login (nobody can act on a verdict
+about a password they already have).
+
+- Scored by `passwordStrength()` in `auth/model.ts` — pure, DOM-free, five
+  independent checks (≥8 · ≥12 · mixed case · a digit · a symbol) rather than an
+  entropy estimate, because this has to be understood at a glance while typing.
+  Length counts twice on purpose: it is the property that actually dominates
+  guessing cost, so "just make it longer" is a route to `strong`.
+- **It is a writing aid, never a gate.** The only rule that can block a sign-up
+  is the backend's 8–128 bound, which `useRegisterFlow` already enforces. A meter
+  that refused a password the server would accept would be inventing policy the
+  data authority never stated (P9.4). Nothing reads `level` to decide anything.
+- Rendered as `.neu-meter-track` / `.neu-meter-fill` / `.neu-meter-label`
+  (design-system/neumorphism.css) — a thinner groove than `.neu-progress-*`, no
+  entry animation (a 1.1s grow would still be catching up two keystrokes later),
+  and its colour carries meaning instead of being the accent.
+- **Not a traffic-light violation.** That lock forbids scoring a BUSINESS with
+  red/amber/green, because a score is a rating by another name. This scores the
+  viewer's own draft password in a form they are filling in — no third party is
+  judged. Colour is never the only channel: the fill's WIDTH and the word beside
+  it carry the same verdict. The three semantic colours were measured as TEXT on
+  the surface before shipping (a first — they had only been measured as fills);
+  `warning` light is the tight one at 4.88:1.
+- Hidden while the field is empty; the label joins the input's
+  `aria-describedby` rather than living in an aria-live region, so a screen
+  reader hears it on arrival instead of narrating every keystroke.
+
 **The agreement row:** "I agree to the *Terms of Service* and *Privacy Policy*",
 rendered with next-intl `t.rich` so each locale places its own links. It is
 deliberately NOT wrapped in a `<label>` — a label would toggle the checkbox when
@@ -56,7 +86,9 @@ placeholder — the legal copy is the owner's to write, never invented here (P9.
 2. **Log in:** email + password → `POST /auth/login` → session directly (or, if the account has 2FA, a challenge → the 6-digit verify step). No email code on log-in.
    **Sign up:** name, email, password (+ confirm), accept agreement → `customer/register` issues a challenge → 6-digit code → `verify` creates the account. (Name is REQUIRED in the form even though the DTO marks it optional: `app_user.display_name` is NOT NULL in the backend schema, so a nameless registration always fails at verify — proven live 2026-07-17, raised with backend; relax when they fix it.)
 3. On verify success the session (token) is stored, the page navigates to the backend's **`startRoute`** (`startRouteToPath`), and:
-   - if `suggestRoleExpansion` → the **Role Choosing Modal** opens OVER `/app`. It has NO close button, ignores ESC and outside clicks, and survives navigation and reload (the pending flag lives in localStorage + the auth store) — the ONLY way out is answering: a role card (customer preselected — search is the mission) + one accent Continue. Customer → `/app`; business → `/app/business`.
+   - if the challenge's `purpose` was **`REGISTER`** (or `suggestRoleExpansion` arrives — the two are OR'd) → the **Role Choosing Modal** opens OVER `/app`. It has NO close button, ignores ESC and outside clicks, and survives navigation and reload (the pending flag lives in localStorage + the auth store) — the ONLY way out is answering: a role card (customer preselected — search is the mission) + one accent Continue. Customer → `/app`; business → **`/app/business/register`**.
+   - **Fixed 2026-07-27, two faults, both blocking.** (a) The trigger was `suggestRoleExpansion` alone, a field the backend declares and never assigns — so the modal could not open on any account. (b) `verify` was being sent `auth_challenge_id` after the backend renamed it `verification_id`, so registration 400'd before the modal was even reachable. See `contracts.md`. A 2FA log-in runs this same verify step and carries no purpose, so signing in never re-opens an answered choice.
+   - **The business answer used to be a no-op.** It routed to `/app/business`, where `RequireDashboardAccess` bounced the fresh customer who had just chosen it. It now routes to seller registration (`@/business-cabinet`), which is what makes the account a seller — PRODUCT_VISION UF 3.1, "the seller is redirected to the business registration page".
    - The pending flag is dropped when the session ends (sign-out, or the backend rejecting the token).
 4. Role decides the surface: customer → Home/search (UF 2.x); business owner → business registration then the cabinet (UF 3.1). `startRoute` from the backend is the authority for where the session lands.
 
@@ -180,7 +212,7 @@ composition root (R3):
 | Guard | Mounted at | Rule | While loading | Denied → |
 |-------|-----------|------|---------------|----------|
 | `RequireAuth` | `app/app/(main)/layout.tsx` — wraps the whole `(main)` group | Rule 2: logged-out cannot enter `/app/*` | `GuardFallback` spinner | `/app/auth/login` |
-| `RequireDashboardAccess` | `app/app/(main)/business/layout.tsx` | Rule 1: customer-only cannot open the Dashboard | `GuardFallback` spinner | `/app` |
+| `RequireDashboardAccess` | `app/app/(main)/business/(cabinet)/layout.tsx` | Rule 1: customer-only cannot open the Dashboard | `GuardFallback` spinner | `/app` |
 
 - **The auth pages are the exception** because they sit OUTSIDE the `(main)` group — the route-group boundary is the "gated vs. sign-in entry" line, so there is no per-URL allowlist. `/app/auth/*` and the top-level `/oauth/callback` are reachable logged-out by construction.
 - **Client-side by necessity:** the token is localStorage-only (D5/D6), invisible to the server/middleware, so the guard runs after hydration. Sequence: server renders → `AuthProvider` restores → guard reveals or redirects. A server/middleware guard waits on the Phase-4 cookie migration.

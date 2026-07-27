@@ -41,14 +41,55 @@ Staff & Invites above; prefer these for company-level people management.
 | POST | /api/v1/me/invitations/{invitationId}/accept | Bearer | Accept → creates ACTIVE membership |
 | POST | /api/v1/me/invitations/{invitationId}/decline | Bearer | Decline |
 
-## Seller Onboarding (backend added 2026-07-18; catalogScope added 2026-07-19)
+## Seller Onboarding — **CONSUMED** since 2026-07-27 (`/app/business/register`)
+
+> **Corrected 2026-07-27.** The entry below previously read `POST /api/v1/seller/onboarding`
+> with a `catalogScope` of `PRODUCTS | SERVICES | BOTH`, and an error code of
+> `SELLER_ONBOARDING_INVALID`. None of those names exist in the backend — they were
+> written from the 2026-07-18/19 changelog before the endpoint was read, and the
+> 2026-07-21/22 domain cleanup renamed the module. The values below are read from
+> `kz.ask.business.onboarding.api.*` and were exercised against it.
+
 | Method | Path | Auth | Used by |
 |--------|------|------|---------|
-| POST | /api/v1/seller/onboarding | Bearer | Create business + OWNER membership |
+| POST | /api/v1/business/onboarding | Bearer | `BusinessRegisterPage` — create Business + BusinessProfile + OWNER membership + a verification record, in one transaction |
 
-- **Request carries `catalogScope` = `PRODUCTS` | `SERVICES` | `BOTH`** (2026-07-19) — the seller declares what they sell.
-- Response includes a managed-import `conversationId` when a managed import applies (open that chat).
-- **Onboarding flow (backend ux-ui, 4 steps):** (1) products / services / both? → sets `catalogScope`; (2) prepare the catalog yourself, or request managed import? (3) if managed import: it explains the paid service, benefit, selected sources + links, notes, and contact channel BEFORE legal acceptance; (4) an existing business member skips this and goes straight to their cabinet (no second "create business" entry). Confirm the screen against PRODUCT_VISION UF 3.1 before building (P9.1).
+**`SellerOnboardingRequest`** — required: `businessName`, `countryCode`, `legalForm`,
+`catalogSetupMode`, `businessScope`, and EITHER `categoryId` OR a non-blank `categoryName`.
+
+| Field | Values | Notes |
+|---|---|---|
+| `businessScope` | `ITEM` · `SERVICE` · `BOTH` | NOT `PRODUCTS`/`SERVICES` — the module speaks `ITEM` |
+| `legalForm` | `KZ_IP` · `KZ_TOO` · `NONE` | The form's one branch |
+| `catalogSetupMode` | `MANUAL` · `ASK_MANAGED_IMPORT` | **We send `MANUAL` only** — see below |
+| `legalIdentifier`, `legalName` | — | REQUIRED for `KZ_IP`/`KZ_TOO`; identifier is exactly 12 digits (IIN / BIN) |
+| `twoGisUrl` `kaspiUrl` `ozonUrl` `wildberriesUrl` `websiteUrl` `instagramUrl` `telegramUrl` | `^(?:https?://\S+)?$` | For `legalForm: NONE`, **at least one** must be non-blank |
+| `phone`, `corporateEmail` | — | Optional; not collected in V1 (no vision entry — P9.1) |
+
+**`SellerOnboardingResponse`**: `businessId`, `catalogSetupMode`, `startRoute`
+(`BUSINESS_CABINET` | `MANAGED_IMPORT`). **Its `startRoute` is deliberately not consumed** —
+the client re-reads `GET /api/v1/auth/session` after a 201 and follows THAT `startRoute`,
+because the session is the authority on where a role lands (auth slice lock) and it is the
+value that just went stale.
+
+**The role changes server-side.** A 201 promotes the caller from CUSTOMER to BUSINESS_OWNER.
+Until the session is re-read, `canAccessDashboard` still answers false and
+`RequireDashboardAccess` bounces the new seller out of the cabinet they just created — so
+`useRefreshSession()` (`@/auth`) is part of the contract, not a nicety.
+
+**`ASK_MANAGED_IMPORT` is not offered (deliberate, 2026-07-27).** It is contracted to open a
+managed-import request dialog (`POST /api/v1/businesses/{businessId}/managed-imports`) that
+does not exist until roadmap #8. Offering the choice would rebuild the exact silent dead end
+`/app/business/register` was created to remove. Add it WITH that dialog, not before.
+
+**Verification status is backend-derived:** `NONE` → the record is `PENDING`; a legal form →
+`APPROVED`. The client never sets or displays a verification verdict.
+
+### Registration (unauthenticated variant — NOT consumed)
+`POST /api/v1/auth/business/register` also exists (business name, `businessScope`, category,
+optional branch). ASK's flow always registers a business for an ALREADY authenticated
+customer — the role modal only appears after a signup — so the Bearer endpoint above is the
+one this client uses. Do not add the unauthenticated path without a vision entry.
 
 ## Catalog Setup status (backend added 2026-07-18)
 | Method | Path | Auth | Used by |
@@ -62,7 +103,17 @@ Staff & Invites above; prefer these for company-level people management.
 | Method | Path | Auth | Used by |
 |--------|------|------|---------|
 | GET | /api/v1/cities | No | Branch city picker |
-| GET | /api/v1/categories | No | Category pickers |
+| GET | /api/v1/categories?q=&type= | No | **CONSUMED** — the registration category combobox (`type=BUSINESS`) |
+
+**Categories are FLAT** — one `type` (`BUSINESS` \| `ITEM` \| `SERVICE`), one `source`
+(`SYSTEM` \| `USER`), no parents, no subcategories, no fallback tree. Response:
+`{ suggestions: [{ categoryId, label, type, source }] }`.
+
+Free text is a first-class outcome, not a fallback: onboarding accepts `categoryName` and
+creates the `USER` category itself, so `POST /api/v1/categories` is NOT called from the
+registration form. `type` is fixed per form — `BUSINESS` here, `ITEM` in `@/catalog`,
+`SERVICE` in `@/services`; a shared type-parameterized picker would be one component serving
+two callers that merely look alike (P6.3, D8).
 
 ## Key DTOs
 - BranchDto: id, name, cityId, cityName, address, **addressDetails** (added 2026-07-18), onlineOnly, status

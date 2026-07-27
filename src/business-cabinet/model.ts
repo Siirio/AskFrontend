@@ -1,0 +1,239 @@
+/**
+ * Business-cabinet domain types and validation.
+ *
+ * The DTO shapes below are READ from the AskBackend `business` module
+ * (`kz.ask.business.onboarding.api.dto.*`, `kz.ask.business.category.api.dto.*`)
+ * — the data authority (D9, P9.4). They are never invented or patched
+ * client-side; a mismatch is raised, not faked.
+ *
+ * Platform-neutral and DOM-free (D5): pure types and pure functions (P5.1), so
+ * this file lifts into a React Native package unchanged.
+ */
+
+// ── Enums (mirrors of the Java enums, exact spelling) ───────────────────────
+
+/** kz.ask.business.core.domain.enums.BusinessScope — what the business sells. */
+export const BUSINESS_SCOPES = ["ITEM", "SERVICE", "BOTH"] as const;
+export type BusinessScope = (typeof BUSINESS_SCOPES)[number];
+
+/** kz.ask.business.core.domain.enums.BusinessLegalForm. Kazakhstan-specific by
+ *  construction — KZ_IP is an individual entrepreneur, KZ_TOO an LLC, and NONE
+ *  is a seller with no registered entity, who must prove themselves with links
+ *  instead. This is why `countryCode` is fixed to KZ (see api.ts). */
+export const BUSINESS_LEGAL_FORMS = ["KZ_IP", "KZ_TOO", "NONE"] as const;
+export type BusinessLegalForm = (typeof BUSINESS_LEGAL_FORMS)[number];
+
+/** kz.ask.business.onboarding.api.dto.CatalogSetupMode. Only MANUAL is sent —
+ *  ASK_MANAGED_IMPORT routes the new seller into a managed-import request
+ *  dialog that does not exist yet (roadmap #8). Offering it would recreate
+ *  exactly the dead end this route was built to remove. */
+export const CATALOG_SETUP_MODES = ["MANUAL", "ASK_MANAGED_IMPORT"] as const;
+export type CatalogSetupMode = (typeof CATALOG_SETUP_MODES)[number];
+
+/** The verification sources the backend stores, in the order they are offered.
+ *  Each maps 1:1 to an optional URL field on SellerOnboardingRequest. */
+export const VERIFICATION_SOURCES = [
+  "twoGisUrl",
+  "kaspiUrl",
+  "ozonUrl",
+  "wildberriesUrl",
+  "websiteUrl",
+  "instagramUrl",
+  "telegramUrl",
+] as const;
+export type VerificationSource = (typeof VERIFICATION_SOURCES)[number];
+
+// ── Request / response DTOs ─────────────────────────────────────────────────
+
+/** POST /api/v1/business/onboarding (Bearer). Either `categoryId` OR a non-blank
+ *  `categoryName` must be present — the backend asserts it. */
+export type SellerOnboardingRequest = {
+  businessName: string;
+  categoryId?: string;
+  categoryName?: string;
+  countryCode: string;
+  legalForm: BusinessLegalForm;
+  legalIdentifier?: string;
+  legalName?: string;
+  catalogSetupMode: CatalogSetupMode;
+  businessScope: BusinessScope;
+} & Partial<Record<VerificationSource, string>>;
+
+export type SellerOnboardingResponse = {
+  businessId: string;
+  catalogSetupMode: CatalogSetupMode;
+  /** "BUSINESS_CABINET" | "MANAGED_IMPORT". Deliberately NOT consumed: the
+   *  client re-reads GET /auth/session after onboarding and follows THAT
+   *  startRoute, because the session is the authority on where a role lands
+   *  (auth slice lock) and it is the value that is now stale. */
+  startRoute?: string;
+};
+
+/** GET /api/v1/categories?q=&type= — flat, no trees (backend contracts.md). */
+export type CategorySuggestion = {
+  categoryId: string;
+  label: string;
+  type: string;
+  source: string;
+};
+
+export type CategoryAutocompleteResponse = {
+  suggestions: CategorySuggestion[];
+};
+
+// ── Form view model ─────────────────────────────────────────────────────────
+
+export type SellerOnboardingValues = {
+  businessName: string;
+  /** Set only when a suggestion was PICKED; free text leaves it null and travels
+   *  as `categoryName` instead — the backend accepts either (contracts.md). */
+  categoryId: string | null;
+  categoryLabel: string;
+  businessScope: BusinessScope;
+  legalForm: BusinessLegalForm | null;
+  legalIdentifier: string;
+  legalName: string;
+  /** Which link fields the seller opted to fill. The backend's UX contract asks
+   *  for a source TYPE before rendering its field, so an unregistered seller is
+   *  not faced with seven empty boxes. */
+  sources: VerificationSource[];
+  links: Partial<Record<VerificationSource, string>>;
+};
+
+export type SellerOnboardingErrors = Partial<
+  Record<
+    | "businessName"
+    | "categoryLabel"
+    | "legalForm"
+    | "legalIdentifier"
+    | "legalName"
+    | "sources",
+    string
+  >
+> & { links?: Partial<Record<VerificationSource, string>> };
+
+export const EMPTY_ONBOARDING_VALUES: SellerOnboardingValues = {
+  businessName: "",
+  categoryId: null,
+  categoryLabel: "",
+  businessScope: "ITEM",
+  legalForm: null,
+  legalIdentifier: "",
+  legalName: "",
+  sources: [],
+  links: {},
+};
+
+/** IIN (KZ_IP) and BIN (KZ_TOO) are both exactly 12 digits — the backend's
+ *  LEGAL_IDENTIFIER pattern, mirrored so the form never sends a 400 it could
+ *  have caught. */
+const LEGAL_IDENTIFIER_RE = /^\d{12}$/;
+/** The backend accepts an EMPTY link or an http(s) one. Blank is filtered out
+ *  before send, so what is left must be a real absolute URL. */
+const HTTP_URL_RE = /^https?:\/\/\S+$/;
+
+export function legalFormNeedsIdentifier(
+  legalForm: BusinessLegalForm | null,
+): boolean {
+  return legalForm === "KZ_IP" || legalForm === "KZ_TOO";
+}
+
+export function legalFormNeedsVerification(
+  legalForm: BusinessLegalForm | null,
+): boolean {
+  return legalForm === "NONE";
+}
+
+/**
+ * Validate the form against the SAME rules the backend asserts
+ * (SellerOnboardingRequest's three @AssertTrue methods), so a rejection is
+ * phrased in the field it belongs to instead of arriving as an opaque 400.
+ *
+ * Pure and translation-free: it returns message KEYS, and the hook resolves them
+ * through next-intl. A pure function that had to hold a `t` would stop being
+ * platform-neutral (D5) and stop being testable without a provider.
+ */
+export function validateOnboarding(
+  values: SellerOnboardingValues,
+): SellerOnboardingErrors {
+  const errors: SellerOnboardingErrors = {};
+
+  if (!values.businessName.trim()) errors.businessName = "errors.nameRequired";
+  if (!values.categoryId && !values.categoryLabel.trim()) {
+    errors.categoryLabel = "errors.categoryRequired";
+  }
+  if (!values.legalForm) errors.legalForm = "errors.legalFormRequired";
+
+  if (legalFormNeedsIdentifier(values.legalForm)) {
+    if (!LEGAL_IDENTIFIER_RE.test(values.legalIdentifier.trim())) {
+      errors.legalIdentifier = "errors.legalIdentifierFormat";
+    }
+    if (!values.legalName.trim()) errors.legalName = "errors.legalNameRequired";
+  }
+
+  if (legalFormNeedsVerification(values.legalForm)) {
+    const linkErrors: Partial<Record<VerificationSource, string>> = {};
+    let hasValidLink = false;
+    for (const source of values.sources) {
+      const value = (values.links[source] ?? "").trim();
+      if (!value) {
+        linkErrors[source] = "errors.linkRequired";
+      } else if (!HTTP_URL_RE.test(value)) {
+        linkErrors[source] = "errors.linkFormat";
+      } else {
+        hasValidLink = true;
+      }
+    }
+    if (Object.keys(linkErrors).length > 0) errors.links = linkErrors;
+    // The backend only counts non-blank links; the UX contract additionally
+    // blocks while every supplied link is invalid. Both are one condition here.
+    if (!hasValidLink) errors.sources = "errors.verificationRequired";
+  }
+
+  return errors;
+}
+
+export function hasOnboardingErrors(errors: SellerOnboardingErrors): boolean {
+  return (
+    Object.keys(errors).filter((key) => key !== "links").length > 0 ||
+    Object.keys(errors.links ?? {}).length > 0
+  );
+}
+
+/**
+ * Build the wire body from the form. Blank optional fields are DROPPED rather
+ * than sent as "" — the backend's URL pattern tolerates empty strings, but its
+ * verification record would then store a blank source as if one were supplied.
+ */
+export function toOnboardingRequest(
+  values: SellerOnboardingValues,
+  countryCode: string,
+): SellerOnboardingRequest {
+  const body: SellerOnboardingRequest = {
+    businessName: values.businessName.trim(),
+    countryCode,
+    // Non-null by validation; the form cannot submit without a legal form.
+    legalForm: values.legalForm as BusinessLegalForm,
+    catalogSetupMode: "MANUAL",
+    businessScope: values.businessScope,
+  };
+
+  // A picked suggestion travels as an identity; anything else as free text,
+  // which the backend turns into a USER category itself.
+  if (values.categoryId) body.categoryId = values.categoryId;
+  else body.categoryName = values.categoryLabel.trim();
+
+  if (legalFormNeedsIdentifier(values.legalForm)) {
+    body.legalIdentifier = values.legalIdentifier.trim();
+    body.legalName = values.legalName.trim();
+  }
+
+  if (legalFormNeedsVerification(values.legalForm)) {
+    for (const source of values.sources) {
+      const value = (values.links[source] ?? "").trim();
+      if (value) body[source] = value;
+    }
+  }
+
+  return body;
+}

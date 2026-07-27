@@ -27,19 +27,25 @@ import { Field, fieldErrorId } from "./Field";
  * button stays for keyboard submit and for a retry after an error.
  */
 export function VerifyCodeForm({
-  authChallengeId,
+  verificationId,
+  purpose,
   sentTo,
   onAuthenticated,
   onBack,
 }: {
-  authChallengeId: string;
+  verificationId: string;
+  /** The challenge's backend purpose. "REGISTER" (sign-up) is what arms the
+   *  role-choosing modal; log-in's 2FA challenge passes none. */
+  purpose?: string;
   sentTo: string;
   onAuthenticated: (result: VerifyResult) => void;
   onBack: () => void;
 }) {
   const t = useTranslations("auth");
-  const { code, setCode, error, pending, result, submit } =
-    useVerifyStep(authChallengeId);
+  const { code, setCode, error, pending, result, submit } = useVerifyStep(
+    verificationId,
+    purpose,
+  );
 
   useEffect(() => {
     if (result) onAuthenticated(result);

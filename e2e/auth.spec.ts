@@ -9,11 +9,30 @@ import { expect, test, type Page } from "@playwright/test";
  *
  * Stub bodies speak the backend's REAL wire format — snake_case keys (D20) —
  * so httpClient's case boundary is exercised by every scenario here.
+ *
+ * ⚠ **These stubs speak the backend's `dev` branch** — the client's target
+ * (owner decision 2026-07-27). `master`, which :2020 still runs today, calls the
+ * challenge id `auth_challenge_id`; `dev` calls it `verification_id`. Both were
+ * confirmed by curling the running server, not by reading a checkout.
+ *
+ * So a green suite here does NOT mean sign-up works against the box on your desk
+ * until that box redeploys from `dev`. That is intended, and it is the honest
+ * arrangement: the tests pin the contract we are shipping to.
+ *
+ * "REAL" IS STILL THE LOAD-BEARING WORD. A stub written from the client's own
+ * assumptions proves only that the client agrees with itself — that is how a
+ * broken field name survived here for weeks. But a stub written from a CHECKOUT
+ * is not automatically safe either, because the checkout and the running server
+ * can be different branches. Confirm against a real response, and write down
+ * WHICH branch you confirmed against.
  */
 
 const CHALLENGE = {
-  auth_challenge_id: "11111111-1111-1111-1111-111111111111",
+  verification_id: "11111111-1111-1111-1111-111111111111",
   role: "CUSTOMER",
+  // VerificationPurpose.REGISTER. The live server really does return this
+  // (probed), and it is what arms the role modal now that suggest_role_expansion
+  // is confirmed dead on BOTH branches.
   purpose: "REGISTER",
   channel: "EMAIL",
   masked_destination: "t***@example.com",
@@ -27,6 +46,15 @@ const USER = {
   status: "ACTIVE",
 };
 
+/**
+ * What `POST /auth/verify` really answers for a fresh sign-up.
+ *
+ * `suggest_role_expansion` is deliberately ABSENT — the field is declared on the
+ * backend's AuthSessionResponse and never assigned anywhere in its source, so a
+ * stub that sent it was testing a fiction, and the modal it "proved" could never
+ * open in production. Its absence here is what makes these tests prove the real
+ * trigger: the REGISTER purpose on the challenge above.
+ */
 const SESSION_SUGGEST = {
   access_token: "test-token-abc",
   token_type: "Bearer",
@@ -34,7 +62,6 @@ const SESSION_SUGGEST = {
   start_route: "CLIENT_SEARCH",
   user: USER,
   all_roles: ["CUSTOMER"],
-  suggest_role_expansion: true,
 };
 
 const SESSION_PLAIN = {
@@ -287,7 +314,12 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
   await page.reload();
   await expect(page.getByRole("dialog")).toBeVisible();
 
-  // Answering is the only way out: business → /app/business, flag cleared.
+  // Answering is the only way out. "I'm selling" routes to seller REGISTRATION
+  // (2026-07-27) — it used to point at /app/business, which for the fresh
+  // customer this modal actually shows to was a silent no-op. This session is
+  // stubbed as an existing seller, so the register page hands straight on to the
+  // cabinet; the customer's path through the form is covered in
+  // business-register.spec.ts.
   await page.getByTestId("role-card-business").click();
   await expect(page.getByTestId("role-card-business")).toHaveAttribute(
     "aria-checked",

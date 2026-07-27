@@ -537,6 +537,16 @@
     color: var(--foreground-subtle);
     box-shadow: var(--neu-inset-sm);
   }
+  /* A chip the user TOGGLES (a multi-select filter, a verification source):
+   * raised at rest, pressed IN when on, accent on the label. Same depth grammar
+   * as the tab trigger, and deliberately not the accent FILL — a chip carries
+   * text, and the fill is reserved for the primary action. Distinct from
+   * `.neu-chip-offer` below, which is never actionable. */
+  .neu-skin .neu-chip[data-active="true"] {
+    box-shadow: var(--neu-inset-sm);
+    color: var(--accent);
+  }
+
   /* A Unique Offer: low-chroma TINT with ink text and tabular numerals. It is
    * information, so it never takes the accent fill and never becomes a pill. */
   .neu-skin .neu-chip-offer {
@@ -731,6 +741,49 @@
     animation: neu-grow-bar 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  /* ── METER (password strength, neumorui's PasswordInput bar) ─────────────
+   * A progress bar states how far along you are; a METER states where a value
+   * sits on a qualitative scale. Same groove, deliberately NOT `.neu-progress-*`:
+   * thinner (it sits under a field, not in a panel), no entry animation (it is
+   * driven by typing, and a 1.1s grow would still be catching up two keystrokes
+   * later), and its colour carries meaning rather than being the accent.
+   *
+   * The three colours are the MEASURED semantic tokens, which is what keeps this
+   * out of the trust-badge traffic-light ban: that lock forbids scoring a
+   * BUSINESS with red/amber/green, because a score is a rating by another name.
+   * This scores the viewer's own draft password, in a form they are filling in —
+   * no third party is being judged, and there is no other vocabulary for "this
+   * one is weak" that a person reads without a legend.
+   *
+   * Colour is never the only channel: the fill's WIDTH and the word beside it
+   * both carry the same verdict, so the meter still reads with no colour at all. */
+  .neu-skin .neu-meter-track {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: var(--surface);
+    box-shadow: var(--neu-inset-sm);
+  }
+  .neu-skin .neu-meter-fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: var(--foreground-subtle);
+    transition: width 0.25s ease, background 0.25s ease;
+  }
+  .neu-skin .neu-meter-fill[data-level="weak"] { background: var(--destructive); }
+  .neu-skin .neu-meter-fill[data-level="medium"] { background: var(--warning); }
+  .neu-skin .neu-meter-fill[data-level="strong"] { background: var(--success); }
+
+  .neu-skin .neu-meter-label {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--foreground-muted);
+  }
+  .neu-skin .neu-meter-label[data-level="weak"] { color: var(--destructive); }
+  .neu-skin .neu-meter-label[data-level="medium"] { color: var(--warning); }
+  .neu-skin .neu-meter-label[data-level="strong"] { color: var(--success); }
+
   /* ── OVERLAYS: menu, tooltip, toast, modal ─────────────────────────────
    * Menus, selects and modals all render through a Radix PORTAL. A descendant
    * selector still reaches them because the portal is pointed back inside this
@@ -747,6 +800,15 @@
   .neu-skin .neu-menu-item {
     border-radius: var(--neu-radius-sm);
     transition: background 0.15s ease, box-shadow 0.15s ease;
+  }
+  /* The highlighted row of a listbox/menu — one state driven by ONE attribute,
+   * so pointer hover and keyboard arrowing land on the same visual and cannot
+   * both be "active" at once (a `:hover` rule plus a data attribute is how a
+   * combobox ends up showing two selections). Pressed IN, accent label: the
+   * same depth-marks-the-choice grammar as the tab trigger. */
+  .neu-skin .neu-menu-item[data-active="true"] {
+    box-shadow: var(--neu-inset-sm);
+    color: var(--accent);
   }
 
   .neu-skin .neu-tooltip {
@@ -875,6 +937,17 @@
  *   destructive / its foreground      6.00:1     7.46:1    4.5
  *   success / its foreground          6.08:1     9.73:1    4.5
  *   warning / its foreground          5.78:1    11.49:1    4.5
+ *
+ * Added 2026-07-27 with `.neu-meter-*` (the sign-up password meter). The three
+ * semantic colours had only ever been measured against their OWN foregrounds,
+ * i.e. as FILLS carrying a label. The meter is the first place they are used as
+ * TEXT on the page, which is a different pair and had to be computed before the
+ * class could ship (the measurement lock). `warning` light is the tight one at
+ * 4.88:1 — it passes, with no headroom to spend, so do not lighten #86600c:
+ *
+ *   destructive as text on surface    5.13:1     7.47:1    4.5
+ *   success     as text on surface    5.23:1     9.73:1    4.5
+ *   warning     as text on surface    4.88:1    11.49:1    4.5  ← tightest
  *
  * FAILING VALUES INHERITED FROM THE LAB, AND WHERE THEY WENT (header note):
  *   #ff6a2c on white  2.86:1  → --neu-accent-vivid, non-text fills only

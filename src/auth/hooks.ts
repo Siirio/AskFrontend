@@ -124,6 +124,35 @@ export function useAuth(): Auth {
 }
 
 /**
+ * Re-read the session from the backend and apply it, returning where the
+ * refreshed session says to land (`startRoute`, the backend's authority per the
+ * slice lock).
+ *
+ * This exists for ONE event: something outside auth changed the user's role
+ * SERVER-side, and the client's copy is now stale. Seller onboarding is the
+ * case — `POST /business/onboarding` promotes a customer to BUSINESS_OWNER, and
+ * until the session is re-read `canAccessDashboard` still says false, so the
+ * cabinet the person just created bounces them straight back out.
+ *
+ * It lives in auth rather than in the calling slice because the session is
+ * auth's to own (R6): a slice that patched the store itself would be inventing
+ * a role the backend never confirmed (P9.4). Failure is the caller's to handle
+ * — the store keeps the session it already had.
+ */
+export function useRefreshSession(): () => Promise<string> {
+  const applySession = useApplySession();
+  return useCallback(async () => {
+    const session = await api.getSession();
+    // applySession CLEARS the session when the response carries no user — a
+    // token that stopped being valid mid-flow. startRouteToPath then falls back
+    // to /app, where RequireAuth takes over. A seller route is never fabricated
+    // out of a dead session (P9.4).
+    applySession(session);
+    return startRouteToPath(session.startRoute);
+  }, [applySession]);
+}
+
+/**
  * Drives the role-selection modal. `open` while a fresh signup's role choice
  * is unanswered AND the session is live; `resolve` records the answer — the
  * ONLY way the modal closes (it has no dismissal, by product decision).
@@ -234,9 +263,37 @@ export type VerifyResult = {
 
 /** A pending email challenge awaiting its 6-digit code. */
 export type Challenge = {
-  authChallengeId: string;
+  verificationId: string;
   maskedDestination: string;
+  /** The backend's `VerificationPurpose` — "REGISTER" for a sign-up, absent for
+   *  the 2FA challenge login builds by hand. This is what tells the verify step
+   *  whether it is completing a SIGN-UP (see ROLE_EXPANSION_PURPOSE). */
+  purpose?: string;
 };
+
+/**
+ * The challenge purpose that means "this person just created an account", and
+ * therefore the one that arms the role-choosing modal.
+ *
+ * WHY THE CLIENT DECIDES THIS (2026-07-27, owner directive — an amendment to the
+ * slice lock "the modal is triggered by suggestRoleExpansion, never invented
+ * client-side"). The lock's intent was that the modal maps to REAL backend data
+ * rather than a fabricated intent fork, and that intent is preserved: `purpose`
+ * IS backend data, returned by `POST /auth/customer/register` and set from
+ * `VerificationPurpose.REGISTER`.
+ *
+ * What changed is which real field carries it. `suggestRoleExpansion` is
+ * declared on `AuthSessionResponse` and never assigned anywhere in the backend
+ * (model.ts records the check), so it is permanently null — the modal the vision
+ * puts at UF 1 step 3 could not appear at all, on any account. Surrounding
+ * extension was not available: there is no other populated field that
+ * distinguishes a fresh sign-up, and PRODUCT_VISION UF 1 makes the modal
+ * unconditional after registration rather than conditional on a backend hint.
+ *
+ * `suggestRoleExpansion` is still honoured when it arrives — the two are OR'd,
+ * so the day the backend starts sending it nothing here has to change.
+ */
+const ROLE_EXPANSION_PURPOSE = "REGISTER";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_RE = /^\d{6}$/;
@@ -250,6 +307,13 @@ const ERROR_KEY_BY_CODE: Record<string, string> = {
   // correct even if a caller stops special-casing it before describeError.
   INVALID_CREDENTIALS: "errors.invalidCredentials",
   ACCOUNT_NOT_ACTIVE: "errors.accountNotActive",
+  // A 400 from Spring bean validation — the REQUEST was malformed, not the
+  // user's input. Mapped explicitly because the verify step's fallback is
+  // "the code is invalid or expired", and letting a rejected request wear that
+  // message is how the `verificationId` rename hid: the client sent a null id,
+  // the backend answered VALIDATION_ERROR, and the screen blamed the person for
+  // typing the code wrong. A contract fault must never read as a user fault.
+  VALIDATION_ERROR: "errors.requestRejected",
 };
 
 type Translate = ReturnType<typeof useTranslations>;
@@ -271,7 +335,7 @@ function describeError(
  * validation, same outcome), so it lives in one place (P6.2), not behind a
  * caller-type flag (P6.3).
  */
-export function useVerifyStep(authChallengeId: string) {
+export function useVerifyStep(verificationId: string, purpose?: string) {
   const store = useAuthStoreApi();
   const applySession = useApplySession();
   const t = useTranslations("auth");
@@ -288,12 +352,17 @@ export function useVerifyStep(authChallengeId: string) {
     }
     setPending(true);
     try {
-      const session = await api.verifyCode({ authChallengeId, code });
+      const session = await api.verifyCode({ verificationId, code });
       applySession(session);
-      if (session.suggestRoleExpansion) {
-        // Arm the role-choosing modal BEFORE the page navigates to /app: the
-        // flag lives in storage + store, so it survives the navigation (and a
-        // reload) until the user actually answers.
+      // Arm the role-choosing modal BEFORE the page navigates to /app: the flag
+      // lives in storage + store, so it survives the navigation (and a reload)
+      // until the user actually answers.
+      //
+      // Fires for a SIGN-UP only. A log-in 2FA challenge runs this same step
+      // (P6.2 — one implementation), and it carries no purpose because
+      // useLoginFlow builds its Challenge by hand from the login response, so
+      // signing in never re-opens a choice the person already made.
+      if (session.suggestRoleExpansion || purpose === ROLE_EXPANSION_PURPOSE) {
         persistPendingRoleSelection(store, true);
       }
       setResult({ targetPath: startRouteToPath(session.startRoute) });
@@ -304,7 +373,7 @@ export function useVerifyStep(authChallengeId: string) {
     } finally {
       setPending(false);
     }
-  }, [authChallengeId, code, applySession, store, t]);
+  }, [verificationId, purpose, code, applySession, store, t]);
 
   return { code, setCode, error, pending, result, submit };
 }
@@ -377,8 +446,11 @@ export function useRegisterFlow() {
         acceptedUserAgreement: values.acceptedUserAgreement,
       });
       setChallenge({
-        authChallengeId: c.authChallengeId,
+        verificationId: c.verificationId,
         maskedDestination: c.maskedDestination,
+        // Carried through to the verify step — "REGISTER" is what arms the
+        // role-choosing modal once the code is confirmed.
+        purpose: c.purpose,
       });
     } catch (e) {
       const message = describeError(e, t, "errors.network");
@@ -422,9 +494,11 @@ export function useLoginFlow() {
     setPending(true);
     try {
       const session = await api.login({ email: email.trim(), password });
-      if (session.requiresTwoFactor && session.authChallengeId) {
+      if (session.requiresTwoFactor && session.verificationId) {
+        // No `purpose`: this is a 2FA step on an EXISTING account, so the verify
+        // step must not arm the role modal (see ROLE_EXPANSION_PURPOSE).
         setChallenge({
-          authChallengeId: session.authChallengeId,
+          verificationId: session.verificationId,
           maskedDestination: email.trim(),
         });
       } else if (session.requiresRoleSelection) {

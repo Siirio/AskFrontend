@@ -23,26 +23,49 @@ export type CustomerRegisterRequest = {
 };
 
 /** POST /api/v1/auth/login — unified password login (all roles). Returns a
- *  session directly, or a 2FA challenge (requiresTwoFactor + authChallengeId
+ *  session directly, or a 2FA challenge (requiresTwoFactor + verificationId
  *  when the account has two-factor enabled). */
 export type LoginRequest = {
   email: string;
   password: string;
 };
 
-/** POST /api/v1/auth/verify — the 6-digit code confirming a challenge. */
+/** POST /api/v1/auth/verify — the 6-digit code confirming a challenge.
+ *
+ *  ⚠ **THIS CLIENT TARGETS THE BACKEND'S `dev` BRANCH** (owner decision
+ *  2026-07-27). The two backend branches disagree, and this field is the
+ *  sharpest edge of it:
+ *
+ *    dev    (our target)             → `verificationId`   ← what this matches
+ *    master (what :2020 runs TODAY)  → `authChallengeId`
+ *
+ *  Both were verified by probing the running server, not by reading a checkout:
+ *  against the CURRENT :2020 build, a body with `verification_id` returns
+ *  `400 VALIDATION_ERROR` naming `authChallengeId`, while `auth_challenge_id`
+ *  returns a real session. So **verify is expected to fail locally until the
+ *  backend redeploys from `dev`** — that failure is the branch gap, not a bug
+ *  here, and it now surfaces as its own message rather than "wrong code"
+ *  (ERROR_KEY_BY_CODE → VALIDATION_ERROR in hooks.ts).
+ *
+ *  The trap to remember: the local `../Ask_Backend` checkout sits on `dev`, so
+ *  the source tree and the running server tell DIFFERENT stories. Neither one
+ *  alone is authority — the source says where we are going, the running server
+ *  says what works right now. Check both before changing a field name. */
 export type VerifyCodeRequest = {
-  authChallengeId: string;
+  verificationId: string;
   code: string;
 };
 
 // ── Response DTOs ───────────────────────────────────────────────────────────
 
-/** Issued by register / login-start. `code` is populated ONLY when the backend
- *  runs in verification test-mode; production omits it and emails the code. */
+/** Issued by register / login-start (the backend's `VerificationResponse`).
+ *  `code` is populated ONLY when the backend runs in verification test-mode;
+ *  production omits it and emails the code. */
 export type AuthChallengeResponse = {
-  authChallengeId: string;
+  verificationId: string;
   role: string;
+  /** `VerificationPurpose` — LOGIN · REGISTER · EMAIL_CHANGE. Load-bearing: a
+   *  REGISTER challenge is what arms the role-choosing modal (see hooks.ts). */
   purpose: string;
   channel: string;
   maskedDestination: string;
@@ -94,9 +117,24 @@ export type AuthSessionResponse = {
   availableRoles?: RoleOption[];
   allRoles?: string[];
   requiresTwoFactor?: boolean;
-  authChallengeId?: string;
-  /** Set after a new single-role signup — the trigger for the role-choosing
-   *  modal ("start searching, or set up your business?"). */
+  /** The 2FA challenge id — same master/dev split as VerifyCodeRequest above. */
+  verificationId?: string;
+  /**
+   * Intended as the backend's "this account could also be a seller" signal, and
+   * the documented trigger for the role-choosing modal.
+   *
+   * **Never assigned on EITHER branch** — verified 2026-07-27: `git grep
+   * suggestRoleExpansion master` finds nothing at all, and on `dev` the field is
+   * declared on `AuthSessionResponse` with no `.suggestRoleExpansion(...)`
+   * builder call anywhere. So it is always null, and a modal gated on it alone
+   * could never open — which is exactly what shipped. Raised with backend
+   * (ROADMAP cross-repo table).
+   *
+   * Unlike the id rename, this diagnosis was NOT branch-dependent, so the fix
+   * built on it stands: the modal now arms on the challenge's `purpose`, which
+   * the live server does return (`"purpose":"REGISTER"`, confirmed by probing
+   * it). This field is still read and still wins when it arrives.
+   */
   suggestRoleExpansion?: boolean;
 };
 
@@ -197,6 +235,52 @@ export function toAuthUser(session: AuthSessionResponse): AuthUser | null {
     return { kind, ...base, business: toBusinessContext(session.business) };
   }
   return { kind: "customer", ...base };
+}
+
+// ── Password strength (pure, P5.1) ──────────────────────────────────────────
+
+/**
+ * How strong a password reads, for the sign-up meter (owner request 2026-07-27,
+ * adopting neumorui's PasswordInput strength bar).
+ *
+ * This is a WRITING AID, never a gate: the only rule that can block a sign-up is
+ * the backend's own 8–128 length bound, which `useRegisterFlow` already enforces.
+ * A meter that refuses a password the server would accept invents policy the data
+ * authority never stated (P9.4), so `level` exists to be shown and nothing reads
+ * it to decide anything.
+ *
+ * Five independent checks rather than an entropy estimate: an estimate has to be
+ * explained, and this has to be understood at a glance while typing. Length is
+ * counted twice on purpose — it is the one property that actually dominates
+ * offline-guessing cost, so "just make it longer" is a route to `strong` without
+ * memorising a symbol.
+ */
+export type PasswordStrengthLevel = "weak" | "medium" | "strong";
+
+export type PasswordStrength = {
+  /** Satisfied checks, 0–5. The bar's width is this out of 5. */
+  score: number;
+  /** null for an empty password — nothing typed is not "weak", it is nothing. */
+  level: PasswordStrengthLevel | null;
+};
+
+const STRENGTH_CHECKS: ((value: string) => boolean)[] = [
+  (v) => v.length >= 8,
+  (v) => v.length >= 12,
+  (v) => /[a-z]/.test(v) && /[A-Z]/.test(v),
+  (v) => /\d/.test(v),
+  (v) => /[^A-Za-z0-9]/.test(v),
+];
+
+export function passwordStrength(value: string): PasswordStrength {
+  if (!value) return { score: 0, level: null };
+  const score = STRENGTH_CHECKS.reduce(
+    (total, check) => total + (check(value) ? 1 : 0),
+    0,
+  );
+  const level: PasswordStrengthLevel =
+    score >= 5 ? "strong" : score >= 3 ? "medium" : "weak";
+  return { score, level };
 }
 
 /** Map the backend's startRoute to a client route path. */

@@ -10,5 +10,5 @@ export { AuthProvider } from "./ui/AuthProvider";
 export { RoleSelectionModal } from "./ui/RoleSelectionModal";
 export { RequireAuth } from "./ui/RequireAuth";
 export { RequireDashboardAccess } from "./ui/RequireDashboardAccess";
-export { useAuth, type Auth } from "./hooks";
+export { useAuth, useRefreshSession, type Auth } from "./hooks";
 export { canAccessDashboard, type AuthUser } from "./model";

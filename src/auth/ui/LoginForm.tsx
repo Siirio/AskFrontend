@@ -46,7 +46,9 @@ export function LoginForm({
   if (challenge) {
     return (
       <VerifyCodeForm
-        authChallengeId={challenge.authChallengeId}
+        verificationId={challenge.verificationId}
+        // No purpose: a 2FA step on an existing account must not re-open the
+        // role choice the person already answered at sign-up.
         sentTo={challenge.maskedDestination}
         onAuthenticated={onAuthenticated}
         onBack={reset}

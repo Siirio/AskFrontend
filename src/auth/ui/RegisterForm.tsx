@@ -40,7 +40,10 @@ export function RegisterForm({
   if (challenge) {
     return (
       <VerifyCodeForm
-        authChallengeId={challenge.authChallengeId}
+        verificationId={challenge.verificationId}
+        // "REGISTER" — confirming this code creates the account, which is what
+        // opens the role-choosing modal on the other side (PRODUCT_VISION UF 1).
+        purpose={challenge.purpose}
         sentTo={challenge.maskedDestination}
         onAuthenticated={onAuthenticated}
         onBack={reset}
@@ -108,6 +111,11 @@ export function RegisterForm({
           }
           placeholder={t("placeholders.password")}
           visible={showPassword}
+          // The ONE strength meter in the product. Not on the confirmation
+          // below (it is a transcription of this field, so rating it twice adds
+          // nothing) and not on login (nobody can act on a verdict about a
+          // password they already have).
+          showStrength
           onToggleVisible={() => setShowPassword((v) => !v)}
           onValueChange={(value) => setField("password", value)}
         />
