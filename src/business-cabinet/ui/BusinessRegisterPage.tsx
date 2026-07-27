@@ -141,7 +141,10 @@ export function BusinessRegisterPage() {
         }}
         noValidate
       >
-        <div className="flex flex-col gap-1">
+        {/* aria-live announces the step change itself — goNext/goBack swap
+            this block's content with no navigation and no focus move, so
+            without it a screen-reader user gets no signal anything happened. */}
+        <div className="flex flex-col gap-1" aria-live="polite">
           <p className="text-sm font-medium text-foreground-subtle">
             {t("register.progress", { step, total: ONBOARDING_STEP_COUNT })}
           </p>
