@@ -38,8 +38,9 @@ export function DeliveryCitiesField({
   const [draft, setDraft] = useState("");
 
   const commit = () => {
-    if (!draft.trim()) return;
-    onAdd(draft);
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    onAdd(trimmed);
     setDraft("");
   };
 
