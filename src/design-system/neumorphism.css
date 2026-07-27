@@ -82,6 +82,13 @@
   --neu-raised-lg: 12px 12px 28px var(--neu-shadow-dark), -8px -8px 20px var(--neu-shadow-light);
   --neu-inset: inset 5px 5px 12px var(--neu-shadow-dark), inset -4px -4px 10px var(--neu-shadow-light);
   --neu-inset-sm: inset 3px 3px 8px var(--neu-shadow-dark), inset -2px -2px 6px var(--neu-shadow-light);
+  /* Sized for `.neu-rule` alone (2px tall) — `--neu-inset-sm`'s 8px blur on a
+   * 2px box is 4x the element's own height, so it paints as one solid smear
+   * rather than a groove (measured 2026-07-28: the rule was still nearly
+   * invisible in dark even after fixing its fill, because the shadow was
+   * drowning the fill regardless of colour). A blur genuinely has to be
+   * smaller than the box it's inset into to read as depth at all. */
+  --neu-inset-hairline: inset 1px 1px 2px var(--neu-shadow-dark), inset -1px -1px 1px var(--neu-shadow-light);
   /* The hover trick: swap WHICH corner is lit rather than growing the shadow —
    * "the light moved", with no added glow. Quieter than a lift, and it keeps
    * hover from reading louder than the pressed state. */
@@ -158,6 +165,7 @@
   --neu-raised-lg: 14px 14px 32px var(--neu-shadow-dark), -10px -10px 24px var(--neu-shadow-light);
   --neu-inset: inset 6px 6px 14px var(--neu-shadow-dark), inset -5px -5px 12px var(--neu-shadow-light);
   --neu-inset-sm: inset 4px 4px 10px var(--neu-shadow-dark), inset -3px -3px 8px var(--neu-shadow-light);
+  --neu-inset-hairline: inset 1px 1px 2px var(--neu-shadow-dark), inset -1px -1px 1px var(--neu-shadow-light);
   --neu-flip: -8px -8px 20px var(--neu-shadow-dark), 6px 6px 16px var(--neu-shadow-light);
   --neu-flip-sm: -5px -5px 14px var(--neu-shadow-dark), 4px 4px 10px var(--neu-shadow-light);
 
@@ -220,6 +228,7 @@
     --neu-raised-lg: 14px 14px 32px var(--neu-shadow-dark), -10px -10px 24px var(--neu-shadow-light);
     --neu-inset: inset 6px 6px 14px var(--neu-shadow-dark), inset -5px -5px 12px var(--neu-shadow-light);
     --neu-inset-sm: inset 4px 4px 10px var(--neu-shadow-dark), inset -3px -3px 8px var(--neu-shadow-light);
+    --neu-inset-hairline: inset 1px 1px 2px var(--neu-shadow-dark), inset -1px -1px 1px var(--neu-shadow-light);
     --neu-flip: -8px -8px 20px var(--neu-shadow-dark), 6px 6px 16px var(--neu-shadow-light);
     --neu-flip-sm: -5px -5px 14px var(--neu-shadow-dark), 4px 4px 10px var(--neu-shadow-light);
 
@@ -329,12 +338,24 @@
    * GROOVE: the shadow pair in miniature. Used for the form divider and any
    * section break.
    *
+   * `background: var(--border)` is load-bearing, not decoration (added
+   * 2026-07-28): every prior consumer left this transparent, which shows
+   * straight through to the SAME `--surface` the shadow sits on. Measured in
+   * dark: `--surface` vs a transparent rule is ~1.08:1 (an 8/255 per-channel
+   * gap) — visible only because of the shadow, reading as a dark smudge, not
+   * a line. `--border` measures ~1.31:1 here — the pre-D25 hairline colour,
+   * still a live token, reused as a FILL so the groove has a colour to carve
+   * into rather than dark-on-dark. Fixing it here (not per-consumer) is the
+   * point — OAuthOptions' "or", the dropdown/select item separators, and any
+   * future `.neu-rule` all inherit it at once.
+   *
    * Reachable inside menus, which portal — that is safe because the portal
    * lands INSIDE `.neu-skin` (shared/ui/skin-portal), not in <body>. */
   .neu-skin .neu-rule {
     height: 2px;
     border-radius: 9999px;
-    box-shadow: var(--neu-inset-sm);
+    background: var(--border);
+    box-shadow: var(--neu-inset-hairline);
   }
 
   .neu-skin .neu-topbar {
