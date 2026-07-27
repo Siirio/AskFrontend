@@ -430,8 +430,8 @@
   "profile.createBusiness": "Создать бизнес",
   "seller.progress": "Шаг {{step}} из 4",
   "seller.step1.title": "Бизнес и контакт",
-  "seller.step2.title": "Доставка",
-  "seller.step3.title": "Настройка каталога",
+  "seller.step2.title": "Настройка каталога",
+  "seller.step3.title": "Доставка и получение",
   "seller.step4.title": "Подтверждение условий",
   "seller.businessName": "Название бизнеса",
   "seller.legalName": "Юридическое наименование",
@@ -452,6 +452,11 @@
   "seller.delivery.WORLDWIDE": "По всему миру",
   "seller.delivery.CONTACT_SELLER": "Уточнять у продавца",
   "seller.deliveryTerms": "Условия доставки",
+  "seller.delivery.title": "Куда вы доставляете?",
+  "seller.delivery.description": "Укажите общий охват бизнеса. Эти данные можно изменить позже в профиле бизнеса.",
+  "seller.deliveryCities": "Города доставки",
+  "seller.deliveryCities.placeholder": "Например: Алматы, Астана, Шымкент",
+  "seller.deliveryCities.description": "Перечислите города через запятую.",
   "seller.catalog.MANUAL": "Добавлять товары вручную",
   "seller.catalog.ASK_MANAGED_IMPORT": "Заказать импорт каталога у Ask",
   "seller.managedInfo": "Платная услуга, ориентировочно 20 000–100 000 ₸. Цена зависит от объёма и качества материалов. Самостоятельно позиции придётся добавлять и проверять по одной; команда Ask быстро перенесёт каталог и сразу подготовит данные под структуру карточек и поиска.",
@@ -532,6 +537,9 @@
   "business.events": "Уникальные предложения",
   "business.businessCard": "Визитка",
   "business.profile": "Профиль",
+  "business.businessProfile": "Профиль бизнеса",
+  "business.businessProfileDescription": "Публичные данные компании хранятся отдельно от личного аккаунта пользователя.",
+  "business.viewBusinessProfile": "Просмотреть профиль бизнеса",
   "business.brand": "Бренд",
   "business.organization": "Организация",
   "business.branches": "Филиалы",
@@ -787,9 +795,13 @@
   "business.employee.deletePending": "Удалить запрос на активацию",
   "business.employee.empty": "Нет сотрудников",
   "business.employee.manager": "Менеджер",
+  "business.employee.owner": "Владелец",
   "business.employee.worker": "Сотрудник",
   "business.employee.selectBranch": "Выберите филиал",
   "business.employee.noBranchHint": "Сначала создайте филиал в разделе «Филиалы»",
+  "business.noEmployees": "Нет сотрудников",
+  "business.employeeCount": "сотрудников",
+  "business.noEmployeesDesc": "Добавьте менеджеров и владельцев, которые будут управлять бизнесом.",
   "business.changePassword": "Сменить пароль",
   "business.currentPassword": "Текущий пароль",
   "business.newPassword": "Новый пароль",
@@ -1041,13 +1053,21 @@
   "seller.catalog.managedDescription": "Команда Ask поможет собрать и подготовить каталог {{catalog}}",
   "seller.managedBenefitTitle": "Не тратьте время на ручной перенос"
   ,"seller.pickupDescription": "Покупатели смогут забрать заказ в вашей точке без доставки."
+  ,"seller.pickupBranchModal.title": "Добавить точку самовывоза"
+  ,"seller.pickupBranchModal.description": "Выберите местоположение на карте и укажите название филиала. Вы сможете добавить несколько точек."
+  ,"seller.pickupBranchModal.addBranch": "Добавить точку"
+  ,"seller.pickupBranchModal.done": "Готово"
   ,"seller.pickupEnabled": "Включён"
   ,"seller.pickupDisabled": "Выключен"
+  ,"profileEditor.delivery": "Доставка и получение"
   ,"seller.source.WILDBERRIES": "Wildberries"
   ,"seller.confirmation.business": "Бизнес"
   ,"seller.confirmation.fulfillment": "Получение заказа"
   ,"seller.confirmation.catalog": "Направление"
   ,"seller.confirmation.setup": "Настройка каталога"
+  ,"seller.confirmation.delivery": "Охват доставки"
+  ,"seller.confirmation.pickup": "Самовывоз"
+  ,"seller.validation.deliveryCities": "Укажите хотя бы один город доставки"
   ,"seller.confirmation.notSpecified": "Не указано"
   ,"seller.confirmation.legalTitle": "Подтверждаю сведения и принимаю условия"
   ,"seller.confirmation.legalDescription": "Я ознакомился с условиями для продавцов и согласием на обработку персональных данных. Указанные сведения можно использовать для создания бизнес-профиля."
@@ -1198,6 +1218,7 @@
   ,"business.branch.hoursDescription": "Добавьте обычный график. Праздники и исключения можно указать отдельно."
   ,"business.branch.timeZonePlaceholder": "Например: Asia/Almaty"
   ,"business.branch.specialHoursDescription": "Праздники, выходные и дни с изменённым графиком."
+  ,"business.branch.pickupAvailable": "Доступен самовывоз"
   ,"drops.nameRequired": "Введите название уникального предложения"
   ,"drops.editorDescription": "Соберите предложение по шагам и проверьте результат перед публикацией."
   ,"drops.stepDetails": "Основное"

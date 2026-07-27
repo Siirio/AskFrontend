@@ -1,4 +1,5 @@
 import { getAccessToken } from "./authTokenStore";
+import { parseResponseBody } from "./responseBody";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -106,10 +107,6 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     throw new ApiError(response.status, message, errorCode);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  const json = await response.json();
+  const json = await parseResponseBody(response);
   return transformKeys(json) as T;
 }

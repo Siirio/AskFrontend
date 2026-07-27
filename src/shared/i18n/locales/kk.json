@@ -424,8 +424,8 @@
   "profile.createBusiness": "Бизнес құру",
   "seller.progress": "4 қадамның {{step}}-қадамы",
   "seller.step1.title": "Бизнес және байланыс",
-  "seller.step2.title": "Жеткізу",
-  "seller.step3.title": "Каталогты баптау",
+  "seller.step2.title": "Каталогты баптау",
+  "seller.step3.title": "Жеткізу және алып кету",
   "seller.step4.title": "Шарттарды растау",
   "seller.businessName": "Бизнес атауы",
   "seller.legalName": "Заңды атауы",
@@ -446,6 +446,11 @@
   "seller.delivery.WORLDWIDE": "Бүкіл әлем бойынша",
   "seller.delivery.CONTACT_SELLER": "Сатушымен нақтылау",
   "seller.deliveryTerms": "Жеткізу шарттары",
+  "seller.delivery.title": "Қайда жеткізесіз?",
+  "seller.delivery.description": "Бизнестің жалпы қамту аймағын көрсетіңіз. Оны кейін бизнес профилінде өзгертуге болады.",
+  "seller.deliveryCities": "Жеткізу қалалары",
+  "seller.deliveryCities.placeholder": "Мысалы: Алматы, Астана, Шымкент",
+  "seller.deliveryCities.description": "Қалаларды үтір арқылы жазыңыз.",
   "seller.catalog.MANUAL": "Тауарларды қолмен қосу",
   "seller.catalog.ASK_MANAGED_IMPORT": "Ask командасынан каталог импортын тапсырыс беру",
   "seller.managedInfo": "Ақылы қызмет, шамамен 20 000–100 000 ₸. Бағасы материалдардың көлемі мен сапасына байланысты. Өзіңіз баптасаңыз, әр позицияны жеке қосып тексеру керек; Ask командасы каталогты жылдам көшіріп, карточкалар мен іздеу құрылымына дайындайды.",
@@ -526,6 +531,9 @@
   "business.events": "Бірегей ұсыныстар",
   "business.businessCard": "Визитка",
   "business.profile": "Профиль",
+  "business.businessProfile": "Бизнес профилі",
+  "business.businessProfileDescription": "Компанияның жалпыға қолжетімді деректері пайдаланушының жеке аккаунтынан бөлек сақталады.",
+  "business.viewBusinessProfile": "Бизнес профилін көру",
   "business.brand": "Бренд",
   "business.organization": "Ұйымдастыру",
   "business.branches": "Филиалдар",
@@ -780,9 +788,13 @@
   "business.employee.deletePending": "Белсендіру сұрауын жою",
   "business.employee.empty": "Қызметкерлер жоқ",
   "business.employee.manager": "Менеджер",
+  "business.employee.owner": "Иесі",
   "business.employee.worker": "Қызметкер",
   "business.employee.selectBranch": "Филиалды таңдаңыз",
   "business.employee.noBranchHint": "Алдымен «Филиалдар» бөлімінде филиал құрыңыз",
+  "business.noEmployees": "Қызметкерлер жоқ",
+  "business.employeeCount": "қызметкер",
+  "business.noEmployeesDesc": "Бизнесті басқаратын менеджерлер мен иелерін қосыңыз.",
   "business.changePassword": "Құпия сөзді өзгерту",
   "business.currentPassword": "Ағымдағы құпия сөз",
   "business.newPassword": "Жаңа құпия сөз",
@@ -1033,13 +1045,21 @@
   "seller.catalog.managedDescription": "Ask командасы {{catalog}} каталогын жинауға және дайындауға көмектеседі",
   "seller.managedBenefitTitle": "Қолмен көшіруге уақыт жұмсамаңыз"
   ,"seller.pickupDescription": "Сатып алушылар тапсырысты жеткізусіз сіздің нүктеңізден ала алады."
+  ,"seller.pickupBranchModal.title": "Өздігінен алып кету нүктесін қосу"
+  ,"seller.pickupBranchModal.description": "Картада орынды таңдап, филиал атауын көрсетіңіз. Бірнеше нүкте қосуға болады."
+  ,"seller.pickupBranchModal.addBranch": "Нүктені қосу"
+  ,"seller.pickupBranchModal.done": "Дайын"
   ,"seller.pickupEnabled": "Қосулы"
   ,"seller.pickupDisabled": "Өшірулі"
+  ,"profileEditor.delivery": "Жеткізу және алып кету"
   ,"seller.source.WILDBERRIES": "Wildberries"
   ,"seller.confirmation.business": "Бизнес"
   ,"seller.confirmation.fulfillment": "Тапсырысты алу"
   ,"seller.confirmation.catalog": "Каталог бағыты"
   ,"seller.confirmation.setup": "Каталогты баптау"
+  ,"seller.confirmation.delivery": "Жеткізу аумағы"
+  ,"seller.confirmation.pickup": "Өзі алып кету"
+  ,"seller.validation.deliveryCities": "Кемінде бір жеткізу қаласын көрсетіңіз"
   ,"seller.confirmation.notSpecified": "Көрсетілмеген"
   ,"seller.confirmation.legalTitle": "Мәліметтерді растаймын және шарттарды қабылдаймын"
   ,"seller.confirmation.legalDescription": "Сатушы шарттарымен және жеке деректерді өңдеуге келісіммен таныстым. Мәліметтер бизнес профилін жасау үшін пайдаланылуы мүмкін."
@@ -1190,6 +1210,7 @@
   ,"business.branch.hoursDescription": "Қалыпты кестені қосыңыз. Мерекелер мен ерекшеліктерді бөлек көрсетуге болады."
   ,"business.branch.timeZonePlaceholder": "Мысалы: Asia/Almaty"
   ,"business.branch.specialHoursDescription": "Мерекелер, демалыс күндері және өзгертілген жұмыс уақыты."
+  ,"business.branch.pickupAvailable": "Өздігінен алып кету қолжетімді"
   ,"drops.nameRequired": "Бірегей ұсыныстың атауын енгізіңіз"
   ,"drops.editorDescription": "Ұсынысты қадаммен жинап, жарияламас бұрын тексеріңіз."
   ,"drops.stepDetails": "Негізгі"

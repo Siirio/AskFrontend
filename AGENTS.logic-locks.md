@@ -1,5 +1,13 @@
 # Approved Logic Locks
 
+## LOCKED: Seller delivery onboarding and profile editing
+
+**Approved signal:** User correction on 2026-07-27.
+
+**Protected behavior:** Seller onboarding has a penultimate delivery-and-pickup screen before final confirmation. It records one coverage value (`NO_DELIVERY`, `SELECTED_CITIES`, `KAZAKHSTAN`, or `WORLDWIDE`), requires at least one city for `SELECTED_CITIES`, records pickup independently, and exposes the same fields for later editing in the Business profile.
+
+**Scope:** SellerOnboardingPage, sellerOnboardingClient, ProfileEditor, BrandProfileDto, Business profile API contract.
+
 ## LOCKED: Business card canvas editor has no right sidebar
 - Scope: src/widgets/BusinessCardBuilder/BusinessCardBuilder.tsx; src/widgets/BusinessCardBuilder/types.ts
 - Approved signal: user requested: do these and lock the rules
@@ -51,3 +59,19 @@
 **Protected behavior:** OWNER and MANAGER may edit branch working hours. Latitude and longitude remain internal values derived from map interaction or supported map links and are never rendered as numeric inputs or values.
 
 **Scope:** Branch forms, MapLocationPicker, mapLocationResolver, branch API payloads.
+
+## LOCKED: Restorable search context and contextual chat drawer
+
+**Approved signal:** User correction on 2026-07-27.
+
+**Protected behavior:** A submitted search remains restorable across internal navigation until the customer focuses the search field to begin a new query. Chat actions from results, Item, Service, and public Business profile screens open the shared fixed right drawer without route navigation. The dedicated `Чаты` page keeps its full-page layout.
+
+**Scope:** HomePage, ResultsPage, Navigation, ProductPage, StorefrontPage, ChatPanel, active search session storage.
+
+## LOCKED: Bottom Business profile sidebar card
+
+**Approved signal:** User correction and screenshot reference on 2026-07-27.
+
+**Protected behavior:** The Business-owned profile entry is a separate identity card pinned to the bottom of the left Business cabinet sidebar. It opens the Business profile editor and is not rendered as a regular operational navigation row.
+
+**Scope:** BusinessPage desktop and mobile sidebar rendering.

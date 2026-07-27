@@ -16,6 +16,8 @@ import { PlatformPage } from "../pages/PlatformPage/PlatformPage";
 import { LegalPage } from "../pages/LegalPage/LegalPage";
 import { SellerOnboardingPage } from "../pages/SellerOnboardingPage/SellerOnboardingPage";
 import { BusinessInvitationModal } from "../widgets/BusinessInvitationModal/BusinessInvitationModal";
+import { ChatPanel } from "../widgets/ChatPanel/ChatPanel";
+import { ChatProvider } from "../widgets/ChatPanel/ChatContext";
 
 import { ROUTES } from "./routes";
 
@@ -38,7 +40,7 @@ function RequireAuth() {
 export function App() {
   const { t } = useTranslation();
   return (
-    <>
+    <ChatProvider>
       <a href="#main-content" className="fcw-skip-link">
         {t("app.skipNav")}
       </a>
@@ -64,6 +66,7 @@ export function App() {
           <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
         </Route>
       </Routes>
-    </>
+      <ChatPanel />
+    </ChatProvider>
   );
 }

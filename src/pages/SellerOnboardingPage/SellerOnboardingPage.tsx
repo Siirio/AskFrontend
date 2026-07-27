@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Briefcase, Check, ChevronLeft, ChevronRight, FileUp, Handshake, Info, Package, ShieldCheck } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Briefcase, Check, ChevronLeft, ChevronRight, FileUp, Globe2, Handshake, Info, MapPin, Package, PackageX, Plus, ShieldCheck, Store, Trash2, Truck } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
 import { acceptLegalDocuments } from "../../shared/api/legalClient";
@@ -9,12 +10,25 @@ import {
   completeSellerOnboarding,
   type SellerOnboardingData,
 } from "../../shared/api/sellerOnboardingClient";
+import { listCities, createBranch } from "../../shared/api/askClient";
+import MapLocationPicker from "../../widgets/MapLocationPicker/MapLocationPicker";
 import { Card } from "../../shared/ui/Card/Card";
 import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/CategoryAutocomplete";
 import { Loading } from "../../shared/ui/Loading/Loading";
 import { hasValidBusinessVerificationSource, isValidHttpUrl } from "../../shared/utils/validation";
 
 const DRAFT_KEY = "ask.sellerOnboardingDraft";
+const BRANCH_DRAFTS_KEY = "ask.sellerOnboardingBranchDrafts";
+
+type BranchDraft = {
+  id: string;
+  name: string;
+  address: string;
+  addressDetails: string;
+  cityId: string;
+  latitude: number | null;
+  longitude: number | null;
+};
 const SOURCE_LINKS = [
   ["twoGisUrl", "seller.verification.twoGisUrl", "2GIS"],
   ["kaspiUrl", "seller.verification.kaspiUrl", "Kaspi"],
@@ -40,6 +54,9 @@ const INITIAL_DATA: SellerOnboardingData = {
   catalogSetupMode: "MANUAL",
   businessScope: "BOTH",
   onlineOnly: false,
+  deliveryCoverage: "NO_DELIVERY",
+  deliveryCities: [],
+  pickupAvailable: false,
   locale: "ru",
   twoGisUrl: "",
   kaspiUrl: "",
@@ -80,9 +97,63 @@ export function SellerOnboardingPage() {
     SOURCE_LINKS.filter(([key]) => Boolean(data[key])).map(([key]) => key),
   );
 
+  // Branch drafts for self-pickup during onboarding
+  const [branchDrafts, setBranchDrafts] = useState<BranchDraft[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(BRANCH_DRAFTS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showPickupModal, setShowPickupModal] = useState(false);
+  const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
+  const [draftForm, setDraftForm] = useState<BranchDraft>({
+    id: "", name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null,
+  });
+
   useEffect(() => {
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data));
   }, [data]);
+
+  useEffect(() => {
+    sessionStorage.setItem(BRANCH_DRAFTS_KEY, JSON.stringify(branchDrafts));
+  }, [branchDrafts]);
+
+  useEffect(() => {
+    listCities().then(setCities).catch(() => setCities([]));
+  }, []);
+
+  function normalizeCityName(value: string) {
+    return value
+      .toLocaleLowerCase()
+      .replace(/^(\u0433\.?|\u0433\u043e\u0440\u043e\u0434)\s*/u, "")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  }
+
+  const addBranchDraft = () => {
+    if (!draftForm.name.trim() || draftForm.latitude == null || draftForm.longitude == null) return;
+    const newDraft: BranchDraft = {
+      ...draftForm,
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    };
+    setBranchDrafts(current => [...current, newDraft]);
+    setDraftForm({ id: "", name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
+    if (!data.pickupAvailable) {
+      update("pickupAvailable", true);
+    }
+  };
+
+  const removeBranchDraft = (id: string) => {
+    setBranchDrafts(current => {
+      const next = current.filter(d => d.id !== id);
+      if (next.length === 0) {
+        update("pickupAvailable", false);
+      }
+      return next;
+    });
+  };
 
   if (!state.sessionReady) {
     return <Loading />;
@@ -152,7 +223,25 @@ export function SellerOnboardingPage() {
         locale,
       });
       sessionStorage.removeItem(DRAFT_KEY);
+      sessionStorage.removeItem(BRANCH_DRAFTS_KEY);
       await actions.refreshSession();
+      // Create drafted branches
+      for (const draft of branchDrafts) {
+        if (!draft.latitude || !draft.longitude) continue;
+        try {
+          await createBranch(result.businessId, {
+            name: draft.name,
+            address: draft.address,
+            addressDetails: draft.addressDetails || undefined,
+            cityId: draft.cityId || undefined,
+            latitude: draft.latitude,
+            longitude: draft.longitude,
+            pickupAvailable: true,
+          });
+        } catch {
+          // Branch creation failed — continue with others
+        }
+      }
       const businessRoute = buildRoute(ROUTES.business, { businessId: result.businessId });
       if (data.catalogSetupMode === "ASK_MANAGED_IMPORT") {
         const sourceUrls = Object.fromEntries(Object.entries({
@@ -179,6 +268,10 @@ export function SellerOnboardingPage() {
   const goNext = () => {
     setError("");
     if (step === 1 && !validateBusinessDetails()) {
+      return;
+    }
+    if (step === 3 && data.deliveryCoverage === "SELECTED_CITIES" && data.deliveryCities.length === 0) {
+      setError(t("seller.validation.deliveryCities"));
       return;
     }
     setStep(current => current + 1);
@@ -334,6 +427,166 @@ export function SellerOnboardingPage() {
             )}
 
             {step === 3 && (
+              <div className="seller-delivery-step">
+                <div>
+                  <h3>{t("seller.delivery.title")}</h3>
+                  <p>{t("seller.delivery.description")}</p>
+                </div>
+                <div className="seller-delivery-options">
+                  {([
+                    ["NO_DELIVERY", PackageX],
+                    ["SELECTED_CITIES", MapPin],
+                    ["KAZAKHSTAN", Truck],
+                    ["WORLDWIDE", Globe2],
+                  ] as const).map(([coverage, Icon]) => (
+                    <button
+                      key={coverage}
+                      type="button"
+                      className={data.deliveryCoverage === coverage ? "is-selected" : ""}
+                      onClick={() => update("deliveryCoverage", coverage)}
+                    >
+                      <Icon size={20} />
+                      <span>{t(`seller.delivery.${coverage}`)}</span>
+                    </button>
+                  ))}
+                </div>
+                {data.deliveryCoverage === "SELECTED_CITIES" && (
+                  <label className="fcw-flex-col" style={{ gap: "0.35rem" }}>
+                    <span className="fcw-label">{t("seller.deliveryCities")}</span>
+                    <input
+                      className="fcw-input"
+                      defaultValue={data.deliveryCities.join(", ")}
+                      onChange={event => update("deliveryCities", event.target.value
+                        .split(",")
+                        .map(city => city.trim())
+                        .filter(Boolean))}
+                      placeholder={t("seller.deliveryCities.placeholder")}
+                    />
+                    <small className="fcw-body-xs fcw-text-tertiary">{t("seller.deliveryCities.description")}</small>
+                  </label>
+                )}
+                <button
+                  type="button"
+                  className={`seller-pickup-option${data.pickupAvailable ? " is-selected" : ""}`}
+                  onClick={() => setShowPickupModal(true)}
+                >
+                  <span className="seller-pickup-icon"><Store size={22} /></span>
+                  <span>
+                    <strong>{t("seller.pickup")}</strong>
+                    <small>{t("seller.pickupDescription")}</small>
+                  </span>
+                  <span className="seller-pickup-status">
+                    {data.pickupAvailable && <Check size={15} />}
+                    {branchDrafts.length > 0
+                      ? `${branchDrafts.length} ${t("business.branches").toLowerCase()}`
+                      : t(data.pickupAvailable ? "seller.pickupEnabled" : "seller.pickupDisabled")}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            <AnimatePresence>
+              {showPickupModal && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{
+                    position: "fixed", inset: 0, zIndex: 1000,
+                    display: "flex", alignItems: "flex-start", justifyContent: "center",
+                    backgroundColor: "rgba(0,0,0,0.5)", overflow: "auto", padding: "2rem 1rem",
+                  }}
+                  onClick={() => setShowPickupModal(false)}
+                >
+                  <Card padding="lg" style={{ maxWidth: 640, width: "100%" }} onClick={e => e.stopPropagation()}>
+                    <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
+                      <div>
+                        <h2 className="fcw-h3" style={{ margin: 0 }}>{t("seller.pickupBranchModal.title")}</h2>
+                        <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0 0" }}>
+                          {t("seller.pickupBranchModal.description")}
+                        </p>
+                      </div>
+
+                      {branchDrafts.length > 0 && (
+                        <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+                          {branchDrafts.map(draft => (
+                            <div key={draft.id} style={{
+                              display: "flex", alignItems: "center", gap: "0.5rem",
+                              padding: "0.5rem 0.75rem",
+                              backgroundColor: "var(--fcw-color-surface)",
+                              border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                              borderRadius: "var(--fcw-radius-md)",
+                            }}>
+                              <MapPin size={16} style={{ color: "var(--fcw-color-primary)", flexShrink: 0 }} />
+                              <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {draft.name}
+                              </span>
+                              <span className="fcw-body-s fcw-text-secondary" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {[cities.find(c => c.id === draft.cityId)?.name, draft.address].filter(Boolean).join(", ") || "—"}
+                              </span>
+                              <div style={{ flex: 1 }} />
+                              <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" style={{ color: "var(--fcw-color-error)" }}
+                                onClick={() => removeBranchDraft(draft.id)}>
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
+                        <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                          <label className="fcw-label">{t("business.branch.name")}</label>
+                          <input className="fcw-input" placeholder={t("business.branch.namePlaceholder")}
+                            value={draftForm.name}
+                            onChange={e => setDraftForm(f => ({ ...f, name: e.target.value }))} />
+                        </div>
+                        <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                          <label className="fcw-label">{t("business.branch.location")}</label>
+                          <MapLocationPicker
+                            initialLat={draftForm.latitude ?? undefined}
+                            initialLng={draftForm.longitude ?? undefined}
+                            onChange={(latitude, longitude, address, cityName) => {
+                              const cityId = cities.find(city =>
+                                normalizeCityName(city.name) === normalizeCityName(cityName || "")
+                              )?.id || "";
+                              setDraftForm(f => ({ ...f, latitude, longitude, address: address || f.address, cityId: cityId || f.cityId }));
+                            }}
+                          />
+                          {draftForm.address && (
+                            <span className="fcw-body-s fcw-text-secondary">
+                              {[cities.find(c => c.id === draftForm.cityId)?.name, draftForm.address].filter(Boolean).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                          <label className="fcw-label">{t("business.branch.addressDetails")}</label>
+                          <input className="fcw-input" placeholder={t("business.branch.addressDetails")}
+                            value={draftForm.addressDetails}
+                            onChange={e => setDraftForm(f => ({ ...f, addressDetails: e.target.value }))} />
+                        </div>
+                        <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={addBranchDraft}
+                          disabled={!draftForm.name.trim() || draftForm.latitude == null}>
+                          <Plus size={14} />{t("seller.pickupBranchModal.addBranch")}
+                        </button>
+                      </div>
+
+                      <div className="fcw-flex fcw-justify-end" style={{ gap: "0.5rem" }}>
+                        <button className="fcw-btn fcw-btn-ghost" onClick={() => setShowPickupModal(false)}>
+                          {t("business.cancel")}
+                        </button>
+                        <button className="fcw-btn fcw-btn-primary" onClick={() => setShowPickupModal(false)}>
+                          {t("seller.pickupBranchModal.done")}
+                        </button>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {step === 4 && (
               <div className="seller-confirmation-step">
                 <div className="seller-confirmation-summary">
                   <div>
@@ -347,6 +600,21 @@ export function SellerOnboardingPage() {
                   <div>
                     <span>{t("seller.confirmation.setup")}</span>
                     <strong>{t(`seller.catalog.${data.catalogSetupMode}`)}</strong>
+                  </div>
+                  <div>
+                    <span>{t("seller.confirmation.delivery")}</span>
+                    <strong>
+                      {t(`seller.delivery.${data.deliveryCoverage}`)}
+                      {data.deliveryCoverage === "SELECTED_CITIES" && data.deliveryCities.length > 0
+                        ? `: ${data.deliveryCities.join(", ")}`
+                        : ""}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>{t("seller.confirmation.pickup")}</span>
+                    <strong>{branchDrafts.length > 0
+                      ? `${branchDrafts.length} ${t("business.branches").toLowerCase()}`
+                      : t("seller.pickupDisabled")}</strong>
                   </div>
                 </div>
                 <label className="seller-confirmation-legal">
@@ -371,7 +639,7 @@ export function SellerOnboardingPage() {
               <button className="fcw-btn fcw-btn-ghost" disabled={step === 1} onClick={() => setStep(current => current - 1)}>
                 <ChevronLeft size={16} />{t("seller.back")}
               </button>
-              {step < 3 ? (
+              {step < 4 ? (
                 <button className="fcw-btn fcw-btn-primary" onClick={goNext}>
                   {t("seller.next")}<ChevronRight size={16} />
                 </button>

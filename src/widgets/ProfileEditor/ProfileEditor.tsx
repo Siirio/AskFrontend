@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Globe, Image, Instagram, Loader2, Mail, MessageCircle, Palette, Phone, Upload } from "lucide-react";
+import { Globe, Image, Instagram, Loader2, Mail, MapPin, MessageCircle, Palette, Phone, Truck, Upload } from "lucide-react";
 import { Card } from "../../shared/ui/Card/Card";
 import type { BrandProfileDto } from "../../shared/api/dto";
 import { uploadBusinessProfileCover, uploadBusinessProfileLogo } from "../../shared/api/askClient";
@@ -165,6 +165,42 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly }: Pro
             <span className="fcw-label">{t("profileEditor.description")}</span>
             <textarea className="fcw-textarea" value={profile.description || ""} onChange={e => update({ description: e.target.value })} rows={3} />
           </label>
+
+          <div className="profile-delivery-fields">
+            <div>
+              <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}>
+                <Truck size={13} />{t("profileEditor.delivery")}
+              </span>
+              <select
+                className="fcw-input"
+                value={profile.deliveryCoverage || "NO_DELIVERY"}
+                onChange={event => update({
+                  deliveryCoverage: event.target.value as NonNullable<BrandProfileDto["deliveryCoverage"]>,
+                  deliveryCities: event.target.value === "SELECTED_CITIES" ? profile.deliveryCities || [] : [],
+                })}
+              >
+                {(["NO_DELIVERY", "SELECTED_CITIES", "KAZAKHSTAN", "WORLDWIDE"] as const).map(coverage => (
+                  <option key={coverage} value={coverage}>{t(`seller.delivery.${coverage}`)}</option>
+                ))}
+              </select>
+            </div>
+            {profile.deliveryCoverage === "SELECTED_CITIES" && (
+              <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+                <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}>
+                  <MapPin size={13} />{t("seller.deliveryCities")}
+                </span>
+                <input
+                  key={profile.id || "new-profile"}
+                  className="fcw-input"
+                  defaultValue={(profile.deliveryCities || []).join(", ")}
+                  onChange={event => update({
+                    deliveryCities: event.target.value.split(",").map(city => city.trim()).filter(Boolean),
+                  })}
+                  placeholder={t("seller.deliveryCities.placeholder")}
+                />
+              </label>
+            )}
+          </div>
 
           <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
             <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>

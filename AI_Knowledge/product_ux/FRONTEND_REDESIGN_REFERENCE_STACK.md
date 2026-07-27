@@ -141,3 +141,10 @@ organization/
 - Browser checks when the task explicitly includes automated visual verification.
 - Reduced-motion and responsive CSS must remain implemented even when the user requests manual click-through testing.
 - API contract check against auth, search, business product/service, chat, profile, branch, and import endpoints.
+
+## Search and cabinet corrections (2026-07-27)
+
+- The home search has no enclosing square surface; the large rounded search field is the primary visual object.
+- A submitted search remains the active customer context across internal navigation until the customer focuses the search field to begin another query.
+- Chat actions outside the full `Чаты` screen use the fixed right drawer and preserve the screen underneath.
+- The Business profile is a distinct bottom sidebar card with Business identity and branch location context.

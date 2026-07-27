@@ -40,7 +40,7 @@ There are three distinct entry paths into the system. They are not three equal "
 
 Customer registration does not send a legal-acceptance flag. After contact verification, role selection requires a dedicated `POST /api/v1/legal/registration-acceptances`: customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
 
-Authenticated seller setup uses `POST /api/v1/business/onboarding`. It requires a business name, a selected or free-text business category, country, legal form, and entity-backed `businessScope`: `ITEM`, `SERVICE`, or `BOTH`. For `KZ_IP` and `KZ_TOO`, the UI also sends the 12-digit legal identifier (IIN/BIN) and legal name; it must not request verification source links. For `NONE`, at least one valid HTTP(S) verification source is mandatory. When the owner selects Ask managed import, the business cabinet opens a dialog containing only `preferredContactChannel` and `preferredContactValue`; source links collected during onboarding are submitted without being shown again.
+Authenticated seller setup uses `POST /api/v1/business/onboarding`. It requires a business name, a selected or free-text business category, country, legal form, entity-backed `businessScope` (`ITEM`, `SERVICE`, or `BOTH`), `deliveryCoverage`, and `pickupAvailable`. `deliveryCoverage` is `NO_DELIVERY`, `SELECTED_CITIES`, `KAZAKHSTAN`, or `WORLDWIDE`; selected-city coverage also requires `deliveryCities`. Delivery and pickup are requested on the penultimate onboarding screen and remain editable in the Business profile. For `KZ_IP` and `KZ_TOO`, the UI also sends the 12-digit legal identifier (IIN/BIN) and legal name; it must not request verification source links. For `NONE`, at least one valid HTTP(S) verification source is mandatory. When the owner selects Ask managed import, the business cabinet opens a dialog containing only `preferredContactChannel` and `preferredContactValue`; source links collected during onboarding are submitted without being shown again.
 
 Business-category autocomplete calls `GET /api/v1/categories?q=<text>&type=BUSINESS` and renders its `suggestions` only. Product and service forms use `ITEM` and `SERVICE` respectively; no UI may substitute a catalog scope for this category type.
 
@@ -259,12 +259,13 @@ Privacy-safe contact resolution through one-time tokens. Frontend never receives
 
 Constrained page builder for brand mini-sites. Brands assemble pages from pre-defined blocks.
 
-### Brand Profile
+### Business Profile
 
-`GET /api/v1/businesses/{businessId}/brand-profile` (public):
-Returns brandColor, logoUrl, coverUrl, description, toneOfVoice, instagramUrl, telegramUrl, websiteUrl.
+`GET /api/v1/businesses/{businessId}/business-profile` returns the public Business-owned profile by `businessId`.
 
-`PUT /api/v1/businesses/{businessId}/brand-profile` (Owner): Update profile fields.
+`PATCH /api/v1/businesses/{businessId}/business-profile` lets an authorized Business owner or manager update public text, contact fields, `deliveryCoverage`, `deliveryCities`, and `pickupAvailable`. Logo and cover use the dedicated multipart upload endpoints.
+
+Business profile data is distinct from the personal `AppUser` account profile. Ownership or membership never merges the two models.
 
 ### Storefront Endpoints
 

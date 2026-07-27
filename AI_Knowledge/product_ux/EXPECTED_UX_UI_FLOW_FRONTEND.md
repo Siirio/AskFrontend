@@ -1494,6 +1494,8 @@ Actions используют `SupplierResponseStatus` напрямую:
 
 ## 27. Регистрация и вход владельца бизнеса
 
+Seller onboarding после выбора роли состоит из четырёх окон: данные бизнеса, настройка каталога, доставка и получение, подтверждение. На предпоследнем окне продавец обязательно указывает общий охват доставки (`NO_DELIVERY`, выбранные города, весь Казахстан или весь мир) и отдельно доступность самовывоза. Для выбранных городов нужен хотя бы один город. После регистрации эти сведения редактируются в отдельном профиле бизнеса.
+
 Владелец бизнеса регистрируется самостоятельно. При регистрации создается компания и первый филиал.
 
 ### Вход владельца бизнеса
@@ -1737,3 +1739,9 @@ Do not show internal AI confidence, raw score, rating-first rank, cheapest-first
 - Branch creation uses a focused address-first flow followed by opening hours; map coordinates remain internal implementation data.
 - UniqueOffer creation uses a staged composer for details, publication settings, and final review without introducing a calendar-event model.
 - Item and Service creation never displays an active control. Both are created active, while activation can be changed only during later editing.
+- A successful Item or Service create response is committed backend data and is inserted into the business list immediately; the frontend must not discard it and then claim success after a failed list reload.
+- The Business profile is a separate business-owned screen keyed by `businessId`. It is never merged with the personal `AppUser` account profile, even when the same person is both user and Business owner.
+- The business cabinet exposes a dedicated Business profile section and an explicit action that opens its public Business profile screen.
+- The current search route remains restorable while the customer visits product, Business profile, chat, or cabinet screens. Returning through the main navigation reopens that search with its preserved raw query; focusing the search input explicitly starts a new-search intent and clears the stored route.
+- Customer chat actions outside the dedicated `Чаты` page open the shared fixed right-side chat drawer without navigating away from the current result, Item, Service, or public Business profile screen. The dedicated `Чаты` page keeps its existing full-page layout.
+- The Business profile entry is rendered as a separate card pinned to the bottom of the Business cabinet sidebar. It opens the Business-owned profile editor and is not mixed into the regular operational navigation rows.

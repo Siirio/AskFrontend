@@ -16,6 +16,7 @@ export type BranchFormState = {
   timeZoneId: string;
   weeklyHours: Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>;
   specialHours: Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }>;
+  pickupAvailable: boolean;
 };
 
 export interface OverviewTabProps {

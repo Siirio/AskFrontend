@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { BriefcaseBusiness, Package, Search } from "lucide-react";
 import { buildRoute, ROUTES } from "../../app/routes";
+import { saveActiveSearchRoute } from "../../entities/search-session/model/activeSearchSession";
 
 type SearchMode = "ITEM" | "SERVICE";
 
@@ -17,11 +18,13 @@ export function HomePage() {
     const rawQuery = query.trim();
     if (!rawQuery) return;
     const city = window.localStorage.getItem("ask.city") || t("citySelector.almaty");
-    navigate(buildRoute(ROUTES.results, {}, {
+    const route = buildRoute(ROUTES.results, {}, {
       query: rawQuery,
       mode,
       city,
-    }));
+    });
+    saveActiveSearchRoute(route, window.sessionStorage);
+    navigate(route);
   };
 
   return (

@@ -116,6 +116,16 @@ export function BranchEditor({ open, form, cities, onChange, onClose, onCreate, 
               </button>
             </div>
           </EditorSection>
+          <EditorSection title={t("seller.pickup")} description={t("seller.pickupDescription")}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={form.pickupAvailable}
+                onChange={event => onChange(current => ({ ...current, pickupAvailable: event.target.checked }))}
+              />
+              <span>{t("business.branch.pickupAvailable")}</span>
+            </label>
+          </EditorSection>
           <EditorDisclosure title={t("business.branch.specialHours")} description={t("business.branch.specialHoursDescription")}>
             <div className="ask-editor-hours">
               {form.specialHours.map((hours, index) => (

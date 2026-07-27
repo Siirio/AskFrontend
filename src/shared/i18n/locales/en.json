@@ -424,8 +424,8 @@
   "profile.createBusiness": "Create a business",
   "seller.progress": "Step {{step}} of 4",
   "seller.step1.title": "Business and contact",
-  "seller.step2.title": "Delivery",
-  "seller.step3.title": "Catalog setup",
+  "seller.step2.title": "Catalog setup",
+  "seller.step3.title": "Delivery and pickup",
   "seller.step4.title": "Legal confirmation",
   "seller.businessName": "Business name",
   "seller.legalName": "Legal name",
@@ -446,6 +446,11 @@
   "seller.delivery.WORLDWIDE": "Worldwide",
   "seller.delivery.CONTACT_SELLER": "Contact seller",
   "seller.deliveryTerms": "Delivery terms",
+  "seller.delivery.title": "Where do you deliver?",
+  "seller.delivery.description": "Set the business-wide coverage. You can change it later in the business profile.",
+  "seller.deliveryCities": "Delivery cities",
+  "seller.deliveryCities.placeholder": "For example: Almaty, Astana, Shymkent",
+  "seller.deliveryCities.description": "Separate city names with commas.",
   "seller.catalog.MANUAL": "Add products manually",
   "seller.catalog.ASK_MANAGED_IMPORT": "Order catalog import from Ask",
   "seller.managedInfo": "A paid service estimated at ₸20,000–100,000. The price depends on volume and source quality. Manual setup requires adding and checking every item separately; Ask can migrate the catalog quickly and structure it for cards and search.",
@@ -526,6 +531,9 @@
   "business.events": "Unique Offers",
   "business.businessCard": "Business card",
   "business.profile": "Profile",
+  "business.businessProfile": "Business profile",
+  "business.businessProfileDescription": "Public company data is stored separately from the user's personal account.",
+  "business.viewBusinessProfile": "View business profile",
   "business.brand": "Brand",
   "business.organization": "Organization",
   "business.branches": "Branches",
@@ -780,9 +788,13 @@
   "business.employee.deletePending": "Remove activation request",
   "business.employee.empty": "No employees",
   "business.employee.manager": "Manager",
+  "business.employee.owner": "Owner",
   "business.employee.worker": "Worker",
   "business.employee.selectBranch": "Select branch",
   "business.employee.noBranchHint": "Create a branch first in \"Branches\"",
+  "business.noEmployees": "No employees",
+  "business.employeeCount": "employees",
+  "business.noEmployeesDesc": "Add managers and owners who will manage the business.",
   "business.changePassword": "Change Password",
   "business.currentPassword": "Current password",
   "business.newPassword": "New password",
@@ -1033,13 +1045,21 @@
   "seller.catalog.managedDescription": "The Ask team will help collect and prepare your {{catalog}} catalog",
   "seller.managedBenefitTitle": "Skip the manual transfer"
   ,"seller.pickupDescription": "Customers can collect their order from your location without delivery."
+  ,"seller.pickupBranchModal.title": "Add pickup point"
+  ,"seller.pickupBranchModal.description": "Select a location on the map and enter the branch name. You can add multiple pickup points."
+  ,"seller.pickupBranchModal.addBranch": "Add point"
+  ,"seller.pickupBranchModal.done": "Done"
   ,"seller.pickupEnabled": "Enabled"
   ,"seller.pickupDisabled": "Disabled"
+  ,"profileEditor.delivery": "Delivery and pickup"
   ,"seller.source.WILDBERRIES": "Wildberries"
   ,"seller.confirmation.business": "Business"
   ,"seller.confirmation.fulfillment": "Order fulfilment"
   ,"seller.confirmation.catalog": "Catalog scope"
   ,"seller.confirmation.setup": "Catalog setup"
+  ,"seller.confirmation.delivery": "Delivery coverage"
+  ,"seller.confirmation.pickup": "Pickup"
+  ,"seller.validation.deliveryCities": "Add at least one delivery city"
   ,"seller.confirmation.notSpecified": "Not specified"
   ,"seller.confirmation.legalTitle": "I confirm the details and accept the terms"
   ,"seller.confirmation.legalDescription": "I have reviewed the seller terms and personal data consent. The supplied details may be used to create the business profile."
@@ -1190,6 +1210,7 @@
   ,"business.branch.hoursDescription": "Add regular hours. Holidays and exceptions can be configured separately."
   ,"business.branch.timeZonePlaceholder": "For example: Asia/Almaty"
   ,"business.branch.specialHoursDescription": "Holidays, closed days, and adjusted opening hours."
+  ,"business.branch.pickupAvailable": "Self-pickup available"
   ,"drops.nameRequired": "Enter the unique offer name"
   ,"drops.editorDescription": "Build the offer step by step and review it before publishing."
   ,"drops.stepDetails": "Details"

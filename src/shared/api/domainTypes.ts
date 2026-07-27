@@ -35,6 +35,7 @@ export type BranchDto = {
   weeklyHours?: WeeklyOpeningIntervalDto[];
   specialHours?: SpecialOpeningIntervalDto[];
   openingSummary?: BranchOpeningSummaryDto;
+  pickupAvailable?: boolean;
 };
 
 export type BusinessDto = {
@@ -54,6 +55,7 @@ export type CreateBranchData = {
   timeZoneId?: string;
   weeklyHours?: WeeklyOpeningIntervalDto[];
   specialHours?: SpecialOpeningIntervalDto[];
+  pickupAvailable?: boolean;
 };
 
 export type UpdateBranchData = {
@@ -66,4 +68,5 @@ export type UpdateBranchData = {
   timeZoneId?: string;
   weeklyHours?: WeeklyOpeningIntervalDto[];
   specialHours?: SpecialOpeningIntervalDto[];
+  pickupAvailable?: boolean;
 };

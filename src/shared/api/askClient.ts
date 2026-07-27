@@ -441,6 +441,9 @@ export function updateBrandProfile(businessId: string, data: Partial<BrandProfil
       instagramUrl: data.instagramUrl,
       telegramUrl: data.telegramUrl,
       websiteUrl: data.websiteUrl,
+      deliveryCoverage: data.deliveryCoverage,
+      deliveryCities: data.deliveryCities,
+      pickupAvailable: data.pickupAvailable,
     },
   });
 }

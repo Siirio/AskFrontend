@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, Pin, PinOff, CheckCheck, Paperclip, FileText } from "lucide-react";
@@ -6,6 +7,7 @@ import { useChat } from "./ChatContext";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { startChatConversation, getChatMessages, sendChatMessage, markChatRead, getPublicBusinessCard, uploadChatFile } from "../../shared/api/askClient";
 import type { BusinessCardDto, ChatMessageDto } from "../../shared/api/dto";
+import { ROUTES } from "../../app/routes";
 
 const PANEL_WIDTH = 380;
 
@@ -13,6 +15,7 @@ export function ChatPanel() {
   const { t } = useTranslation();
   const { reduced } = useMotion();
   const { isOpen, isPinned, chatData, closeChat, togglePin } = useChat();
+  const location = useLocation();
   const [showChat, setShowChat] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
@@ -37,14 +40,26 @@ export function ChatPanel() {
   }, [isOpen, chatData?.businessId]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setShowChat(true);
+      setChatMessage("");
+      setMessages([]);
+      setConversationId(null);
+      setChatError("");
+    } else {
       setShowChat(false);
       setChatMessage("");
       setMessages([]);
       setConversationId(null);
       setChatError("");
     }
-  }, [isOpen]);
+  }, [isOpen, chatData?.id]);
+
+  useEffect(() => {
+    if (location.pathname === ROUTES.chats && isOpen) {
+      closeChat();
+    }
+  }, [closeChat, isOpen, location.pathname]);
 
   useEffect(() => {
     if (isOpen && isPinned) {
@@ -83,10 +98,44 @@ export function ChatPanel() {
     try {
       const res = await getChatMessages(convId);
       setMessages(res.items);
+      await markChatRead(convId);
     } catch {
       setMessages([]);
     }
   };
+
+  useEffect(() => {
+    if (!isOpen || !showChat || !chatData?.businessId || conversationId) return;
+    let active = true;
+    setChatBusy(true);
+    setChatError("");
+    const subject = chatData.title || chatData.brandName || t("companyCard.newChat");
+    startChatConversation(chatData.businessId, subject)
+      .then(async conversation => {
+        const response = await getChatMessages(conversation.conversationId);
+        await markChatRead(conversation.conversationId);
+        if (!active) return;
+        setConversationId(conversation.conversationId);
+        setMessages(response.items);
+      })
+      .catch(() => {
+        if (active) setChatError(t("companyCard.chat.error"));
+      })
+      .finally(() => {
+        if (active) setChatBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [
+    chatData?.brandName,
+    chatData?.businessId,
+    chatData?.title,
+    conversationId,
+    isOpen,
+    showChat,
+    t,
+  ]);
 
   const handleOpenChat = async () => {
     setShowChat(true);
@@ -170,7 +219,7 @@ export function ChatPanel() {
 
   return (
     <AnimatePresence>
-      {isOpen && chatData && (
+      {location.pathname !== ROUTES.chats && isOpen && chatData && (
         <>
           {isMobile && (
             <motion.div

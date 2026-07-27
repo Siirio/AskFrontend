@@ -139,6 +139,9 @@ export type BrandProfileDto = {
   websiteUrl?: string;
   number?: string;
   email?: string;
+  deliveryCoverage?: "NO_DELIVERY" | "SELECTED_CITIES" | "KAZAKHSTAN" | "WORLDWIDE";
+  deliveryCities?: string[];
+  pickupAvailable?: boolean;
 };
 
 export type StorefrontBlockDto = {

@@ -12,15 +12,14 @@ import {
   Share2,
   Store,
 } from "lucide-react";
-import { buildRoute, ROUTES } from "../../app/routes";
-import { useAuth } from "../../app/providers/AuthProvider";
-import { getBrandProfile, startChatConversation } from "../../shared/api/askClient";
+import { getBrandProfile } from "../../shared/api/askClient";
 import type { BrandProfileDto } from "../../shared/api/dto";
+import { useChat } from "../../widgets/ChatPanel/ChatContext";
 
 export function StorefrontPage() {
   const { businessId = "" } = useParams();
   const navigate = useNavigate();
-  const { state } = useAuth();
+  const { openChat } = useChat();
   const [profile, setProfile] = useState<BrandProfileDto | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -36,19 +35,6 @@ export function StorefrontPage() {
       .catch(reason => setError(reason instanceof Error ? reason.message : "Не удалось загрузить профиль"))
       .finally(() => setBusy(false));
   }, [businessId]);
-
-  const openChat = async () => {
-    if (!state.authenticated) {
-      navigate(ROUTES.auth);
-      return;
-    }
-    try {
-      const conversation = await startChatConversation(businessId, profile?.businessName || "Обращение");
-      navigate(buildRoute(ROUTES.chats, {}, { conversation: conversation.conversationId }));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Не удалось открыть чат");
-    }
-  };
 
   if (busy) {
     return (
@@ -134,7 +120,21 @@ export function StorefrontPage() {
         </article>
 
         <aside className="ask-storefront-contact">
-          <button type="button" className="ask-primary-button" onClick={openChat}>
+          <button
+            type="button"
+            className="ask-primary-button"
+            onClick={() => openChat({
+              id: businessId,
+              resultType: "SERVICE",
+              title: profile.businessName || "Обращение",
+              brandName: profile.businessName,
+              brandColor: profile.brandColor,
+              imageUrl: profile.logoUrl,
+              businessId,
+              businessProfile: profile,
+              matchReasons: [],
+            })}
+          >
             <MessageCircle size={19} />
             Написать в чат
           </button>

@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   BriefcaseBusiness,
@@ -23,6 +23,10 @@ import { useTheme } from "../../../app/providers/ThemeProvider";
 import { CitySelector } from "../CitySelector/CitySelector";
 import { LanguageSwitcher } from "../LanguageSwitcher/LanguageSwitcher";
 import { Modal } from "../Modal/Modal";
+import {
+  ACTIVE_SEARCH_ROUTE_CHANGED_EVENT,
+  readActiveSearchRoute,
+} from "../../../entities/search-session/model/activeSearchSession";
 
 type NavItem = {
   to: string;
@@ -35,6 +39,10 @@ export function Navigation() {
   const { state, actions } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [activeSearchRoute, setActiveSearchRoute] = useState(
+    () => readActiveSearchRoute(window.sessionStorage),
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -42,6 +50,18 @@ export function Navigation() {
   const [city, setCity] = useState(
     () => window.localStorage.getItem("ask.city") || t("citySelector.almaty"),
   );
+
+  useEffect(() => {
+    setActiveSearchRoute(readActiveSearchRoute(window.sessionStorage));
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const refreshActiveSearchRoute = () => {
+      setActiveSearchRoute(readActiveSearchRoute(window.sessionStorage));
+    };
+    window.addEventListener(ACTIVE_SEARCH_ROUTE_CHANGED_EVENT, refreshActiveSearchRoute);
+    return () => window.removeEventListener(ACTIVE_SEARCH_ROUTE_CHANGED_EVENT, refreshActiveSearchRoute);
+  }, []);
 
   if (!state.authenticated) return null;
 
@@ -52,7 +72,7 @@ export function Navigation() {
   const initial = (user?.displayName || user?.email || "A").slice(0, 1).toUpperCase();
 
   const primaryItems: NavItem[] = [
-    { to: ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
+    { to: activeSearchRoute ?? ROUTES.home, label: t("nav.main"), icon: <Home size={18} /> },
     { to: ROUTES.chats, label: t("nav.chats"), icon: <MessageCircle size={18} /> },
     ...(membership
       ? [{
@@ -82,7 +102,7 @@ export function Navigation() {
     <>
       <header className="ask-shell-nav">
         <div className="ask-shell-nav__inner">
-          <button type="button" className="ask-wordmark" onClick={() => navigate(ROUTES.home)}>
+          <button type="button" className="ask-wordmark" onClick={() => navigate(activeSearchRoute ?? ROUTES.home)}>
             ASK
           </button>
 

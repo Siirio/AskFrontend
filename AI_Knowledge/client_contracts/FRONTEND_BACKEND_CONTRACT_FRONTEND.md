@@ -287,16 +287,17 @@ Constrained page builder for brand mini-sites. Brands assemble pages from pre-de
 
 ### Seller Onboarding and Managed Import
 
-Seller onboarding and managed import use the entity-backed `BusinessScope` values `ITEM`, `SERVICE`, and `BOTH` in frontend state, query parameters, request bodies, responses, and backend DTOs. Legal form `NONE` requires at least one valid HTTP(S) verification source. The managed-import request dialog displays only `preferredContactChannel` and `preferredContactValue`; the value must match email, Telegram `@username`, or WhatsApp phone structure. Managed-import payloads use optional `selectedSourceTypes` and never use `sourceTypes`, `catalogScope`, `PRODUCTS`, or `SERVICES` as aliases for these entity terms.
+Seller onboarding and managed import use the entity-backed `BusinessScope` values `ITEM`, `SERVICE`, and `BOTH` in frontend state, query parameters, request bodies, responses, and backend DTOs. Legal form `NONE` requires at least one valid HTTP(S) verification source. The penultimate onboarding screen sends `deliveryCoverage` (`NO_DELIVERY`, `SELECTED_CITIES`, `KAZAKHSTAN`, or `WORLDWIDE`), `deliveryCities`, and `pickupAvailable`; selected-city coverage requires at least one city. The managed-import request dialog displays only `preferredContactChannel` and `preferredContactValue`; the value must match email, Telegram `@username`, or WhatsApp phone structure. Managed-import payloads use optional `selectedSourceTypes` and never use `sourceTypes`, `catalogScope`, `PRODUCTS`, or `SERVICES` as aliases for these entity terms.
 
 Activation gives the assigned platform member immediate Item/Service access only for that Business and scope for seven days. Frontend access checks use the active grant response and never a global catalog-edit flag.
 
-### Brand Profile
+### Business Profile
 
-`GET /api/v1/businesses/{businessId}/brand-profile` (public):
-Returns brandColor, logoUrl, coverUrl, description, toneOfVoice, instagramUrl, telegramUrl, websiteUrl.
+`GET /api/v1/businesses/{businessId}/business-profile` returns the public Business-owned profile by `businessId`.
 
-`PUT /api/v1/businesses/{businessId}/brand-profile` (Owner): Update profile fields.
+`PATCH /api/v1/businesses/{businessId}/business-profile` lets an authorized Business owner or manager update public text, contact fields, delivery coverage, selected cities, and pickup availability. Logo and cover use the dedicated multipart upload endpoints.
+
+Business profile data is distinct from the personal `AppUser` account profile. Ownership or membership never merges the two models.
 
 ### Storefront Endpoints
 

@@ -12,6 +12,9 @@ export type SellerOnboardingData = {
   catalogSetupMode: "MANUAL" | "ASK_MANAGED_IMPORT";
   businessScope: BusinessScope;
   onlineOnly: boolean;
+  deliveryCoverage: "NO_DELIVERY" | "SELECTED_CITIES" | "KAZAKHSTAN" | "WORLDWIDE";
+  deliveryCities: string[];
+  pickupAvailable: boolean;
   locale: string;
   twoGisUrl: string;
   kaspiUrl: string;

@@ -230,6 +230,10 @@ select {
     gap: 0.25rem;
   }
 
+  .seller-delivery-options {
+    grid-template-columns: 1fr;
+  }
+
   .seller-pickup-option {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -751,6 +755,52 @@ a {
   margin-bottom: 0.25rem;
 }
 
+.seller-delivery-step {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.seller-delivery-step h3,
+.seller-delivery-step p {
+  margin: 0;
+}
+
+.seller-delivery-step p {
+  margin-top: 0.25rem;
+  color: var(--fcw-color-text-secondary);
+}
+
+.seller-delivery-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.seller-delivery-options button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.9rem;
+  color: var(--fcw-color-text);
+  text-align: left;
+  background: var(--fcw-color-surface-secondary);
+  border: 1px solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-md);
+  cursor: pointer;
+}
+
+.seller-delivery-options button:hover,
+.seller-delivery-options button.is-selected {
+  border-color: var(--fcw-color-primary);
+  background: color-mix(in srgb, var(--fcw-color-primary) 9%, var(--fcw-color-surface-secondary));
+}
+
+.seller-delivery-options button.is-selected {
+  color: var(--fcw-color-primary);
+}
+
 .seller-pickup-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -803,6 +853,37 @@ a {
   color: var(--fcw-color-primary);
   font-size: 0.8rem;
   font-weight: 650;
+}
+
+.profile-delivery-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  background: var(--fcw-color-surface-secondary);
+  border: 1px solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-md);
+}
+
+.profile-delivery-fields > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.profile-pickup-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.profile-pickup-toggle span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--fcw-font-size-body-s);
+  font-weight: 600;
 }
 
 .seller-confirmation-step,

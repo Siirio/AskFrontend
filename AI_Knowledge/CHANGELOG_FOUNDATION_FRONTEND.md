@@ -1,5 +1,11 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-27 — Seller delivery onboarding and editable profile
+
+- Added the penultimate seller-onboarding screen for business-wide delivery coverage, selected city names, and pickup availability.
+- Added delivery fields to the onboarding and Business profile API contracts.
+- Added delivery editing to the Business profile editor and preserved the values across onboarding drafts.
+
 ## 2026-07-26 — Durable catalog creation
 
 - Product creation now reloads the committed first page instead of depending on a temporary optimistic row.
@@ -402,3 +408,11 @@ Completed the frontend part of the identity/onboarding/managed-import/compliance
 - Business profile editing now uses the real profile API and multipart logo/cover upload endpoints.
 - Product and service attributes use guided key/value controls instead of exposed JSON.
 - Corrected item and branch update routes to `/api/v1/items/{itemId}` and `/api/v1/branches/{branchId}`.
+# 2026-07-27 — Business profile and durable catalog creation
+
+- Added a dedicated Business profile cabinet surface and public-profile navigation keyed by `businessId`, separate from the personal `AppUser` profile.
+- Item and Service creation now renders the committed create response immediately instead of discarding it and relying on a silently failing list refresh.
+- Successful empty API responses no longer trigger JSON parse failures when a chat is marked as read.
+- Search context is retained across internal navigation until the customer focuses the search field to start a new query.
+- Result, Item, Service, and public Business profile chat actions now open the shared right-side drawer; the full `Чаты` screen remains unchanged.
+- Enlarged the home search field, removed its enclosing square surface, and moved the Business profile into a dedicated bottom sidebar card.

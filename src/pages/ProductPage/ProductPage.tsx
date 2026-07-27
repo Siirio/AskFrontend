@@ -2,20 +2,17 @@ import { useState } from "react";
 import { ArrowLeft, Clock3, MapPin, MessageCircle, Store } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { buildRoute, ROUTES } from "../../app/routes";
-import { useAuth } from "../../app/providers/AuthProvider";
-import { startChatConversation } from "../../shared/api/askClient";
 import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
 import type { ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
 import { ReportDialog } from "../../widgets/ReportDialog/ReportDialog";
+import { useChat } from "../../widgets/ChatPanel/ChatContext";
 
 export function ProductPage() {
   const { id = "" } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { state } = useAuth();
+  const { openChat } = useChat();
   const card = (location.state as { card?: ResultCardData } | null)?.card;
-  const [chatBusy, setChatBusy] = useState(false);
-  const [chatError, setChatError] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
 
   if (!card) {
@@ -34,24 +31,6 @@ export function ProductPage() {
       </main>
     );
   }
-
-  const openChat = async () => {
-    if (!card.businessId) return;
-    if (!state.authenticated) {
-      navigate(ROUTES.auth, { state: { from: location.pathname } });
-      return;
-    }
-    setChatBusy(true);
-    setChatError("");
-    try {
-      const conversation = await startChatConversation(card.businessId, card.title);
-      navigate(`${ROUTES.chats}?conversation=${encodeURIComponent(conversation.conversationId)}`);
-    } catch (error) {
-      setChatError(error instanceof Error ? error.message : "Не удалось открыть чат");
-    } finally {
-      setChatBusy(false);
-    }
-  };
 
   return (
     <main id="main-content" className="ask-product-page">
@@ -104,9 +83,9 @@ export function ProductPage() {
             {(card.location || card.city) && <span><MapPin size={16} />{[card.location, card.city].filter(Boolean).join(", ")}</span>}
           </div>
 
-          <button type="button" className="ask-primary-button" onClick={openChat} disabled={chatBusy || !card.businessId}>
+          <button type="button" className="ask-primary-button" onClick={() => openChat(card)} disabled={!card.businessId}>
             <MessageCircle size={18} />
-            {chatBusy ? "Открываем чат..." : "Написать"}
+            Написать
           </button>
           {card.businessId && (
             <button
@@ -117,7 +96,6 @@ export function ProductPage() {
               Открыть профиль
             </button>
           )}
-          {chatError && <p className="ask-form-error">{chatError}</p>}
           {card.resultType === "ITEM" && (
             <button type="button" className="ask-report-link" onClick={() => setReportOpen(true)}>
               Пожаловаться

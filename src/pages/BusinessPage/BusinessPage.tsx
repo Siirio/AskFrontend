@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import MapLocationPicker from "../../widgets/MapLocationPicker/MapLocationPicker";
 import {
   Package, Briefcase, Building2, UserRound,
   Sparkles, Plus, RefreshCw, Loader2,
   ChevronDown, Menu, X, MapPin, Trash2, Edit3, Check, Layout,
-  Upload, ChevronLeft, ChevronRight, MessageCircle, Zap, Tags
+  Upload, ChevronLeft, ChevronRight, MessageCircle, Zap, Tags, Store, ExternalLink
 } from "lucide-react";
+import { buildRoute, ROUTES } from "../../app/routes";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { Card } from "../../shared/ui/Card/Card";
@@ -54,9 +55,8 @@ import {
 
 import { ApiError } from "../../shared/api/httpClient";
 import { isValidEmail } from "../../shared/utils/validation";
-import { ROUTES } from "../../app/routes";
 
-type BusinessSection = "overview" | "products" | "services" | "drops" | "organization" | "events" | "business-card" | "import";
+type BusinessSection = "overview" | "products" | "services" | "drops" | "profile" | "organization" | "events" | "business-card" | "import";
 
 
 const DEFAULT_BRAND_COLOR = "#e8824e";
@@ -72,6 +72,9 @@ function emptyProfile(businessId: string): BrandProfileDto {
     instagramUrl: "",
     telegramUrl: "",
     websiteUrl: "",
+    deliveryCoverage: "NO_DELIVERY",
+    deliveryCities: [],
+    pickupAvailable: false,
   };
 }
 
@@ -101,7 +104,7 @@ function formatAttributes(value?: Record<string, unknown> | null) {
 }
 
 function emptyBranchForm() {
-  return { name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }> };
+  return { name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }>, pickupAvailable: false };
 }
 
 function formatOpeningTime(iso?: string, timeZoneId?: string) {
@@ -130,6 +133,7 @@ function formatOpeningLabel(summary: { state: string; timeZoneId?: string; nextO
 }
 
 export function BusinessPage() {
+  const navigate = useNavigate();
   const { state, actions } = useAuth();
   const { selectBusiness } = actions;
   const { businessId = "" } = useParams<{ businessId: string }>();
@@ -233,7 +237,7 @@ export function BusinessPage() {
   const [showBranchForm, setShowBranchForm] = useState(false);
   const [showOnlineOnlyConfirm, setShowOnlineOnlyConfirm] = useState(false);
   const [editBranchId, setEditBranchId] = useState<string | null>(null);
-  const [branchForm, setBranchForm] = useState({ name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }> });
+  const [branchForm, setBranchForm] = useState({ name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }>, pickupAvailable: false });
   const [staffByBranch, setStaffByBranch] = useState<Record<string, StaffDto[]>>({});
   const [staffForms, setStaffForms] = useState<Record<string, { displayName: string; email: string; role: string }>>({});
   const [staffBusy, setStaffBusy] = useState("");
@@ -244,7 +248,7 @@ export function BusinessPage() {
   const [employees, setEmployees] = useState<StaffDto[]>([]);
   const [employeesBusy, setEmployeesBusy] = useState(false);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
-  const [employeeForm, setEmployeeForm] = useState({ displayName: "", email: "", role: "WORKER", branchId: "" });
+  const [employeeForm, setEmployeeForm] = useState({ displayName: "", email: "", role: "MANAGER", branchId: "" });
 
   // Overview
   const [importBranchId, setImportBranchId] = useState("");
@@ -480,23 +484,16 @@ export function BusinessPage() {
       toast.show(t("business.validation.emailInvalid"), "error");
       return;
     }
-    if (employeeForm.role === "WORKER" && !employeeForm.branchId) {
-      toast.show(t("business.employee.selectBranch"), "error");
-      return;
-    }
     setEmployeesBusy(true);
     try {
       const created = await createEmployee(businessId, {
         email: employeeForm.email,
         displayName: employeeForm.displayName.trim(),
         role: employeeForm.role,
-        branchId: employeeForm.role === "WORKER" ? employeeForm.branchId : undefined,
+        branchId: undefined,
       });
       setEmployees(current => [created, ...current.filter(item => item.id !== created.id)]);
-      if (employeeForm.branchId) {
-        await loadStaffForBranch(employeeForm.branchId);
-      }
-      setEmployeeForm({ displayName: "", email: "", role: "WORKER", branchId: "" });
+      setEmployeeForm({ displayName: "", email: "", role: "MANAGER", branchId: "" });
       setShowEmployeeForm(false);
       toast.show(t("business.toast.staffAdded"), "success");
     } catch (e) {
@@ -641,7 +638,7 @@ export function BusinessPage() {
       return;
     }
     try {
-      await createProduct(businessId, {
+      const created = await createProduct(businessId, {
         branchId: selectedBranchId || undefined,
         name: productForm.name,
         description: productForm.description,
@@ -654,8 +651,10 @@ export function BusinessPage() {
         isActive: true,
       });
       productsCacheRef.current.clear();
+      setProducts(current => [created, ...current.filter(item => item.productId !== created.productId)]);
+      setProductsTotal(current => current + 1);
+      setProductsPage(0);
       resetProductForm();
-      await reloadFirstProductPage();
       toast.show(t("business.toast.productCreated"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.productCreateError"), "error");
@@ -756,7 +755,7 @@ export function BusinessPage() {
       return;
     }
     try {
-      await createService(businessId, {
+      const created = await createService(businessId, {
         branchId: selectedBranchId || undefined,
         categoryId: catId,
         categoryName: catLabel || undefined,
@@ -768,8 +767,8 @@ export function BusinessPage() {
         attributes: parseAttributes(serviceForm.attributesText) ?? {},
         isActive: true,
       });
+      setServices(current => [created, ...current.filter(item => item.serviceOfferingId !== created.serviceOfferingId)]);
       resetServiceForm();
-      await loadServices();
       toast.show(t("business.toast.serviceCreated"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.serviceCreateError"), "error");
@@ -843,6 +842,7 @@ export function BusinessPage() {
         timeZoneId: branchForm.timeZoneId || undefined,
         weeklyHours: branchForm.weeklyHours.length > 0 ? branchForm.weeklyHours : undefined,
         specialHours: branchForm.specialHours.length > 0 ? branchForm.specialHours : undefined,
+        pickupAvailable: branchForm.pickupAvailable,
       });
       setBranchForm(emptyBranchForm());
       setShowBranchForm(false);
@@ -875,6 +875,7 @@ export function BusinessPage() {
         timeZoneId: branchForm.timeZoneId || undefined,
         weeklyHours: branchForm.weeklyHours.length > 0 ? branchForm.weeklyHours : undefined,
         specialHours: branchForm.specialHours.length > 0 ? branchForm.specialHours : undefined,
+        pickupAvailable: branchForm.pickupAvailable,
       });
       setBranchForm(emptyBranchForm());
       setEditBranchId(null);
@@ -931,28 +932,54 @@ export function BusinessPage() {
   };
 
   const sidebar = (
-    <nav style={{ display: "flex", flexDirection: "column", gap: "0.25rem", padding: "var(--fcw-space-sm)" }}>
-      {sidebarItems.map(item => (
+    <div className="ask-business-sidebar__inner">
+      <nav style={{ display: "flex", flexDirection: "column", gap: "0.25rem", padding: "var(--fcw-space-sm)" }}>
+        {sidebarItems.map(item => (
+          <button
+            key={item.key}
+            className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+            style={{
+              justifyContent: "flex-start",
+              gap: "0.625rem",
+              width: "100%",
+              color: section === item.key ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
+              fontWeight: section === item.key ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
+              backgroundColor: section === item.key ? "color-mix(in srgb, var(--fcw-color-primary) 8%, transparent)" : "transparent",
+              borderRadius: "var(--fcw-radius-md)",
+              padding: "0.5rem 0.75rem",
+            }}
+            onClick={() => { setSection(item.key); setSidebarOpen(false); }}
+          >
+            {item.icon}
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      {!isPlatformWorkspace && (
         <button
-          key={item.key}
-          className="fcw-btn fcw-btn-ghost fcw-btn-sm"
-          style={{
-            justifyContent: "flex-start",
-            gap: "0.625rem",
-            width: "100%",
-            color: section === item.key ? "var(--fcw-color-primary)" : "var(--fcw-color-text-secondary)",
-            fontWeight: section === item.key ? "var(--fcw-font-weight-semibold)" : "var(--fcw-font-weight-regular)",
-            backgroundColor: section === item.key ? "color-mix(in srgb, var(--fcw-color-primary) 8%, transparent)" : "transparent",
-            borderRadius: "var(--fcw-radius-md)",
-            padding: "0.5rem 0.75rem",
-          }}
-          onClick={() => { setSection(item.key); setSidebarOpen(false); }}
+          type="button"
+          className={`ask-business-profile-card${section === "profile" ? " is-active" : ""}`}
+          onClick={() => { setSection("profile"); setSidebarOpen(false); }}
         >
-          {item.icon}
-          {item.label}
+          <span
+            className="ask-business-profile-card__logo"
+            style={{
+              backgroundColor: profile.brandColor || DEFAULT_BRAND_COLOR,
+              backgroundImage: profile.logoUrl ? `url(${profile.logoUrl})` : undefined,
+            }}
+          >
+            {!profile.logoUrl && <Store size={22} />}
+          </span>
+          <span className="ask-business-profile-card__copy">
+            <strong>{profile.businessName || membership?.businessName || t("business.companyCabinet")}</strong>
+            <small>
+              {[branches[0]?.address, branches[0]?.cityName].filter(Boolean).join(", ") || t("business.businessProfile")}
+            </small>
+          </span>
+          <ChevronRight size={18} />
         </button>
-      ))}
-    </nav>
+      )}
+    </div>
   );
 
   return (
@@ -1372,9 +1399,175 @@ export function BusinessPage() {
                   </div>
                 )}
 
+                {section === "profile" && (
+                  <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-md)" }}>
+                    <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "var(--fcw-space-sm)", alignItems: "center" }}>
+                      <div>
+                        <h1 className="fcw-h2" style={{ margin: 0 }}>{t("business.businessProfile")}</h1>
+                        <p className="fcw-body-s fcw-text-secondary" style={{ margin: "0.25rem 0 0" }}>
+                          {t("business.businessProfileDescription")}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="fcw-btn fcw-btn-secondary"
+                        onClick={() => navigate(buildRoute(ROUTES.storefront, { businessId }))}
+                      >
+                        <ExternalLink size={16} />
+                        {t("business.viewBusinessProfile")}
+                      </button>
+                    </div>
+                    <ProfileEditor
+                      profile={profile}
+                      onChange={setProfile}
+                      onSave={handleSaveProfile}
+                      busy={busy}
+                      readOnly={isWorker}
+                    />
+                  </div>
+                )}
+
                 {/* Organization — Branches + Team */}
                 {section === "organization" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "var(--fcw-space-xl)" }}>
+
+                    {/* ═══════ Team ═══════ */}
+                    <section>
+                      <div style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+                        marginBottom: "var(--fcw-space-md)", gap: "var(--fcw-space-sm)",
+                      }}>
+                        <div>
+                          <h2 style={{
+                            fontSize: "var(--fcw-font-size-h3)", fontWeight: "var(--fcw-font-weight-semibold)",
+                            margin: 0, letterSpacing: "var(--fcw-tracking-tight)",
+                          }}>
+                            {t("business.employees")}
+                          </h2>
+                          <p style={{
+                            fontSize: "var(--fcw-font-size-body-s)", color: "var(--fcw-color-text-secondary)",
+                            margin: "0.25rem 0 0 0",
+                          }}>
+                            {(() => {
+                              const team = employees.filter(e => e.role !== "WORKER");
+                              return team.length === 0 ? t("business.noEmployees") : `${team.length} ${t("business.employeeCount")}`;
+                            })()}
+                          </p>
+                        </div>
+                        {(isOwner || isManager) && (
+                          <button
+                            className="fcw-btn fcw-btn-primary fcw-btn-sm"
+                            onClick={() => setShowEmployeeForm(v => !v)}
+                          >
+                            <Plus size={16} />{t("business.employee.add")}
+                          </button>
+                        )}
+                      </div>
+
+                      {employeesBusy && <Loading size="sm" />}
+
+                      {!employeesBusy && employees.filter(e => e.role !== "WORKER").length === 0 && !showEmployeeForm && (
+                        <EmptyState
+                          title={t("business.noEmployees")}
+                          description={t("business.noEmployeesDesc")}
+                        />
+                      )}
+
+                      {showEmployeeForm && (isOwner || isManager) && (
+                        <Card padding="md" style={{ marginBottom: "var(--fcw-space-sm)" }}>
+                          <div className="fcw-flex fcw-items-end fcw-flex-wrap" style={{ gap: "0.5rem" }}>
+                            <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: "1 1 140px", minWidth: 0 }}>
+                              <label className="fcw-label">{t("business.staff.name")}</label>
+                              <input
+                                className="fcw-input"
+                                placeholder={t("business.staff.name")}
+                                value={employeeForm.displayName}
+                                onChange={e => setEmployeeForm(p => ({ ...p, displayName: e.target.value }))}
+                              />
+                            </div>
+                            <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: "1 1 180px", minWidth: 0 }}>
+                              <label className="fcw-label">{t("business.staff.email")}</label>
+                              <input
+                                className="fcw-input"
+                                placeholder={t("business.staff.email")}
+                                value={employeeForm.email}
+                                onChange={e => setEmployeeForm(p => ({ ...p, email: e.target.value }))}
+                              />
+                            </div>
+                            <div className="fcw-flex-col" style={{ gap: "0.25rem", flex: "0 0 110px" }}>
+                              <label className="fcw-label">{t("business.staff.role")}</label>
+                              <Select
+                                size="sm"
+                                options={[{ value: "MANAGER", label: t("auth.role.BUSINESS_MANAGER") }]}
+                                value={employeeForm.role}
+                                onChange={v => setEmployeeForm(p => ({ ...p, role: v }))}
+                              />
+                            </div>
+                            <button
+                              className="fcw-btn fcw-btn-primary fcw-btn-sm"
+                              style={{ flexShrink: 0 }}
+                              onClick={handleCreateEmployee}
+                              disabled={employeesBusy}
+                            >
+                              {employeesBusy ? <Loader2 size={14} className="fcw-animate-spin" /> : <Plus size={14} />}
+                              {t("business.staff.add")}
+                            </button>
+                          </div>
+                        </Card>
+                      )}
+
+                      {!employeesBusy && employees.filter(e => e.role !== "WORKER").map(member => (
+                        <div key={member.id} style={{
+                          display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
+                          padding: "var(--fcw-space-sm) var(--fcw-space-sm)",
+                          backgroundColor: "var(--fcw-color-surface)",
+                          border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                          borderRadius: "var(--fcw-radius-lg)",
+                          marginBottom: "var(--fcw-space-2xs)",
+                        }}>
+                          <UserRound size={16} style={{ color: "var(--fcw-color-primary)", flexShrink: 0 }} />
+                          <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {member.displayName}
+                          </span>
+                          <span className="fcw-label" style={{
+                            color: "var(--fcw-color-text-secondary)",
+                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
+                            borderRadius: "var(--fcw-radius-full)",
+                            padding: "0.125rem 0.5rem",
+                          }}>
+                            {t(member.role === "OWNER" ? "business.employee.owner" : "business.employee.manager")}
+                          </span>
+                          <span style={{
+                            fontSize: "var(--fcw-font-size-body-s)",
+                            color: member.status === "ACTIVE" ? "var(--fcw-color-accent)" : "var(--fcw-color-text-tertiary)",
+                            display: "flex", alignItems: "center", gap: "0.25rem",
+                          }}>
+                            <span style={{
+                              width: 6, height: 6, borderRadius: "50%",
+                              backgroundColor: member.status === "ACTIVE" ? "var(--fcw-color-accent)" : "var(--fcw-color-text-tertiary)",
+                              flexShrink: 0,
+                            }} />
+                            {formatStaffStatus(member.status)}
+                          </span>
+                          <span className="fcw-body-s" style={{ color: "var(--fcw-color-text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {member.email}
+                          </span>
+                          <div style={{ flex: 1 }} />
+                          {member.status === "PENDING_ACTIVATION" && (isOwner || isManager) && (
+                            <button
+                              className="fcw-btn fcw-btn-ghost fcw-btn-sm"
+                              style={{ color: "var(--fcw-color-error)", flexShrink: 0 }}
+                              onClick={() => handleDeletePendingEmployee(member)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </section>
+
+                    {/* ═══════ Divider ═══════ */}
+                    <div style={{ height: "1px", backgroundColor: "var(--fcw-color-border)", margin: 0 }} />
 
                     {/* ═══════ Branches ═══════ */}
                     <section>
@@ -1538,6 +1731,14 @@ export function BusinessPage() {
                                   <span className="fcw-label">{t("business.branch.timeZoneId")}</span>
                                   <input type="text" className="fcw-input" placeholder="Asia/Almaty" value={branchForm.timeZoneId} onChange={e => setBranchForm(form => ({ ...form, timeZoneId: e.target.value }))} />
                                 </label>
+                                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={branchForm.pickupAvailable}
+                                    onChange={e => setBranchForm(f => ({ ...f, pickupAvailable: e.target.checked }))}
+                                  />
+                                  <span className="fcw-body-s">{t("business.branch.pickupAvailable")}</span>
+                                </label>
                                 <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>
                                   <span className="fcw-label">{t("business.branch.weeklyHours")}</span>
                                   {branchForm.weeklyHours.map((h, i) => (
@@ -1663,6 +1864,17 @@ export function BusinessPage() {
                                       {b.cityName}
                                     </span>
                                   )}
+                                  {b.pickupAvailable && (
+                                    <span className="fcw-label" style={{
+                                      color: "var(--fcw-color-primary)",
+                                      border: "var(--fcw-border-width-thin) solid var(--fcw-color-primary)",
+                                      borderRadius: "var(--fcw-radius-full)",
+                                      padding: "0.125rem 0.5rem",
+                                    }}>
+                                      <Store size={12} style={{ marginRight: "0.25rem", verticalAlign: "middle" }} />
+                                      {t("seller.pickup")}
+                                    </span>
+                                  )}
                                   {b.openingSummary && (
                                     <span className="fcw-label" style={{
                                       color: b.openingSummary.state === "OPEN" ? "var(--fcw-color-success)" : "var(--fcw-color-text-secondary)",
@@ -1714,6 +1926,7 @@ export function BusinessPage() {
                                         timeZoneId: b.timeZoneId || "",
                                         weeklyHours: (b.weeklyHours || []).map(h => ({ dayOfWeek: h.dayOfWeek, opensAt: h.opensAt, closesAt: h.closesAt })),
                                         specialHours: (b.specialHours || []).map(h => ({ date: h.date, closed: h.closed ?? false, opensAt: h.opensAt || "", closesAt: h.closesAt || "" })),
+                                        pickupAvailable: Boolean(b.pickupAvailable),
                                       });
                                       setShowBranchForm(false);
                                     }}
@@ -1892,200 +2105,6 @@ export function BusinessPage() {
                                 </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      ))}
-                    </section>
-
-                    {/* ═══════ Divider ═══════ */}
-                    <div style={{ height: "1px", backgroundColor: "var(--fcw-color-border)", margin: 0 }} />
-
-                    {/* ═══════ Team ═══════ */}
-                    <section>
-                      <div style={{
-                        display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                        marginBottom: "var(--fcw-space-md)", gap: "var(--fcw-space-sm)",
-                      }}>
-                        <div>
-                          <h2 style={{
-                            fontSize: "var(--fcw-font-size-h3)", fontWeight: "var(--fcw-font-weight-semibold)",
-                            margin: 0, letterSpacing: "var(--fcw-tracking-tight)",
-                          }}>
-                            {t("business.employees")}
-                          </h2>
-                          <p style={{
-                            fontSize: "var(--fcw-font-size-body-s)", color: "var(--fcw-color-text-secondary)",
-                            margin: "0.25rem 0 0 0",
-                          }}>
-                            {employees.length === 0 ? t("business.employee.empty") : `${employees.length} ${t("business.employees").toLowerCase()}`}
-                          </p>
-                        </div>
-                        {(isOwner || isManager) && (
-                          <button
-                            className="fcw-btn fcw-btn-primary fcw-btn-sm"
-                            onClick={() => {
-                              setShowEmployeeForm(v => !v);
-                              if (!showEmployeeForm) setEmployeeForm({ displayName: "", email: "", role: "WORKER", branchId: "" });
-                            }}
-                          >
-                            <Plus size={16} />{t("business.employee.add")}
-                          </button>
-                        )}
-                      </div>
-
-                      {employeesBusy && <Loading size="sm" />}
-
-                      <AnimatePresence>
-                        {showEmployeeForm && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25 }}
-                            style={{ overflow: "hidden", marginBottom: "var(--fcw-space-sm)" }}
-                          >
-                            <Card padding="md">
-                              <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-                                <h3 className="fcw-body-l fcw-weight-semibold" style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                  <Plus size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                                  {t("business.employee.add")}
-                                </h3>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.staff.displayName")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.staff.displayName")}
-                                      value={employeeForm.displayName}
-                                      onChange={e => setEmployeeForm(p => ({ ...p, displayName: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.staff.email")}</label>
-                                    <input
-                                      className="fcw-input"
-                                      placeholder={t("business.staff.email")}
-                                      value={employeeForm.email}
-                                      onChange={e => setEmployeeForm(p => ({ ...p, email: e.target.value }))}
-                                    />
-                                  </div>
-                                </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                                  <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                    <label className="fcw-label">{t("business.staff.role")}</label>
-                                    <Select
-                                      options={(() => {
-                                        const items = [{ value: "WORKER", label: t("auth.role.BUSINESS_WORKER") }];
-                                        if (isOwner) items.push({ value: "MANAGER", label: t("auth.role.BUSINESS_MANAGER") });
-                                        return items;
-                                      })()}
-                                      value={employeeForm.role}
-                                      onChange={v => setEmployeeForm(p => ({ ...p, role: v, branchId: v === "MANAGER" ? "" : p.branchId }))}
-                                    />
-                                  </div>
-                                  {employeeForm.role === "WORKER" && (
-                                    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                                      <label className="fcw-label">{t("business.employee.selectBranch")}</label>
-                                      {branches.length > 0 ? (
-                                        <Select
-                                          options={branches.map(b => ({ value: b.id, label: b.name }))}
-                                          value={employeeForm.branchId}
-                                          onChange={v => setEmployeeForm(p => ({ ...p, branchId: v }))}
-                                          placeholder={t("business.employee.selectBranch")}
-                                        />
-                                      ) : (
-                                        <span className="fcw-body-s fcw-text-tertiary" style={{ padding: "0.5rem 0" }}>
-                                          {t("business.employee.noBranchHint")}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                                  <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleCreateEmployee} disabled={employeesBusy}>
-                                    {employeesBusy ? <Loader2 size={14} className="fcw-animate-spin" /> : <Check size={14} />}
-                                    {t("business.create")}
-                                  </button>
-                                  <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => setShowEmployeeForm(false)}>{t("business.cancel")}</button>
-                                </div>
-                              </div>
-                            </Card>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {!employeesBusy && employees.length === 0 && !showEmployeeForm && (
-                        <EmptyState
-                          title={t("business.employee.empty")}
-                          description={t("business.noBranchesDesc")}
-                        />
-                      )}
-
-                      {!employeesBusy && employees.map(emp => (
-                        <div key={emp.id} style={{
-                          display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
-                          padding: "var(--fcw-space-sm)",
-                          backgroundColor: "var(--fcw-color-surface)",
-                          border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                          borderRadius: "var(--fcw-radius-lg)",
-                          marginBottom: "var(--fcw-space-2xs)",
-                        }}>
-                          <UserRound size={14} style={{ color: "var(--fcw-color-text-tertiary)", flexShrink: 0 }} />
-                          <span className="fcw-body fcw-weight-medium" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "80px" }}>
-                            {emp.displayName}
-                          </span>
-                          <span className="fcw-body-s" style={{ color: "var(--fcw-color-text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {emp.email}
-                          </span>
-                          {emp.branchName && (
-                            <span style={{
-                              fontSize: "var(--fcw-font-size-body-s)", color: "var(--fcw-color-text-secondary)",
-                              display: "flex", alignItems: "center", gap: "0.25rem",
-                            }}>
-                              <MapPin size={12} />{emp.branchName}
-                            </span>
-                          )}
-                          <div style={{ flex: 1 }} />
-                          <span className="fcw-label" style={{
-                            color: "var(--fcw-color-text-secondary)",
-                            border: "var(--fcw-border-width-thin) solid var(--fcw-color-border)",
-                            borderRadius: "var(--fcw-radius-full)",
-                            padding: "0.125rem 0.5rem",
-                          }}>
-                            {t(`auth.role.BUSINESS_${emp.role}`)}
-                          </span>
-                          <span style={{
-                            fontSize: "var(--fcw-font-size-body-s)",
-                            color: emp.status === "ACTIVE" ? "var(--fcw-color-accent)" : "var(--fcw-color-text-tertiary)",
-                            display: "flex", alignItems: "center", gap: "0.25rem",
-                          }}>
-                            <span style={{
-                              width: 6, height: 6, borderRadius: "50%",
-                              backgroundColor: emp.status === "ACTIVE" ? "var(--fcw-color-accent)" : "var(--fcw-color-text-tertiary)",
-                              flexShrink: 0,
-                            }} />
-                            {formatStaffStatus(emp.status)}
-                          </span>
-                          {emp.tempPassword && (
-                            <span className="fcw-label" style={{
-                              color: "var(--fcw-color-primary)",
-                              backgroundColor: "color-mix(in srgb, var(--fcw-color-primary) 8%, transparent)",
-                              padding: "0.125rem 0.5rem",
-                              borderRadius: "var(--fcw-radius-full)",
-                            }}>
-                              {t("business.staff.tempPassword")}: {emp.tempPassword}
-                            </span>
-                          )}
-                          {emp.status === "PENDING_ACTIVATION" && (isOwner || isManager) && (
-                            <button
-                              type="button"
-                              className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm"
-                              onClick={() => handleDeletePendingEmployee(emp)}
-                              aria-label={t("business.employee.deletePending")}
-                              title={t("business.employee.deletePending")}
-                            >
-                              <Trash2 size={14} />
-                            </button>
                           )}
                         </div>
                       ))}

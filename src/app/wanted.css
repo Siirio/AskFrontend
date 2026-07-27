@@ -387,11 +387,11 @@ select {
 }
 
 .ask-home__search-card {
-  width: min(100%, 1030px);
-  padding: 30px 34px 34px;
-  background: color-mix(in srgb, var(--fcw-color-surface) 88%, transparent);
-  border-radius: 16px;
-  box-shadow: var(--fcw-shadow-md);
+  width: min(100%, 1180px);
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .ask-home__modes {
@@ -429,12 +429,13 @@ select {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  min-height: 72px;
-  padding: 8px 10px 8px 22px;
+  min-height: 88px;
+  padding: 10px 12px 10px 28px;
   color: var(--fcw-color-text-secondary);
   background: var(--fcw-color-surface);
   border: 1px solid var(--fcw-color-border);
-  border-radius: 14px;
+  border-radius: 999px;
+  box-shadow: var(--fcw-shadow-md);
 }
 
 .ask-home__query:focus-within {
@@ -445,7 +446,7 @@ select {
 .ask-home__query input {
   min-width: 0;
   color: var(--fcw-color-text);
-  font-size: 1.05rem;
+  font-size: 1.18rem;
   background: transparent;
   border: 0;
   outline: none;
@@ -457,14 +458,14 @@ select {
 }
 
 .ask-home__query button {
-  min-width: 142px;
-  min-height: 54px;
-  padding: 0 24px;
+  min-width: 168px;
+  min-height: 66px;
+  padding: 0 30px;
   color: var(--fcw-color-primary-text);
   font-weight: 720;
   background: var(--fcw-color-primary);
   border: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   box-shadow: 0 8px 18px color-mix(in srgb, var(--fcw-color-primary) 28%, transparent);
   cursor: pointer;
 }
@@ -495,7 +496,7 @@ select {
   }
 
   .ask-home__search-card {
-    padding: 14px;
+    padding: 0;
   }
 
   .ask-home__modes {
@@ -504,8 +505,9 @@ select {
 
   .ask-home__query {
     grid-template-columns: auto minmax(0, 1fr);
-    min-height: 58px;
-    padding: 8px 14px;
+    min-height: 64px;
+    padding: 10px 16px;
+    border-radius: 22px;
   }
 
   .ask-home__query button {
@@ -2687,9 +2689,73 @@ select {
   border-right: 1px solid var(--fcw-color-border) !important;
 }
 
+.ask-business-sidebar__inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .ask-business-sidebar nav {
   gap: 7px !important;
   padding: 0 !important;
+}
+
+.ask-business-profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 112px;
+  padding: 16px;
+  margin-top: auto;
+  color: var(--fcw-color-text);
+  text-align: left;
+  background: var(--fcw-color-surface);
+  border: 1px solid color-mix(in srgb, var(--fcw-color-border) 82%, transparent);
+  border-radius: 16px;
+  box-shadow: var(--fcw-shadow-sm);
+  cursor: pointer;
+}
+
+.ask-business-profile-card:hover,
+.ask-business-profile-card.is-active {
+  border-color: color-mix(in srgb, var(--fcw-color-primary) 44%, var(--fcw-color-border));
+  box-shadow: var(--fcw-shadow-md);
+}
+
+.ask-business-profile-card__logo {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  color: var(--fcw-color-primary-text);
+  background-position: center;
+  background-size: cover;
+  border-radius: 12px;
+}
+
+.ask-business-profile-card__copy {
+  min-width: 0;
+}
+
+.ask-business-profile-card__copy strong,
+.ask-business-profile-card__copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ask-business-profile-card__copy strong {
+  font-size: 0.86rem;
+}
+
+.ask-business-profile-card__copy small {
+  margin-top: 5px;
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.7rem;
 }
 
 .ask-business-sidebar nav button {

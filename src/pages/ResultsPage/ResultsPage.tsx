@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -15,15 +15,19 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../app/providers/AuthProvider";
 import { buildRoute, ROUTES } from "../../app/routes";
 import {
   searchAskV2,
-  startChatConversation,
   type SearchExplicitFilters,
 } from "../../shared/api/askClient";
 import type { SearchV2CardDto } from "../../shared/api/dto";
 import { ResultCard, type ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
+import { useChat } from "../../widgets/ChatPanel/ChatContext";
+import {
+  ACTIVE_SEARCH_ROUTE_CHANGED_EVENT,
+  clearActiveSearchRoute,
+  saveActiveSearchRoute,
+} from "../../entities/search-session/model/activeSearchSession";
 
 type SearchMode = "ITEM" | "SERVICE";
 type SortKey = "relevance" | "distance" | "price_asc";
@@ -64,7 +68,8 @@ function mapCard(card: SearchV2CardDto): ResultCardData {
 export function ResultsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { state } = useAuth();
+  const location = useLocation();
+  const { openChat } = useChat();
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get("query") ?? "";
   const initialMode: SearchMode = searchParams.get("mode") === "SERVICE" ? "SERVICE" : "ITEM";
@@ -91,6 +96,11 @@ export function ResultsPage() {
   const [error, setError] = useState("");
 
   const selected = cards.find(card => card.id === selectedId) ?? cards[0] ?? null;
+
+  useEffect(() => {
+    saveActiveSearchRoute(`${location.pathname}${location.search}`, window.sessionStorage);
+    window.dispatchEvent(new Event(ACTIVE_SEARCH_ROUTE_CHANGED_EVENT));
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (!initialQuery.trim()) return;
@@ -135,25 +145,18 @@ export function ResultsPage() {
     event.preventDefault();
     const rawQuery = query.trim();
     if (!rawQuery) return;
-    navigate(buildRoute(ROUTES.results, {}, {
+    const route = buildRoute(ROUTES.results, {}, {
       query: rawQuery,
       mode,
       city: filters.city ?? "",
-    }));
+    });
+    saveActiveSearchRoute(route, window.sessionStorage);
+    navigate(route);
   };
 
-  const openChat = async (card: ResultCardData) => {
-    if (!state.authenticated) {
-      navigate(ROUTES.auth);
-      return;
-    }
-    if (!card.businessId) return;
-    try {
-      const conversation = await startChatConversation(card.businessId, card.title);
-      navigate(buildRoute(ROUTES.chats, {}, { conversation: conversation.conversationId }));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("results.error.title"));
-    }
+  const startNewSearch = () => {
+    clearActiveSearchRoute(window.sessionStorage);
+    window.dispatchEvent(new Event(ACTIVE_SEARCH_ROUTE_CHANGED_EVENT));
   };
 
   const applyFilters = () => {
@@ -170,7 +173,12 @@ export function ResultsPage() {
         </button>
         <label>
           <Search size={22} />
-          <input value={query} onChange={event => setQuery(event.target.value)} aria-label={t("home.search.ariaLabel")} />
+          <input
+            value={query}
+            onFocus={startNewSearch}
+            onChange={event => setQuery(event.target.value)}
+            aria-label={t("home.search.ariaLabel")}
+          />
           <button type="button" onClick={() => setFiltersOpen(value => !value)} aria-label="Фильтры">
             <SlidersHorizontal size={18} />
             {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
