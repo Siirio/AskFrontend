@@ -117,11 +117,53 @@ A real Google round-trip additionally needs the backend's `OAUTH2_GOOGLE_CLIENT_
 the Google Console redirect URIs configured — until then the button renders but the redirect
 has no Google app to hit.
 
+## Visual skin (2026-07-27, D25)
+
+Auth sits under `/app/*`, so it is inside the platform layout's `neu-skin` wrapper and is
+**ORANGE NEUMORPHISM** — depth replaces borders. Nothing about the flow, the contracts or the
+states changed; the notes below record what the screens now LOOK like, and the two places where
+the skin changed a control's behaviour rather than just its surface.
+
+- **`AuthShell`** is a `.neu-card` — the same colour as the page, lifted by a paired shadow. No
+  border, no `bg-surface-raised`, more padding (a 24px corner radius crowds otherwise).
+- **Fields** are carved IN (`.neu-input`), actions stand OUT — that opposition is what makes the
+  skin legible with no borders anywhere. Focus is an accent GLOW hugging the field, not the
+  product's offset ring, which read as a detached rectangle around a shadow-defined edge; chrome
+  (buttons, links, toggles) still uses the shared `focus-ring`. Field labels stepped DOWN to
+  `foreground-muted`: a carved well already announces itself, so a bold label above it shouts.
+- **The agreement checkbox** is `.neu-checkbox-box` — an empty SOCKET the accent fills when
+  checked. The native input remains the control (role, label association, keyboard, form value)
+  and is made invisible rather than replaced, because a native checkbox cannot take an inset
+  shadow. It stays slice-private (D8 rule of three, auth is still the only consumer), but its
+  look comes from the design system, so a future shared primitive already matches.
+- **The verification step now uses SIX CELLS** (`CodeInput`, neumorui's OTPInput) instead of one
+  6-character field — the one real behaviour change. `code` is still a single string owned by
+  `useVerifyStep`, and the cells are a view of it, never six independent states. It handles
+  paste-anywhere (people paste "123 456" or "Your code is 123456" into whichever box they
+  clicked), iOS/Android SMS autofill via `one-time-code` on the first cell only, backspace
+  stepping back, and arrow/Home/End for a middle digit. **Filling the last cell submits** —
+  the person is mid-transcription from another device, so a further click buys nothing;
+  `pending` guards the double-fire and the button stays for keyboard submit and retry.
+  Each cell is labelled positionally (`auth.verify.digitAria` → "Digit 3 of 6") so a
+  screen-reader user is not lost among six identical boxes; there is deliberately no wrapping
+  `role="group"`, which would only repeat the Field label.
+- **The role modal's selected card is PRESSED IN**, not outlined-and-tinted. On a skin where
+  every control already carries a shadow an added border reads as a fourth edge, and a tinted
+  panel competes with Continue for "the saturated thing". Depth marks the choice, the accent
+  marks the action.
+- **The OAuth divider** is a carved groove (`.neu-rule`), not a 1px hairline — the one thing this
+  skin has no vocabulary for. The Google button's `outline` variant resolves to the plain RAISED
+  button: there is no bordered variant to be quiet with, so quiet means unsaturated, and the
+  email submit keeps the one accent fill.
+- **The retired skin is preserved** as `auth/ui/*_old.tsx` — a restorable set (each `_old` file
+  imports its `_old` siblings), not loose backups. Do not edit them and do not keep them in step
+  with the live files.
+
 ## States (mandatory even though the vision doesn't draw them — P8.4/P9.3)
 
 - Loading: submitting credentials (Spinner in the button, disabled), verifying the code, restoring the session on app load
 - Error: incorrect email or password (log in, a form-level error), account not active (log in, 403), multi-role account awaiting role selection (log in — `select-role` is deferred, so the state is a form-level error, never a silent empty session), wrong/expired code (verify), email already registered (sign up, inline on the email field), network failure → Toast + inline error (`role="alert"`, destructive colour; the error carries the id `{inputId}-error` and the input points at it via `aria-describedby` + `aria-invalid`, so screen readers re-discover the message from the field — 2026-07-18)
-- Validation: email format, password present (log in) / ≥ 8 + confirmation match (sign up), name present (sign up — the backend schema requires it, see Flow step 2), agreement checked, code length (6)
+- Validation: email format, password present (log in) / ≥ 8 + confirmation match (sign up), name present (sign up — the backend schema requires it, see Flow step 2), agreement checked, code length (6 — now enforced by `CodeInput`'s cell count as well as by the flow)
 - Empty: n/a
 
 ## Session foundation (every slice consumes this)

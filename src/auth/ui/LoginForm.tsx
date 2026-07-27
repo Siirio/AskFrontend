@@ -73,7 +73,6 @@ export function LoginForm({
           type="email"
           inputMode="email"
           autoComplete="email"
-          className="h-11 text-base"
           value={email}
           aria-invalid={Boolean(errors.email)}
           aria-describedby={

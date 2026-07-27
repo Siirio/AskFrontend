@@ -1,14 +1,24 @@
 /*
  * Global styles entry. Tailwind v4 on the design-system tokens (D3).
  * The tokens are the visual source; this file only wires them to the document.
- * Nothing here may introduce a value — every value lives in tokens.css (P9.2)
+ * Nothing here may introduce a value — every value lives in tokens_old.css / neumorphism.css (P9.2)
  * — with ONE stated exception: the focus signature's geometry (the 2px ring /
  * 2px offset / 3px halo below). It is the signature itself, defined once
  * beside the two utilities that ARE it (P6.1), never repeated anywhere else;
  * its colour still comes from the --ring token.
  */
+/*
+ * The two design-system files are read TOGETHER (see either file's header):
+ *   tokens_old.css   — the one `@theme inline` Tailwind theme (breakpoints,
+ *                      type, radius/shadow geometry, motion, colour mapping),
+ *                      and the live palette for the marketing landing at `/`.
+ *   neumorphism.css  — the platform's colour VALUES and depth language (D25),
+ *                      scoped to `.neu-skin`, which app/app/layout.tsx applies.
+ * Order matters: neumorphism.css overrides primitives declared by tokens_old.
+ */
 @import "tailwindcss";
-@import "../design-system/tokens.css";
+@import "../design-system/tokens_old.css";
+@import "../design-system/neumorphism.css";
 
 /*
  * THE SIGNATURE, as one utility. The precision ring — 2px solid, 2px offset, no
@@ -33,32 +43,28 @@
 }
 
 /*
- * The signature's FIELD form (owner-refined 2026-07-17): on a bordered field
- * the offset outline read as two detached rectangles — old-fashioned. Instead
- * the field's own border takes the ring colour and a soft 3px halo grows from
- * it, hugging the radius with no gap. Same colour source (--ring), same
- * "defined once" rule (P6.1): fields use THIS, chrome (buttons, links,
- * toggles) keeps `focus-ring`. The resting --shadow-xs stays in the focused
- * shadow list so depth does not pop while the halo fades.
- * Pair with `transition-[...,border-color,box-shadow]` on the element.
+ * §note — 2026-07-27 (D25): the companion `focus-ring-field` utility was
+ * REMOVED here, not moved. It existed to solve a problem a bordered field has —
+ * an offset outline around a hairline box reads as two detached rectangles — by
+ * recolouring that border and growing a halo from it. Neumorphism has no border
+ * to recolour, so the field form of the signature is now the accent glow on
+ * `.neu-input` / `.neu-otp-cell` (design-system/neumorphism.css), defined once
+ * there as `--neu-focus-glow`. `focus-ring` above is unchanged and still the
+ * chrome form used by every button, link and toggle in the product. Keeping a
+ * third, consumerless focus treatment around "in case the landing wants it"
+ * would be exactly the speculative code P8.1 forbids.
+ *
+ * CONSEQUENCE, stated so it is not discovered the hard way: `input_old.tsx` and
+ * `select_old.tsx` still reference `focus-ring-field`, so those archived files
+ * would render focus-less if dropped back in as-is. That is correct and
+ * expected — the `*_old` set is a READING archive of the retired skin, and
+ * restoring it is a git operation (the utility comes back with the revert), not
+ * a file swap. Do not re-add the utility here to make a copy-paste work.
  */
-@utility focus-ring-field {
-  /* Suppress the UA focus ring — without this the browser paints its own dark
-   * outline OVER the halo (it read as a detached gap). Transparent, not
-   * `none`, so Windows forced-colors mode still paints a visible ring. */
-  outline: 2px solid transparent;
-  outline-offset: 0;
-  &:focus-visible {
-    border-color: var(--ring);
-    box-shadow:
-      0 0 0 3px color-mix(in oklab, var(--ring) 25%, transparent),
-      var(--shadow-xs);
-  }
-}
 
 @layer base {
   /* `color-scheme` (which keeps native UI — scrollbars, form controls, the
-   * caret — in step with the theme) is set per-theme in design-system/tokens.css
+   * caret — in step with the theme) is set per-theme in design-system/tokens_old.css
    * (`:root` = light, `:root[data-theme="dark"]` = dark), so it follows the
    * data-theme attribute the pre-paint script resolves, not the OS directly. */
 

@@ -51,7 +51,7 @@ export function PasswordInput({
         id={id}
         type={visible ? "text" : "password"}
         autoComplete={autoComplete}
-        className="h-11 pe-11 text-base"
+        className="pe-12"
         value={value}
         aria-invalid={invalid}
         aria-describedby={describedBy}
@@ -64,7 +64,11 @@ export function PasswordInput({
         aria-label={label}
         title={label}
         onClick={onToggleVisible}
-        className="absolute inset-y-0 inset-e-0 flex w-11 cursor-pointer items-center justify-center rounded-xs text-foreground-muted focus-ring transition-colors hover:text-foreground"
+        // The toggle sits INSIDE the carved field, so it gets no surface of its
+        // own — a raised button in a well would read as a second control. Ink
+        // alone marks it; `inset-y-1 inset-e-1` keeps it clear of the inset shadow
+        // at the field's edge, and w-11 holds the 44px touch floor.
+        className="absolute inset-y-1 inset-e-1 flex w-11 cursor-pointer items-center justify-center rounded-md text-foreground-subtle focus-ring transition-colors hover:text-foreground"
       >
         {visible ? (
           <EyeOff aria-hidden="true" className="size-4.5" />

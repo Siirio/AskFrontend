@@ -28,7 +28,7 @@ import type { Metadata } from "next";
  * (github.com/rukonpro/neumorui — packages/core/src/tokens/* and each
  * component's inline style objects), recoloured from the library's default
  * violet accent to orange. It lives in `./neumor.css`. That is contained, not
- * a system change: `design-system/tokens.css` (D3, the single visual source)
+ * a system change: `design-system/tokens_old.css` (D3, the single visual source)
  * stays untouched throughout, and the locks still bind on every surface that
  * ships. If this direction is adopted for the real product, it is rebuilt
  * inside the owning slice under the full locks — nothing is promoted by

@@ -7,12 +7,23 @@ import { Select as SelectPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /*
- * shadcn scaffold restyled to tokens (D12). Radix owns all behavior (keyboard
- * nav, typeahead, positioning); tokens own every value. The highlighted item
- * uses `bg-surface-sunken` — shadcn's `focus:bg-accent` would paint the brand
- * orange across a hovered list, breaking the saturation-is-action lock. The
- * shadcn/tw-animate enter-exit classes were dropped (we ship no second motion
- * system); the menu appears without a zoom, which Radix handles cleanly.
+ * The Select primitive, on ORANGE NEUMORPHISM (D25). Radix owns all behavior
+ * (keyboard nav, typeahead, positioning); the design system owns every value.
+ *
+ * The TRIGGER takes `.neu-input`, not a button shape — a select is a field, and
+ * this skin says "field" with an inset shadow. It gets the same carved surface,
+ * the same accent focus glow and the same 44px default height as a text input,
+ * so a form mixing the two reads as one row of controls rather than a field
+ * beside a button.
+ *
+ * PORTALED — see the note in dialog.tsx. The content renders into <body>,
+ * outside `.neu-skin`, so it carries `data-neu-portal` to bring the surface,
+ * ink and raised-lg shadow with it; custom properties inherit, so the rows
+ * inside still resolve ordinary colour utilities. The highlighted item stays
+ * `bg-surface-sunken` and is never the accent — shadcn's `focus:bg-accent`
+ * would paint the brand orange across a hovered list, and the accent marks
+ * actions, not a hovered row. No CSS enter/exit animation (one motion system,
+ * §7); Radix positions the menu cleanly without a zoom.
  */
 function Select({
   ...props
@@ -45,7 +56,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-2 rounded-sm border focus-ring-field border-border-strong bg-surface-raised px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,border-color,box-shadow] duration-(--duration-base) ease-out disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-placeholder:text-foreground-subtle data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle",
+        "neu-input flex w-fit items-center justify-between gap-2 py-2 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-foreground-subtle data-[size=default]:h-11 data-[size=sm]:h-9 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle",
         className,
       )}
       {...props}
@@ -69,8 +80,9 @@ function SelectContent({
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         data-slot="select-content"
+        data-neu-portal=""
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-32 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border bg-surface-raised text-foreground shadow-md",
+          "relative z-50 max-h-(--radix-select-content-available-height) min-w-32 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -117,7 +129,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-xs py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-surface-sunken focus:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "neu-menu-item relative flex w-full cursor-default items-center gap-2 py-2 pr-8 pl-2.5 text-sm outline-hidden select-none focus:bg-surface-sunken focus:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground-subtle *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className,
       )}
       {...props}
@@ -142,7 +154,7 @@ function SelectSeparator({
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"
-      className={cn("pointer-events-none -mx-1 my-1 h-px bg-border", className)}
+      className={cn("neu-rule pointer-events-none mx-1 my-1.5", className)}
       {...props}
     />
   );

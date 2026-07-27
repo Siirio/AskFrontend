@@ -19,9 +19,14 @@ import {
 
 /**
  * Light / dark / system toggle — domain-free chrome (shared/ui). Reads and
- * writes the one theme mechanism (shared/theme.ts); the accent is spent only on
- * the FOCUS ring here (the toggle is chrome, not a primary action), so the
- * active option is marked by a quiet sunken fill (saturation-is-action holds).
+ * writes the one theme mechanism (shared/theme.ts).
+ *
+ * On ORANGE NEUMORPHISM (D25) this is the skin's segmented control: one shared
+ * inset GROOVE (`.neu-tab-list`) holding transparent triggers, where the active
+ * option presses IN and its glyph takes the accent. The active state is
+ * therefore carried by depth, not by a fill — which is the whole reason the
+ * idiom is worth having here. The accent tints a 16px glyph and nothing else,
+ * so it still marks state rather than becoming a saturated surface.
  */
 const OPTIONS: { value: ThemePreference; Icon: LucideIcon }[] = [
   { value: "system", Icon: Monitor },
@@ -71,11 +76,7 @@ export function ThemeToggle() {
   );
 
   return (
-    <div
-      role="group"
-      aria-label={t("theme.label")}
-      className="inline-flex items-center gap-0.5 rounded-sm border border-border bg-surface-raised p-0.5"
-    >
+    <div role="group" aria-label={t("theme.label")} className="neu-tab-list">
       {OPTIONS.map(({ value, Icon }) => {
         const active = preference === value;
         return (
@@ -90,10 +91,10 @@ export function ThemeToggle() {
             className={cn(
               // 44px touch target on coarse pointers (platform-ui-design §7);
               // compact 32px only where a fine pointer (mouse/trackpad) is primary.
-              "inline-flex size-11 items-center justify-center rounded-xs focus-ring transition-colors pointer-fine:size-8 [&_svg]:size-4",
-              active
-                ? "bg-surface-sunken text-foreground"
-                : "text-foreground-subtle hover:text-foreground",
+              // `.neu-tab-trigger` reads aria-pressed itself for the pressed-in
+              // active state, so no conditional class is needed for depth.
+              "neu-tab-trigger inline-flex size-11 items-center justify-center p-0 focus-ring pointer-fine:size-9 [&_svg]:size-4",
+              !active && "hover:text-foreground",
             )}
           >
             <Icon aria-hidden="true" />

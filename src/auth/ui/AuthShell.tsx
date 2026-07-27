@@ -19,6 +19,12 @@ import { ThemeToggle } from "@/shared/ui/theme-toggle";
  *  - `min-h-svh` (small viewport height) centres the card vertically without the
  *    mobile URL-bar jump that `100vh` causes. It is min-, not fixed, height: a
  *    tall form (register) grows the wrapper instead of overflowing off-screen.
+ *
+ * On ORANGE NEUMORPHISM (D25) the card is `.neu-card` — same surface colour as
+ * the page, lifted entirely by the paired shadow. The border, `bg-surface-raised`
+ * and `shadow-lg` are gone: on this skin they would draw a second edge around
+ * the shadow that already defines the card. The extra padding is not decoration
+ * either — a 24px corner radius needs the room, or the form crowds the curve.
  */
 export function AuthShell({
   title,
@@ -33,7 +39,7 @@ export function AuthShell({
 }) {
   return (
     <div className="flex min-h-svh items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
-      <main className="flex w-full max-w-md flex-col items-center gap-5 rounded-sm border border-border bg-surface-raised px-4 py-8 text-foreground shadow-lg sm:gap-6 sm:px-8 sm:py-10">
+      <main className="neu-card flex w-full max-w-md flex-col items-center gap-5 px-5 py-9 text-foreground sm:gap-6 sm:px-9 sm:py-11">
         {/* The ASK wordmark is an SVG, not a raster image, so a plain <img> is
             correct here — the next/image rule (D2) targets raster perf/SEO. */}
         <img

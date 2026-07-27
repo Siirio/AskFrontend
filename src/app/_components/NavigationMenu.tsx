@@ -135,7 +135,7 @@ export function NavigationMenu() {
   const initials = displayName ? initialsFrom(displayName) : "";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface-raised">
+    <header className="neu-topbar sticky top-0 z-40">
       <nav
         aria-label={t("nav.aria")}
         className="mx-auto flex h-14 max-w-6xl items-center gap-1 px-4 sm:gap-2"
@@ -148,7 +148,13 @@ export function NavigationMenu() {
           <AskMark className="size-7" />
         </Link>
 
-        <ul className="flex items-center gap-0.5 sm:gap-1">
+        {/* The destinations sit in ONE inset groove (`.neu-tab-list`) and the
+            current page is pressed into it — the same segmented control as the
+            theme and language toggles, so every "which one am I on?" surface in
+            the product answers the same way. `data-active` is what the CSS
+            reads; `aria-current` stays because it is what a screen reader
+            reads, and the two are driven from the same value. */}
+        <ul className="neu-tab-list flex items-center">
           {links.map((link) => {
             const active = isActive(link.href);
             return (
@@ -157,11 +163,10 @@ export function NavigationMenu() {
                   href={link.href}
                   aria-label={link.label}
                   aria-current={active ? "page" : undefined}
+                  data-active={active}
                   className={cn(
-                    "flex min-h-11 min-w-11 items-center justify-center rounded-sm px-2 text-sm font-medium focus-ring transition-colors duration-(--duration-fast) ease-out sm:px-3",
-                    active
-                      ? "text-foreground"
-                      : "text-foreground-subtle hover:text-foreground",
+                    "neu-tab-trigger flex min-h-11 min-w-11 items-center justify-center px-2 text-sm focus-ring sm:px-3",
+                    !active && "hover:text-foreground",
                   )}
                 >
                   <link.Icon className="size-5 sm:hidden" aria-hidden="true" />
@@ -185,10 +190,10 @@ export function NavigationMenu() {
                   type="button"
                   data-testid="user-menu-trigger"
                   aria-label={t("userMenu.aria")}
-                  className="flex min-h-11 items-center gap-2 rounded-full py-1 pr-2 pl-1 text-sm focus-ring transition-colors hover:bg-surface-sunken"
+                  className="neu-btn neu-btn-sm flex min-h-11 items-center gap-2 rounded-full py-1 pr-3 pl-1 text-sm focus-ring"
                 >
                   <span
-                    className="flex size-8 items-center justify-center rounded-full bg-surface-sunken text-xs font-semibold text-foreground-muted"
+                    className="neu-avatar size-8 text-xs"
                     aria-hidden="true"
                   >
                     {initials || <User className="size-4" />}

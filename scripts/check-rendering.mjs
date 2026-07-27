@@ -42,10 +42,16 @@ console.log(
 if (!landingStatic) {
   broken += 1;
   console.log("          `/` is NOT in the prerender manifest — it is being");
-  console.log("          server-rendered on demand. A next-intl call (getLocale/");
-  console.log("          getMessages/getTranslations) is running unseeded, or the");
+  console.log(
+    "          server-rendered on demand. A next-intl call (getLocale/",
+  );
+  console.log(
+    "          getMessages/getTranslations) is running unseeded, or the",
+  );
   console.log("          landing reads a cookie/header. Re-seed with");
-  console.log("          setRequestLocale(defaultLocale) at the static entry points.");
+  console.log(
+    "          setRequestLocale(defaultLocale) at the static entry points.",
+  );
 }
 
 // D19 — every /app route MUST be dynamic (they read the preference cookies).
@@ -61,9 +67,15 @@ if (!appDynamic) {
   console.log(
     `          statically prerendered instead: ${staticAppRoutes.join(", ")}`,
   );
-  console.log("          /app/* reads the ask.locale/ask.theme cookies (D19) and must");
-  console.log("          stay dynamic. A route that dropped its cookie read has gone");
-  console.log("          static — restore it, or revisit D19 before changing this.");
+  console.log(
+    "          /app/* reads the ask.locale/ask.theme cookies (D19) and must",
+  );
+  console.log(
+    "          stay dynamic. A route that dropped its cookie read has gone",
+  );
+  console.log(
+    "          static — restore it, or revisit D19 before changing this.",
+  );
 }
 
 if (broken > 0) {

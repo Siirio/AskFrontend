@@ -5,49 +5,62 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /*
- * Scaffolded by the shadcn CLI, then restyled to design-system tokens before
- * first use (D12). Radix supplies behavior (Slot/asChild); every visual value
- * is a token (P9.2). shadcn's own palette (bg-primary, hover:bg-accent as a
- * subtle grey) was removed — here `accent` is the brand ORANGE and is spent
- * ONLY on the primary action (the saturation-is-action lock). Quiet variants
- * hover to `surface-sunken`, never to the accent.
+ * The Button primitive, on ORANGE NEUMORPHISM (D25).
+ *
+ * Shape, depth and motion come from `.neu-btn*` in design-system/neumorphism.css
+ * — padding, radius, the raised→flip→inset shadow arc and the press squish are
+ * baked there because they are per-component VALUES, and values live in the
+ * design system (P9.2). What stays here is behaviour (Slot/asChild, disabled)
+ * and the variant/size vocabulary. The class list is deliberately thin: if you
+ * find yourself adding a shadow or radius utility to a Button, the design
+ * system is missing a variant.
+ *
+ * `default` is the ONE saturated fill in the product and marks only the primary
+ * action. It uses the flat `--accent` (the gradient's dark stop), never the
+ * gradient itself: the gradient's light stop cannot hold a white label at AA —
+ * measured 2.86:1. The gradient survives on fills that carry no text (avatar,
+ * switch track, slider) via `.neu-fill-accent`.
+ *
+ * `outline` and `secondary` from the old scaffold are GONE — neumorphism has no
+ * bordered or tinted quiet button, it has a raised one. Both now resolve to the
+ * plain raised `.neu-btn`, so existing callers keep working and read correctly.
+ *
+ * A plain utility beside a `.neu-*` class OVERRIDES it, with no `!important`
+ * needed: the `.neu-*` rules sit in `@layer components` and Tailwind utilities
+ * in the later `utilities` layer, and layer order beats specificity. That is
+ * why `size-7` alone is enough to resize `.neu-btn-icon` below.
  */
-const buttonVariants = cva(
-  "focus-ring inline-flex shrink-0 items-center justify-center gap-2 rounded-sm text-sm font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-  {
-    variants: {
-      variant: {
-        // The only saturated fill. The primary action, and nothing else.
-        default:
-          "bg-accent text-accent-foreground hover:bg-accent-hover active:bg-accent-active",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:opacity-90",
-        // The bordered quiet action — e.g. the card's "Написать" (chat) button.
-        outline:
-          "border border-border-strong bg-transparent text-foreground hover:bg-surface-sunken",
-        // A quiet filled action; hover lifts it toward the page surface.
-        secondary: "bg-surface-sunken text-foreground hover:bg-surface",
-        ghost: "bg-transparent text-foreground hover:bg-surface-sunken",
-        link: "text-accent underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 px-3 has-[>svg]:px-2.5",
-        // 44px — the customer-path touch target (platform-ui-design §7).
-        lg: "h-11 px-6 text-base has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-11",
-      },
+const buttonVariants = cva("neu-btn focus-ring", {
+  variants: {
+    variant: {
+      default: "neu-btn-primary",
+      destructive: "neu-btn-destructive",
+      // The quiet action: raised, unsaturated. A neumorphic surface has no
+      // hairline to outline with, so these three collapse to the base shape.
+      outline: "",
+      secondary: "",
+      // No resting shadow — for a tertiary action that must not compete with
+      // the two shadowed levels above it.
+      ghost: "neu-btn-ghost",
+      link: "neu-btn-ghost px-0 shadow-none text-accent underline-offset-4 hover:underline",
     },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
+    size: {
+      default: "",
+      xs: "neu-btn-sm px-2 py-1 text-xs",
+      sm: "neu-btn-sm",
+      // 44px — the customer-path touch floor (platform-ui-design §7).
+      lg: "neu-btn-lg",
+      icon: "neu-btn-icon",
+      "icon-xs": "neu-btn-sm neu-btn-icon size-7",
+      "icon-sm": "neu-btn-sm neu-btn-icon size-9",
+      "icon-lg": "neu-btn-icon",
     },
   },
-);
+  defaultVariants: {
+    variant: "default",
+    size: "default",
+  },
+});
 
 function Button({
   className,
@@ -66,7 +79,11 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        buttonVariants({ variant, size }),
+        "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className,
+      )}
       {...props}
     />
   );

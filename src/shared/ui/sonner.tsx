@@ -35,18 +35,25 @@ function Toaster(props: ToasterProps) {
     <Sonner
       theme={theme}
       className="toaster group"
+      // Every surface colour is bound to a design-system variable (P9.2). On
+      // ORANGE NEUMORPHISM (D25) a toast is a RAISED tile: one surface colour,
+      // no border (`transparent`, not `none` — sonner sets a border width
+      // regardless, so a colour is what removes the line), the skin's 16px
+      // radius, and depth from --neu-raised-sm. These variables are resolved
+      // where this host is MOUNTED, which is why the platform layout keeps it
+      // inside the `neu-skin` wrapper — see the comment there.
       style={
         {
-          "--normal-bg": "var(--surface-raised)",
+          "--normal-bg": "var(--surface)",
           "--normal-text": "var(--foreground)",
-          "--normal-border": "var(--border-strong)",
-          "--border-radius": "var(--radius-sm)",
-          "--success-bg": "var(--surface-raised)",
+          "--normal-border": "transparent",
+          "--border-radius": "16px",
+          "--success-bg": "var(--surface)",
           "--success-text": "var(--success)",
-          "--success-border": "var(--border-strong)",
-          "--error-bg": "var(--surface-raised)",
+          "--success-border": "transparent",
+          "--error-bg": "var(--surface)",
           "--error-text": "var(--destructive)",
-          "--error-border": "var(--border-strong)",
+          "--error-border": "transparent",
         } as React.CSSProperties
       }
       {...props}

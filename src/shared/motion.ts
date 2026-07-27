@@ -13,7 +13,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
  * — exactly the drift P6.1 exists to prevent.
  *
  * THE VALUES LIVE IN ONE PLACE. Durations and easings are read from the CSS
- * custom properties in `design-system/tokens.css` — the same values CSS
+ * custom properties in `design-system/tokens_old.css` — the same values CSS
  * transitions use. Nothing is duplicated here, so the two engines cannot drift
  * (P6.2). If a token is missing, we simply do not override GSAP's own default
  * rather than hardcoding a fallback, which would be that duplicate.

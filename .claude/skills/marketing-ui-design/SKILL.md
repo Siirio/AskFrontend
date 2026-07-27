@@ -27,13 +27,19 @@ Linear, Stripe and Vercel are quiet and instantly recognizable. Default-gray sha
 
 ### The three orange traps — SOLVED 2026-07-15 (D13). Do not re-solve them.
 
-All three were closed when the tokens landed. The answers are in `src/design-system/tokens.css`, which documents its own reasoning. Read them; do not re-derive them, and do not "improve" a value without re-running the contrast proof.
+**§note — 2026-07-27 (D25):** the PLATFORM moved to orange neumorphism, and the marketing
+landing deliberately did NOT — it keeps the `tokens_old.css` palette until the owner gives it
+its own direction. So everything in this skill still applies here unchanged, and
+`neumorphism.css` is not yours to use: it is scoped to the `neu-skin` wrapper under `/app/*`,
+and reaching for it on `/` would silently make the landing look like the platform.
+
+All three were closed when the tokens landed. The answers are in `src/design-system/tokens_old.css`, which documents its own reasoning. Read them; do not re-derive them, and do not "improve" a value without re-running the contrast proof.
 
 1. **The discount collision** → solved by **register, not hue**: *saturation is action, tint is information.* The accent is the only high-chroma fill in the product and it marks only things you can act on; a Unique Offer is a low-chroma tint (chroma 0.032 against the accent's 0.161) whose weight comes from bold tabular numerals, not colour. They cannot compete because they are not in the same register. **This is a lock.**
 2. **Contrast** → the accent is `oklch(0.575 0.161 46)`, the *brightest* orange at that hue still holding white text at AA (4.67:1). Dark mode carries a **different value at the same hue**, because one value provably cannot serve both. `--accent-foreground` is therefore a token: white in light, ink in dark. All 31 rendered pairs verified.
 3. **Amazon** → hue 46 sits deliberately below Amazon's yellow-orange (hue 63) and above the dusty low-chroma terracotta of the cliché in §3. It is deep because *contrast* chose it, not taste — which is exactly what makes it a controlled orange rather than a consumer one.
 
-**If a colour token must change:** re-run the OKLCH→sRGB→WCAG proof over every pair in the table at the bottom of `tokens.css`. A contrast claim that was not computed is not a contrast claim.
+**If a colour token must change:** re-run the OKLCH→sRGB→WCAG proof over every pair in the table at the bottom of `tokens_old.css`. A contrast claim that was not computed is not a contrast claim.
 
 ## 2. The process — commit before you build
 

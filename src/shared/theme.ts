@@ -6,7 +6,7 @@
  * Preference: "light" | "dark" | "system" (stored in localStorage; "system"
  * removes the key). It resolves to a concrete "light" | "dark" written to the
  * `data-theme` attribute on <html> — which is the single switch the design
- * tokens read (design-system/tokens.css). "system" follows the OS and
+ * tokens read (design-system/tokens_old.css). "system" follows the OS and
  * re-resolves when the OS preference changes.
  *
  * A tiny inline script in app/layout.tsx applies the SAME logic before first

@@ -93,7 +93,8 @@
     },
     "verify": {
       "sentTo": "Мы отправили 6-значный код на {destination}.",
-      "codeLabel": "Код подтверждения"
+      "codeLabel": "Код подтверждения",
+      "digitAria": "Цифра {position} из {total}"
     },
     "errors": {
       "emailInvalid": "Введите корректный адрес электронной почты.",

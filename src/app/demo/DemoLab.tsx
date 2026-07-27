@@ -40,7 +40,7 @@ import {
  * each component's inline style objects), with only the accent/info hue
  * recoloured from the library's default violet to orange (and the neutral
  * warmed to match). The skin lives entirely in `./neumor.css`, scoped under
- * `.neu-lab` — design-system/tokens.css (D3) is untouched.
+ * `.neu-lab` — design-system/tokens_old.css (D3) is untouched.
  *
  * The scroll reveal still goes through the sanctioned GSAP door
  * (shared/motion.ts, D11/D14).
@@ -155,9 +155,7 @@ function ResultCardSpecimen() {
         <div className="neu-avatar h-11 w-11 text-sm">B</div>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">Bereke Electronics</p>
-          <p className="neu-text-secondary truncate text-xs">
-            Almaty · 2.4 km
-          </p>
+          <p className="neu-text-secondary truncate text-xs">Almaty · 2.4 km</p>
         </div>
       </div>
 
@@ -178,7 +176,10 @@ function ResultCardSpecimen() {
       </p>
 
       <div className="flex gap-2">
-        <button type="button" className="neu-btn neu-btn-primary flex-1 text-sm">
+        <button
+          type="button"
+          className="neu-btn neu-btn-primary flex-1 text-sm"
+        >
           Proceed
         </button>
         <button type="button" className="neu-btn text-sm">

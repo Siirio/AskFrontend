@@ -28,11 +28,16 @@ import { useRoleSelection } from "../hooks";
  * pattern as the reference flows: the pending flag lives in localStorage and
  * is cleared by the choice alone.
  *
- * Anatomy (owner's reference): a card per role — icon badge, label, hint —
- * selected card carries the accent BORDER over a low-chroma tint (selection is
- * actionable, so the accent border is legal; the tint stays information-quiet),
- * and one full-width Continue as the single saturated fill. Search is the
- * mission, so the customer card is preselected.
+ * Anatomy: a card per role — icon, label, hint — and one full-width Continue as
+ * the single saturated fill. Search is the mission, so the customer card is
+ * preselected.
+ *
+ * On ORANGE NEUMORPHISM (D25) the selected card is PRESSED IN rather than
+ * outlined and tinted. That replaces the old accent-border-over-tint treatment
+ * for a reason beyond fashion: on a skin where every control already carries a
+ * shadow, an added border reads as a fourth edge, and a tinted panel competes
+ * with the Continue button for "the saturated thing". Depth marks the choice,
+ * the accent marks the action, and the two stop arguing.
  */
 type RoleChoice = "customer" | "business";
 
@@ -81,24 +86,25 @@ function RoleCard({
         }
       }}
       className={cn(
-        "flex cursor-pointer flex-col items-center gap-2 rounded-sm border p-4 text-center focus-ring transition-colors duration-(--duration-base)",
-        selected
-          ? "border-accent bg-accent/10"
-          : "border-border-strong bg-surface-raised hover:bg-surface-sunken",
+        // Selection is depth, not colour. An unselected card RESTS on the
+        // surface; the selected one is PRESSED IN — the same inset/raised
+        // opposition the whole skin runs on, and the one signal that needs no
+        // legend. The accent then appears on the icon and label of the pressed
+        // card only, so it still marks a live choice rather than tinting a box.
+        "neu-btn flex cursor-pointer flex-col items-center gap-2 p-4 text-center focus-ring",
+        selected && "neu-card-selected text-accent",
       )}
     >
       <span
         aria-hidden="true"
         className={cn(
           "flex size-12 items-center justify-center rounded-full transition-colors duration-(--duration-base)",
-          selected
-            ? "bg-accent/10 text-accent"
-            : "bg-surface-sunken text-foreground-muted",
+          selected ? "text-accent" : "text-foreground-subtle",
         )}
       >
         {icon}
       </span>
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-semibold">{label}</span>
       <span className="text-xs text-balance text-foreground-muted">{hint}</span>
     </button>
   );

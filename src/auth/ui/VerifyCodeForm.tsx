@@ -4,16 +4,27 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
 import { Spinner } from "@/shared/ui/spinner";
 
 import { useVerifyStep, type VerifyResult } from "../hooks";
+import { CodeInput } from "./CodeInput";
 import { Field, fieldErrorId } from "./Field";
 
 /**
  * The shared 6-digit code step — used by both log-in and sign-up. On success it
  * hands the result up (the page decides: role modal vs navigate). Loading,
  * error and validation states are all present (P9.3).
+ *
+ * The code is entered in SIX CELLS (CodeInput — the neumorui OTPInput pattern)
+ * rather than one wide field: see that file for why. `code` remains a single
+ * string owned by useVerifyStep, so the flow, the request and the validation
+ * are all unchanged — only the way the six characters are collected differs.
+ *
+ * Filling the last cell submits, via CodeInput's `onComplete`. That is the
+ * whole point of the step: the code came from another device and the person is
+ * mid-transcription, so asking for one more click on a button they can already
+ * see is friction with no purpose. `pending` guards the double-fire, and the
+ * button stays for keyboard submit and for a retry after an error.
  */
 export function VerifyCodeForm({
   authChallengeId,
@@ -51,18 +62,19 @@ export function VerifyCodeForm({
         htmlFor="verify-code"
         error={error ?? undefined}
       >
-        <Input
+        <CodeInput
           id="verify-code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          className="h-11 text-center text-base tracking-widest"
           value={code}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? fieldErrorId("verify-code") : undefined}
-          onChange={(e) =>
-            setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+          invalid={Boolean(error)}
+          describedBy={error ? fieldErrorId("verify-code") : undefined}
+          disabled={pending}
+          digitLabel={(position, total) =>
+            t("verify.digitAria", { position, total })
           }
+          onValueChange={setCode}
+          onComplete={() => {
+            if (!pending) void submit();
+          }}
         />
       </Field>
       <Button type="submit" size="lg" disabled={pending}>

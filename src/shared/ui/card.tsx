@@ -3,18 +3,23 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /*
- * shadcn scaffold restyled to tokens (D12). `bg-surface-raised` + a hairline
- * border carry elevation (in light mode the border does most of the work, the
- * shadow is a whisper — see the shadow tokens). `rounded-sm` (6px) is the tight
- * instrument radius, not shadcn's `rounded-xl`. Default padding trimmed from
- * py-6 to a denser py-4: the platform is scanned, not read.
+ * The Card primitive, on ORANGE NEUMORPHISM (D25).
+ *
+ * A card here is not a lighter rectangle with a border — it is the SAME surface
+ * colour as the page, lifted purely by the paired light/dark shadow in
+ * `.neu-card`. So `bg-surface-raised`, the hairline border and `shadow-sm` all
+ * come off: keeping any of them would flatten the illusion the shadow creates.
+ *
+ * Padding grows from the old dense py-4/px-4 to py-6/px-6. Tight spacing suited
+ * a 6px bordered card; a 24px-radius shadowed one needs room or the content
+ * crowds the curve.
  */
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col gap-4 rounded-sm border border-border bg-surface-raised py-4 text-foreground shadow-sm",
+        "neu-card flex flex-col gap-4 py-6 text-foreground",
         className,
       )}
       {...props}
@@ -27,7 +32,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-4 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-4",
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
         className,
       )}
       {...props}
@@ -72,7 +77,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-content"
-      className={cn("px-4", className)}
+      className={cn("px-6", className)}
       {...props}
     />
   );
@@ -82,7 +87,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-footer"
-      className={cn("flex items-center px-4 [.border-t]:pt-4", className)}
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
       {...props}
     />
   );

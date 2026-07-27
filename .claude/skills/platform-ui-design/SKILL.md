@@ -13,7 +13,32 @@ Authorities you do not override: `AI_Knowledge/PRODUCT_VISION.md` (P9.1 — if a
 
 ## 1. The direction is DECIDED — you execute it
 
-Set before you; not re-openable. **Quiet chrome** (ASK recedes so twenty businesses' brands can sing) · **one accent, and it is ORANGE** (the primary/search action) · **warm neutrals** · feel: **fast, certain, calm, precise** — a good tool that answers you and gets out of the way. Never playful, luxurious, corporate or salesy. The three orange traps (discount collision · AA contrast · Amazon) are documented in `marketing-ui-design` §1 and bind here too — most sharply on the result card, where the offer label and the primary action appear together.
+**§note — 2026-07-27 (D25): the platform surface is now ORANGE NEUMORPHISM.** Read
+`src/design-system/neumorphism.css` before styling anything under `/app/*`; its header is the
+operational spec. What changed, and what did not:
+
+- **Depth replaced borders.** One surface colour, no hairlines, 10–24px radii, elevation from a
+  paired light/dark shadow. A field is carved IN, an action stands OUT — that opposition is the
+  whole grammar. Do not add a border "for definition"; on this skin it reads as a second edge.
+- **Shape and depth come from `.neu-*` classes**, never from utilities in a component. They sit
+  in `@layer components`, so a plain utility still overrides one with no `!important`.
+- **The skin is scoped** to the `neu-skin` wrapper in `app/app/layout.tsx`. Anything Radix
+  PORTALS (Dialog, DropdownMenu, Select) escapes that scope and silently takes the *marketing*
+  palette — it must carry `data-neu-portal`, and any `.neu-*` class reachable inside a portal
+  must be dual-scoped. This is a lock, and it is invisible in code review.
+- **"Quiet chrome" is RETIRED** (Locks.md → Retired Locks) and so is the strict form of
+  *saturation is action*: the accent gradient is legal on fills that carry NO text (avatar,
+  switch track, slider, checkbox). It is still the only fill on anything carrying a LABEL, and
+  the vivid `#ff6a2c` may never carry text — it holds white at 2.86:1.
+- **Unchanged, and still binding:** one orange accent on warm neutrals · the Never table below ·
+  trust badges as metadata, never a rating · **TINT IS INFORMATION** (the offer chip is a
+  low-chroma tint with tabular numerals, never an accent fill, never a pill) · every rendered
+  colour pair measured and written down.
+
+The paragraph below is the pre-D25 statement of the direction. Its FEEL still holds; its
+"quiet chrome" surface treatment does not.
+
+Set before you; not re-openable. ~~**Quiet chrome**~~ (ASK recedes so twenty businesses' brands can sing) · **one accent, and it is ORANGE** (the primary/search action) · **warm neutrals** · feel: **fast, certain, calm, precise** — a good tool that answers you and gets out of the way. Never playful, luxurious, corporate or salesy. The three orange traps (discount collision · AA contrast · Amazon) are documented in `marketing-ui-design` §1 and bind here too — most sharply on the result card, where the offer label and the primary action appear together.
 
 ## 2. The Never table — hard constraints
 
@@ -56,7 +81,7 @@ The accent orange is the only high-chroma fill in the entire product, and it mar
 
 So on a result card: the button is the **only** saturated object. The `−30%` chip is a quiet warm tile (`bg-offer` / `text-offer-foreground`, chroma 0.032 against the accent's 0.161) whose weight comes from **bold tabular numerals**, not colour — and it is a rectangle (`rounded-xs`), never a pill, because pills and starbursts are marketplace sticker language. They cannot compete, because they are not in the same register.
 
-An offer is never accent-coloured. The accent never marks a fact. Every marketplace on earth screams its discounts in red; ASK states them. Full reasoning: `src/design-system/tokens.css`.
+An offer is never accent-coloured. The accent never marks a fact. Every marketplace on earth screams its discounts in red; ASK states them. Full reasoning: `src/design-system/tokens_old.css`.
 
 ## 4. shadcn is SCAFFOLDING, never a design source (D12 — zero tolerance)
 

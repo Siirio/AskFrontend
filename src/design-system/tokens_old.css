@@ -1,5 +1,30 @@
 /*
- * ASK — Design Tokens. THE SINGLE VISUAL SOURCE (architecture D3).
+ * ASK — Design Tokens (was `tokens.css`, renamed 2026-07-27 by owner directive).
+ * ---------------------------------------------------------------------------
+ * §note — 2026-07-27, THE RENAME. The product's visual direction moved to
+ * ORANGE NEUMORPHISM (`design-system/neumorphism.css`, D25). This file was NOT
+ * retired: it is still loaded, and it still does two live jobs.
+ *
+ *   1. It owns the `@theme inline` block — the ONE Tailwind theme for the repo.
+ *      Breakpoints, the type scale, radii, shadow geometry, motion curves and
+ *      the colour-utility MAPPING all come from here, so every `bg-surface`,
+ *      `text-sm`, `rounded-sm` and `ease-out` in the product still resolves
+ *      through this file, neumorphic surfaces included.
+ *   2. It is the live palette for the MARKETING landing at `/`, which is
+ *      deliberately NOT part of the neumorphism pass (owner directive: the
+ *      landing gets its own direction later).
+ *
+ * HOW THE NEW SKIN LAYERS ON TOP. `@theme inline` inlines LITERAL values for
+ * radii/shadow geometry but resolves colours through `var(--token)`. That
+ * asymmetry is what the new skin exploits: `neumorphism.css` redefines the
+ * colour PRIMITIVES below inside a `.neu-skin` scope, so every colour utility
+ * re-tints for the platform while the landing keeps these values. Depth and
+ * radius geometry cannot be overridden that way — those come from the `.neu-*`
+ * component classes in neumorphism.css instead. The two files are read
+ * together; neither is complete alone.
+ *
+ * The 31 verified contrast pairs at the bottom describe THIS palette and remain
+ * true for the landing. The neumorphic palette carries its own measurements.
  * ---------------------------------------------------------------------------
  * Every colour, size, space, radius, shadow and motion value in the product is
  * defined HERE and nowhere else. A raw hex or px literal in a component is a

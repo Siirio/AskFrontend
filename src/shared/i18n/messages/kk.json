@@ -93,7 +93,8 @@
     },
     "verify": {
       "sentTo": "Біз {destination} мекенжайына 6 таңбалы код жібердік.",
-      "codeLabel": "Растау коды"
+      "codeLabel": "Растау коды",
+      "digitAria": "{total} цифрның {position}-шісі"
     },
     "errors": {
       "emailInvalid": "Жарамды электрондық пошта мекенжайын енгізіңіз.",

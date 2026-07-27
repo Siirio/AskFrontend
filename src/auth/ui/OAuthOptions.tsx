@@ -24,20 +24,30 @@ export function OAuthOptions() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* The rule is a carved GROOVE, not a hairline: a 1px line is the one
+          thing this skin has no vocabulary for, and next to shadowed controls
+          it reads as a stray artefact. Two stacked 1px rows — the shadow pair
+          in miniature — give the same separation in the skin's own language. */}
       <div className="flex items-center gap-3">
-        <span aria-hidden="true" className="h-px flex-1 bg-border" />
-        <span className="text-xs text-foreground-muted">{t("oauth.or")}</span>
-        <span aria-hidden="true" className="h-px flex-1 bg-border" />
+        <span aria-hidden="true" className="neu-rule flex-1" />
+        <span className="text-xs font-medium text-foreground-subtle">
+          {t("oauth.or")}
+        </span>
+        <span aria-hidden="true" className="neu-rule flex-1" />
       </div>
-      {/* Override the Button's fixed h-11 + whitespace-nowrap: the long Google
+      {/* Override the Button's fixed height + whitespace-nowrap: the long Google
           label ("Google арқылы жалғастыру" in kk) overflows a narrow button on
           small screens, so allow it to wrap onto two centred lines and let the
-          height grow — keeping the 44px touch floor (min-h-11). */}
+          height grow — keeping the 44px touch floor (min-h-11).
+          `outline` resolves to the plain RAISED button on this skin — there is
+          no bordered variant to be quiet with, so quiet means unsaturated. That
+          is the right register: the email submit above keeps the one accent
+          fill, and this stays a secondary way in. */}
       <Button
         asChild
         variant="outline"
         size="lg"
-        className="h-auto min-h-11 w-full py-2 text-center whitespace-normal"
+        className="h-auto min-h-11 w-full py-3 text-center whitespace-normal"
       >
         <a href={env.googleOAuthUrl}>
           {/* The official multicolour Google "G" — a brand asset via <img>, like

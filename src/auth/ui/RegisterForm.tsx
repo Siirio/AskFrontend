@@ -18,9 +18,13 @@ import { VerifyCodeForm } from "./VerifyCodeForm";
 /**
  * Sign up — the backend requires displayName?, email, password (8–128) +
  * confirmation, and an accepted user agreement, then issues an email challenge
- * the shared verify step confirms. The agreement is a slice-private, token-
- * styled checkbox (KISS/rule-of-three — auth is the first consumer, so it stays
- * here rather than promoting a shared/ui primitive).
+ * the shared verify step confirms.
+ *
+ * The agreement checkbox stays slice-private (D8 rule of three — auth is still
+ * the only consumer), but its LOOK is not: it wears `.neu-checkbox-box` from
+ * design-system/neumorphism.css, so when a second consumer appears the shared
+ * primitive it gets promoted into already matches this one by construction.
+ * Values live in the design system, ownership stays with the slice (P9.2).
  */
 export function RegisterForm({
   onAuthenticated,
@@ -61,7 +65,6 @@ export function RegisterForm({
         <Input
           id="register-name"
           autoComplete="name"
-          className="h-11 text-base"
           value={values.displayName}
           aria-invalid={Boolean(errors.displayName)}
           aria-describedby={
@@ -81,7 +84,6 @@ export function RegisterForm({
           type="email"
           inputMode="email"
           autoComplete="email"
-          className="h-11 text-base"
           value={values.email}
           aria-invalid={Boolean(errors.email)}
           aria-describedby={
@@ -138,16 +140,22 @@ export function RegisterForm({
             floor (platform-ui-design §7) while the checkbox keeps its own
             accessible name (a link-free version of the sentence). */}
         <div className="flex min-h-11 items-center justify-center">
-          {/* appearance-none + peer'd icon instead of the native accent-color
-              checkbox: natives cannot transition, this fades/scales the check
-              in. The box is the actionable control, so the checked fill is the
-              accent (saturation-is-action holds). */}
+          {/* `appearance-none` on the native box, with the visible control
+              drawn beside it: a native checkbox cannot be given an inset
+              shadow, and the whole point of the skin's checkbox is that
+              unchecked reads as an empty SOCKET. The box is the actionable
+              control, so the checked fill is the accent — saturation-is-action
+              still holds. */}
           <label className="relative flex size-11 shrink-0 cursor-pointer items-center justify-center">
+            {/* The native input is the control — it keeps the checkbox role,
+                the label association, keyboard toggling and the form value. It
+                is made invisible rather than replaced, and `.neu-checkbox-box`
+                below is painted from its :checked state via `peer`. */}
             <input
               id="register-agreement"
               type="checkbox"
               aria-label={t("fields.agreementAria")}
-              className="peer size-5 appearance-none rounded-xs border border-border-strong bg-surface-raised focus-ring transition-colors checked:border-accent checked:bg-accent aria-invalid:border-destructive"
+              className="peer absolute size-6.5 cursor-pointer appearance-none rounded-md focus-ring"
               checked={values.acceptedUserAgreement}
               aria-invalid={Boolean(errors.acceptedUserAgreement)}
               aria-describedby={
@@ -159,10 +167,22 @@ export function RegisterForm({
                 setField("acceptedUserAgreement", e.target.checked)
               }
             />
-            <Check
+            {/* `.neu-checkbox-box` (design-system/neumorphism.css) is the skin's
+                checkbox: an empty SOCKET carved into the surface, which the
+                accent fills when checked — unchecked/checked is inset vs raised
+                fill, the same depth grammar as every other control here. It
+                carries no text, so the accent gradient is legal on it.
+                `data-on` is what the CSS reads; it is driven from the same
+                state the input is, so the two can never disagree. */}
+            <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 m-auto size-3.5 scale-50 text-accent-foreground opacity-0 transition peer-checked:scale-100 peer-checked:opacity-100"
-            />
+              data-on={values.acceptedUserAgreement}
+              className="neu-checkbox-box pointer-events-none"
+            >
+              {values.acceptedUserAgreement ? (
+                <Check className="size-3.5" strokeWidth={3.5} />
+              ) : null}
+            </span>
           </label>
           <span className="text-start text-sm text-foreground-muted">
             {t.rich("fields.agreement", {

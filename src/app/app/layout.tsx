@@ -39,12 +39,28 @@ export default async function PlatformLayout({
   return (
     <LocaleProvider initialLocale={locale}>
       <ThemePreferenceSeed value={theme}>
-        {children}
-        <RoleSelectionModal />
-        {/* The sonner host — INSIDE the seed so an explicit dark preference
-            hydrates dark (D21). Toasts are platform feedback; the static
-            landing has none and must not read the cookie this seed needs. */}
-        <Toaster />
+        {/* `neu-skin` is the ONE place the neumorphic direction is applied
+            (D25). Everything below it — auth included — is neumorphic by
+            construction, and the marketing landing, which is not below it,
+            cannot become neumorphic by accident. Same principle as the `(main)`
+            group being the auth gate line: placement IS status. The class
+            carries the palette AND `min-height: 100svh`, so a short page still
+            paints the warm surface edge to edge. */}
+        <div className="neu-skin">
+          {children}
+          <RoleSelectionModal />
+          {/* The sonner host — INSIDE the seed so an explicit dark preference
+              hydrates dark (D21). Toasts are platform feedback; the static
+              landing has none and must not read the cookie this seed needs.
+              INSIDE `neu-skin` too, and that placement is load-bearing: sonner
+              renders its host in place rather than portaling, so its CSS
+              variables (sonner.tsx) resolve against whatever scope encloses it
+              — mounted outside, every toast would silently take the MARKETING
+              palette. The role modal is a Radix dialog and does portal out; it
+              picks the skin up via `data-neu-portal` (see dialog.tsx) and sits
+              here only for tidiness. */}
+          <Toaster />
+        </div>
       </ThemePreferenceSeed>
     </LocaleProvider>
   );

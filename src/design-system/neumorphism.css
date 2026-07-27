@@ -1,0 +1,960 @@
+/*
+ * ASK — ORANGE NEUMORPHISM. The platform's visual source (D25).
+ * ===========================================================================
+ * Promoted 2026-07-27 from `app/demo/neumor.css`, the /demo design lab (D24),
+ * by owner directive: the skin explored there is now the product direction for
+ * EVERY surface except the marketing landing at `/`, which keeps the old
+ * palette until it receives its own direction.
+ *
+ * ── HOW THIS FILE AND tokens_old.css DIVIDE THE WORK ───────────────────────
+ * They are read TOGETHER; neither is complete alone.
+ *
+ *   tokens_old.css owns the `@theme inline` block — the one Tailwind theme.
+ *     Breakpoints, type scale, radius/shadow GEOMETRY, motion curves, and the
+ *     colour-utility MAPPING all live there.
+ *   this file owns the platform's colour VALUES and its depth LANGUAGE.
+ *
+ * The split is not arbitrary — it follows a property of `@theme inline`, which
+ * INLINES literal values but resolves colours through `var(--token)`:
+ *
+ *   --color-surface: var(--surface)   →  .bg-surface { background: var(--surface) }
+ *   --radius-sm: 0.375rem             →  .rounded-sm { border-radius: 0.375rem }
+ *
+ * So redefining the colour primitives inside `.neu-skin` re-tints every colour
+ * utility in the platform for free, and the landing (outside that scope) keeps
+ * the old values — one mechanism, two skins, no `dark:`-style duplication and
+ * no fork of the Tailwind theme. Radius and shadow geometry CANNOT be reached
+ * that way, which is exactly why the depth language below is a set of `.neu-*`
+ * component classes rather than more tokens.
+ *
+ * ── SCOPING ────────────────────────────────────────────────────────────────
+ * `.neu-skin` is applied ONCE, by the platform layout (`app/app/layout.tsx`),
+ * so it covers every /app/* surface including auth. Placement IS status, the
+ * same way the `(main)` route group is the auth gate line: a page inside the
+ * platform shell is neumorphic by construction, and the landing cannot become
+ * neumorphic by accident. /demo keeps its own `.neu-lab` copy — it is the
+ * reference specimen and must stay independent of what the product does next.
+ *
+ * ── WHAT CHANGED FROM THE /demo PORT, AND WHY ──────────────────────────────
+ * The lab was a faithful recolour of neumorui and was never contrast-tested.
+ * Three values could not ship as-is; every change is a DARKENING for legibility
+ * and none of them touches the hue or the depth language:
+ *
+ *   1. TEXT-BEARING ACCENT. The lab's #ff6a2c holds white at 2.86:1 — a failed
+ *      button label. Anything carrying text now uses the gradient's dark stop
+ *      (#c1440e, 5.14:1 on white). #ff6a2c survives as --neu-accent-vivid: the
+ *      glow, the slider fill, the switch track — fills that carry no text. This
+ *      is the SAME call the owner already made for chat bubbles in the lab
+ *      ("the darker stop alone still reads clearly"), applied consistently.
+ *   2. SECONDARY TEXT. #7a6c58 measured 4.39:1 on the page — under AA. Muted
+ *      and subtle were re-derived to pass on the HARDEST surface they land on.
+ *   3. SYSTEM STATE. The lab's success/warning/danger inks are tint-on-tint
+ *      values and fail as text on the page; each was darkened to clear AA.
+ *
+ * The lab's --neu-text-muted (#bcae98) was RETIRED outright rather than kept for
+ * decorative use: at 1.86:1 it fails as text, and every place that wanted a
+ * quiet glyph is already served by --foreground-subtle, which is measured.
+ * Measurements are at the bottom of this file.
+ *
+ * ── LAYERING ───────────────────────────────────────────────────────────────
+ * The component classes sit in `@layer components`, BELOW Tailwind's utilities
+ * layer, so `className="neu-btn w-full"` works and a utility can still override
+ * a single property. The custom-property blocks stay unlayered — they only
+ * define variables, so they compete with nothing.
+ */
+
+/* ── LIGHT ─────────────────────────────────────────────────────────────────
+ * The neumorphic bargain: ONE surface colour, and depth comes entirely from a
+ * paired light/dark shadow. So --surface and --surface-raised are deliberately
+ * the SAME value — a card is not a lighter rectangle here, it is a shadow.
+ * --surface-sunken is the one exception: hover/active rows need a visible quiet
+ * fill, and an identical colour would make them invisible.
+ */
+.neu-skin {
+  /* neutral ramp the shadows are mixed from */
+  --neu-bg: #f3ede3;
+  --neu-shadow-dark: rgb(198 178 145 / 80%);
+  --neu-shadow-light: rgb(251 248 242 / 70%);
+
+  /* THE DEPTH LANGUAGE — verbatim geometry from the lab port (D24). */
+  --neu-raised: 7px 7px 18px var(--neu-shadow-dark), -5px -5px 14px var(--neu-shadow-light);
+  --neu-raised-sm: 4px 4px 12px var(--neu-shadow-dark), -3px -3px 9px var(--neu-shadow-light);
+  --neu-raised-lg: 12px 12px 28px var(--neu-shadow-dark), -8px -8px 20px var(--neu-shadow-light);
+  --neu-inset: inset 5px 5px 12px var(--neu-shadow-dark), inset -4px -4px 10px var(--neu-shadow-light);
+  --neu-inset-sm: inset 3px 3px 8px var(--neu-shadow-dark), inset -2px -2px 6px var(--neu-shadow-light);
+  /* The hover trick: swap WHICH corner is lit rather than growing the shadow —
+   * "the light moved", with no added glow. Quieter than a lift, and it keeps
+   * hover from reading louder than the pressed state. */
+  --neu-flip: -7px -7px 18px var(--neu-shadow-dark), 5px 5px 14px var(--neu-shadow-light);
+  --neu-flip-sm: -4px -4px 12px var(--neu-shadow-dark), 3px 3px 9px var(--neu-shadow-light);
+
+  --neu-radius-sm: 10px;
+  --neu-radius-md: 14px;
+  --neu-radius-lg: 18px;
+  --neu-radius-xl: 24px;
+  --neu-transition: all 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* The vivid orange. NON-TEXT FILLS ONLY (see header note 1) — glow, slider
+   * fill, switch track, radio dot. It holds white at 2.86:1 and must never
+   * carry a label. */
+  --neu-accent-vivid: #ff6a2c;
+  --neu-accent-glow: rgb(255 106 44 / 45%);
+  /* THE FOCUS SIGNATURE for this skin, defined ONCE (P6.1) and composed with
+   * whatever shadow the surface already has. Every focusable thing in the
+   * platform ends up with the same glow: chrome via the `focus-ring` utility
+   * in globals.css, shadowed surfaces via this. */
+  --neu-focus-glow: 0 0 0 3px var(--neu-accent-glow);
+  --neu-gradient-primary: linear-gradient(145deg, #ff8f5c, #c1440e);
+
+  /* ── the semantic primitives tokens_old.css maps every colour utility to ── */
+  --surface: var(--neu-bg);
+  --surface-raised: var(--neu-bg);
+  --surface-sunken: #ece5d9;
+
+  --foreground: #2e2417;
+  --foreground-muted: #6b5e4a; /* 5.50:1 page, 4.58:1 sunken */
+  --foreground-subtle: #726449; /* 4.96:1 page, 4.62:1 sunken ← the AA floor */
+
+  --border: #ddd2bd;
+  --border-strong: #c6b291;
+
+  --accent: #c1440e; /* the gradient's dark stop — the TEXT-SAFE accent */
+  --accent-hover: #a93a0b;
+  --accent-active: #8f3008;
+  --accent-foreground: #ffffff; /* 5.14:1, stated not assumed */
+
+  --offer: #ffe6d3;
+  --offer-border: rgb(255 106 44 / 30%);
+  --offer-foreground: #8a2f06; /* 7.06:1 on the tint */
+
+  --destructive: #b8321f;
+  --destructive-foreground: #ffffff;
+  --success: #16704a;
+  --success-foreground: #ffffff;
+  --warning: #86600c;
+  --warning-foreground: #ffffff;
+
+  --shadow-color-weak: rgb(120 95 60 / 10%);
+  --shadow-color: rgb(120 95 60 / 18%);
+  --shadow-color-strong: rgb(120 95 60 / 30%);
+  --overlay: rgb(38 26 12 / 35%);
+
+  min-height: 100svh;
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+/* ── DARK ──────────────────────────────────────────────────────────────────
+ * A warm charcoal, not a near-black: the shadow pair needs a lit side to exist
+ * at all, so the "light" shadow here is a warm brown rather than white.
+ */
+:root[data-theme="dark"] .neu-skin {
+  --neu-bg: #221c14;
+  --neu-shadow-dark: rgb(0 0 0 / 60%);
+  --neu-shadow-light: rgb(140 105 60 / 35%);
+
+  --neu-raised: 8px 8px 20px var(--neu-shadow-dark), -6px -6px 16px var(--neu-shadow-light);
+  --neu-raised-sm: 5px 5px 14px var(--neu-shadow-dark), -4px -4px 10px var(--neu-shadow-light);
+  --neu-raised-lg: 14px 14px 32px var(--neu-shadow-dark), -10px -10px 24px var(--neu-shadow-light);
+  --neu-inset: inset 6px 6px 14px var(--neu-shadow-dark), inset -5px -5px 12px var(--neu-shadow-light);
+  --neu-inset-sm: inset 4px 4px 10px var(--neu-shadow-dark), inset -3px -3px 8px var(--neu-shadow-light);
+  --neu-flip: -8px -8px 20px var(--neu-shadow-dark), 6px 6px 16px var(--neu-shadow-light);
+  --neu-flip-sm: -5px -5px 14px var(--neu-shadow-dark), 4px 4px 10px var(--neu-shadow-light);
+
+  --neu-accent-vivid: #ff8f5c;
+  --neu-accent-glow: rgb(255 143 92 / 50%);
+  --neu-focus-glow: 0 0 0 3px var(--neu-accent-glow);
+  --neu-gradient-primary: linear-gradient(145deg, #ffab84, #e2551b);
+
+  --surface: var(--neu-bg);
+  --surface-raised: var(--neu-bg);
+  --surface-sunken: #1a140d;
+
+  --foreground: #f3ece2;
+  --foreground-muted: #c9bba6; /* 8.91:1 page */
+  --foreground-subtle: #9d8f79; /* 5.31:1 page, 5.75:1 sunken ← the AA floor */
+
+  --border: #3a3025;
+  --border-strong: #55462f;
+
+  /* Dark gets its own accent at the SAME hue: brighter, and its label flips to
+   * ink. Same discipline as the retired palette — designed, not inverted. */
+  --accent: #ff8f5c;
+  --accent-hover: #ffab84;
+  --accent-active: #e2551b;
+  --accent-foreground: #221c14; /* ink — 7.50:1 */
+
+  --offer: #3a2210;
+  --offer-border: rgb(255 143 92 / 35%);
+  --offer-foreground: #ffb488; /* 8.52:1 on the tint */
+
+  --destructive: #f89080;
+  --destructive-foreground: #221c14;
+  --success: #6ed8b0;
+  --success-foreground: #221c14;
+  --warning: #fad06a;
+  --warning-foreground: #221c14;
+
+  --shadow-color-weak: rgb(0 0 0 / 30%);
+  --shadow-color: rgb(0 0 0 / 45%);
+  --shadow-color-strong: rgb(0 0 0 / 60%);
+  --overlay: rgb(0 0 0 / 55%);
+}
+
+/*
+ * NO-JS FALLBACK — the sanctioned duplicate of the dark block above, matching
+ * the identical arrangement in tokens_old.css (its §note 2026-07-18).
+ * `:root:not([data-theme])` is reachable ONLY when the pre-paint theme script
+ * never ran (scripts blocked, CSP, error); with JS the attribute always exists
+ * before first paint. KEEP THE VALUES IDENTICAL — change the two blocks
+ * together.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .neu-skin {
+    --neu-bg: #221c14;
+        --neu-shadow-dark: rgb(0 0 0 / 60%);
+    --neu-shadow-light: rgb(140 105 60 / 35%);
+
+    --neu-raised: 8px 8px 20px var(--neu-shadow-dark), -6px -6px 16px var(--neu-shadow-light);
+    --neu-raised-sm: 5px 5px 14px var(--neu-shadow-dark), -4px -4px 10px var(--neu-shadow-light);
+    --neu-raised-lg: 14px 14px 32px var(--neu-shadow-dark), -10px -10px 24px var(--neu-shadow-light);
+    --neu-inset: inset 6px 6px 14px var(--neu-shadow-dark), inset -5px -5px 12px var(--neu-shadow-light);
+    --neu-inset-sm: inset 4px 4px 10px var(--neu-shadow-dark), inset -3px -3px 8px var(--neu-shadow-light);
+    --neu-flip: -8px -8px 20px var(--neu-shadow-dark), 6px 6px 16px var(--neu-shadow-light);
+    --neu-flip-sm: -5px -5px 14px var(--neu-shadow-dark), 4px 4px 10px var(--neu-shadow-light);
+
+    --neu-accent-vivid: #ff8f5c;
+    --neu-accent-glow: rgb(255 143 92 / 50%);
+    --neu-focus-glow: 0 0 0 3px var(--neu-accent-glow);
+    --neu-gradient-primary: linear-gradient(145deg, #ffab84, #e2551b);
+
+    --surface: var(--neu-bg);
+    --surface-raised: var(--neu-bg);
+    --surface-sunken: #1a140d;
+
+    --foreground: #f3ece2;
+    --foreground-muted: #c9bba6;
+    --foreground-subtle: #9d8f79;
+
+    --border: #3a3025;
+    --border-strong: #55462f;
+
+    --accent: #ff8f5c;
+    --accent-hover: #ffab84;
+    --accent-active: #e2551b;
+    --accent-foreground: #221c14;
+
+    --offer: #3a2210;
+    --offer-border: rgb(255 143 92 / 35%);
+    --offer-foreground: #ffb488;
+
+    --destructive: #f89080;
+    --destructive-foreground: #221c14;
+    --success: #6ed8b0;
+    --success-foreground: #221c14;
+    --warning: #fad06a;
+    --warning-foreground: #221c14;
+
+    --shadow-color-weak: rgb(0 0 0 / 30%);
+    --shadow-color: rgb(0 0 0 / 45%);
+    --shadow-color-strong: rgb(0 0 0 / 60%);
+    --overlay: rgb(0 0 0 / 55%);
+  }
+}
+
+/* ── keyframes (verbatim from the lab port) ────────────────────────────────
+ * All animate transform / opacity / background-position / clip-path only — no
+ * layout property, so the D11 animation lock holds for the CSS side too. They
+ * halt under the global prefers-reduced-motion gate in globals.css. */
+@keyframes neu-radio-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+@keyframes neu-check-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.85); }
+  100% { transform: scale(1); }
+}
+@keyframes neu-slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes neu-slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes neu-overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes neu-scale-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.94); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes neu-grow-bar {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0% 0 0); }
+}
+@keyframes neu-shimmer-pos {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@layer components {
+  /* ── SURFACES ─────────────────────────────────────────────────────────── */
+  .neu-skin .neu-card {
+    background: var(--surface);
+    color: var(--foreground);
+    border-radius: var(--neu-radius-xl);
+    box-shadow: var(--neu-raised-lg);
+  }
+
+  /* A "well" — the inset counterpart. Filter panels, scroll viewports, any
+   * region that should read as carved INTO the page rather than resting on it. */
+  .neu-skin .neu-well {
+    background: var(--surface);
+    border-radius: var(--neu-radius-lg);
+    box-shadow: var(--neu-inset);
+  }
+
+  .neu-skin .neu-row {
+    background: var(--surface);
+    border-radius: var(--neu-radius-md);
+    box-shadow: var(--neu-raised-sm);
+  }
+
+  /* A separator. This skin has no vocabulary for a 1px hairline — beside
+   * shadowed controls it reads as a stray artefact — so a rule is a shallow
+   * GROOVE: the shadow pair in miniature. Used for the form divider and any
+   * section break.
+   *
+   * Dual-scoped, and so is `.neu-menu-item` below: menu separators and rows
+   * render inside a Radix PORTAL, which is outside `.neu-skin`. A rule scoped
+   * only to the skin would silently do nothing there — which is exactly the
+   * bug the portal block at the bottom of this file exists to prevent. Any
+   * class that can appear inside a menu needs both scopes. */
+  .neu-skin .neu-rule,
+  [data-neu-portal] .neu-rule {
+    height: 2px;
+    border-radius: 9999px;
+    box-shadow: var(--neu-inset-sm);
+  }
+
+  .neu-skin .neu-topbar {
+    background: color-mix(in oklab, var(--surface) 85%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 24px -16px var(--neu-shadow-dark);
+  }
+
+  /* ── BUTTON ────────────────────────────────────────────────────────────
+   * Rest = raised, hover = the light flips corner, press = inset + a 3% squish.
+   * The press is the whole point of the idiom: the control physically goes IN. */
+  .neu-skin .neu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-shrink: 0;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: var(--surface);
+    color: var(--foreground);
+    border-radius: var(--neu-radius-md);
+    padding: 12px 26px;
+    box-shadow: var(--neu-raised);
+    transition: var(--neu-transition);
+  }
+  .neu-skin .neu-btn:hover:not(:disabled) { box-shadow: var(--neu-flip); }
+  .neu-skin .neu-btn:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow: var(--neu-inset);
+  }
+  .neu-skin .neu-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: var(--neu-inset-sm);
+  }
+
+  .neu-skin .neu-btn-sm {
+    padding: 8px 16px;
+    font-size: 12px;
+    border-radius: var(--neu-radius-sm);
+    box-shadow: var(--neu-raised-sm);
+  }
+  .neu-skin .neu-btn-sm:hover:not(:disabled) { box-shadow: var(--neu-flip-sm); }
+  .neu-skin .neu-btn-sm:active:not(:disabled) { box-shadow: var(--neu-inset-sm); }
+
+  /* 44px — the customer-path touch floor (platform-ui-design §7). */
+  .neu-skin .neu-btn-lg { min-height: 44px; padding: 12px 28px; font-size: 16px; }
+  .neu-skin .neu-btn-icon { width: 44px; height: 44px; padding: 0; }
+  .neu-skin .neu-btn-block { width: 100%; }
+  .neu-skin .neu-btn-row { width: 100%; justify-content: flex-start; }
+
+  /* THE ONE SATURATED FILL. Flat --accent, NOT the gradient: the gradient's
+   * light stop cannot hold white text (header note 1). The gradient is still
+   * the right choice for fills that carry no label — see .neu-fill-accent. */
+  .neu-skin .neu-btn-primary {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+  .neu-skin .neu-btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .neu-skin .neu-btn-primary:active:not(:disabled) {
+    background: var(--accent-active);
+    box-shadow: var(--neu-inset);
+  }
+
+  .neu-skin .neu-btn-destructive {
+    background: var(--destructive);
+    color: var(--destructive-foreground);
+  }
+
+  /* A SELECTED card built on `.neu-btn`: it stays pressed in instead of
+   * springing back, and hover no longer flips the light — a chosen thing must
+   * not look hoverable-into-a-different-state. This is how selection is marked
+   * anywhere on this skin (role modal, filter chips): depth, never a tint. */
+  .neu-skin .neu-card-selected,
+  .neu-skin .neu-card-selected:hover:not(:disabled) {
+    box-shadow: var(--neu-inset);
+  }
+
+  /* Ghost — no resting shadow at all. For tertiary actions ("change email")
+   * that must not compete with the two shadowed levels above them. */
+  .neu-skin .neu-btn-ghost {
+    background: transparent;
+    box-shadow: none;
+    color: var(--foreground-muted);
+  }
+  .neu-skin .neu-btn-ghost:hover:not(:disabled) {
+    box-shadow: var(--neu-raised-sm);
+    color: var(--foreground);
+  }
+
+  /* The label-free accent fill: switch tracks, radio dots, slider fills,
+   * avatars. The gradient lives HERE and nowhere a string can land. */
+  .neu-skin .neu-fill-accent { background: var(--neu-gradient-primary); }
+
+  /* ── INPUT ──────────────────────────────────────────────────────────────
+   * The mirror of the button: a field is carved IN, an action stands OUT. That
+   * single opposition is what makes the skin legible without borders.
+   *
+   * Focus is the accent GLOW, not the product's offset ring — an offset outline
+   * around a shadow-defined field reads as a detached rectangle. Same role,
+   * same colour source (--accent), correct form for this surface; chrome
+   * (buttons, links, toggles) keeps the shared `focus-ring` utility. */
+  .neu-skin .neu-input {
+    width: 100%;
+    font-family: inherit;
+    font-size: 16px; /* ≥16px: anything smaller makes iOS Safari zoom on focus */
+    font-weight: 600;
+    color: var(--foreground);
+    background: var(--surface);
+    border: none;
+    outline: 2px solid transparent; /* keeps a ring in forced-colors mode */
+    outline-offset: 0;
+    border-radius: var(--neu-radius-md);
+    padding: 13px 16px;
+    box-shadow: var(--neu-inset);
+    transition: box-shadow 0.2s ease;
+  }
+  .neu-skin .neu-input::placeholder { color: var(--foreground-subtle); }
+  .neu-skin .neu-input:focus-visible {
+    box-shadow: var(--neu-inset), var(--neu-focus-glow);
+  }
+  .neu-skin .neu-input[aria-invalid="true"] {
+    box-shadow: var(--neu-inset), 0 0 0 2px var(--destructive);
+  }
+  .neu-skin .neu-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── OTP CELL (neumorui OTPInput) ──────────────────────────────────────
+   * One box per digit. Deliberately RAISED at rest, which is the opposite of
+   * `.neu-input` and is the reference library's own choice — and it earns the
+   * exception: a code is six discrete tiles you fill in turn, not one trough
+   * you type into, and carving six adjacent wells side by side reads as
+   * corrugation rather than as fields. The focused cell keeps its lift and
+   * gains the accent ring, so "where am I" is unambiguous at a glance.
+   *
+   * A FILLED cell presses in — that is the receipt: the digits you have already
+   * entered are settled, the one you are on is still raised and live. */
+  .neu-skin .neu-otp-cell {
+    width: 100%;
+    min-width: 0;
+    height: 56px;
+    padding: 0;
+    border: none;
+    outline: 2px solid transparent; /* keeps a ring in forced-colors mode */
+    outline-offset: 0;
+    border-radius: var(--neu-radius-md);
+    background: var(--surface);
+    color: var(--foreground);
+    box-shadow: var(--neu-raised-sm);
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    caret-color: var(--accent);
+    transition: box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .neu-skin .neu-otp-cell[data-filled="true"] {
+    box-shadow: var(--neu-inset-sm);
+    color: var(--accent);
+  }
+  .neu-skin .neu-otp-cell:focus-visible,
+  .neu-skin .neu-otp-cell:focus {
+    box-shadow: var(--neu-raised-sm), var(--neu-focus-glow);
+    transform: translateY(-2px);
+  }
+  .neu-skin .neu-otp-cell[aria-invalid="true"] {
+    box-shadow: var(--neu-raised-sm), 0 0 0 2px var(--destructive);
+  }
+  .neu-skin .neu-otp-cell:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── AVATAR / CHIPS ─────────────────────────────────────────────────── */
+  .neu-skin .neu-avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: var(--neu-gradient-primary);
+    color: #ffffff;
+    font-weight: 800;
+    box-shadow: var(--neu-raised-sm);
+  }
+
+  /* Metadata: a fact about a listing. Carved in, never coloured — a tinted
+   * badge would read as a rating, and this product has no ratings. */
+  .neu-skin .neu-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: var(--neu-radius-sm);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--surface);
+    color: var(--foreground-subtle);
+    box-shadow: var(--neu-inset-sm);
+  }
+  /* A Unique Offer: low-chroma TINT with ink text and tabular numerals. It is
+   * information, so it never takes the accent fill and never becomes a pill. */
+  .neu-skin .neu-chip-offer {
+    background: var(--offer);
+    color: var(--offer-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── TABS / SEGMENTED CONTROL ─────────────────────────────────────────
+   * One shared groove holding transparent triggers; the active one presses in
+   * and its label takes the accent. */
+  .neu-skin .neu-tab-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    border-radius: var(--neu-radius-lg);
+    background: var(--surface);
+    box-shadow: var(--neu-inset);
+  }
+  .neu-skin .neu-tab-trigger {
+    padding: 9px 16px;
+    border: none;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--foreground-muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--neu-transition);
+  }
+  .neu-skin .neu-tab-trigger[data-active="true"],
+  .neu-skin .neu-tab-trigger[aria-selected="true"],
+  .neu-skin .neu-tab-trigger[aria-pressed="true"] {
+    box-shadow: var(--neu-inset-sm);
+    color: var(--accent);
+  }
+
+  /* ── CHECKBOX / RADIO / SWITCH ────────────────────────────────────────
+   * Unchecked = carved in (an empty socket), checked = the accent fills it.
+   * These carry no text, so the gradient is legal here. */
+  .neu-skin .neu-checkbox-box {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: var(--surface);
+    color: #ffffff;
+    box-shadow: var(--neu-inset-sm);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .neu-skin .neu-checkbox-box[data-on="true"] {
+    background: var(--neu-gradient-primary);
+    box-shadow: 3px 3px 9px var(--neu-accent-glow), -2px -2px 7px var(--neu-shadow-light);
+  }
+  .neu-skin .neu-checkbox-box:active { transform: scale(0.85); }
+  .neu-skin .neu-checkbox-box[data-on="true"] svg {
+    animation: neu-check-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .neu-skin .neu-radio-dot {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 9999px;
+    background: var(--surface);
+    box-shadow: var(--neu-raised-sm);
+    transition: all 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .neu-skin .neu-radio-dot:hover:not([data-on="true"]) {
+    box-shadow: var(--neu-raised);
+    transform: translateY(-1px);
+  }
+  .neu-skin .neu-radio-dot[data-on="true"] { box-shadow: var(--neu-inset); }
+  .neu-skin .neu-radio-fill {
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background: var(--neu-gradient-primary);
+    box-shadow: 0 0 8px var(--neu-accent-glow);
+    animation: neu-radio-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .neu-skin .neu-switch-track {
+    position: relative;
+    width: 54px;
+    height: 30px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 9999px;
+    background: var(--surface);
+    box-shadow: var(--neu-inset-sm);
+    cursor: pointer;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .neu-skin .neu-switch-track[data-on="true"] {
+    background: var(--neu-gradient-primary);
+    box-shadow: inset 3px 3px 8px var(--neu-accent-glow), inset -2px -2px 6px rgb(255 255 255 / 30%);
+  }
+  .neu-skin .neu-switch-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 9999px;
+    background: var(--surface);
+    box-shadow: 3px 3px 8px var(--neu-shadow-dark), -2px -2px 6px var(--neu-shadow-light);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .neu-skin .neu-switch-thumb[data-on="true"] { transform: translateX(24px); }
+
+  /* ── SLIDER ───────────────────────────────────────────────────────────
+   * A native range cannot show a FILLED segment, so the fill is its own layer
+   * under a transparent native input that keeps the keyboard and a11y story. */
+  .neu-skin .neu-slider { position: relative; width: 100%; height: 26px; }
+  .neu-skin .neu-slider-track,
+  .neu-skin .neu-slider-fill {
+    position: absolute;
+    top: 50%;
+    height: 8px;
+    transform: translateY(-50%);
+    border-radius: 9999px;
+  }
+  .neu-skin .neu-slider-track {
+    right: 0;
+    left: 0;
+    background: var(--surface);
+    box-shadow: var(--neu-inset-sm);
+  }
+  .neu-skin .neu-slider-fill {
+    left: 0;
+    background: var(--neu-gradient-primary);
+    pointer-events: none;
+  }
+  .neu-skin .neu-range {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  .neu-skin .neu-range::-webkit-slider-runnable-track {
+    appearance: none;
+    height: 100%;
+    background: transparent;
+  }
+  .neu-skin .neu-range::-moz-range-track { height: 100%; background: transparent; border: none; }
+  .neu-skin .neu-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 9999px;
+    background: var(--neu-gradient-primary);
+    box-shadow: 3px 3px 9px var(--neu-accent-glow), -2px -2px 6px var(--neu-shadow-light);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .neu-skin .neu-range::-webkit-slider-thumb:active { transform: scale(1.12); }
+  .neu-skin .neu-range::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 9999px;
+    background: var(--neu-gradient-primary);
+    box-shadow: 3px 3px 9px var(--neu-accent-glow), -2px -2px 6px var(--neu-shadow-light);
+    cursor: pointer;
+  }
+
+  /* ── PROGRESS ─────────────────────────────────────────────────────────── */
+  .neu-skin .neu-progress-track {
+    height: 10px;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: var(--surface);
+    box-shadow: var(--neu-inset-sm);
+  }
+  .neu-skin .neu-progress-fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: var(--neu-gradient-primary);
+    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: neu-grow-bar 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* ── OVERLAYS: menu, tooltip, toast, modal ───────────────────────────── */
+  .neu-skin .neu-menu,
+  /* Radix portals its content to <body>, OUTSIDE the .neu-skin wrapper, so a
+   * descendant selector would never match. These two are scoped by data-slot
+   * instead and inherit the variables from :root — which is why the primitive
+   * blocks above define the palette on `.neu-skin` and NOT on :root: a portaled
+   * surface must still be able to read them. See the `[data-neu-portal]` block
+   * below, which is the mechanism that makes that work. */
+  [data-neu-portal] {
+    background: var(--surface);
+    color: var(--foreground);
+    border-radius: var(--neu-radius-lg);
+    box-shadow: var(--neu-raised-lg);
+  }
+
+  /* Dual-scoped for the portal reason documented on `.neu-rule` above. */
+  .neu-skin .neu-menu-item,
+  [data-neu-portal] .neu-menu-item {
+    border-radius: var(--neu-radius-sm);
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .neu-skin .neu-tooltip {
+    background: var(--surface);
+    color: var(--foreground);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: var(--neu-raised-sm);
+  }
+
+  .neu-skin .neu-toast {
+    min-width: 280px;
+    max-width: 380px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: var(--neu-raised-sm);
+    animation: neu-slide-in-right 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+
+  .neu-skin .neu-modal-overlay,
+  [data-neu-portal-overlay] {
+    background: var(--overlay);
+    backdrop-filter: blur(4px);
+    animation: neu-overlay-fade-in 0.2s ease;
+  }
+
+  /* ── CHAT BUBBLES ─────────────────────────────────────────────────────
+   * Same shadow and radius on both; the fill alone marks "mine". Flat, not the
+   * gradient — the light stop washed out under white text (owner feedback). */
+  .neu-skin .neu-bubble-in {
+    background: var(--surface);
+    color: var(--foreground);
+    border-radius: var(--neu-radius-lg);
+    box-shadow: var(--neu-raised-sm);
+  }
+  .neu-skin .neu-bubble-out {
+    background: var(--accent);
+    color: var(--accent-foreground);
+    border-radius: var(--neu-radius-lg);
+    box-shadow: var(--neu-raised-sm);
+  }
+
+  /* ── SCROLL AREA / ACCORDION ──────────────────────────────────────────── */
+  .neu-skin .neu-scroll-viewport { border-radius: 16px; scrollbar-width: none; }
+  .neu-skin .neu-scroll-viewport::-webkit-scrollbar { display: none; }
+
+  .neu-skin .neu-accordion-item {
+    background: var(--surface);
+    border-radius: var(--neu-radius-lg);
+    box-shadow: var(--neu-raised);
+  }
+  .neu-skin .neu-accordion-trigger {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+  }
+  .neu-skin [data-open="true"] .neu-accordion-body { animation: neu-slide-down 0.25s ease; }
+
+  /* ── LOADING / EMPTY ──────────────────────────────────────────────────
+   * The shimmer IS the surface (a moving gradient), not an overlay on top. */
+  .neu-skin .neu-skel {
+    box-shadow: var(--neu-inset-sm);
+    background: linear-gradient(90deg, var(--neu-shadow-dark) 25%, var(--neu-shadow-light) 50%, var(--neu-shadow-dark) 75%);
+    background-size: 200% 100%;
+    animation: neu-shimmer-pos 1.6s linear infinite;
+  }
+
+  .neu-skin .neu-empty-root {
+    background: var(--surface);
+    border-radius: 20px;
+    box-shadow: var(--neu-inset-sm);
+  }
+  .neu-skin .neu-empty-icon {
+    background: var(--surface);
+    border-radius: 18px;
+    color: var(--foreground-subtle);
+    box-shadow: var(--neu-raised-sm);
+  }
+
+  /* The section marker — an accent bead with its own glow. */
+  .neu-skin .neu-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 10px;
+    border-radius: 9999px;
+    background: var(--neu-accent-vivid);
+    box-shadow: 0 0 0 4px var(--neu-accent-glow);
+  }
+}
+
+/*
+ * ── SONNER ────────────────────────────────────────────────────────────────
+ * DELIBERATELY UNLAYERED, and that is the whole point of this block. Sonner
+ * injects its own stylesheet with no cascade layer, and unlayered CSS beats
+ * ANY layered rule regardless of specificity — so the `.neu-toast` shape in
+ * `@layer components` above could never reach a real toast. Colour is not a
+ * problem (sonner reads the CSS variables shared/ui/sonner.tsx sets, which is
+ * its supported API); shape and depth are, so they are stated here where they
+ * can actually win: unlayered, and at 0-2-0 against sonner's own 0-1-0.
+ */
+.neu-skin [data-sonner-toast] {
+  border-radius: 16px;
+  box-shadow: var(--neu-raised-sm);
+}
+
+/*
+ * ── PORTALED SURFACES ──────────────────────────────────────────────────────
+ * Radix renders Dialog/DropdownMenu/Select content into a portal at the end of
+ * <body> — outside the `.neu-skin` wrapper. Descendant selectors cannot reach
+ * it, and neither can the variables, because they are defined ON `.neu-skin`.
+ *
+ * Rather than duplicate the palette onto `:root` (which would leak the skin
+ * onto the marketing landing — the one thing this scoping exists to prevent),
+ * the portaled surfaces carry `data-neu-portal` and re-declare ONLY the handful
+ * of variables they need, by reference to the same source. One place, no second
+ * palette.
+ */
+[data-neu-portal],
+[data-neu-portal-overlay] {
+  --neu-shadow-dark: rgb(198 178 145 / 80%);
+  --neu-shadow-light: rgb(251 248 242 / 70%);
+  --neu-raised-lg: 12px 12px 28px var(--neu-shadow-dark), -8px -8px 20px var(--neu-shadow-light);
+  --neu-inset-sm: inset 3px 3px 8px var(--neu-shadow-dark), inset -2px -2px 6px var(--neu-shadow-light);
+  --neu-radius-sm: 10px;
+  --neu-radius-lg: 18px;
+  --surface: #f3ede3;
+  --surface-sunken: #ece5d9;
+  --foreground: #2e2417;
+  --foreground-muted: #6b5e4a;
+  --foreground-subtle: #726449;
+  --border: #ddd2bd;
+  --accent: #c1440e;
+  --destructive: #b8321f;
+  --overlay: rgb(38 26 12 / 35%);
+}
+
+:root[data-theme="dark"] [data-neu-portal],
+:root[data-theme="dark"] [data-neu-portal-overlay] {
+  --neu-shadow-dark: rgb(0 0 0 / 60%);
+  --neu-shadow-light: rgb(140 105 60 / 35%);
+  --neu-raised-lg: 14px 14px 32px var(--neu-shadow-dark), -10px -10px 24px var(--neu-shadow-light);
+  --neu-inset-sm: inset 4px 4px 10px var(--neu-shadow-dark), inset -3px -3px 8px var(--neu-shadow-light);
+  --neu-radius-sm: 10px;
+  --surface: #221c14;
+  --surface-sunken: #1a140d;
+  --foreground: #f3ece2;
+  --foreground-muted: #c9bba6;
+  --foreground-subtle: #9d8f79;
+  --border: #3a3025;
+  --accent: #ff8f5c;
+  --destructive: #f89080;
+  --overlay: rgb(0 0 0 / 55%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) [data-neu-portal],
+  :root:not([data-theme]) [data-neu-portal-overlay] {
+    --neu-shadow-dark: rgb(0 0 0 / 60%);
+    --neu-shadow-light: rgb(140 105 60 / 35%);
+    --neu-raised-lg: 14px 14px 32px var(--neu-shadow-dark), -10px -10px 24px var(--neu-shadow-light);
+    --neu-inset-sm: inset 4px 4px 10px var(--neu-shadow-dark), inset -3px -3px 8px var(--neu-shadow-light);
+    --neu-radius-sm: 10px;
+    --surface: #221c14;
+    --surface-sunken: #1a140d;
+    --foreground: #f3ece2;
+    --foreground-muted: #c9bba6;
+    --foreground-subtle: #9d8f79;
+    --border: #3a3025;
+    --accent: #ff8f5c;
+    --destructive: #f89080;
+    --overlay: rgb(0 0 0 / 55%);
+  }
+}
+
+/*
+ * ── WCAG VERIFICATION ───────────────────────────────────────────────────────
+ * Computed from the exact hex values above (sRGB → WCAG 2.x relative
+ * luminance), for every pair the platform actually renders. The /demo port was
+ * never measured; these numbers are why three of its values changed. Re-verify
+ * when a colour changes — do not eyeball it.
+ *
+ *                                     LIGHT      DARK      floor
+ *   foreground / surface             13.06:1    14.40:1    4.5  (AA text)
+ *   foreground-muted / surface        5.50:1     8.91:1    4.5
+ *   foreground-subtle / hardest bg    4.62:1     5.75:1    4.5  ← the AA floor
+ *   accent / accent-foreground        5.14:1     7.50:1    4.5
+ *   accent vs surface    [the ring]   4.42:1     7.50:1    3.0  (AA non-text)
+ *   offer-foreground / offer tint     7.06:1     8.52:1    4.5
+ *   destructive as text on surface    5.15:1     7.46:1    4.5
+ *   destructive / its foreground      6.00:1     7.46:1    4.5
+ *   success / its foreground          6.08:1     9.73:1    4.5
+ *   warning / its foreground          5.78:1    11.49:1    4.5
+ *
+ * FAILING VALUES INHERITED FROM THE LAB, AND WHERE THEY WENT (header note):
+ *   #ff6a2c on white  2.86:1  → --neu-accent-vivid, non-text fills only
+ *   #7a6c58 on page   4.39:1  → replaced by --foreground-muted #6b5e4a
+ *   #bcae98 on page   1.86:1  → retired; use --foreground-subtle
+ */

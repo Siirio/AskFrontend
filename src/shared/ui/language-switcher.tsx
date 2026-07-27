@@ -10,8 +10,12 @@ import { locales, type Locale } from "@/shared/i18n/locales";
  * kk / ru / en switcher — domain-free chrome (shared/ui). Reads and writes the
  * platform locale via the LocaleProvider (shared/i18n). Language names are
  * endonyms (shown in their own language, not translated); only the group label
- * is localised. Like the theme toggle, the active option is a quiet sunken fill
- * — the accent is reserved for the focus ring (saturation-is-action).
+ * is localised.
+ *
+ * Same shape as the theme toggle on ORANGE NEUMORPHISM (D25) — deliberately, so
+ * the pair reads as one control strip: an inset groove whose active option
+ * presses IN and takes the accent on its label. Depth carries the state; the
+ * accent tints three characters and nothing more.
  */
 const LABELS: Record<Locale, { code: string; name: string }> = {
   kk: { code: "KK", name: "Қазақша" },
@@ -24,11 +28,7 @@ export function LanguageSwitcher() {
   const { locale, setLocale } = useLocale();
 
   return (
-    <div
-      role="group"
-      aria-label={t("language.label")}
-      className="inline-flex items-center gap-0.5 rounded-sm border border-border bg-surface-raised p-0.5"
-    >
+    <div role="group" aria-label={t("language.label")} className="neu-tab-list">
       {locales.map((code) => {
         const active = locale === code;
         return (
@@ -42,11 +42,11 @@ export function LanguageSwitcher() {
             onClick={() => setLocale(code)}
             className={cn(
               // 44px touch target on coarse pointers (platform-ui-design §7);
-              // compact 32px only where a fine pointer (mouse/trackpad) is primary.
-              "inline-flex h-11 min-w-11 items-center justify-center rounded-xs px-3 text-xs font-medium focus-ring transition-colors pointer-fine:h-8 pointer-fine:min-w-0 pointer-fine:px-2",
-              active
-                ? "bg-surface-sunken text-foreground"
-                : "text-foreground-subtle hover:text-foreground",
+              // compact only where a fine pointer (mouse/trackpad) is primary.
+              // `.neu-tab-trigger` reads aria-pressed itself for the pressed-in
+              // active state, so no conditional class is needed for depth.
+              "neu-tab-trigger inline-flex h-11 min-w-11 items-center justify-center px-3 text-xs focus-ring pointer-fine:h-9 pointer-fine:min-w-0 pointer-fine:px-2.5",
+              !active && "hover:text-foreground",
             )}
           >
             {LABELS[code].code}

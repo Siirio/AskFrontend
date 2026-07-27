@@ -10,7 +10,7 @@ import { defaultLocale } from "@/shared/i18n/locales";
 import "./globals.css";
 
 /*
- * Golos Text — the rationale is in design-system/tokens.css (--font-sans).
+ * Golos Text — the rationale is in design-system/tokens_old.css (--font-sans).
  *
  * The subset list is NOT boilerplate, and dropping one breaks the product:
  *   cyrillic + cyrillic-ext — Russian, and the Kazakh letters (ә ғ қ ң ө ұ ү һ і),
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
  * Applies the stored theme to <html> BEFORE first paint, so there is no flash of
  * the wrong theme. Mirrors shared/theme.ts (an inline script cannot import it):
  * read `ask.theme`; "system" (or absent) resolves the OS preference into a
- * concrete light/dark attribute. `data-theme` is what design-system/tokens.css
+ * concrete light/dark attribute. `data-theme` is what design-system/tokens_old.css
  * reads. `suppressHydrationWarning` on <html> is required because this mutates
  * the attribute before React hydrates.
  */

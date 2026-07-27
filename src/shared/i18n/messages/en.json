@@ -93,7 +93,8 @@
     },
     "verify": {
       "sentTo": "We sent a 6-digit code to {destination}.",
-      "codeLabel": "Verification code"
+      "codeLabel": "Verification code",
+      "digitAria": "Digit {position} of {total}"
     },
     "errors": {
       "emailInvalid": "Enter a valid email address.",
