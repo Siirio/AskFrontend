@@ -1,8 +1,13 @@
 import { getTranslations } from "next-intl/server";
 
-/** /app/profile → renders the @/profile page when the profile slice lands (roadmap Phase 1 #6). [client page behind this server route file, D7] */
+import { defaultLocale } from "@/shared/i18n/locales";
+import { localeFromCookies } from "@/shared/i18n/serverLocale";
+
+/** /app/profile → renders the @/profile page when the profile slice lands (roadmap Phase 1 #6). [client page behind this server route file, D7]
+ *  Locale resolved from the ask.locale cookie (D19) — see the /app route for why. */
 export default async function ProfileRoute() {
-  const t = await getTranslations("app");
+  const locale = (await localeFromCookies()) ?? defaultLocale;
+  const t = await getTranslations({ locale, namespace: "app" });
 
   return (
     <main>

@@ -115,14 +115,24 @@ export function LocaleProvider({
     [locale, setLocale],
   );
 
-  // Keep <html lang>, localStorage AND the ask.locale cookie in step with the
-  // resolved locale — on mount as well as on switch. lang: the root layout
-  // renders the default (D6), and screen readers + hyphenation follow the
-  // attribute. The two stores (client localStorage, server cookie — D19) are
-  // reconciled here in BOTH directions, keyed on the resolved value.
+  // Keep <html lang> and the ask.locale cookie in step with the resolved
+  // locale — on mount as well as on switch. lang: the root layout renders the
+  // default (D6), and screen readers + hyphenation follow the attribute. The
+  // cookie is re-seeded here (D19) so the NEXT server render matches whatever
+  // locale actually resolved on the client.
+  //
+  // localStorage is deliberately NOT written here. It is written only by an
+  // explicit setLocale() call (below), because on the FIRST mount `stored` is
+  // still `undefined` (React must render the hydration-safe server snapshot
+  // before it can read the real client value — see useSyncExternalStore
+  // above), so `locale` here briefly equals `initialLocale` (the cookie).
+  // Writing that back to localStorage on every mount would race ahead of the
+  // real stored value and stomp it — an explicit "en" preference could get
+  // silently overwritten back to a stale "kk" cookie on the very next load
+  // (found 2026-07-27: the platform nav and the page body ended up rendering
+  // two different locales at once because of this race).
   useEffect(() => {
     document.documentElement.lang = locale;
-    storage.set(STORAGE_KEY, locale);
     document.cookie = `${STORAGE_KEY}=${locale}; path=/; max-age=31536000; samesite=lax`;
   }, [locale]);
 
