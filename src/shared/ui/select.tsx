@@ -5,6 +5,7 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { Select as SelectPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
+import { useSkinPortalContainer } from "@/shared/ui/skin-portal";
 
 /*
  * The Select primitive, on ORANGE NEUMORPHISM (D25). Radix owns all behavior
@@ -16,10 +17,8 @@ import { cn } from "@/lib/utils";
  * so a form mixing the two reads as one row of controls rather than a field
  * beside a button.
  *
- * PORTALED — see the note in dialog.tsx. The content renders into <body>,
- * outside `.neu-skin`, so it carries `data-neu-portal` to bring the surface,
- * ink and raised-lg shadow with it; custom properties inherit, so the rows
- * inside still resolve ordinary colour utilities. The highlighted item stays
+ * PORTALED — see the note in dialog.tsx. The content passes a `container` from
+ * `useSkinPortalContainer` so the portal lands back INSIDE the skin. The highlighted item stays
  * `bg-surface-sunken` and is never the accent — shadcn's `focus:bg-accent`
  * would paint the brand orange across a hovered list, and the accent marks
  * actions, not a hovered row. No CSS enter/exit animation (one motion system,
@@ -76,13 +75,13 @@ function SelectContent({
   align = "center",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const container = useSkinPortalContainer();
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={container}>
       <SelectPrimitive.Content
         data-slot="select-content"
-        data-neu-portal=""
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-32 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto",
+          "neu-card relative z-50 max-h-(--radix-select-content-available-height) min-w-32 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,

@@ -5,6 +5,7 @@ import { RoleSelectionModal } from "@/auth";
 import { LocaleProvider } from "@/shared/i18n/LocaleProvider";
 import { localeFromCookies } from "@/shared/i18n/serverLocale";
 import { parseThemePreference, THEME_STORAGE_KEY } from "@/shared/theme";
+import { SKIN_ROOT_ID } from "@/shared/ui/skin-portal";
 import { Toaster } from "@/shared/ui/sonner";
 import { ThemePreferenceSeed } from "@/shared/ui/theme-toggle";
 
@@ -46,7 +47,14 @@ export default async function PlatformLayout({
             group being the auth gate line: placement IS status. The class
             carries the palette AND `min-height: 100svh`, so a short page still
             paints the warm surface edge to edge. */}
-        <div className="neu-skin">
+        {/* The id is load-bearing, not decoration: `useSkinPortalContainer`
+            (shared/ui/skin-portal) looks it up so Radix overlays portal INSIDE
+            this wrapper and inherit the skin, instead of landing in <body>
+            where the palette and every `.neu-*` rule are out of scope. Never
+            put a transform, filter or perspective on this element — any of the
+            three makes it a containing block and re-anchors every fixed
+            overlay in the product. */}
+        <div id={SKIN_ROOT_ID} className="neu-skin">
           {children}
           <RoleSelectionModal />
           {/* The sonner host — INSIDE the seed so an explicit dark preference
@@ -56,9 +64,9 @@ export default async function PlatformLayout({
               renders its host in place rather than portaling, so its CSS
               variables (sonner.tsx) resolve against whatever scope encloses it
               — mounted outside, every toast would silently take the MARKETING
-              palette. The role modal is a Radix dialog and does portal out; it
-              picks the skin up via `data-neu-portal` (see dialog.tsx) and sits
-              here only for tidiness. */}
+              palette. The role modal is a Radix dialog: it portals, but
+              `useSkinPortalContainer` sends it back INSIDE this wrapper, so it
+              inherits the skin like everything else. */}
           <Toaster />
         </div>
       </ThemePreferenceSeed>

@@ -218,16 +218,39 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
 }) => {
   // The reload path restores the session, so /session answers 200 here
   // (the real wire: access_token null, bare-enum role).
+  //
+  // The restored session is a SELLER, and that is load-bearing rather than
+  // incidental. This test ends by choosing "I'm selling" and asserting the
+  // modal routes to /app/business. With a customer-only session that assertion
+  // can never hold: RequireDashboardAccess is DESIGNED to bounce a customer off
+  // the cabinet, so the URL sat at /app/business for 8–25ms before snapping
+  // back to /app, and the test passed only when a poll happened to land inside
+  // that window — a coin flip CI eventually lost (2026-07-27). Stubbing a
+  // seller removes an unrelated guard from a test about the ROLE MODAL; guard
+  // behaviour is covered on its own in guard.spec.ts.
+  //
+  // `business` is REQUIRED here, not decoration: toAuthUser (auth/model.ts)
+  // degrades any business role to `customer` when the backend sent no business
+  // context, rather than fabricating one (P9.4). Omit it and the role silently
+  // stays customer — which is exactly how the first attempt at this fix failed.
   await page.route("**/api/v1/auth/session", (route) =>
     route.fulfill({
       status: 200,
       json: {
         access_token: null,
         token_type: "Bearer",
-        role: "CUSTOMER",
+        role: "BUSINESS_OWNER",
         start_route: "CLIENT_SEARCH",
         user: USER,
-        all_roles: ["CUSTOMER"],
+        business: {
+          business_id: "b1",
+          business_name: "Acme",
+          branch_id: "br1",
+          branch_name: "Main",
+          membership_id: "m1",
+          member_role: "OWNER",
+        },
+        all_roles: ["CUSTOMER", "BUSINESS_OWNER"],
       },
     }),
   );

@@ -5,18 +5,17 @@ import { ChevronRightIcon } from "lucide-react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
+import { useSkinPortalContainer } from "@/shared/ui/skin-portal";
 
 /*
  * The DropdownMenu primitive, on ORANGE NEUMORPHISM (D25). Radix owns ALL
  * behavior (focus trap, roving tabindex, typeahead, positioning, ARIA); the
  * design system owns every visual value (P9.2).
  *
- * PORTALED — read the note in dialog.tsx before editing. Radix renders the
- * content into <body>, outside the platform layout's `.neu-skin` wrapper, so
- * both Content and SubContent carry `data-neu-portal`: it brings the surface,
- * the ink, the radius and the raised-lg shadow out with them. Custom properties
- * inherit, so the ROWS inside can keep using ordinary colour utilities
- * (`bg-surface-sunken`, `text-foreground-subtle`) and resolve correctly.
+ * PORTALED — read the note in dialog.tsx before editing. The content renders
+ * into a portal, so it passes a `container` from `useSkinPortalContainer` to
+ * land back INSIDE the skin; without it the panel's `.neu-card` matches nothing
+ * and every colour utility inside resolves to the marketing palette.
  *
  * The highlighted row stays `bg-surface-sunken` rather than becoming an inset
  * groove: rows are dense and adjacent, and a carved highlight on each one turns
@@ -59,14 +58,14 @@ function DropdownMenuContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const container = useSkinPortalContainer();
   return (
-    <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Portal container={container}>
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
-        data-neu-portal=""
         sideOffset={sideOffset}
         className={cn(
-          "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5",
+          "neu-card z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5",
           className,
         )}
         {...props}
@@ -176,9 +175,8 @@ function DropdownMenuSubContent({
   return (
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
-      data-neu-portal=""
       className={cn(
-        "z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden p-1.5",
+        "neu-card z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden p-1.5",
         className,
       )}
       {...props}

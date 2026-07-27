@@ -6,19 +6,19 @@ import { useTranslations } from "next-intl";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
+import { useSkinPortalContainer } from "@/shared/ui/skin-portal";
 
 /*
  * The Modal primitive, on ORANGE NEUMORPHISM (D25) — the Product Card modal
  * (D10) and the role-choosing modal are built on it.
  *
  *  - THE PORTAL PROBLEM, and the one thing to understand before editing this
- *    file: Radix renders both the overlay and the content into a portal at the
- *    end of <body>, which is OUTSIDE the `.neu-skin` wrapper the platform
- *    layout applies. Neither the skin's rules nor its CSS variables reach them,
- *    so a colour utility here silently resolves to the MARKETING palette. Both
- *    nodes therefore carry `data-neu-portal` / `data-neu-portal-overlay`, the
- *    opt-in hook defined at the bottom of design-system/neumorphism.css. Any
- *    new portaled surface needs the same attribute.
+ *    file: Radix renders overlay and content into a portal at the end of
+ *    <body>, OUTSIDE the `.neu-skin` wrapper the platform layout applies —
+ *    where the skin's rules match nothing and its colour utilities resolve to
+ *    the MARKETING palette. `DialogPortal` therefore passes a `container` from
+ *    `useSkinPortalContainer` so the portal lands back INSIDE the skin. Any new
+ *    portaled surface needs the same treatment; read shared/ui/skin-portal.
  *  - Depth replaces borders: the content is lifted by `--neu-raised-lg`, so the
  *    hairline border and `bg-surface-raised` are gone — together they read as a
  *    second edge on top of the shadow.
@@ -45,7 +45,17 @@ function DialogTrigger({
 function DialogPortal({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
+  // Portals INTO the platform skin, not <body> — see shared/ui/skin-portal.
+  // Without this the dialog's own `.neu-*` classes match nothing and its colour
+  // utilities resolve to the marketing palette.
+  const container = useSkinPortalContainer();
+  return (
+    <DialogPrimitive.Portal
+      data-slot="dialog-portal"
+      container={container}
+      {...props}
+    />
+  );
 }
 
 function DialogClose({
@@ -61,14 +71,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      // data-neu-portal-overlay: Radix portals this to <body>, OUTSIDE the
-      // `.neu-skin` wrapper, so it can reach neither the skin's rules nor its
-      // variables. The attribute is how a portaled surface opts into the skin
-      // (design-system/neumorphism.css) — it carries the scrim colour and the
-      // blur. Do not swap it for `bg-overlay`: that token resolves to the
-      // MARKETING palette out here.
-      data-neu-portal-overlay=""
-      className={cn("fixed inset-0 z-50", className)}
+      className={cn("neu-scrim fixed inset-0 z-50", className)}
       {...props}
     />
   );
@@ -89,13 +92,10 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        // Same portal story as the overlay above: `data-neu-portal` carries the
-        // surface, the ink and the raised-lg shadow out to <body>. The border
-        // and `bg-surface-raised` are gone — a neumorphic modal is lifted by
+        // No border and no `bg-surface-raised`: a neumorphic modal is lifted by
         // its shadow, and a hairline on top of that reads as a second edge.
-        data-neu-portal=""
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-7 outline-none sm:max-w-lg",
+          "neu-card fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-7 outline-none sm:max-w-lg",
           className,
         )}
         {...props}

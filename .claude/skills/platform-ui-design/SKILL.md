@@ -23,9 +23,10 @@ operational spec. What changed, and what did not:
 - **Shape and depth come from `.neu-*` classes**, never from utilities in a component. They sit
   in `@layer components`, so a plain utility still overrides one with no `!important`.
 - **The skin is scoped** to the `neu-skin` wrapper in `app/app/layout.tsx`. Anything Radix
-  PORTALS (Dialog, DropdownMenu, Select) escapes that scope and silently takes the *marketing*
-  palette — it must carry `data-neu-portal`, and any `.neu-*` class reachable inside a portal
-  must be dual-scoped. This is a lock, and it is invisible in code review.
+  PORTALS (Dialog, DropdownMenu, Select) escapes that scope by default — out there colour
+  utilities take the *marketing* palette and every `.neu-*` class matches nothing. Any portaled
+  surface must pass `container={useSkinPortalContainer()}` (`shared/ui/skin-portal`). This is a
+  lock; it is invisible in code review, and it shipped once as an unstyled role modal.
 - **"Quiet chrome" is RETIRED** (Locks.md → Retired Locks) and so is the strict form of
   *saturation is action*: the accent gradient is legal on fills that carry NO text (avatar,
   switch track, slider, checkbox). It is still the only fill on anything carrying a LABEL, and
