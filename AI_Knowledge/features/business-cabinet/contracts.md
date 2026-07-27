@@ -55,7 +55,17 @@ Staff & Invites above; prefer these for company-level people management.
 | POST | /api/v1/business/onboarding | Bearer | `BusinessRegisterPage` — create Business + BusinessProfile + OWNER membership + a verification record, in one transaction |
 
 **`SellerOnboardingRequest`** — required: `businessName`, `countryCode`, `legalForm`,
-`catalogSetupMode`, `businessScope`, and EITHER `categoryId` OR a non-blank `categoryName`.
+`catalogSetupMode`, `businessScope`, `deliveryCoverage`, `pickupAvailable`, and EITHER
+`categoryId` OR a non-blank `categoryName`.
+
+> **Corrected 2026-07-28.** `deliveryCoverage`, `deliveryCities`, `pickupAvailable` were
+> missing from this doc and from the client until this date — `SellerOnboardingRequest`
+> declares them `@NotNull` (`deliveryCoverage`, `pickupAvailable`), so every submission
+> before this date would 400 against the real backend. Read directly from
+> `kz.ask.business.onboarding.api.dto.SellerOnboardingRequest` on `dev` (`ee542d9`), not
+> inferred. There is no vision entry for delivery/pickup (P9.1) — the fields are backend-
+> required, not product-described; raised as a doc gap, built anyway because the endpoint
+> is otherwise unusable.
 
 | Field | Values | Notes |
 |---|---|---|
@@ -64,6 +74,9 @@ Staff & Invites above; prefer these for company-level people management.
 | `catalogSetupMode` | `MANUAL` · `ASK_MANAGED_IMPORT` | **We send `MANUAL` only** — see below |
 | `legalIdentifier`, `legalName` | — | REQUIRED for `KZ_IP`/`KZ_TOO`; identifier is exactly 12 digits (IIN / BIN) |
 | `twoGisUrl` `kaspiUrl` `ozonUrl` `wildberriesUrl` `websiteUrl` `instagramUrl` `telegramUrl` | `^(?:https?://\S+)?$` | For `legalForm: NONE`, **at least one** must be non-blank |
+| `deliveryCoverage` | `NO_DELIVERY` · `SELECTED_CITIES` · `KAZAKHSTAN` · `WORLDWIDE` | `kz.ask.business.profile.domain.enums.DeliveryCoverage`, `@NotNull` |
+| `deliveryCities` | `string[]`, max 50 items, 120 chars each | REQUIRED (≥1 non-blank) only when `deliveryCoverage: SELECTED_CITIES`; free text, not the `/cities` picker used by branches |
+| `pickupAvailable` | `boolean` | `@NotNull` — always sent |
 | `phone`, `corporateEmail` | — | Optional; not collected in V1 (no vision entry — P9.1) |
 
 **`SellerOnboardingResponse`**: `businessId`, `catalogSetupMode`, `startRoute`
@@ -127,7 +140,11 @@ two callers that merely look alike (P6.3, D8).
 - INVITATION_NOT_FOUND / INVITATION_NOT_PENDING / INVITATION_EMAIL_MISMATCH / INVITATION_MEMBER_EXISTS / INVITATION_ROLE_NOT_ALLOWED — invite accept/create paths
 - BUSINESS_MEMBER_NOT_FOUND / BUSINESS_MEMBER_ROLE_NOT_ALLOWED — member role/deactivate
 - BRANCH_REQUIRED_FOR_WORKER — creating a WORKER without a branch
-- SELLER_ONBOARDING_INVALID — onboarding payload rejected
+- BUSINESS_ONBOARDING_INVALID — onboarding payload rejected (category missing, or a legal
+  form other than `NONE` with a blank `legalIdentifier`). **Corrected 2026-07-28** — this doc
+  previously named it `SELLER_ONBOARDING_INVALID`, which does not exist anywhere in the
+  backend; `hooks.ts` already had the real code right, only this doc was stale.
+- BUSINESS_SCOPE_REQUIRED — also mapped by the client to the same generic message
 - MANAGED_IMPORT_ACTIVE_EXISTS / MANAGED_IMPORT_FORBIDDEN — managed-import request
 
 ## Offer semantics (backend-owned)

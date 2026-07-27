@@ -132,7 +132,13 @@
     "register": {
       "pageTitle": "Register a business",
       "title": "Set up your business on ASK",
-      "subtitle": "Tell us who you are and what you sell. You can add branches, products and services once your cabinet is open."
+      "subtitle": "Tell us who you are and what you sell. You can add branches, products and services once your cabinet is open.",
+      "progress": "Step {step} of {total}",
+      "steps": {
+        "identity": "Who you are",
+        "scope": "What you sell",
+        "delivery": "Delivery & pickup"
+      }
     },
     "fields": {
       "businessName": "Business name",
@@ -144,20 +150,25 @@
         "KZ_TOO": "BIN"
       },
       "legalName": "Registered name",
-      "verification": "Where do you already sell or publish?"
+      "verification": "Where do you already sell or publish?",
+      "deliveryCoverage": "Where do you deliver?",
+      "deliveryCities": "Which cities?",
+      "pickup": "Is pickup available?"
     },
     "hints": {
       "legalForm": "This decides what we need to confirm your business.",
       "legalIdentifier": "12 digits, exactly as registered.",
       "legalName": "The name on the registration, if it differs from the one above.",
-      "verification": "Pick the places that are yours and paste the links. One is enough."
+      "verification": "Pick the places that are yours and paste the links. One is enough.",
+      "deliveryCities": "Add each city, then press Enter or Add."
     },
     "placeholders": {
       "businessName": "For example, Aigul Flowers",
       "category": "Start typing - for example, flowers",
       "legalIdentifier": "123456789012",
       "legalName": "IP Aigul Nurlankyzy",
-      "link": "https://"
+      "link": "https://",
+      "deliveryCity": "For example, Almaty"
     },
     "scopes": {
       "ITEM": "Products",
@@ -187,8 +198,22 @@
       "loading": "Looking for matches",
       "selected": "Category selected"
     },
+    "deliveryCoverages": {
+      "NO_DELIVERY": "No delivery",
+      "SELECTED_CITIES": "Selected cities",
+      "KAZAKHSTAN": "All of Kazakhstan",
+      "WORLDWIDE": "Worldwide"
+    },
+    "pickup": {
+      "yes": "Yes",
+      "no": "No"
+    },
     "actions": {
-      "createBusiness": "Create business"
+      "createBusiness": "Create business",
+      "addCity": "Add",
+      "removeCity": "Remove {city}",
+      "back": "Back",
+      "next": "Next"
     },
     "states": {
       "loading": "Loading…",
@@ -203,6 +228,9 @@
       "verificationRequired": "Add at least one valid link.",
       "linkRequired": "Add the link, or remove this option.",
       "linkFormat": "The link must start with http:// or https://",
+      "deliveryCoverageRequired": "Choose where you deliver.",
+      "deliveryCitiesRequired": "Add at least one city.",
+      "pickupRequired": "Say whether pickup is available.",
       "onboardingInvalid": "Some details are missing or invalid. Check the form and try again.",
       "network": "Something went wrong. Check your connection and try again."
     }

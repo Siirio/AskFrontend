@@ -30,6 +30,17 @@ export type BusinessLegalForm = (typeof BUSINESS_LEGAL_FORMS)[number];
 export const CATALOG_SETUP_MODES = ["MANUAL", "ASK_MANAGED_IMPORT"] as const;
 export type CatalogSetupMode = (typeof CATALOG_SETUP_MODES)[number];
 
+/** kz.ask.business.profile.domain.enums.DeliveryCoverage — how far the
+ *  business ships. Read from the live SellerOnboardingRequest (2026-07-28):
+ *  the field is `@NotNull` on the backend, so registration cannot omit it. */
+export const DELIVERY_COVERAGES = [
+  "NO_DELIVERY",
+  "SELECTED_CITIES",
+  "KAZAKHSTAN",
+  "WORLDWIDE",
+] as const;
+export type DeliveryCoverage = (typeof DELIVERY_COVERAGES)[number];
+
 /** The verification sources the backend stores, in the order they are offered.
  *  Each maps 1:1 to an optional URL field on SellerOnboardingRequest. */
 export const VERIFICATION_SOURCES = [
@@ -57,6 +68,9 @@ export type SellerOnboardingRequest = {
   legalName?: string;
   catalogSetupMode: CatalogSetupMode;
   businessScope: BusinessScope;
+  deliveryCoverage: DeliveryCoverage;
+  deliveryCities?: string[];
+  pickupAvailable: boolean;
 } & Partial<Record<VerificationSource, string>>;
 
 export type SellerOnboardingResponse = {
@@ -98,6 +112,11 @@ export type SellerOnboardingValues = {
    *  not faced with seven empty boxes. */
   sources: VerificationSource[];
   links: Partial<Record<VerificationSource, string>>;
+  deliveryCoverage: DeliveryCoverage | null;
+  /** Only meaningful when deliveryCoverage is SELECTED_CITIES; the backend
+   *  requires at least one non-blank entry in that case. */
+  deliveryCities: string[];
+  pickupAvailable: boolean | null;
 };
 
 export type SellerOnboardingErrors = Partial<
@@ -107,7 +126,10 @@ export type SellerOnboardingErrors = Partial<
     | "legalForm"
     | "legalIdentifier"
     | "legalName"
-    | "sources",
+    | "sources"
+    | "deliveryCoverage"
+    | "deliveryCities"
+    | "pickupAvailable",
     string
   >
 > & { links?: Partial<Record<VerificationSource, string>> };
@@ -122,6 +144,9 @@ export const EMPTY_ONBOARDING_VALUES: SellerOnboardingValues = {
   legalName: "",
   sources: [],
   links: {},
+  deliveryCoverage: null,
+  deliveryCities: [],
+  pickupAvailable: null,
 };
 
 /** IIN (KZ_IP) and BIN (KZ_TOO) are both exactly 12 digits — the backend's
@@ -190,6 +215,21 @@ export function validateOnboarding(
     if (!hasValidLink) errors.sources = "errors.verificationRequired";
   }
 
+  if (!values.deliveryCoverage) {
+    errors.deliveryCoverage = "errors.deliveryCoverageRequired";
+  } else if (
+    values.deliveryCoverage === "SELECTED_CITIES" &&
+    !values.deliveryCities.some((city) => city.trim())
+  ) {
+    // Mirrors SellerOnboardingRequest.isDeliveryCoverageValid — the backend's
+    // own rule, not a UI preference (D9).
+    errors.deliveryCities = "errors.deliveryCitiesRequired";
+  }
+
+  if (values.pickupAvailable === null) {
+    errors.pickupAvailable = "errors.pickupRequired";
+  }
+
   return errors;
 }
 
@@ -198,6 +238,47 @@ export function hasOnboardingErrors(errors: SellerOnboardingErrors): boolean {
     Object.keys(errors).filter((key) => key !== "links").length > 0 ||
     Object.keys(errors.links ?? {}).length > 0
   );
+}
+
+/** The registration form's three steps — who you are, what you sell, how you
+ *  deliver. Numbered rather than named so `step + 1`/`step - 1` stays simple
+ *  arithmetic at the two call sites (hooks.ts) that step through them. */
+export const ONBOARDING_STEP_COUNT = 3;
+export type OnboardingStep = 1 | 2 | 3;
+
+/**
+ * Validate only ONE step's fields, so `goNext` never surfaces an error for a
+ * step the person has not reached yet. Reuses `validateOnboarding` (the one
+ * place the backend's rules are encoded) and filters its result down — never
+ * a second, parallel set of rules that could drift from the full validator
+ * (P6.1). Step 2 (what you sell) always has a default, so it never blocks.
+ *
+ * Copies keys only when SET — a destructured `{ businessName } = full` would
+ * put `businessName: undefined` on the result even when step 1 is clean,
+ * and `hasOnboardingErrors` counts `Object.keys`, so an all-undefined object
+ * still reads as "has errors". Object.keys doesn't know the difference
+ * between absent and undefined; this function has to.
+ */
+export function validateOnboardingStep(
+  values: SellerOnboardingValues,
+  step: OnboardingStep,
+): SellerOnboardingErrors {
+  const full = validateOnboarding(values);
+  const errors: SellerOnboardingErrors = {};
+  if (step === 1) {
+    if (full.businessName) errors.businessName = full.businessName;
+    if (full.categoryLabel) errors.categoryLabel = full.categoryLabel;
+    if (full.legalForm) errors.legalForm = full.legalForm;
+    if (full.legalIdentifier) errors.legalIdentifier = full.legalIdentifier;
+    if (full.legalName) errors.legalName = full.legalName;
+    if (full.sources) errors.sources = full.sources;
+    if (full.links) errors.links = full.links;
+  } else if (step === 3) {
+    if (full.deliveryCoverage) errors.deliveryCoverage = full.deliveryCoverage;
+    if (full.deliveryCities) errors.deliveryCities = full.deliveryCities;
+    if (full.pickupAvailable) errors.pickupAvailable = full.pickupAvailable;
+  }
+  return errors;
 }
 
 /**
@@ -216,7 +297,18 @@ export function toOnboardingRequest(
     legalForm: values.legalForm as BusinessLegalForm,
     catalogSetupMode: "MANUAL",
     businessScope: values.businessScope,
+    // Non-null by validation; the form cannot submit without a coverage choice.
+    deliveryCoverage: values.deliveryCoverage as DeliveryCoverage,
+    // Non-null by validation; the form cannot submit without an answer.
+    pickupAvailable: values.pickupAvailable as boolean,
   };
+
+  if (values.deliveryCoverage === "SELECTED_CITIES") {
+    const cities = values.deliveryCities
+      .map((city) => city.trim())
+      .filter(Boolean);
+    if (cities.length > 0) body.deliveryCities = cities;
+  }
 
   // A picked suggestion travels as an identity; anything else as free text,
   // which the backend turns into a USER category itself.

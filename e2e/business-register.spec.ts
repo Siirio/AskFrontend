@@ -11,6 +11,11 @@ import { expect, test, type Page } from "@playwright/test";
  * is what makes the cabinet reachable (the session is re-read, so the role the
  * backend just changed is the role the guard sees).
  *
+ * The form is THREE STEPS (2026-07-28) — identity+proof, what you sell,
+ * delivery+pickup — sharing one `button[type="submit"]` that reads "Next" on
+ * steps 1–2 and "Create business" on step 3 (BusinessRegisterPage.tsx). Tests
+ * below drive the whole sequence rather than filling one page of inputs.
+ *
  * The backend is STUBBED with page.route (the harness runs the production build,
  * no live backend). Stub bodies speak the real snake_case wire (D20).
  */
@@ -97,10 +102,21 @@ async function seedCustomerBecomingSeller(page: Page) {
   );
 }
 
-/** Fill the two fields every legal form needs. */
+/** Fill the fields step 1 needs regardless of legal form. */
 async function fillIdentity(page: Page) {
   await page.locator("#business-name").fill("Aigul Flowers");
   await page.locator("#business-category").fill("Flowers");
+}
+
+/** From step 1, submit twice (step 1 → 2 → 3) — step 2's businessScope always
+ *  has a default, so nothing to fill there. Assumes step 1 already validates. */
+async function advanceToDeliveryStep(page: Page) {
+  await page.locator('button[type="submit"]').click();
+  await expect(page.getByTestId("business-scope-ITEM")).toBeVisible();
+  await page.locator('button[type="submit"]').click();
+  await expect(
+    page.getByTestId("business-delivery-coverage-KAZAKHSTAN"),
+  ).toBeVisible();
 }
 
 test("a customer can open seller registration (it is outside the cabinet guard)", async ({
@@ -128,6 +144,23 @@ test("registering a business opens the cabinet the customer could not reach befo
   page,
 }) => {
   await seedCustomerBecomingSeller(page);
+
+  // Capture the actual POST body — SellerOnboardingRequest carries fields
+  // (deliveryCoverage, pickupAvailable) that are easy to drop silently if the
+  // form's own state ever stops reaching the request builder.
+  let postedBody: Record<string, unknown> | null = null;
+  await page.route("**/api/v1/business/onboarding", async (route) => {
+    postedBody = route.request().postDataJSON();
+    await route.fulfill({
+      status: 201,
+      json: {
+        business_id: "b1",
+        catalog_setup_mode: "MANUAL",
+        start_route: "BUSINESS_CABINET",
+      },
+    });
+  });
+
   await page.goto("/app/business/register");
   await fillIdentity(page);
 
@@ -136,12 +169,34 @@ test("registering a business opens the cabinet the customer could not reach befo
   await page.locator("#business-legal-identifier").fill("123456789012");
   await page.locator("#business-legal-name").fill("IP Aigul Nurlankyzy");
 
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-NO").click();
   await page.locator('button[type="submit"]').click();
 
   // The session was re-read, so the role the guard sees is the role the backend
   // just granted — no bounce, no reload needed.
   await expect(page).toHaveURL(/\/app\/business$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+  expect(postedBody).toMatchObject({
+    delivery_coverage: "KAZAKHSTAN",
+    pickup_available: false,
+  });
+});
+
+test("step 1 refuses to advance without a legal form answer", async ({
+  page,
+}) => {
+  await seedCustomerBecomingSeller(page);
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+
+  // No legal form chosen yet: "Next" must be refused client-side, the same
+  // rule the backend's own isCategorySupplied/isLegalDetailsValid assert.
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/app\/business\/register$/);
+  await expect(page.getByRole("alert").first()).toBeVisible();
 });
 
 test("an unregistered seller must supply at least one verification link", async ({
@@ -152,7 +207,7 @@ test("an unregistered seller must supply at least one verification link", async 
   await fillIdentity(page);
 
   await page.getByTestId("business-legal-form-NONE").click();
-  // Nothing picked yet: submitting must be refused, not sent for the backend to
+  // Nothing picked yet: advancing must be refused, not sent for the backend to
   // reject — the same rule, phrased where the person can act on it.
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/app\/business\/register$/);
@@ -165,8 +220,57 @@ test("an unregistered seller must supply at least one verification link", async 
   await expect(page).toHaveURL(/\/app\/business\/register$/);
 
   await page.locator("#link-instagramUrl").fill("https://instagram.com/aigul");
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-NO").click();
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/app\/business$/);
+});
+
+test("selected-cities delivery requires at least one city", async ({
+  page,
+}) => {
+  await seedCustomerBecomingSeller(page);
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await page.getByTestId("business-legal-form-KZ_IP").click();
+  await page.locator("#business-legal-identifier").fill("123456789012");
+  await page.locator("#business-legal-name").fill("IP Aigul Nurlankyzy");
+
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-pickup-NO").click();
+  await page.getByTestId("business-delivery-coverage-SELECTED_CITIES").click();
+
+  // No city added yet: submitting must be refused client-side, the same rule
+  // as the verification-link requirement above.
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/app\/business\/register$/);
+  await expect(page.getByRole("alert").first()).toBeVisible();
+
+  await page.locator("#business-delivery-cities").fill("Almaty");
+  await page.getByTestId("delivery-city-add").click();
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/app\/business$/);
+});
+
+test("back returns to an earlier step without losing what was already typed", async ({
+  page,
+}) => {
+  await seedCustomerBecomingSeller(page);
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await page.getByTestId("business-legal-form-KZ_IP").click();
+  await page.locator("#business-legal-identifier").fill("123456789012");
+  await page.locator("#business-legal-name").fill("IP Aigul Nurlankyzy");
+
+  await page.locator('button[type="submit"]').click();
+  await expect(page.getByTestId("business-scope-ITEM")).toBeVisible();
+
+  await page.getByTestId("register-back").click();
+  await expect(page.locator("#business-name")).toHaveValue("Aigul Flowers");
+  await expect(page.locator("#business-legal-identifier")).toHaveValue(
+    "123456789012",
+  );
 });
 
 test("an existing seller is sent to the cabinet instead of registering twice", async ({

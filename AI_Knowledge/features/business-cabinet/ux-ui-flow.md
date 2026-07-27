@@ -20,16 +20,34 @@ that carries `RequireDashboardAccess`. A customer must reach this page precisely
 are not a seller yet, and no per-URL allowlist was needed to say so. `(cabinet)/` was created
 in the same change: the guard used to sit at `business/layout.tsx` and cover the whole prefix.
 
-**Form** (`POST /api/v1/business/onboarding` — see contracts.md):
+**Form** (`POST /api/v1/business/onboarding` — see contracts.md), **THREE STEPS since
+2026-07-28**, one shared `button[type="submit"]` reading "Next" on steps 1–2 and "Create
+business" on step 3 (`BusinessRegisterPage.tsx`). Grouping mirrors the retired React Router
+frontend's `SellerOnboardingPage` (found on the backend's `dev` git branch, not deployed —
+consulted only as prior art), minus two pieces this doc already excludes: the branch-drafting
+map-picker modal for pickup, and the `ASK_MANAGED_IMPORT` choice. `useSellerOnboarding`'s
+`goNext` validates ONLY the current step (model.ts `validateOnboardingStep`), never the whole
+form ahead of time — validating ahead would surface a step-3 error the instant step 2 is left,
+before the person has touched step 3 at all. Each field's own change handler already clears its
+own error as soon as it's fixed, so `goNext` only ever needs to reveal this step's problems.
 
-| Field | Control | Notes |
-|---|---|---|
-| Business name | text | required |
-| Category | **combobox** over `GET /categories?type=BUSINESS` | Free text is a first-class outcome, not a fallback — the backend accepts `categoryName` and creates the USER category itself. Picking a suggestion stores its identity; editing the text drops it again, so the two can never disagree |
-| What do you sell? | segmented (`.neu-tab-list`) | ITEM · SERVICE · BOTH |
-| Legal form | segmented, with hints | KZ_IP · KZ_TOO · NONE. **The form's one branch** |
-| ↳ IIN / BIN + registered name | text | KZ_IP / KZ_TOO only. Exactly 12 digits, non-digits stripped live |
-| ↳ Verification sources | chips → link fields | NONE only. **Progressive** per the backend's UX contract: pick WHICH platforms, then fill only those — seven empty URL boxes on first render reads as homework and buries the fact that one is enough. At least one valid `http(s)` link required |
+| Step | Title key | Field | Control | Notes |
+|---|---|---|---|---|
+| 1 | `register.steps.identity` | Business name | text | required |
+| 1 | | Category | **combobox** over `GET /categories?type=BUSINESS` | Free text is a first-class outcome, not a fallback — the backend accepts `categoryName` and creates the USER category itself. Picking a suggestion stores its identity; editing the text drops it again, so the two can never disagree |
+| 1 | | Legal form | segmented, with hints | KZ_IP · KZ_TOO · NONE. **The form's one branch** |
+| 1 | | ↳ IIN / BIN + registered name | text | KZ_IP / KZ_TOO only. Exactly 12 digits, non-digits stripped live |
+| 1 | | ↳ Verification sources | chips → link fields | NONE only. **Progressive** per the backend's UX contract: pick WHICH platforms, then fill only those — seven empty URL boxes on first render reads as homework and buries the fact that one is enough. At least one valid `http(s)` link required |
+| 2 | `register.steps.scope` | What do you sell? | segmented (`.neu-tab-list`) | ITEM · SERVICE · BOTH. The only field with no required answer — always has a default, so this step can never block `goNext` |
+| 3 | `register.steps.delivery` | Where do you deliver? | segmented (`.neu-tab-list`) | `NO_DELIVERY` · `SELECTED_CITIES` · `KAZAKHSTAN` · `WORLDWIDE`. Added 2026-07-28 — `deliveryCoverage` is `@NotNull` on the backend, so this is not optional (see contracts.md) |
+| 3 | | ↳ Which cities? | free-text chip list, Enter or "Add" | `SELECTED_CITIES` only. At least one city required — not the `/cities` picker, since the backend accepts any non-blank name |
+| 3 | | Is pickup available? | segmented, Yes/No | `pickupAvailable`, `@NotNull` — always sent |
+
+Steps are separated by `.neu-rule` (the skin's depth-based divider, D25) rather than a
+bordered card-within-a-card — a hairline would read as a second, competing edge on this
+surface. Each step lives in its own component (`RegisterStepIdentity`/`RegisterStepScope`/
+`RegisterStepDelivery`) purely to hold the 400-line lock, not because the steps share nothing
+— they all read/write the one `SellerOnboardingValues` the hook owns.
 
 **Then the session is re-read.** A 201 promotes the account to BUSINESS_OWNER server-side;
 until `GET /auth/session` is re-read the client still thinks it is a customer and the guard

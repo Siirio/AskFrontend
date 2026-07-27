@@ -16,10 +16,14 @@ import * as api from "./api";
 import {
   EMPTY_ONBOARDING_VALUES,
   hasOnboardingErrors,
+  ONBOARDING_STEP_COUNT,
   toOnboardingRequest,
   validateOnboarding,
+  validateOnboardingStep,
   type BusinessLegalForm,
   type CategorySuggestion,
+  type DeliveryCoverage,
+  type OnboardingStep,
   type SellerOnboardingErrors,
   type SellerOnboardingValues,
   type VerificationSource,
@@ -129,6 +133,7 @@ export function useSellerOnboarding() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<OnboardingResult | null>(null);
+  const [step, setStep] = useState<OnboardingStep>(1);
   // Guards the window between a 201 and the navigation the page performs on
   // `result`: the business EXISTS by then, so a second submit would create a
   // duplicate. `pending` alone reopens the moment the await settles.
@@ -198,6 +203,65 @@ export function useSellerOnboarding() {
     });
   }, []);
 
+  /** Switching away from SELECTED_CITIES drops the city list's error along with
+   *  it — the same reasoning as setLegalForm: a message about a field the form
+   *  no longer renders would survive and look like a bug. */
+  const setDeliveryCoverage = useCallback(
+    (deliveryCoverage: DeliveryCoverage) => {
+      setValues((v) => ({ ...v, deliveryCoverage }));
+      setErrors((e) => ({
+        ...e,
+        deliveryCoverage: undefined,
+        deliveryCities: undefined,
+      }));
+    },
+    [],
+  );
+
+  const addDeliveryCity = useCallback((city: string) => {
+    const trimmed = city.trim();
+    if (!trimmed) return;
+    setValues((v) =>
+      v.deliveryCities.includes(trimmed)
+        ? v
+        : { ...v, deliveryCities: [...v.deliveryCities, trimmed] },
+    );
+    setErrors((e) => ({ ...e, deliveryCities: undefined }));
+  }, []);
+
+  const removeDeliveryCity = useCallback((city: string) => {
+    setValues((v) => ({
+      ...v,
+      deliveryCities: v.deliveryCities.filter((c) => c !== city),
+    }));
+  }, []);
+
+  /**
+   * Advance a step — validating ONLY the current step's fields
+   * (`validateOnboardingStep`), never the whole form. Validating ahead would
+   * surface a step-3 error the moment step 2 is left, before the person has
+   * touched step 3 at all; each field's own handler (setField, setLink,
+   * setDeliveryCoverage…) already clears its error the instant it is fixed,
+   * so `goNext` only ever needs to REVEAL this step's problems, not resolve
+   * ones that belong to a step not yet reached.
+   */
+  const goNext = useCallback(() => {
+    setFormError(null);
+    const stepErrors = validateOnboardingStep(values, step);
+    if (hasOnboardingErrors(stepErrors)) {
+      setErrors((e) => ({ ...e, ...stepErrors }));
+      return;
+    }
+    setStep((s) =>
+      s < ONBOARDING_STEP_COUNT ? ((s + 1) as OnboardingStep) : s,
+    );
+  }, [values, step]);
+
+  const goBack = useCallback(() => {
+    setFormError(null);
+    setStep((s) => (s > 1 ? ((s - 1) as OnboardingStep) : s));
+  }, []);
+
   const submit = useCallback(async () => {
     if (submitted.current) return;
     setFormError(null);
@@ -237,10 +301,16 @@ export function useSellerOnboarding() {
     setCategory,
     toggleSource,
     setLink,
+    setDeliveryCoverage,
+    addDeliveryCity,
+    removeDeliveryCity,
     errors,
     formError,
     pending,
     result,
+    step,
+    goNext,
+    goBack,
     submit,
   };
 }

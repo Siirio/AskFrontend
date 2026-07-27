@@ -6,20 +6,16 @@ import { useTranslations } from "next-intl";
 
 import { canAccessDashboard, useAuth } from "@/auth";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
 import { Spinner } from "@/shared/ui/spinner";
 
 import { useSellerOnboarding } from "../hooks";
-import {
-  BUSINESS_LEGAL_FORMS,
-  BUSINESS_SCOPES,
-  legalFormNeedsIdentifier,
-  legalFormNeedsVerification,
-} from "../model";
-import { CategoryField } from "./CategoryField";
-import { Field, fieldErrorId } from "./Field";
-import { OptionGroup } from "./OptionGroup";
-import { VerificationSources } from "./VerificationSources";
+import { ONBOARDING_STEP_COUNT } from "../model";
+import { RegisterStepDelivery } from "./RegisterStepDelivery";
+import { RegisterStepIdentity } from "./RegisterStepIdentity";
+import { RegisterStepScope } from "./RegisterStepScope";
+
+/** Ordered 1:1 with `OnboardingStep` — `step - 1` indexes straight in. */
+const STEP_TITLE_KEYS = ["identity", "scope", "delivery"] as const;
 
 /**
  * The business registration page — PRODUCT_VISION UF 3.1 step 0, "the seller is
@@ -46,6 +42,18 @@ import { VerificationSources } from "./VerificationSources";
  * create-business entry") and the fact that a second POST would create a second
  * business both point the same way.
  *
+ * THREE STEPS, not one long form (2026-07-28) — identity+proof, what you sell,
+ * delivery+pickup — mirroring the grouping the retired React Router frontend's
+ * `SellerOnboardingPage` used, minus the two pieces this repo's own docs
+ * already exclude: the branch-drafting/map-picker modal for pickup (branch
+ * creation belongs to the cabinet's Branches tab, per ux-ui-flow.md) and the
+ * `ASK_MANAGED_IMPORT` choice (parked until roadmap #8's import dialog
+ * exists). `useSellerOnboarding`'s `goNext` validates ONLY the current step
+ * (`validateOnboardingStep`, model.ts) — never the whole form ahead of time,
+ * which would surface a step-3 error the instant step 2 is left, before the
+ * person has touched step 3 at all. Each field's own handler already clears
+ * its error the moment it's fixed, so `goNext` only ever needs to reveal.
+ *
  * WHAT IS DELIBERATELY NOT HERE. `catalogSetupMode` is fixed to MANUAL: the
  * other value, ASK_MANAGED_IMPORT, is contracted to open a managed-import
  * request dialog that does not exist until roadmap #8, so offering it would
@@ -64,10 +72,16 @@ export function BusinessRegisterPage() {
     setCategory,
     toggleSource,
     setLink,
+    setDeliveryCoverage,
+    addDeliveryCity,
+    removeDeliveryCity,
     errors,
     formError,
     pending,
     result,
+    step,
+    goNext,
+    goBack,
     submit,
   } = useSellerOnboarding();
 
@@ -86,8 +100,6 @@ export function BusinessRegisterPage() {
     if (result) router.replace(result.targetPath);
   }, [result, router]);
 
-  const needsIdentifier = legalFormNeedsIdentifier(values.legalForm);
-  const needsVerification = legalFormNeedsVerification(values.legalForm);
   // The success window: the business exists and the browser is on its way to
   // the cabinet. Showing the form again here would invite a duplicate submit.
   const leaving =
@@ -107,6 +119,8 @@ export function BusinessRegisterPage() {
     );
   }
 
+  const isLastStep = step === ONBOARDING_STEP_COUNT;
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">
       <header className="flex flex-col gap-2">
@@ -119,153 +133,59 @@ export function BusinessRegisterPage() {
       </header>
 
       <form
-        className="neu-card flex flex-col gap-5 px-5 py-7 sm:px-8 sm:py-9"
+        className="neu-card flex flex-col gap-6 px-5 py-7 sm:px-8 sm:py-9"
         onSubmit={(e) => {
           e.preventDefault();
-          void submit();
+          if (isLastStep) void submit();
+          else goNext();
         }}
         noValidate
       >
-        <Field
-          label={t("fields.businessName")}
-          htmlFor="business-name"
-          error={errors.businessName ? t(errors.businessName) : undefined}
-        >
-          <Input
-            id="business-name"
-            autoComplete="organization"
-            value={values.businessName}
-            aria-invalid={Boolean(errors.businessName)}
-            aria-describedby={
-              errors.businessName ? fieldErrorId("business-name") : undefined
-            }
-            placeholder={t("placeholders.businessName")}
-            onChange={(e) => setField("businessName", e.target.value)}
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-medium text-foreground-subtle">
+            {t("register.progress", { step, total: ONBOARDING_STEP_COUNT })}
+          </p>
+          <h2 className="text-lg font-semibold text-foreground">
+            {t(`register.steps.${STEP_TITLE_KEYS[step - 1]}`)}
+          </h2>
+        </div>
+
+        {/* A resting groove, not a hairline border — depth is the skin's
+            divider vocabulary (D25). Visibility fix lives in `.neu-rule`
+            itself now (design-system/neumorphism.css, 2026-07-28: the class
+            was fill-less everywhere, nearly invisible full-width in dark),
+            so this is just the base class at full width. */}
+        <div aria-hidden="true" className="neu-rule w-full" />
+
+        {step === 1 ? (
+          <RegisterStepIdentity
+            values={values}
+            errors={errors}
+            setField={setField}
+            setCategory={setCategory}
+            setLegalForm={setLegalForm}
+            toggleSource={toggleSource}
+            setLink={setLink}
           />
-        </Field>
-
-        <CategoryField
-          id="business-category"
-          value={values.categoryLabel}
-          categoryId={values.categoryId}
-          error={errors.categoryLabel ? t(errors.categoryLabel) : undefined}
-          onChange={setCategory}
-        />
-
-        <Field label={t("fields.scope")} htmlFor="business-scope">
-          <OptionGroup
-            name="business-scope"
-            label={t("fields.scope")}
-            value={values.businessScope}
-            options={BUSINESS_SCOPES.map((scope) => ({
-              value: scope,
-              label: t(`scopes.${scope}`),
-            }))}
-            onChange={(scope) => setField("businessScope", scope)}
-          />
-        </Field>
-
-        <Field
-          label={t("fields.legalForm")}
-          htmlFor="business-legal-form"
-          hint={t("hints.legalForm")}
-          error={errors.legalForm ? t(errors.legalForm) : undefined}
-        >
-          <OptionGroup
-            name="business-legal-form"
-            label={t("fields.legalForm")}
-            value={values.legalForm}
-            invalid={Boolean(errors.legalForm)}
-            describedBy={
-              errors.legalForm ? fieldErrorId("business-legal-form") : undefined
-            }
-            options={BUSINESS_LEGAL_FORMS.map((form) => ({
-              value: form,
-              label: t(`legalForms.${form}`),
-              hint: t(`legalFormHints.${form}`),
-            }))}
-            onChange={setLegalForm}
-          />
-        </Field>
-
-        {/* The form's ONE branch. A registered entity proves itself with its
-            12-digit IIN/BIN; everyone else proves it with links. Exactly one of
-            these renders, never both, never neither. */}
-        {needsIdentifier ? (
-          <>
-            <Field
-              label={t(`fields.legalIdentifier.${values.legalForm}`)}
-              htmlFor="business-legal-identifier"
-              hint={t("hints.legalIdentifier")}
-              error={
-                errors.legalIdentifier ? t(errors.legalIdentifier) : undefined
-              }
-            >
-              <Input
-                id="business-legal-identifier"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={12}
-                dir="ltr"
-                value={values.legalIdentifier}
-                aria-invalid={Boolean(errors.legalIdentifier)}
-                aria-describedby={
-                  errors.legalIdentifier
-                    ? fieldErrorId("business-legal-identifier")
-                    : undefined
-                }
-                placeholder={t("placeholders.legalIdentifier")}
-                onChange={(e) =>
-                  // Digits only, live: the backend's rule is exactly 12 digits,
-                  // so silently dropping a typed space or dash is a correction
-                  // the person would otherwise have to make themselves.
-                  setField(
-                    "legalIdentifier",
-                    e.target.value.replace(/\D/g, "").slice(0, 12),
-                  )
-                }
-              />
-            </Field>
-            <Field
-              label={t("fields.legalName")}
-              htmlFor="business-legal-name"
-              hint={t("hints.legalName")}
-              error={errors.legalName ? t(errors.legalName) : undefined}
-            >
-              <Input
-                id="business-legal-name"
-                autoComplete="off"
-                value={values.legalName}
-                aria-invalid={Boolean(errors.legalName)}
-                aria-describedby={
-                  errors.legalName
-                    ? fieldErrorId("business-legal-name")
-                    : undefined
-                }
-                placeholder={t("placeholders.legalName")}
-                onChange={(e) => setField("legalName", e.target.value)}
-              />
-            </Field>
-          </>
         ) : null}
 
-        {needsVerification ? (
-          <VerificationSources
-            selected={values.sources}
-            links={values.links}
-            sourcesError={errors.sources ? t(errors.sources) : undefined}
-            linkErrors={
-              errors.links
-                ? Object.fromEntries(
-                    Object.entries(errors.links).map(([key, value]) => [
-                      key,
-                      t(value),
-                    ]),
-                  )
-                : undefined
+        {step === 2 ? (
+          <RegisterStepScope
+            value={values.businessScope}
+            onChange={(scope) => setField("businessScope", scope)}
+          />
+        ) : null}
+
+        {step === 3 ? (
+          <RegisterStepDelivery
+            values={values}
+            errors={errors}
+            setDeliveryCoverage={setDeliveryCoverage}
+            addDeliveryCity={addDeliveryCity}
+            removeDeliveryCity={removeDeliveryCity}
+            setPickupAvailable={(pickupAvailable) =>
+              setField("pickupAvailable", pickupAvailable)
             }
-            onToggle={toggleSource}
-            onLinkChange={setLink}
           />
         ) : null}
 
@@ -275,13 +195,28 @@ export function BusinessRegisterPage() {
           </p>
         ) : null}
 
-        <Button type="submit" size="lg" disabled={pending}>
-          {pending ? (
-            <Spinner label={t("states.creating")} />
-          ) : (
-            t("actions.createBusiness")
-          )}
-        </Button>
+        <div aria-hidden="true" className="neu-rule w-full" />
+
+        <div className="flex items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            data-testid="register-back"
+            onClick={goBack}
+            disabled={step === 1 || pending}
+          >
+            {t("actions.back")}
+          </Button>
+          <Button type="submit" size="lg" disabled={pending}>
+            {pending ? (
+              <Spinner label={t("states.creating")} />
+            ) : isLastStep ? (
+              t("actions.createBusiness")
+            ) : (
+              t("actions.next")
+            )}
+          </Button>
+        </div>
       </form>
     </div>
   );
