@@ -183,10 +183,9 @@ export function canAccessDashboard(user: AuthUser | null): boolean {
 // ── Mappers (pure, P5.1) ────────────────────────────────────────────────────
 
 /**
- * Map the backend role string to a view-model kind. The string arrives in two
- * forms — the session authority ("ROLE_CUSTOMER", "ROLE_BUSINESS_OWNER") from
- * verify/login, and the bare enum name ("CUSTOMER", "BUSINESS_WORKER") from
- * GET /session — so match on substring rather than exact value.
+ * Map a role string to a view-model kind. Matches by substring since the
+ * backend uses different casings/forms across values ("ROLE_BUSINESS_OWNER",
+ * "OWNER", "BUSINESS_WORKER").
  *
  * Platform admin roles have no V1 surface (P9.1), so they never legitimately
  * reach this UI; an unrecognised role falls back to the least-privileged
@@ -216,6 +215,14 @@ function toBusinessContext(
  * Build the current-user view model from a session response. Returns null when
  * the response carries no user (e.g. an intermediate role-selection response,
  * which the customer path never produces).
+ *
+ * `session.role`/`startRoute` stay neutral ("CUSTOMER"/`CLIENT_SEARCH`) on
+ * every login, even for a business owner — the backend's account-level role
+ * never reflects business membership (identity contracts.md). The kind is
+ * derived from `session.business.memberRole` instead, which IS populated
+ * whenever the account owns or works at a business; no `business` context
+ * means no business capability, so `roleToKind` is only consulted once that
+ * context exists.
  */
 export function toAuthUser(session: AuthSessionResponse): AuthUser | null {
   const user = session.user;
@@ -228,11 +235,11 @@ export function toAuthUser(session: AuthSessionResponse): AuthUser | null {
     status: user.status,
   };
 
-  const kind = roleToKind(session.role);
-  // business/staff require a business context; if the backend omitted it, degrade
-  // to the customer view rather than fabricate one (P9.4).
-  if (kind !== "customer" && session.business) {
-    return { kind, ...base, business: toBusinessContext(session.business) };
+  if (session.business) {
+    const kind = roleToKind(session.business.memberRole);
+    if (kind !== "customer") {
+      return { kind, ...base, business: toBusinessContext(session.business) };
+    }
   }
   return { kind: "customer", ...base };
 }
