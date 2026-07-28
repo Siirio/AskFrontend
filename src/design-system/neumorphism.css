@@ -319,6 +319,57 @@
     box-shadow: var(--neu-raised-lg);
   }
 
+  /* The mobile account sheet (`shared/ui/sheet.tsx`): a `.neu-card` pulled
+   * flush to a screen edge, so it is rounded on the leading edge only and
+   * its lift shadow points AWAY from that edge instead of surrounding the
+   * panel — a floating card reads as resting on the page, a sheet reads as
+   * part of it. */
+  .neu-skin .neu-sheet {
+    background: var(--surface);
+    color: var(--foreground);
+  }
+  .neu-skin .neu-sheet[data-side="right"] {
+    border-top-left-radius: var(--neu-radius-xl);
+    border-bottom-left-radius: var(--neu-radius-xl);
+    box-shadow: -14px 0 32px -14px var(--neu-shadow-dark);
+  }
+  .neu-skin .neu-sheet[data-side="left"] {
+    border-top-right-radius: var(--neu-radius-xl);
+    border-bottom-right-radius: var(--neu-radius-xl);
+    box-shadow: 14px 0 32px -14px var(--neu-shadow-dark);
+  }
+
+  /* A full-width, left-aligned row inside the sheet — Settings, each Learn
+   * More link, Log out. Flat at rest like the bottom-nav tabs (§ NAV LINK
+   * above); the raised state is the AFFORDANCE, earned only on hover/press
+   * so a long list of rows never reads as a stack of separate cards. */
+  .neu-skin .neu-sheet-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+    border: none;
+    border-radius: var(--neu-radius-md);
+    padding: 11px 12px;
+    background: transparent;
+    color: var(--foreground);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--neu-transition);
+  }
+  .neu-skin .neu-sheet-item:hover {
+    background: var(--surface-sunken);
+  }
+  .neu-skin .neu-sheet-item:active {
+    box-shadow: var(--neu-inset-sm);
+  }
+  .neu-skin .neu-sheet-item[data-variant="destructive"] {
+    color: var(--destructive);
+  }
+
   /* A "well" — the inset counterpart. Filter panels, scroll viewports, any
    * region that should read as carved INTO the page rather than resting on it. */
   .neu-skin .neu-well {
@@ -362,6 +413,28 @@
     background: color-mix(in oklab, var(--surface) 85%, transparent);
     backdrop-filter: blur(14px);
     box-shadow: 0 10px 24px -16px var(--neu-shadow-dark);
+  }
+
+  /* Mobile thumb-zone nav (platform-ui-design §7, neumorui bottom-nav
+   * pattern): the topbar's glass mirrored upside down — same translucency,
+   * the elevation shadow now cast UPWARD since the bar sits below the page
+   * instead of above it. `env(safe-area-inset-bottom)` clears the home
+   * indicator on notched phones without adding dead tap space elsewhere. */
+  .neu-skin .neu-bottom-nav {
+    background: color-mix(in oklab, var(--surface) 85%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 -10px 24px -16px var(--neu-shadow-dark);
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  }
+
+  /* `.neu-skin` reserves the matching space at the foot of the page whenever
+   * a `.neu-bottom-nav` is mounted, so scrolled content never ends up
+   * underneath the fixed bar — kept here (one rule) rather than on every
+   * page that renders inside the `(main)` route group. */
+  @media (max-width: 639px) {
+    .neu-skin:has(.neu-bottom-nav) {
+      padding-bottom: calc(68px + env(safe-area-inset-bottom));
+    }
   }
 
   /* ── BUTTON ────────────────────────────────────────────────────────────
@@ -574,6 +647,98 @@
     background: var(--offer);
     color: var(--offer-foreground);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* ── NAV LINK (liquid glass + neumorphism) ────────────────────────────
+   * The top nav's destinations (NavigationMenu) are NOT `.neu-tab-list` —
+   * that shared groove is right for a segmented CHOICE (theme, language, a
+   * filter's options) where the options are mutually exclusive settings.
+   * Navigating between pages reads better as distinct, independently
+   * floating destinations, so each link is its OWN frosted glass pane over
+   * `.neu-topbar`'s translucency: a raised lift at rest, a light inner rim
+   * standing in for a glass edge, and the accent arriving as a soft tinted
+   * pane + glow ring on the current page rather than a hard carved well —
+   * glass catches light, it does not get gouged. */
+  .neu-skin .neu-nav-link {
+    position: relative;
+    z-index: 1; /* above `.neu-nav-indicator`, which travels underneath */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--surface) 45%, transparent);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    box-shadow:
+      var(--neu-raised-sm),
+      inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 90%, transparent),
+      inset 0 -1px 0 color-mix(in oklab, var(--neu-shadow-dark) 35%, transparent);
+    color: var(--foreground-muted);
+    font-weight: 700;
+    transition: var(--neu-transition);
+  }
+  .neu-skin .neu-nav-link:hover {
+    background: color-mix(in oklab, var(--surface) 65%, transparent);
+    box-shadow:
+      var(--neu-flip-sm),
+      inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 90%, transparent);
+    color: var(--foreground);
+  }
+  /* The mobile bottom-nav's stacked icon-over-label item is a squircle, not
+   * a capsule — `.neu-nav-indicator` reads this same radius (below) so the
+   * travelling pill never has a different corner curve than the item it is
+   * about to sit under.
+   *
+   * It is also FLAT at rest — no glass panel, no shadow — the reference
+   * bottom-nav pattern (owner-linked, 2026-07-28) only ever gives the
+   * travelling indicator a card; every other tab is bare icon+label so the
+   * bar reads as one strip, not four stacked panels. Only the indicator
+   * (below) and `focus-ring` ever paint a surface here. */
+  .neu-skin .neu-nav-link--stacked {
+    border-radius: var(--neu-radius-lg);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+  }
+  .neu-skin .neu-nav-link--stacked:hover {
+    background: transparent;
+    box-shadow: none;
+  }
+  /* The active link drops its OWN panel — the travelling `.neu-nav-indicator`
+   * sits exactly beneath it and supplies the tinted glass instead, so there is
+   * one selected surface in play, not two stacked ones. */
+  .neu-skin .neu-nav-link[data-active="true"] {
+    background: transparent;
+    box-shadow: none;
+    color: var(--accent);
+  }
+
+  /* The sliding selection: one glass pill, GSAP-driven (shared/motion.ts) to
+   * the active link's rect on every route change — `x` + `scaleX` only (the
+   * transform/opacity motion LOCK), never width/left, so a FLIP-style tween
+   * never triggers layout. Sized/placed in JS; this class is the paint only.
+   * Falls back to an instant (unanimated) placement under reduced motion and
+   * before the first effect runs, so the page is never a bare topbar. */
+  .neu-skin .neu-nav-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    height: 100%;
+    border-radius: 9999px;
+    pointer-events: none;
+    background: color-mix(in oklab, var(--accent) 16%, var(--surface) 55%);
+    box-shadow:
+      var(--neu-inset-sm),
+      inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 90%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--accent) 25%, transparent);
+    opacity: 0;
+  }
+  .neu-skin .neu-bottom-nav .neu-nav-indicator {
+    border-radius: var(--neu-radius-lg);
   }
 
   /* ── TABS / SEGMENTED CONTROL ─────────────────────────────────────────
