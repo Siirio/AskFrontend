@@ -61,6 +61,18 @@ list, and an empty state that no longer routes to the deleted requests feature.
   guards independently: a blank/missing `query` param (a typed, bookmarked, or hand-edited URL)
   never reaches `search()` at all — it renders a validation `EmptyState` (`search.validation.*`)
   with a link back to Home, never a wasted round trip to a request known to fail (P9.4).
+- **Decoration extended, fourth review pass (owner request: "make it beautiful, don't hurt the
+  UX").** Weighed against a UmitPath-style treatment (scattered arrow/plus icons, dot-grid
+  panels, floating card mockups) and deliberately NOT adopted — that reads as a marketing-landing
+  pitch, competes with the search bar for attention, and puts orange on purely decorative
+  elements, which conflicts with the "saturation is action" lock. Instead: a third, much quieter
+  glow at the FOOT of the hero (`.neu-hero-decor-bottom`, filling what was dead space below the
+  centred form on anything taller than a phone) and ONE corner dot-grid texture
+  (`.neu-hero-dots`, colored from `--border`, not orange) — same restrained, single-accent
+  language as everything else on this surface. Both are `aria-hidden`/`pointer-events: none` like
+  the original pair. The footer glow needed its own `overflow: hidden` clipping wrapper (its
+  circle is wider than a phone viewport) — verified with `document.documentElement.scrollWidth`
+  against `clientWidth` at 390px and 1280px to prove no horizontal scrollbar was introduced.
 - Catalog Page/result cards are unchanged — explicitly out of scope until that surface gets its
   own full design pass (owner decision: catalog's cards/islands are designed once, later, not
   iterated now).
