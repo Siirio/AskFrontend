@@ -409,20 +409,43 @@
     box-shadow: var(--neu-inset-hairline);
   }
 
-  /* More transparent than the D25 original (85% surface -> 60%) plus
-   * saturate() alongside the blur — a plain blur on translucent chrome reads
-   * as "dirty glass" (muddy, low-contrast); saturating the colour showing
-   * through first is what makes it read as GLASS rather than fog (owner
-   * review, 2026-07-28 — "where is the glass?"). The inset top highlight is
-   * the one line a glass EDGE can have on a skin with no hairline borders:
-   * a light catching the top rim, not an outline around the whole bar. */
+  /* 82% surface (2026-07-29, was 60% since D25) plus saturate() alongside the
+   * blur — a plain blur on translucent chrome reads as "dirty glass" (muddy,
+   * low-contrast); saturating the colour showing through first is what makes
+   * it read as GLASS rather than fog (owner review, 2026-07-28 — "where is
+   * the glass?"). 60% let page content behind the bar (headings, nav pills)
+   * show through legibly enough to double-expose with the bar's own label —
+   * caught in review 2026-07-29 ("nav's background is almost transparent").
+   * Blur radius was never the real problem; OPACITY was — 82% still reads as
+   * a pane of frosted glass, not a solid card, but stops content underneath
+   * from being readable through it. Both rims (light top, dark bottom) is
+   * the closest a CSS-only glass gets to a physical edge catching light on
+   * a skin with no hairline borders — a reference "liquid glass" library was
+   * considered and declined for this pass (real-time SVG/WebGL distortion is
+   * a different technique, a new runtime dependency, and its own decision to
+   * make deliberately, not a same-file tweak).
+   *
+   * `backdrop-filter` never carries a hand-written `-webkit-backdrop-filter`
+   * twin here (2026-07-29 — found via Playwright: `getComputedStyle` showed
+   * `backdrop-filter: none`, rendering nothing but a flat tint, while
+   * `-webkit-backdrop-filter` and the color-mix'd background both applied).
+   * Root cause, isolated by bisecting: Lightning CSS's autoprefixer, given a
+   * MULTI-FUNCTION value (`blur() saturate()` together) that is ALSO
+   * hand-paired with its own `-webkit-` twin, dedupes the two declarations
+   * and keeps the wrong one — dropping the unprefixed property outright, not
+   * a color-mix or layer-order issue. A single-function value elsewhere in
+   * this file (`.neu-scrim`'s plain `blur(4px)`) was never affected. Letting
+   * the autoprefixer generate `-webkit-` itself — one declaration here, not
+   * two — produces the correct compiled output (verified: both properties
+   * present). Do not re-add a manual `-webkit-backdrop-filter` beside a
+   * multi-function `backdrop-filter` anywhere in this file. */
   .neu-skin .neu-topbar {
-    background: color-mix(in oklab, var(--surface) 60%, transparent);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    background: color-mix(in oklab, var(--surface) 82%, transparent);
+    backdrop-filter: blur(32px) saturate(160%);
     box-shadow:
       0 10px 24px -16px var(--neu-shadow-dark),
-      inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 70%, transparent);
+      inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 70%, transparent),
+      inset 0 -1px 0 color-mix(in oklab, var(--neu-shadow-dark) 25%, transparent);
   }
 
   /* Mobile thumb-zone nav (platform-ui-design §7, neumorui bottom-nav
@@ -431,12 +454,12 @@
    * instead of above it. `env(safe-area-inset-bottom)` clears the home
    * indicator on notched phones without adding dead tap space elsewhere. */
   .neu-skin .neu-bottom-nav {
-    background: color-mix(in oklab, var(--surface) 60%, transparent);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    background: color-mix(in oklab, var(--surface) 82%, transparent);
+    backdrop-filter: blur(32px) saturate(160%);
     box-shadow:
       0 -10px 24px -16px var(--neu-shadow-dark),
-      inset 0 -1px 0 color-mix(in oklab, var(--neu-shadow-light) 70%, transparent);
+      inset 0 -1px 0 color-mix(in oklab, var(--neu-shadow-light) 70%, transparent),
+      inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-dark) 25%, transparent);
     padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
   }
 
@@ -662,6 +685,29 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* ── MAP (branch picker, business-cabinet registration) ─────────────────
+   * A Leaflet/OpenStreetMap surface still needs to read as ONE product, so
+   * its frame borrows the same carved language as everything else here: a
+   * raised card frame (never Leaflet's own border), and the dropped pin is
+   * the accent GRADIENT fill — a non-actionable, non-text glyph, the same
+   * category `.neu-fill-accent` already covers (avatar, switch track, slider,
+   * checkbox); a marker carries no label, so it takes the fill rather than
+   * competing with it the way a text-bearing chip would. */
+  .neu-skin .neu-map-frame {
+    border-radius: var(--neu-radius-lg);
+    box-shadow: var(--neu-raised);
+    overflow: hidden;
+  }
+  .neu-skin .neu-map-pin {
+    display: block;
+    width: 22px;
+    height: 22px;
+    border-radius: 9999px;
+    background: var(--neu-gradient-primary);
+    border: 3px solid var(--surface);
+    box-shadow: var(--neu-raised-sm);
+  }
+
   /* ── NAV LINK (liquid glass + neumorphism) ────────────────────────────
    * The top nav's destinations (NavigationMenu) are NOT `.neu-tab-list` —
    * that shared groove is right for a segmented CHOICE (theme, language, a
@@ -682,8 +728,9 @@
     border: none;
     border-radius: 9999px;
     background: color-mix(in oklab, var(--surface) 38%, transparent);
+    /* No manual -webkit- twin — see `.neu-topbar`'s note (2026-07-29) on why
+       that drops the unprefixed property for a multi-function value. */
     backdrop-filter: blur(12px) saturate(160%);
-    -webkit-backdrop-filter: blur(12px) saturate(160%);
     box-shadow:
       var(--neu-raised-sm),
       inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 90%, transparent),

@@ -7,25 +7,18 @@ import { Input } from "@/shared/ui/input";
 import {
   BUSINESS_LEGAL_FORMS,
   legalFormNeedsIdentifier,
-  legalFormNeedsVerification,
   type BusinessLegalForm,
   type SellerOnboardingErrors,
   type SellerOnboardingValues,
-  type VerificationSource,
 } from "../model";
 import { CategoryField } from "./CategoryField";
 import { Field, fieldErrorId } from "./Field";
 import { OptionGroup } from "./OptionGroup";
-import { VerificationSources } from "./VerificationSources";
 
 /**
- * Registration step 1 — who you are: business identity plus proof.
- *
- * Identity and proof are grouped in ONE step because the backend groups them
- * itself — `SellerOnboardingRequest`'s legal-details and verification-source
- * `@AssertTrue` rules both key off `legalForm` — so this step's own gate
- * (model.ts `validateOnboardingStep`) covers exactly what it renders, nothing
- * split across a step boundary that would leave a half-answered rule invisible.
+ * Registration step 1 — who you are: business identity. Proof of trade
+ * (verification links) moved to its own step 4 (2026-07-29) — the two no
+ * longer share a page, only the `legalForm` decision that gates both.
  */
 export function RegisterStepIdentity({
   values,
@@ -33,8 +26,6 @@ export function RegisterStepIdentity({
   setField,
   setCategory,
   setLegalForm,
-  toggleSource,
-  setLink,
 }: {
   values: SellerOnboardingValues;
   errors: SellerOnboardingErrors;
@@ -44,12 +35,9 @@ export function RegisterStepIdentity({
   ) => void;
   setCategory: (label: string, categoryId: string | null) => void;
   setLegalForm: (legalForm: BusinessLegalForm) => void;
-  toggleSource: (source: VerificationSource) => void;
-  setLink: (source: VerificationSource, value: string) => void;
 }) {
   const t = useTranslations("businessCabinet");
   const needsIdentifier = legalFormNeedsIdentifier(values.legalForm);
-  const needsVerification = legalFormNeedsVerification(values.legalForm);
 
   return (
     <div className="flex flex-col gap-5">
@@ -161,26 +149,6 @@ export function RegisterStepIdentity({
             />
           </Field>
         </>
-      ) : null}
-
-      {needsVerification ? (
-        <VerificationSources
-          selected={values.sources}
-          links={values.links}
-          sourcesError={errors.sources ? t(errors.sources) : undefined}
-          linkErrors={
-            errors.links
-              ? Object.fromEntries(
-                  Object.entries(errors.links).map(([key, value]) => [
-                    key,
-                    t(value),
-                  ]),
-                )
-              : undefined
-          }
-          onToggle={toggleSource}
-          onLinkChange={setLink}
-        />
       ) : null}
     </div>
   );

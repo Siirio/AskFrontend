@@ -17,12 +17,14 @@ import {
   EMPTY_ONBOARDING_VALUES,
   hasOnboardingErrors,
   ONBOARDING_STEP_COUNT,
+  stepIsSkippable,
   toOnboardingRequest,
   validateOnboarding,
   validateOnboardingStep,
   type BusinessLegalForm,
   type CategorySuggestion,
   type DeliveryCoverage,
+  type DraftBranch,
   type OnboardingStep,
   type SellerOnboardingErrors,
   type SellerOnboardingValues,
@@ -69,14 +71,24 @@ export type CategorySuggestions = {
  * autocomplete race), and a failure resolves to an empty list rather than an
  * error state — the field accepts free text, so suggestions being unavailable
  * degrades to "type it yourself", which is a supported path, not a dead end.
+ *
+ * `open` lifts the `MIN_QUERY_LENGTH` gate for an EMPTY query only, so
+ * focusing the field with nothing typed still shows an instant dropdown of
+ * categories (2026-07-29) — the backend returns its full flat list for `q:
+ * ""` (contracts.md), which is exactly what an instant "browse the list"
+ * dropdown needs. A non-empty query under the minimum is still suppressed;
+ * only the empty-and-focused case changes.
  */
-export function useCategorySuggestions(query: string): CategorySuggestions {
+export function useCategorySuggestions(
+  query: string,
+  open = false,
+): CategorySuggestions {
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const trimmed = query.trim();
-    if (trimmed.length < MIN_QUERY_LENGTH) {
+    if (trimmed.length < MIN_QUERY_LENGTH && !(open && trimmed.length === 0)) {
       setSuggestions([]);
       setLoading(false);
       return;
@@ -102,7 +114,7 @@ export function useCategorySuggestions(query: string): CategorySuggestions {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, open]);
 
   return { suggestions, loading };
 }
@@ -236,6 +248,53 @@ export function useSellerOnboarding() {
     }));
   }, []);
 
+  /** Checking "online only" forces pickupAvailable false and drops any
+   *  drafted branches — a hidden branch list that still submitted would
+   *  contradict the box the seller just checked. Unchecking clears the
+   *  forced answer so the pickup question asks again. */
+  const setOnlineOnly = useCallback((onlineOnly: boolean) => {
+    setValues((v) => ({
+      ...v,
+      onlineOnly,
+      pickupAvailable: onlineOnly ? false : null,
+      branches: onlineOnly ? [] : v.branches,
+    }));
+    setErrors((e) => ({ ...e, pickupAvailable: undefined }));
+  }, []);
+
+  const setPickupAvailable = useCallback((pickupAvailable: boolean) => {
+    setValues((v) => ({
+      ...v,
+      pickupAvailable,
+      // Answering "no" empties any branches already drafted for pickup —
+      // otherwise they would submit silently even though the toggle says no.
+      branches: pickupAvailable ? v.branches : [],
+    }));
+    setErrors((e) => ({ ...e, pickupAvailable: undefined }));
+  }, []);
+
+  const addBranch = useCallback((branch: Omit<DraftBranch, "draftId">) => {
+    setValues((v) => ({
+      ...v,
+      branches: [
+        ...v.branches,
+        { ...branch, draftId: crypto.randomUUID() },
+      ],
+    }));
+  }, []);
+
+  const removeBranch = useCallback((draftId: string) => {
+    setValues((v) => ({
+      ...v,
+      branches: v.branches.filter((b) => b.draftId !== draftId),
+    }));
+  }, []);
+
+  const setAgreementConfirmed = useCallback((agreementConfirmed: boolean) => {
+    setValues((v) => ({ ...v, agreementConfirmed }));
+    setErrors((e) => ({ ...e, agreementConfirmed: undefined }));
+  }, []);
+
   /**
    * Advance a step — validating ONLY the current step's fields
    * (`validateOnboardingStep`), never the whole form. Validating ahead would
@@ -244,6 +303,10 @@ export function useSellerOnboarding() {
    * setDeliveryCoverage…) already clears its error the instant it is fixed,
    * so `goNext` only ever needs to REVEAL this step's problems, not resolve
    * ones that belong to a step not yet reached.
+   *
+   * Step 4 (proof links) is SKIPPED when `stepIsSkippable` says the legal
+   * form does not need it — a registered IP/TOO has nothing to fill there,
+   * so advancing lands straight on step 5 rather than an empty page.
    */
   const goNext = useCallback(() => {
     setFormError(null);
@@ -252,15 +315,25 @@ export function useSellerOnboarding() {
       setErrors((e) => ({ ...e, ...stepErrors }));
       return;
     }
-    setStep((s) =>
-      s < ONBOARDING_STEP_COUNT ? ((s + 1) as OnboardingStep) : s,
-    );
+    setStep((s) => {
+      let next = s < ONBOARDING_STEP_COUNT ? ((s + 1) as OnboardingStep) : s;
+      if (stepIsSkippable(values, next) && next < ONBOARDING_STEP_COUNT) {
+        next = (next + 1) as OnboardingStep;
+      }
+      return next;
+    });
   }, [values, step]);
 
   const goBack = useCallback(() => {
     setFormError(null);
-    setStep((s) => (s > 1 ? ((s - 1) as OnboardingStep) : s));
-  }, []);
+    setStep((s) => {
+      let prev = s > 1 ? ((s - 1) as OnboardingStep) : s;
+      if (stepIsSkippable(values, prev) && prev > 1) {
+        prev = (prev - 1) as OnboardingStep;
+      }
+      return prev;
+    });
+  }, [values]);
 
   const submit = useCallback(async () => {
     if (submitted.current) return;
@@ -271,14 +344,34 @@ export function useSellerOnboarding() {
 
     setPending(true);
     try {
-      await api.onboardSeller(
+      const onboarding = await api.onboardSeller(
         toOnboardingRequest(values, api.REGISTRATION_COUNTRY_CODE),
       );
       submitted.current = true;
-      // From here the business exists. A failure to re-read the session is NOT
-      // a failed registration, so it must not be reported as one: fall through
-      // to the cabinet and let RequireDashboardAccess and the next session
-      // restore settle it, rather than inviting a duplicate submit.
+
+      // The business exists from here on. Branches are drafted client-side
+      // during step 3 and only become real now that `businessId` exists — one
+      // branch failing to save does not undo the business itself, so each
+      // failure is reported and the rest still try (see api.createBranch).
+      for (const branch of values.branches) {
+        try {
+          await api.createBranch(onboarding.businessId, {
+            name: branch.name,
+            address: branch.address.trim() || undefined,
+            addressDetails: branch.addressDetails.trim() || undefined,
+            latitude: branch.latitude,
+            longitude: branch.longitude,
+            pickupAvailable: true,
+          });
+        } catch {
+          toast.error(t("errors.branchFailed", { name: branch.name }));
+        }
+      }
+
+      // A failure to re-read the session is NOT a failed registration, so it
+      // must not be reported as one: fall through to the cabinet and let
+      // RequireDashboardAccess and the next session restore settle it, rather
+      // than inviting a duplicate submit.
       let targetPath = "/app/business";
       try {
         targetPath = await refreshSession();
@@ -304,6 +397,11 @@ export function useSellerOnboarding() {
     setDeliveryCoverage,
     addDeliveryCity,
     removeDeliveryCity,
+    setOnlineOnly,
+    setPickupAvailable,
+    addBranch,
+    removeBranch,
+    setAgreementConfirmed,
     errors,
     formError,
     pending,

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 
 import { Field, fieldErrorId } from "./Field";
@@ -16,10 +15,12 @@ import { Field, fieldErrorId } from "./Field";
  * names it would otherwise take. At least one entry is required (the
  * backend's `isDeliveryCoverageValid`, mirrored in model.ts).
  *
- * Enter adds the typed city as a chip and clears the box, so adding several
- * cities in a row never requires the pointer. Each chip carries its own
- * remove button — `.neu-chip` at rest, no `data-active`, since these are not
- * a single-choice group like the verification sources.
+ * No visible "Add" button (2026-07-29, item 8) — Enter OR a trailing comma
+ * commits the typed city as a chip and clears the box, so adding several
+ * cities in a row never requires the pointer and the control has one action,
+ * not two competing ones. Each chip carries its own remove button —
+ * `.neu-chip` at rest, no `data-active`, since these are not a single-choice
+ * group like the verification sources.
  */
 export function DeliveryCitiesField({
   id,
@@ -37,12 +38,16 @@ export function DeliveryCitiesField({
   const t = useTranslations("businessCabinet");
   const [draft, setDraft] = useState("");
 
-  const commit = () => {
-    const trimmed = draft.trim();
+  // Takes the value explicitly rather than closing over `draft` — the comma
+  // path in onChange needs to commit the SLICED value in the same tick it
+  // computes it, before the state update carrying it has committed.
+  const commitValue = (value: string) => {
+    const trimmed = value.trim();
     if (!trimmed) return;
     onAdd(trimmed);
     setDraft("");
   };
+  const commit = () => commitValue(draft);
 
   return (
     <Field
@@ -51,33 +56,32 @@ export function DeliveryCitiesField({
       hint={t("hints.deliveryCities")}
       error={error}
     >
-      <div className="flex gap-2">
-        <Input
-          id={id}
-          autoComplete="off"
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? fieldErrorId(id) : undefined}
-          placeholder={t("placeholders.deliveryCity")}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              // The field belongs to a form; Enter must add a city, never
-              // submit the whole page.
-              e.preventDefault();
-              commit();
-            }
-          }}
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          data-testid="delivery-city-add"
-          onClick={commit}
-        >
-          {t("actions.addCity")}
-        </Button>
-      </div>
+      <Input
+        id={id}
+        autoComplete="off"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? fieldErrorId(id) : undefined}
+        placeholder={t("placeholders.deliveryCity")}
+        value={draft}
+        onChange={(e) => {
+          // A trailing comma commits, same as Enter — the two most natural
+          // ways to end a typed city name, both without touching the pointer.
+          if (e.target.value.endsWith(",")) {
+            commitValue(e.target.value.slice(0, -1));
+            return;
+          }
+          setDraft(e.target.value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            // The field belongs to a form; Enter must add a city, never
+            // submit the whole page.
+            e.preventDefault();
+            commit();
+          }
+        }}
+        onBlur={commit}
+      />
 
       {cities.length > 0 ? (
         <ul className="flex flex-wrap gap-2">

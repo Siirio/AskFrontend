@@ -5,9 +5,16 @@ Sources: `../Ask_Backend/AI_Knowledge/features/business/contracts.md`, `.../offe
 ## Branches
 | Method | Path | Auth | Used by |
 |--------|------|------|---------|
-| GET | /api/v1/businesses/{businessId}/branches | OWNER/MANAGER | Branches tab |
-| POST | /api/v1/businesses/{businessId}/branches | OWNER | Add branch |
-| PATCH | /api/v1/businesses/{businessId}/branches/{branchId} | OWNER | Update branch |
+| GET | /api/v1/businesses/{businessId}/branches | OWNER/MANAGER | Branches tab (not built yet) |
+| POST | /api/v1/businesses/{businessId}/branches | OWNER | **CONSUMED since 2026-07-29** — `BusinessRegisterPage` step 3's map picker, once `businessId` exists (see Seller Onboarding below). Also the future Branches tab's "Add branch" |
+| PATCH | /api/v1/businesses/{businessId}/branches/{branchId} | OWNER | Update branch (not built yet) |
+
+**`CreateBranchRequest`** (read from `kz.ask.business.branch.api.dto.CreateBranchRequest.java`,
+not inferred): `name` (`@NotBlank`), `address`, `addressDetails`, `cityId` all optional,
+`latitude`/`longitude` **`@NotNull`** — the map picker exists because these two are required, not
+as decoration. `pickupAvailable` optional; the registration wizard always sends `true` (every
+branch drafted through that modal is a pickup point). `BranchResponse` mirrors the request plus
+`id`, `businessId`, `cityName`.
 
 ## Unique Offers
 | Method | Path | Auth | Used by |
@@ -90,10 +97,22 @@ Until the session is re-read, `canAccessDashboard` still answers false and
 `RequireDashboardAccess` bounces the new seller out of the cabinet they just created — so
 `useRefreshSession()` (`@/auth`) is part of the contract, not a nicety.
 
-**`ASK_MANAGED_IMPORT` is not offered (deliberate, 2026-07-27).** It is contracted to open a
-managed-import request dialog (`POST /api/v1/businesses/{businessId}/managed-imports`) that
-does not exist until roadmap #8. Offering the choice would rebuild the exact silent dead end
-`/app/business/register` was created to remove. Add it WITH that dialog, not before.
+**`ASK_MANAGED_IMPORT` IS offered and submitted for real (2026-07-27→2026-07-29, reversed —
+see business-cabinet/locks.md's Retired Locks).** Step 2's two catalog-setup cards are both real,
+selectable choices; whichever `catalogSetupMode` the seller picks is what
+`toOnboardingRequest` sends. This is valid: `ASK_MANAGED_IMPORT` is accepted by
+`SellerOnboardingRequest` on its own (confirmed from the Java DTO). What is STILL missing is the
+SEPARATE managed-import request dialog (`POST /api/v1/businesses/{businessId}/managed-imports`,
+roadmap #8) for scoping/pricing an import after the fact — the UI is honest about that gap
+("our team will follow up to confirm scope and price") rather than promising an instant quote or
+a dialog that does not exist. A business created with `catalogSetupMode: ASK_MANAGED_IMPORT`
+today has no further in-product screen; follow-up is manual/ops-side until roadmap #8 ships.
+
+**Branches drafted during registration are real (2026-07-29), not part of this request.** Step
+3's map picker collects `DraftBranch[]` client-side (`model.ts`); once `onboardSeller` resolves
+with `businessId`, each drafted branch is POSTed individually via `api.createBranch` (see
+Branches above), BEFORE the session refresh. A single branch failing does not undo the business
+or block the redirect — it is reported via toast and can be retried once the Branches tab ships.
 
 **Verification status is backend-derived:** `NONE` → the record is `PENDING`; a legal form →
 `APPROVED`. The client never sets or displays a verification verdict.
@@ -149,6 +168,13 @@ two callers that merely look alike (P6.3, D8).
 
 ## Offer semantics (backend-owned)
 DISCOUNT → effectivePrice = price × (1 − percent/100) or price − amount. Label: "-30%" / "-5000 ₸". Non-DISCOUNT → the offer name is the label. Linked results get a +25 search boost.
+
+## Third-party (NOT AskBackend)
+The branch map picker (`BranchMapModal.tsx`) calls OpenStreetMap's free, keyless **Nominatim**
+service directly — `nominatim.openstreetmap.org/{search,reverse}` — for address search and
+reverse-geocoding a dropped pin. Kept in this slice's `api.ts` anyway (`searchAddress`,
+`reverseGeocode`) so the "components never call fetch directly" rule still has exactly one home,
+even though this is not a backend contract and is not versioned with it.
 
 ## Not built yet
 **Company Profile** has no endpoint set — the vision marks it "coming in a future update". Ship the placeholder, not a screen.

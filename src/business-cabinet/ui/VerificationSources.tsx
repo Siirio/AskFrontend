@@ -1,6 +1,15 @@
 "use client";
 
-import { Check } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Globe,
+  MapPin,
+  Package,
+  Send,
+  ShoppingBag,
+  ShoppingCart,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Input } from "@/shared/ui/input";
@@ -8,17 +17,34 @@ import { Input } from "@/shared/ui/input";
 import { VERIFICATION_SOURCES, type VerificationSource } from "../model";
 import { Field, fieldErrorId } from "./Field";
 
+/** A representative glyph per platform, not a brand mark (lucide ships no
+ *  brand icons) — enough to make the grid scannable at a glance instead of
+ *  reading as seven identical labelled buttons. */
+const SOURCE_ICON: Record<VerificationSource, typeof Globe> = {
+  twoGisUrl: MapPin,
+  kaspiUrl: ShoppingBag,
+  ozonUrl: ShoppingCart,
+  wildberriesUrl: Package,
+  websiteUrl: Globe,
+  instagramUrl: Camera,
+  telegramUrl: Send,
+};
+
 /**
  * Proof of trade for a seller with no registered entity (`legalForm: NONE`).
  *
  * A registered IP or TOO proves itself with a 12-digit IIN/BIN; everyone else
- * proves it with somewhere they already sell or publish. At least one valid link
- * is REQUIRED — that is the backend's rule, not a UI preference, and it is what
- * stands between the catalog and anyone who can type a company name.
+ * proves it with somewhere they already sell or publish. At least one valid
+ * link is REQUIRED — that is the backend's rule, not a UI preference, and it is
+ * what stands between the catalog and anyone who can type a company name.
  *
- * Progressive, per the backend's own UX contract: pick WHICH platforms first,
- * then fill only those. The alternative — seven empty URL fields on first
- * render — reads as a wall of homework and buries the fact that one is enough.
+ * A responsive icon-card GRID (2026-07-29, replacing a flat row of small text
+ * chips) — each source gets a real checkbox indicator (`.neu-checkbox-box`,
+ * design-system/neumorphism.css) and its own glyph, so the choice reads as
+ * seven distinct, tappable cards rather than a wrapped line of pills.
+ * Progressive per the backend's own UX contract: pick WHICH platforms first,
+ * then fill only those — seven empty URL fields on first render reads as a
+ * wall of homework and buries the fact that one is enough.
  *
  * Toggles are checkboxes, not radios: sellers list on several platforms and
  * more evidence is better, so the control must not imply a single choice.
@@ -53,10 +79,11 @@ export function VerificationSources({
           role="group"
           aria-label={t("fields.verification")}
           aria-describedby={sourcesError ? "verification-error" : undefined}
-          className="flex flex-wrap gap-2"
+          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
         >
           {VERIFICATION_SOURCES.map((source) => {
             const on = selected.includes(source);
+            const Icon = SOURCE_ICON[source];
             return (
               <button
                 key={source}
@@ -66,15 +93,25 @@ export function VerificationSources({
                 data-testid={`source-${source}`}
                 data-active={on}
                 onClick={() => onToggle(source)}
-                // `.neu-chip[data-active]` (design-system/neumorphism.css)
-                // presses the chip IN when on — the skin's way of saying
-                // "chosen" without a border or a tint. min-h-11 keeps the 44px
-                // touch floor; the row wraps rather than scrolls, because a
-                // horizontal scroller hides options people are choosing FROM.
-                className="neu-chip flex min-h-11 cursor-pointer items-center gap-1.5 px-4 focus-ring"
+                // min-h-11 keeps the 44px touch floor (platform §7).
+                className="neu-row flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2.5 text-start focus-ring"
               >
-                {on ? <Check aria-hidden="true" className="size-3.5" /> : null}
-                {t(`sources.${source}`)}
+                <span
+                  aria-hidden="true"
+                  className={on ? "text-accent" : "text-foreground-subtle"}
+                >
+                  <Icon className="size-4.5 shrink-0" />
+                </span>
+                <span className="flex-1 text-sm font-semibold text-foreground">
+                  {t(`sources.${source}`)}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="neu-checkbox-box size-5.5"
+                  data-on={on}
+                >
+                  {on ? <Check className="size-3" strokeWidth={3} /> : null}
+                </span>
               </button>
             );
           })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Store } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -12,10 +13,18 @@ import { useSellerOnboarding } from "../hooks";
 import { ONBOARDING_STEP_COUNT } from "../model";
 import { RegisterStepDelivery } from "./RegisterStepDelivery";
 import { RegisterStepIdentity } from "./RegisterStepIdentity";
+import { RegisterStepLinks } from "./RegisterStepLinks";
+import { RegisterStepReview } from "./RegisterStepReview";
 import { RegisterStepScope } from "./RegisterStepScope";
 
 /** Ordered 1:1 with `OnboardingStep` — `step - 1` indexes straight in. */
-const STEP_TITLE_KEYS = ["identity", "scope", "delivery"] as const;
+const STEP_TITLE_KEYS = [
+  "identity",
+  "scope",
+  "delivery",
+  "links",
+  "review",
+] as const;
 
 /**
  * The business registration page — PRODUCT_VISION UF 3.1 step 0, "the seller is
@@ -42,24 +51,27 @@ const STEP_TITLE_KEYS = ["identity", "scope", "delivery"] as const;
  * create-business entry") and the fact that a second POST would create a second
  * business both point the same way.
  *
- * THREE STEPS, not one long form (2026-07-28) — identity+proof, what you sell,
- * delivery+pickup — mirroring the grouping the retired React Router frontend's
- * `SellerOnboardingPage` used, minus the two pieces this repo's own docs
- * already exclude: the branch-drafting/map-picker modal for pickup (branch
- * creation belongs to the cabinet's Branches tab, per ux-ui-flow.md) and the
- * `ASK_MANAGED_IMPORT` choice (parked until roadmap #8's import dialog
- * exists). `useSellerOnboarding`'s `goNext` validates ONLY the current step
- * (`validateOnboardingStep`, model.ts) — never the whole form ahead of time,
- * which would surface a step-3 error the instant step 2 is left, before the
- * person has touched step 3 at all. Each field's own handler already clears
- * its error the moment it's fixed, so `goNext` only ever needs to reveal.
+ * FIVE STEPS since 2026-07-29 (was three, 2026-07-28) — identity; what you
+ * sell; delivery and branches; proof of trade; review and confirm. Proof of
+ * trade moved off step 1 onto its own page (step 4), and a branch map picker
+ * was added to step 3: `CreateBranchRequest` (read from the backend source)
+ * requires `latitude`/`longitude`, so drafted branches are real, not
+ * decorative — each is POSTed via `api.createBranch` right after the business
+ * itself is created (see `useSellerOnboarding.submit`, hooks.ts), once
+ * `businessId` exists. Step 4 is SKIPPED entirely when the legal form does
+ * not need verification (`stepIsSkippable`, model.ts) — `useSellerOnboarding`'s
+ * `goNext`/`goBack` step over it rather than render an empty page.
+ * `validateOnboardingStep` still validates ONLY the current step — never the
+ * whole form ahead of time, which would surface a later step's error before
+ * the person has touched it. Each field's own handler already clears its
+ * error the moment it's fixed, so `goNext` only ever needs to reveal.
  *
- * WHAT IS DELIBERATELY NOT HERE. `catalogSetupMode` is fixed to MANUAL: the
- * other value, ASK_MANAGED_IMPORT, is contracted to open a managed-import
- * request dialog that does not exist until roadmap #8, so offering it would
- * rebuild the exact dead end this page removes. `countryCode` is fixed to KZ —
- * the legal forms on offer are Kazakhstan's (api.ts). Branch creation is
- * optional at registration and belongs to the cabinet's Branches tab.
+ * WHAT IS DELIBERATELY NOT HERE. `catalogSetupMode` is fixed to MANUAL:
+ * step 2 SHOWS the `ASK_MANAGED_IMPORT` option (with illustrative pricing)
+ * but it stays disabled — the request dialog it is contracted to open does
+ * not exist until roadmap #8, so making it selectable would rebuild the
+ * exact dead end this page removes. `countryCode` is fixed to KZ — the legal
+ * forms on offer are Kazakhstan's (api.ts).
  */
 export function BusinessRegisterPage() {
   const t = useTranslations("businessCabinet");
@@ -75,6 +87,11 @@ export function BusinessRegisterPage() {
     setDeliveryCoverage,
     addDeliveryCity,
     removeDeliveryCity,
+    setOnlineOnly,
+    setPickupAvailable,
+    addBranch,
+    removeBranch,
+    setAgreementConfirmed,
     errors,
     formError,
     pending,
@@ -122,14 +139,20 @@ export function BusinessRegisterPage() {
   const isLastStep = step === ONBOARDING_STEP_COUNT;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">
-      <header className="flex flex-col gap-2">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 py-8 sm:px-6 sm:py-12">
+      <header className="flex flex-col items-center gap-3 text-center">
+        {/* A neu-card badge, not a bare icon — every other raised surface in
+            this skin carries depth, and a flat icon beside carved fields and
+            buttons would read as unfinished (item 1, 2026-07-29). */}
+        <span
+          aria-hidden="true"
+          className="neu-card flex size-14 items-center justify-center text-accent"
+        >
+          <Store className="size-6" />
+        </span>
         <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
           {t("register.title")}
         </h1>
-        <p className="text-sm text-foreground-muted sm:text-base">
-          {t("register.subtitle")}
-        </p>
       </header>
 
       <form
@@ -167,8 +190,6 @@ export function BusinessRegisterPage() {
             setField={setField}
             setCategory={setCategory}
             setLegalForm={setLegalForm}
-            toggleSource={toggleSource}
-            setLink={setLink}
           />
         ) : null}
 
@@ -176,6 +197,10 @@ export function BusinessRegisterPage() {
           <RegisterStepScope
             value={values.businessScope}
             onChange={(scope) => setField("businessScope", scope)}
+            catalogSetupMode={values.catalogSetupMode}
+            onCatalogSetupModeChange={(mode) =>
+              setField("catalogSetupMode", mode)
+            }
           />
         ) : null}
 
@@ -186,9 +211,29 @@ export function BusinessRegisterPage() {
             setDeliveryCoverage={setDeliveryCoverage}
             addDeliveryCity={addDeliveryCity}
             removeDeliveryCity={removeDeliveryCity}
-            setPickupAvailable={(pickupAvailable) =>
-              setField("pickupAvailable", pickupAvailable)
-            }
+            setOnlineOnly={setOnlineOnly}
+            setPickupAvailable={setPickupAvailable}
+            addBranch={addBranch}
+            removeBranch={removeBranch}
+          />
+        ) : null}
+
+        {step === 4 ? (
+          <RegisterStepLinks
+            selected={values.sources}
+            links={values.links}
+            errors={errors}
+            onToggle={toggleSource}
+            onLinkChange={setLink}
+          />
+        ) : null}
+
+        {step === 5 ? (
+          <RegisterStepReview
+            values={values}
+            errors={errors}
+            agreementConfirmed={values.agreementConfirmed}
+            onAgreementChange={setAgreementConfirmed}
           />
         ) : null}
 

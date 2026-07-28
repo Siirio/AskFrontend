@@ -2,6 +2,97 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-29 | **Step 2's catalog-setup cards, screenshotted by the owner, had two real bugs, not
+just a rough edge — fixed and re-verified with a Playwright screenshot before reporting done.**
+(1) `items-stretch` + `h-full` + `justify-center` forced both cards to the same height, and
+since the two cards' content lengths are wildly different (one line vs. reassurance + price +
+note), the short "Add manually" card ended up mostly empty with its content vertically centered
+in a huge dead void — reads as broken, not "balanced." (2) The selection dot was inline beside
+the title in a flex row; the moment the managed-import title wrapped to two lines, the dot got
+pushed up and OUT of the card, overlapping its rounded corner. Fixed by (a) making the dot an
+absolutely-positioned corner element independent of the title's line count, and (b) — after
+seeing the fix still look unbalanced side-by-side — stacking both cards full-width in ONE
+column instead of a 2-column grid, per owner feedback; a short card next to a tall one never
+reads as intentional regardless of internal alignment | src/business-cabinet/ui/RegisterStepScope.tsx,
+AI_Knowledge/features/business-cabinet/ux-ui-flow.md
+
+2026-07-29 | **The nav's glass was still visibly see-through after the same-day blur bump
+(20px→32px, entry below), and raising the background opacity 60%→82% alone (also this entry,
+first pass) only made it look flat and grey — because `backdrop-filter` was not rendering AT
+ALL, confirmed by launching a real headless Chromium via Playwright and reading
+`getComputedStyle`: it reported `none` despite the CSS declaring `blur(32px) saturate(160%)`.**
+Root cause, found by bisecting against the compiled `.next` CSS output: Lightning CSS (Tailwind
+v4's CSS processor) drops the UNPREFIXED `backdrop-filter` declaration when it is hand-paired
+with an identical `-webkit-backdrop-filter` twin AND the value is a MULTI-FUNCTION filter
+(`blur() saturate()` together) — a single-function value (`.neu-scrim`'s `blur(4px)`) was
+never affected, and letting the autoprefixer generate `-webkit-` itself (one declaration, not
+two) produces the correct output. Fixed in the three affected rules (`.neu-topbar`,
+`.neu-bottom-nav`, `.neu-nav-link`) by removing every hand-written `-webkit-backdrop-filter`
+that duplicates a multi-function `backdrop-filter` — verified both properties now survive in
+the compiled CSS and the blur visibly renders (screenshotted via Playwright). The background
+opacity raise (60%→82%) and the second inset rim (opposite the existing one, so the glass edge
+reads on both sides) from the first pass stand unchanged. A "liquid glass" reference library
+(real-time SVG/WebGL background distortion) was raised and declined for this pass — a different
+technique, a new runtime dependency, and its own decision, not a same-file CSS tweak | src/design-system/neumorphism.css
+
+2026-07-29 | **Owner UI review of the just-built 5-step registration wizard produced six more
+fixes, same day, on top of the entry directly below (D29).** (1) The nav's glass got noticeably
+more blurred — `.neu-topbar`/`.neu-bottom-nav` backdrop-filter 20px→32px
+(design-system/neumorphism.css). (2) `catalogSetupMode: ASK_MANAGED_IMPORT` REVERSED from
+disabled to a real, submitted choice — see D29 in the architecture decision log and
+business-cabinet/locks.md's Retired Locks for the full reasoning; the two catalog-setup cards on
+step 2 are now genuine selectable radios with equal-height layout (`items-stretch`, `justify-center`
+on the shorter card) fixing the mismatched-height look flagged in review. (3) The register page's
+subtitle was removed and the header-to-form gap set to 48px (`gap-12`), matching the Home hero.
+(4) Step 3's "Only online" control and (6) step 5's agreement checkbox both moved off a small
+`.neu-chip` onto a new shared `ToggleRow` component (`business-cabinet/ui/ToggleRow.tsx`) — a
+full-width row with an icon and a REAL switch/checkbox indicator built on the neumorui
+`.neu-switch-*`/`.neu-checkbox-box` primitives (design-system/neumorphism.css), present in the
+CSS since D25 but unused until now. (5) Step 4's verification-source picker
+(`VerificationSources.tsx`) was redesigned from a flat wrapped row of text chips into a
+responsive icon-card grid (one lucide glyph per platform — 2GIS/Kaspi/Ozon/Wildberries get
+generic map/shopping icons since lucide ships no brand marks), and the page-level intro
+paragraph in `RegisterStepLinks.tsx` was deleted — it was showing the exact same sentence as
+`VerificationSources`' own hint, immediately above it | src/design-system/neumorphism.css,
+src/business-cabinet/{model.ts (catalogSetupMode on SellerOnboardingValues), ui/{BusinessRegisterPage,
+RegisterStepScope,RegisterStepDelivery,RegisterStepReview,RegisterStepLinks,VerificationSources}.tsx,
+ui/ToggleRow.tsx (new)}, shared/i18n/messages/{en,ru,kk}.json,
+AI_Knowledge/{ARCHITECTURE_PATTERN_FRONTEND.md (D29), features/business-cabinet/{README,contracts,
+ux-ui-flow,locks}.md}
+
+2026-07-29 | **The seller registration wizard grew from 3 to 5 steps and gained a real branch
+map picker — a 10-item owner UI pass on `/app/business/register`, reversing two pieces the
+2026-07-28 design had explicitly excluded (D28).** (1) Verification links moved off step 1 onto
+their own step 4, skipped entirely when the legal form doesn't need it (`stepIsSkippable`,
+model.ts). (2) A "review & confirm" step 5 was added — a read-only recap plus a required
+agreement checkbox, now the submit button's home. (3) Step 3 gained a "Only online — no physical
+branch" checkbox (UI-only, forces `pickupAvailable: false`) and, when pickup is Yes, a
+Leaflet/OpenStreetMap branch picker (`BranchMapModal.tsx`, `BranchMapCanvas.tsx`,
+`BranchList.tsx`, D28) — reversed from "deliberately absent" because `CreateBranchRequest` (read
+from the backend source, not inferred) requires `latitude`/`longitude`, making the map load-
+bearing rather than decorative. Drafted branches are real: `useSellerOnboarding.submit` POSTs
+each via a new `api.createBranch` right after `onboardSeller` resolves with `businessId`, before
+the session refresh — one branch failing is toasted and does not block registration or undo the
+business. (4) Step 2 now shows (but keeps disabled) an `ASK_MANAGED_IMPORT` catalog-setup option
+card with illustrative ₸ pricing that varies by `businessScope` — `catalogSetupMode` still
+always submits `MANUAL` (business-cabinet locks.md, unchanged rule, larger surface). (5) The
+category field (step 1) now opens an instant dropdown on focus even with an empty query, since
+the backend returns its full BUSINESS list for `q: ""`. (6) The city chip input dropped its
+visible "Add" button — Enter or a trailing comma commits. (7) The Home hero's headline-to-search
+gap grew from `gap-8` to `gap-12` (48px), unrelated to the wizard. **Two explicit lock/gate
+questions were raised and answered by the owner before starting, not assumed:** the
+`ASK_MANAGED_IMPORT` UI ships disabled rather than functional (roadmap #8 still gates the real
+dialog); the map picker ships fully functional, submitting real branches, rather than staged
+locally-only, once `CreateBranchRequest`'s required lat/lng was confirmed from source. Verified:
+full `npm run build` (lint, boundary fixtures, typecheck, static generation, D6/D19 rendering
+contract) green; `next start` smoke-tested on :3100 (no browser automation available this
+session — HTTP-level checks only: 200s, no server errors, all three locales' new i18n keys
+resolve with no `MISSING_MESSAGE`) | src/business-cabinet/*, src/search/ui/HomePage.tsx,
+src/design-system/neumorphism.css (`.neu-map-frame`, `.neu-map-pin`), package.json
+(leaflet, react-leaflet, @types/leaflet), shared/i18n/messages/{en,ru,kk}.json,
+AI_Knowledge/{ARCHITECTURE_PATTERN_FRONTEND.md (D28), features/business-cabinet/{README,
+contracts,ux-ui-flow,locks}.md}
+
 2026-07-28 | **The `search` slice shipped (roadmap Phase 1 #2) — Home + Catalog Page, the first
 slice with a genuine SSR data fetch, which surfaced a real gap in the e2e harness.** Built
 strictly from the same-day reconciled `features/search/contracts.md` (the local backend at

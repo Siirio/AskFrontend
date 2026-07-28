@@ -23,10 +23,13 @@ export type BusinessScope = (typeof BUSINESS_SCOPES)[number];
 export const BUSINESS_LEGAL_FORMS = ["KZ_IP", "KZ_TOO", "NONE"] as const;
 export type BusinessLegalForm = (typeof BUSINESS_LEGAL_FORMS)[number];
 
-/** kz.ask.business.onboarding.api.dto.CatalogSetupMode. Only MANUAL is sent —
- *  ASK_MANAGED_IMPORT routes the new seller into a managed-import request
- *  dialog that does not exist yet (roadmap #8). Offering it would recreate
- *  exactly the dead end this route was built to remove. */
+/** kz.ask.business.onboarding.api.dto.CatalogSetupMode. Both values are sent
+ *  for real (2026-07-29, owner directive, D29 — see Changelog and
+ *  business-cabinet/locks.md's amended note): `ASK_MANAGED_IMPORT` is a valid
+ *  value on `SellerOnboardingRequest` by itself. What is STILL missing is a
+ *  separate follow-up screen for scoping/pricing the import (roadmap #8) — the
+ *  UI is honest about that gap (see catalogSetup.managedImport copy) rather
+ *  than promising an instant quote. */
 export const CATALOG_SETUP_MODES = ["MANUAL", "ASK_MANAGED_IMPORT"] as const;
 export type CatalogSetupMode = (typeof CATALOG_SETUP_MODES)[number];
 
@@ -83,6 +86,46 @@ export type SellerOnboardingResponse = {
   startRoute?: string;
 };
 
+/** POST /api/v1/businesses/{businessId}/branches (OWNER, Bearer). Mirrors
+ *  `kz.ask.business.branch.api.dto.CreateBranchRequest` exactly — `latitude`/
+ *  `longitude` are `@NotNull` on the backend, so the map picker in the
+ *  registration wizard is not decorative: it is how this request gets built. */
+export type CreateBranchRequest = {
+  name: string;
+  address?: string;
+  addressDetails?: string;
+  cityId?: string;
+  latitude: number;
+  longitude: number;
+  pickupAvailable?: boolean;
+};
+
+export type BranchResponse = {
+  id: string;
+  businessId: string;
+  cityId?: string;
+  cityName?: string;
+  name: string;
+  address?: string;
+  addressDetails?: string;
+  latitude: number;
+  longitude: number;
+  pickupAvailable?: boolean;
+};
+
+/** A branch drafted during registration, before the business (and therefore
+ *  `businessId`) exists. Submitted for real via `api.createBranch` right
+ *  after `onboardSeller` resolves — never part of `SellerOnboardingRequest`. */
+export type DraftBranch = {
+  /** Client-only key for list rendering/removal; never sent to the backend. */
+  draftId: string;
+  name: string;
+  address: string;
+  addressDetails: string;
+  latitude: number;
+  longitude: number;
+};
+
 /** GET /api/v1/categories?q=&type= — flat, no trees (backend contracts.md). */
 export type CategorySuggestion = {
   categoryId: string;
@@ -104,6 +147,11 @@ export type SellerOnboardingValues = {
   categoryId: string | null;
   categoryLabel: string;
   businessScope: BusinessScope;
+  /** Step 2's choice, submitted for real (2026-07-29, D29 — see Changelog).
+   *  `ASK_MANAGED_IMPORT` is a valid `SellerOnboardingRequest` value on its
+   *  own; only the SEPARATE follow-up scoping dialog (roadmap #8) is missing,
+   *  not this field. */
+  catalogSetupMode: CatalogSetupMode;
   legalForm: BusinessLegalForm | null;
   legalIdentifier: string;
   legalName: string;
@@ -116,7 +164,15 @@ export type SellerOnboardingValues = {
   /** Only meaningful when deliveryCoverage is SELECTED_CITIES; the backend
    *  requires at least one non-blank entry in that case. */
   deliveryCities: string[];
+  /** UI-only shortcut: forces `pickupAvailable: false` and hides the branch
+   *  section. Never sent to the backend as its own field. */
+  onlineOnly: boolean;
   pickupAvailable: boolean | null;
+  /** Drafted during step 3's map modal, submitted individually via
+   *  `api.createBranch` once `businessId` exists (see hooks.ts `submit`). */
+  branches: DraftBranch[];
+  /** Step 5's "I confirm this information is accurate" gate. UI-only. */
+  agreementConfirmed: boolean;
 };
 
 export type SellerOnboardingErrors = Partial<
@@ -129,7 +185,8 @@ export type SellerOnboardingErrors = Partial<
     | "sources"
     | "deliveryCoverage"
     | "deliveryCities"
-    | "pickupAvailable",
+    | "pickupAvailable"
+    | "agreementConfirmed",
     string
   >
 > & { links?: Partial<Record<VerificationSource, string>> };
@@ -139,6 +196,7 @@ export const EMPTY_ONBOARDING_VALUES: SellerOnboardingValues = {
   categoryId: null,
   categoryLabel: "",
   businessScope: "ITEM",
+  catalogSetupMode: "MANUAL",
   legalForm: null,
   legalIdentifier: "",
   legalName: "",
@@ -146,7 +204,10 @@ export const EMPTY_ONBOARDING_VALUES: SellerOnboardingValues = {
   links: {},
   deliveryCoverage: null,
   deliveryCities: [],
+  onlineOnly: false,
   pickupAvailable: null,
+  branches: [],
+  agreementConfirmed: false,
 };
 
 /** IIN (KZ_IP) and BIN (KZ_TOO) are both exactly 12 digits — the backend's
@@ -226,8 +287,15 @@ export function validateOnboarding(
     errors.deliveryCities = "errors.deliveryCitiesRequired";
   }
 
-  if (values.pickupAvailable === null) {
+  // `onlineOnly` forces pickupAvailable to false before this ever runs
+  // (hooks.ts `setOnlineOnly`), so the pickup question only blocks the form
+  // when the seller has NOT taken the online-only shortcut.
+  if (!values.onlineOnly && values.pickupAvailable === null) {
     errors.pickupAvailable = "errors.pickupRequired";
+  }
+
+  if (!values.agreementConfirmed) {
+    errors.agreementConfirmed = "errors.agreementRequired";
   }
 
   return errors;
@@ -240,11 +308,22 @@ export function hasOnboardingErrors(errors: SellerOnboardingErrors): boolean {
   );
 }
 
-/** The registration form's three steps — who you are, what you sell, how you
- *  deliver. Numbered rather than named so `step + 1`/`step - 1` stays simple
- *  arithmetic at the two call sites (hooks.ts) that step through them. */
-export const ONBOARDING_STEP_COUNT = 3;
-export type OnboardingStep = 1 | 2 | 3;
+/** The registration form's five steps — who you are; what you sell; delivery
+ *  and branches; proof links; review and confirm. Numbered rather than named
+ *  so `step + 1`/`step - 1` stays simple arithmetic at the call sites
+ *  (hooks.ts) that step through them. */
+export const ONBOARDING_STEP_COUNT = 5;
+export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
+
+/** Step 4 (proof links) only has anything to validate — or show — when the
+ *  legal form requires verification. `goNext`/`goBack` (hooks.ts) use this to
+ *  skip the step entirely rather than render a page with nothing on it. */
+export function stepIsSkippable(
+  values: SellerOnboardingValues,
+  step: OnboardingStep,
+): boolean {
+  return step === 4 && !legalFormNeedsVerification(values.legalForm);
+}
 
 /**
  * Validate only ONE step's fields, so `goNext` never surfaces an error for a
@@ -271,12 +350,17 @@ export function validateOnboardingStep(
     if (full.legalForm) errors.legalForm = full.legalForm;
     if (full.legalIdentifier) errors.legalIdentifier = full.legalIdentifier;
     if (full.legalName) errors.legalName = full.legalName;
-    if (full.sources) errors.sources = full.sources;
-    if (full.links) errors.links = full.links;
   } else if (step === 3) {
     if (full.deliveryCoverage) errors.deliveryCoverage = full.deliveryCoverage;
     if (full.deliveryCities) errors.deliveryCities = full.deliveryCities;
     if (full.pickupAvailable) errors.pickupAvailable = full.pickupAvailable;
+  } else if (step === 4) {
+    if (full.sources) errors.sources = full.sources;
+    if (full.links) errors.links = full.links;
+  } else if (step === 5) {
+    if (full.agreementConfirmed) {
+      errors.agreementConfirmed = full.agreementConfirmed;
+    }
   }
   return errors;
 }
@@ -295,7 +379,7 @@ export function toOnboardingRequest(
     countryCode,
     // Non-null by validation; the form cannot submit without a legal form.
     legalForm: values.legalForm as BusinessLegalForm,
-    catalogSetupMode: "MANUAL",
+    catalogSetupMode: values.catalogSetupMode,
     businessScope: values.businessScope,
     // Non-null by validation; the form cannot submit without a coverage choice.
     deliveryCoverage: values.deliveryCoverage as DeliveryCoverage,

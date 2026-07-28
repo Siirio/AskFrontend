@@ -47,7 +47,11 @@ export function CategoryField({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { suggestions, loading } = useCategorySuggestions(value);
+  // `open` (this field's own state) doubles as the suggestions hook's `open`
+  // flag — while the field is focused, an empty query still asks for the
+  // full BUSINESS list instead of waiting for two characters (item 3,
+  // 2026-07-29): the field opens as an instant dropdown, not just autocomplete.
+  const { suggestions, loading } = useCategorySuggestions(value, open);
 
   // A picked category is not a query — suppress the list so the field does not
   // re-open onto "matches for the thing you already chose".

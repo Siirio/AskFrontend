@@ -14,8 +14,10 @@
 import { httpClient } from "@/shared/api/httpClient";
 
 import type {
+  BranchResponse,
   CategoryAutocompleteResponse,
   CategorySuggestion,
+  CreateBranchRequest,
   SellerOnboardingRequest,
   SellerOnboardingResponse,
 } from "./model";
@@ -63,4 +65,65 @@ export async function suggestBusinessCategories(
     { query: { q: query, type: "BUSINESS" }, signal },
   );
   return response.suggestions ?? [];
+}
+
+/**
+ * Create a branch for the just-created business (OWNER, Bearer). 201 on
+ * success. Called once per drafted branch, right after `onboardSeller`
+ * resolves — see `useSellerOnboarding.submit` (hooks.ts). A single branch
+ * failing here does not undo the business that already exists; the caller
+ * reports it and lets the seller retry from the cabinet's Branches tab.
+ */
+export function createBranch(
+  businessId: string,
+  body: CreateBranchRequest,
+): Promise<BranchResponse> {
+  return httpClient.post<BranchResponse>(
+    `/api/v1/businesses/${businessId}/branches`,
+    { body },
+  );
+}
+
+// ── OpenStreetMap geocoding (Nominatim) ──────────────────────────────────────
+//
+// NOT an AskBackend call — the branch map picker's address search and
+// reverse-geocode, against OpenStreetMap's free public Nominatim service
+// (no key). Kept in this slice's api.ts anyway, alongside the real backend
+// calls: components never call `fetch` directly (Data Locks), and this is the
+// one place that rule points to regardless of which host answers.
+
+export type GeocodeResult = { label: string; lat: number; lng: number };
+
+const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
+
+/** Free-text address search for the map picker's search box. */
+export async function searchAddress(
+  query: string,
+  signal?: AbortSignal,
+): Promise<GeocodeResult[]> {
+  const url = `${NOMINATIM_BASE}/search?format=jsonv2&limit=5&countrycodes=kz&q=${encodeURIComponent(query)}`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) return [];
+  const results: { display_name: string; lat: string; lon: string }[] =
+    await response.json();
+  return results.map((r) => ({
+    label: r.display_name,
+    lat: Number(r.lat),
+    lng: Number(r.lon),
+  }));
+}
+
+/** Reverse-geocode a dropped/dragged pin into a human-readable address —
+ *  prefills the branch form's address field, which stays editable (item 5:
+ *  the seller has the last word on what the address text says). */
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const url = `${NOMINATIM_BASE}/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) return null;
+  const result: { display_name?: string } = await response.json();
+  return result.display_name ?? null;
 }

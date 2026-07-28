@@ -20,34 +20,47 @@ that carries `RequireDashboardAccess`. A customer must reach this page precisely
 are not a seller yet, and no per-URL allowlist was needed to say so. `(cabinet)/` was created
 in the same change: the guard used to sit at `business/layout.tsx` and cover the whole prefix.
 
-**Form** (`POST /api/v1/business/onboarding` — see contracts.md), **THREE STEPS since
-2026-07-28**, one shared `button[type="submit"]` reading "Next" on steps 1–2 and "Create
-business" on step 3 (`BusinessRegisterPage.tsx`). Grouping mirrors the retired React Router
-frontend's `SellerOnboardingPage` (found on the backend's `dev` git branch, not deployed —
-consulted only as prior art), minus two pieces this doc already excludes: the branch-drafting
-map-picker modal for pickup, and the `ASK_MANAGED_IMPORT` choice. `useSellerOnboarding`'s
+**Form** (`POST /api/v1/business/onboarding` — see contracts.md), **FIVE STEPS since
+2026-07-29** (was three, 2026-07-28), one shared `button[type="submit"]` reading "Next" on
+steps 1–4 and "Create business" on step 5 (`BusinessRegisterPage.tsx`). Originally mirrored the
+retired React Router frontend's `SellerOnboardingPage` (found on the backend's `dev` git
+branch, not deployed — consulted only as prior art) minus its map-picker and managed-import
+pieces; both were added back 2026-07-29 on owner directive (see README's revision note) once
+`CreateBranchRequest` was confirmed to require `latitude`/`longitude`. `useSellerOnboarding`'s
 `goNext` validates ONLY the current step (model.ts `validateOnboardingStep`), never the whole
-form ahead of time — validating ahead would surface a step-3 error the instant step 2 is left,
-before the person has touched step 3 at all. Each field's own change handler already clears its
-own error as soon as it's fixed, so `goNext` only ever needs to reveal this step's problems.
+form ahead of time — validating ahead would surface a later step's error before the person has
+touched it. Each field's own change handler already clears its own error as soon as it's fixed,
+so `goNext` only ever needs to reveal this step's problems. Step 4 is SKIPPED entirely
+(`stepIsSkippable`) when the legal form does not need verification.
 
 | Step | Title key | Field | Control | Notes |
 |---|---|---|---|---|
 | 1 | `register.steps.identity` | Business name | text | required |
-| 1 | | Category | **combobox** over `GET /categories?type=BUSINESS` | Free text is a first-class outcome, not a fallback — the backend accepts `categoryName` and creates the USER category itself. Picking a suggestion stores its identity; editing the text drops it again, so the two can never disagree |
+| 1 | | Category | **combobox** over `GET /categories?type=BUSINESS` | Free text is a first-class outcome, not a fallback — the backend accepts `categoryName` and creates the USER category itself. Picking a suggestion stores its identity; editing the text drops it again, so the two can never disagree. Opens an INSTANT dropdown on focus even with an empty query (2026-07-29) — the backend returns its full list for `q: ""` |
 | 1 | | Legal form | segmented, with hints | KZ_IP · KZ_TOO · NONE. **The form's one branch** |
 | 1 | | ↳ IIN / BIN + registered name | text | KZ_IP / KZ_TOO only. Exactly 12 digits, non-digits stripped live |
-| 1 | | ↳ Verification sources | chips → link fields | NONE only. **Progressive** per the backend's UX contract: pick WHICH platforms, then fill only those — seven empty URL boxes on first render reads as homework and buries the fact that one is enough. At least one valid `http(s)` link required |
 | 2 | `register.steps.scope` | What do you sell? | segmented (`.neu-tab-list`) | ITEM · SERVICE · BOTH. The only field with no required answer — always has a default, so this step can never block `goNext` |
-| 3 | `register.steps.delivery` | Where do you deliver? | segmented (`.neu-tab-list`) | `NO_DELIVERY` · `SELECTED_CITIES` · `KAZAKHSTAN` · `WORLDWIDE`. Added 2026-07-28 — `deliveryCoverage` is `@NotNull` on the backend, so this is not optional (see contracts.md) |
-| 3 | | ↳ Which cities? | free-text chip list, Enter or "Add" | `SELECTED_CITIES` only. At least one city required — not the `/cities` picker, since the backend accepts any non-blank name |
-| 3 | | Is pickup available? | segmented, Yes/No | `pickupAvailable`, `@NotNull` — always sent |
+| 2 | | Catalog setup | two selectable radio cards, stacked full-width | Added 2026-07-29, made fully selectable same day (locks.md Retired Locks). "Add manually" vs "Order import from Ask" (illustrative ₸ pricing, varies by scope) — both real choices; `catalogSetupMode` submits whichever is picked (contracts.md). Stacked in ONE column, not a 2-column grid (owner review, same day) — the two cards' content lengths differ too much (one line vs. reassurance + price + note) for side-by-side to look balanced. The selection dot is absolutely positioned in the card's corner, not inline beside the title — inline broke when the title wrapped |
+| 3 | `register.steps.delivery` | Where do you deliver? | segmented (`.neu-tab-list`) | `NO_DELIVERY` · `SELECTED_CITIES` · `KAZAKHSTAN` · `WORLDWIDE`. `deliveryCoverage` is `@NotNull` on the backend, so this is not optional (see contracts.md) |
+| 3 | | ↳ Which cities? | free-text chip list, Enter or trailing comma | `SELECTED_CITIES` only. At least one city required — not the `/cities` picker, since the backend accepts any non-blank name. No visible "Add" button since 2026-07-29 (Enter/comma commits) |
+| 3 | | Only online — no physical branch | full-width toggle row (`ToggleRow`, switch indicator) | Added 2026-07-29, UI-only (not a backend field); redesigned same day from a small chip to a full-width row with icon + switch. Forces `pickupAvailable: false` and empties any drafted branches |
+| 3 | | PickUp available | segmented, Yes/No | `pickupAvailable`, `@NotNull` — always sent. Renamed from "Is pickup available?" 2026-07-29. Answering Yes opens the branch map modal |
+| 3 | | ↳ Branch map picker | Leaflet/OpenStreetMap modal | Added 2026-07-29 (`BranchMapModal.tsx`) — OSM tiles, Nominatim search/reverse-geocode (both free, keyless, contracts.md). Drafts `DraftBranch[]` (name, address, address details, lat/lng); each is POSTed for real via `api.createBranch` once `businessId` exists (see submit flow below), not part of `SellerOnboardingRequest`. Address is required here — a branch drafted through this modal is always a pickup point. Scrollable (`max-h-[85vh] overflow-y-auto`) since 2026-07-29 — found by e2e: the footer button could land off-screen |
+| 4 | `register.steps.links` | Verification sources | icon-card grid (`VerificationSources`), checkbox indicator | Moved off step 1 onto its own page 2026-07-29; redesigned same day from a flat chip row to a responsive grid of icon cards (item 5 revision) and the page-level duplicate intro paragraph removed. Only reached when `legalForm: NONE` — SKIPPED otherwise (`stepIsSkippable`). **Progressive**: pick WHICH platforms, then fill only those. At least one valid `http(s)` link required |
+| 5 | `register.steps.review` | Review & confirm | read-only recap + `ToggleRow` (checkbox indicator) | Added 2026-07-29. Recaps every field from steps 1–4 (including the catalog-setup choice) plus the branch count; "I confirm this information is accurate" is required (`agreementConfirmed`, UI-only) and gates the submit button, which lives on this page. Uses the same `ToggleRow` component as step 3's online-only toggle (D8, two consumers) — both were originally a small chip, redesigned same day to a full-width row |
 
 Steps are separated by `.neu-rule` (the skin's depth-based divider, D25) rather than a
 bordered card-within-a-card — a hairline would read as a second, competing edge on this
-surface. Each step lives in its own component (`RegisterStepIdentity`/`RegisterStepScope`/
-`RegisterStepDelivery`) purely to hold the 400-line lock, not because the steps share nothing
-— they all read/write the one `SellerOnboardingValues` the hook owns.
+surface. Each step lives in its own component (`RegisterStepIdentity` / `RegisterStepScope` /
+`RegisterStepDelivery` / `RegisterStepLinks` / `RegisterStepReview`) purely to hold the
+400-line lock, not because the steps share nothing — they all read/write the one
+`SellerOnboardingValues` the hook owns. `BranchMapModal.tsx` and `BranchList.tsx` are shared
+UI, not steps of their own.
+
+**Submit now does two things, not one (2026-07-29).** After `POST /business/onboarding`
+succeeds, `useSellerOnboarding.submit` loops any drafted branches through
+`api.createBranch(businessId, …)` before re-reading the session — see the submit-flow note
+below and contracts.md's Branches section.
 
 **Then the session is re-read.** A 201 promotes the account to BUSINESS_OWNER server-side;
 until `GET /auth/session` is re-read the client still thinks it is a customer and the guard
@@ -59,12 +72,18 @@ decides the landing — never a hardcoded path (auth's lock).
 ("existing business members go to their cabinet instead of seeing another create-business
 entry"), and a second POST would create a second business.
 
-**Deliberately absent.** `catalogSetupMode` is fixed to `MANUAL` — `ASK_MANAGED_IMPORT` opens
-a managed-import dialog that does not exist until roadmap #8, so offering it would rebuild the
-exact dead end this page removes. `countryCode` is fixed to `KZ` (the legal forms on offer are
+**Deliberately absent.** `countryCode` is fixed to `KZ` (the legal forms on offer are
 Kazakhstan's; a one-option country picker is a dead control, and a second market is gate G4).
-`phone` / `corporateEmail` are optional backend fields with no vision entry (P9.1). Branch
-creation is optional at registration and belongs to the Branches tab.
+`phone` / `corporateEmail` are optional backend fields with no vision entry (P9.1). The
+managed-import SCOPING/PRICING dialog (roadmap #8) does not exist — but `catalogSetupMode`
+itself is no longer restricted (reversed 2026-07-29, see locks.md's Retired Locks): step 2's two
+cards are both real, selectable choices, and whichever is picked is what gets submitted.
+
+**Branch creation is now real here too (2026-07-29), not exclusive to the Branches tab.** Step
+3's map picker drafts branches and submits them via `api.createBranch` right after the business
+is created — see the step table above. This is manual, one-at-a-time creation through the same
+endpoint the future Branches tab will use, not the bulk IMPORT this doc's "Hard rules" still
+forbids below.
 
 ## Entry — after registration
 Seller registration → the cabinet. `startRoute` (OWNER_BRANCHES / BRANCH_WORKSPACE) decides

@@ -11,13 +11,17 @@ import { expect, test, type Page } from "@playwright/test";
  * is what makes the cabinet reachable (the session is re-read, so the role the
  * backend just changed is the role the guard sees).
  *
- * The form is THREE STEPS (2026-07-28) — identity+proof, what you sell,
- * delivery+pickup — sharing one `button[type="submit"]` that reads "Next" on
- * steps 1–2 and "Create business" on step 3 (BusinessRegisterPage.tsx). Tests
+ * The form is FIVE STEPS since 2026-07-29 (was three) — identity; what you
+ * sell; delivery & branches; proof of trade (SKIPPED unless legalForm: NONE);
+ * review & confirm — sharing one `button[type="submit"]` that reads "Next" on
+ * steps 1–4 and "Create business" on step 5 (BusinessRegisterPage.tsx). Tests
  * below drive the whole sequence rather than filling one page of inputs.
  *
  * The backend is STUBBED with page.route (the harness runs the production build,
- * no live backend). Stub bodies speak the real snake_case wire (D20).
+ * no live backend). Stub bodies speak the real snake_case wire (D20). The branch
+ * map picker's OpenStreetMap calls (tiles, Nominatim) are stubbed too — a real
+ * network dependency inside a deterministic e2e run would be a flake source,
+ * not a feature under test.
  */
 
 const CUSTOMER = {
@@ -62,7 +66,15 @@ const SELLER_SESSION = {
  * flow. GET /session answers customer until POST /business/onboarding is seen,
  * and seller afterwards, exactly as the real backend does.
  */
-async function seedCustomerBecomingSeller(page: Page) {
+async function seedCustomerBecomingSeller(
+  page: Page,
+  // Lets a test inspect the actual POST body without registering a SECOND
+  // page.route for the same pattern — Playwright runs the most-recently
+  // registered matching handler FIRST, so a second `page.route` for this URL
+  // would shadow this one entirely and `onboarded` would never flip, which is
+  // exactly the bug this parameter exists to avoid.
+  onOnboard?: (body: Record<string, unknown>) => void,
+) {
   await page.addInitScript(() =>
     localStorage.setItem("ask.accessToken", "onboarding-test-token"),
   );
@@ -76,6 +88,7 @@ async function seedCustomerBecomingSeller(page: Page) {
   );
   await page.route("**/api/v1/business/onboarding", async (route) => {
     onboarded = true;
+    onOnboard?.(route.request().postDataJSON());
     await route.fulfill({
       status: 201,
       json: {
@@ -102,10 +115,29 @@ async function seedCustomerBecomingSeller(page: Page) {
   );
 }
 
+/** Blocks the map picker's real network dependencies (OSM tiles, Nominatim) —
+ *  a deterministic e2e run must not depend on the internet being reachable.
+ *  Tile requests are aborted outright (cosmetic only, clicking the map pane
+ *  still fires Leaflet's click handler regardless of whether a tile loaded);
+ *  Nominatim reverse-geocode is made to fail so the modal's own catch leaves
+ *  the address field for the test to fill directly, deterministically. */
+async function stubMapNetwork(page: Page) {
+  await page.route("**/tile.openstreetmap.org/**", (route) => route.abort());
+  await page.route("**/nominatim.openstreetmap.org/**", (route) =>
+    route.fulfill({ status: 500, body: "" }),
+  );
+}
+
 /** Fill the fields step 1 needs regardless of legal form. */
 async function fillIdentity(page: Page) {
   await page.locator("#business-name").fill("Aigul Flowers");
   await page.locator("#business-category").fill("Flowers");
+}
+
+async function fillKzIp(page: Page) {
+  await page.getByTestId("business-legal-form-KZ_IP").click();
+  await page.locator("#business-legal-identifier").fill("123456789012");
+  await page.locator("#business-legal-name").fill("IP Aigul Nurlankyzy");
 }
 
 /** From step 1, submit twice (step 1 → 2 → 3) — step 2's businessScope always
@@ -117,6 +149,14 @@ async function advanceToDeliveryStep(page: Page) {
   await expect(
     page.getByTestId("business-delivery-coverage-KAZAKHSTAN"),
   ).toBeVisible();
+}
+
+/** Confirms step 5's agreement checkbox and submits — the shared tail of every
+ *  successful-registration test regardless of how many steps preceded it. */
+async function confirmAndSubmit(page: Page) {
+  await expect(page.getByTestId("business-agreement")).toBeVisible();
+  await page.getByTestId("business-agreement").click();
+  await page.locator('button[type="submit"]').click();
 }
 
 test("a customer can open seller registration (it is outside the cabinet guard)", async ({
@@ -131,48 +171,44 @@ test("a customer can open seller registration (it is outside the cabinet guard)"
   await expect(page.locator("#business-name")).toBeVisible();
 });
 
-test("the cabinet itself still bounces that same customer", async ({
+test("the cabinet itself still bounces that same customer — to registration, not Home (D27)", async ({
   page,
 }) => {
   await seedCustomerBecomingSeller(page);
   await page.goto("/app/business");
-  // Splitting the guard into the (cabinet) group must not have weakened it.
-  await expect(page).toHaveURL(/\/app$/);
+  // D27 (2026-07-28) changed RequireDashboardAccess's redirect target from
+  // /app to /app/business/register — this assertion was stale against that
+  // change (found while re-verifying this suite, 2026-07-29) and belongs to
+  // the pre-existing staleness the 2026-07-28 Changelog entry already flagged
+  // for this file's customer-bounce assertions, not a new regression.
+  await expect(page).toHaveURL(/\/app\/business\/register$/);
 });
 
-test("registering a business opens the cabinet the customer could not reach before", async ({
+test("registering a business (KZ_IP, step 4 skipped) opens the cabinet", async ({
   page,
 }) => {
-  await seedCustomerBecomingSeller(page);
-
   // Capture the actual POST body — SellerOnboardingRequest carries fields
   // (deliveryCoverage, pickupAvailable) that are easy to drop silently if the
-  // form's own state ever stops reaching the request builder.
+  // form's own state ever stops reaching the request builder. Passed as a
+  // callback INTO the seed rather than a second page.route for the same URL
+  // (see seedCustomerBecomingSeller's own note on why that shadows the seed).
   let postedBody: Record<string, unknown> | null = null;
-  await page.route("**/api/v1/business/onboarding", async (route) => {
-    postedBody = route.request().postDataJSON();
-    await route.fulfill({
-      status: 201,
-      json: {
-        business_id: "b1",
-        catalog_setup_mode: "MANUAL",
-        start_route: "BUSINESS_CABINET",
-      },
-    });
+  await seedCustomerBecomingSeller(page, (body) => {
+    postedBody = body;
   });
 
   await page.goto("/app/business/register");
   await fillIdentity(page);
-
-  // KZ_IP: a registered entity proves itself with a 12-digit IIN + its name.
-  await page.getByTestId("business-legal-form-KZ_IP").click();
-  await page.locator("#business-legal-identifier").fill("123456789012");
-  await page.locator("#business-legal-name").fill("IP Aigul Nurlankyzy");
+  await fillKzIp(page);
 
   await advanceToDeliveryStep(page);
   await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
   await page.getByTestId("business-pickup-NO").click();
   await page.locator('button[type="submit"]').click();
+
+  // legalForm: KZ_IP does not need verification — step 4 is skipped straight
+  // to step 5's review/confirm page.
+  await confirmAndSubmit(page);
 
   // The session was re-read, so the role the guard sees is the role the backend
   // just granted — no bounce, no reload needed.
@@ -182,6 +218,43 @@ test("registering a business opens the cabinet the customer could not reach befo
   expect(postedBody).toMatchObject({
     delivery_coverage: "KAZAKHSTAN",
     pickup_available: false,
+  });
+});
+
+test("picking \"Order catalog import from Ask\" on step 2 submits catalogSetupMode for real", async ({
+  page,
+}) => {
+  // D29 (2026-07-29): the card went from disabled/decorative to a real,
+  // submitted choice. This pins the reversal — picking it must change the
+  // actual wire value, not just the card's own visual state.
+  let postedBody: Record<string, unknown> | null = null;
+  await seedCustomerBecomingSeller(page, (body) => {
+    postedBody = body;
+  });
+
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await fillKzIp(page);
+  await page.locator('button[type="submit"]').click();
+  await expect(page.getByTestId("business-scope-ITEM")).toBeVisible();
+
+  await page.getByTestId("catalog-setup-ASK_MANAGED_IMPORT").click();
+  await expect(
+    page.getByTestId("catalog-setup-ASK_MANAGED_IMPORT"),
+  ).toHaveAttribute("aria-checked", "true");
+
+  await page.locator('button[type="submit"]').click();
+  await expect(
+    page.getByTestId("business-delivery-coverage-KAZAKHSTAN"),
+  ).toBeVisible();
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-NO").click();
+  await page.locator('button[type="submit"]').click();
+  await confirmAndSubmit(page);
+
+  await expect(page).toHaveURL(/\/app\/business$/);
+  expect(postedBody).toMatchObject({
+    catalog_setup_mode: "ASK_MANAGED_IMPORT",
   });
 });
 
@@ -199,14 +272,24 @@ test("step 1 refuses to advance without a legal form answer", async ({
   await expect(page.getByRole("alert").first()).toBeVisible();
 });
 
-test("an unregistered seller must supply at least one verification link", async ({
+test("an unregistered seller must supply at least one verification link on step 4", async ({
   page,
 }) => {
   await seedCustomerBecomingSeller(page);
   await page.goto("/app/business/register");
   await fillIdentity(page);
 
+  // NONE has nothing else required on step 1 (verification moved to step 4,
+  // 2026-07-29) — advancing must succeed immediately.
   await page.getByTestId("business-legal-form-NONE").click();
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-NO").click();
+  await page.locator('button[type="submit"]').click();
+
+  // Step 4 (proof of trade) is NOT skipped for legalForm: NONE.
+  await expect(page.getByTestId("source-instagramUrl")).toBeVisible();
+
   // Nothing picked yet: advancing must be refused, not sent for the backend to
   // reject — the same rule, phrased where the person can act on it.
   await page.locator('button[type="submit"]').click();
@@ -220,10 +303,8 @@ test("an unregistered seller must supply at least one verification link", async 
   await expect(page).toHaveURL(/\/app\/business\/register$/);
 
   await page.locator("#link-instagramUrl").fill("https://instagram.com/aigul");
-  await advanceToDeliveryStep(page);
-  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
-  await page.getByTestId("business-pickup-NO").click();
   await page.locator('button[type="submit"]').click();
+  await confirmAndSubmit(page);
   await expect(page).toHaveURL(/\/app\/business$/);
 });
 
@@ -233,9 +314,7 @@ test("selected-cities delivery requires at least one city", async ({
   await seedCustomerBecomingSeller(page);
   await page.goto("/app/business/register");
   await fillIdentity(page);
-  await page.getByTestId("business-legal-form-KZ_IP").click();
-  await page.locator("#business-legal-identifier").fill("123456789012");
-  await page.locator("#business-legal-name").fill("IP Aigul Nurlankyzy");
+  await fillKzIp(page);
 
   await advanceToDeliveryStep(page);
   await page.getByTestId("business-pickup-NO").click();
@@ -247,9 +326,34 @@ test("selected-cities delivery requires at least one city", async ({
   await expect(page).toHaveURL(/\/app\/business\/register$/);
   await expect(page.getByRole("alert").first()).toBeVisible();
 
+  // No visible "Add" button since 2026-07-29 — Enter commits the chip.
   await page.locator("#business-delivery-cities").fill("Almaty");
-  await page.getByTestId("delivery-city-add").click();
+  await page.locator("#business-delivery-cities").press("Enter");
+  await expect(page.getByText("Almaty")).toBeVisible();
+
   await page.locator('button[type="submit"]').click();
+  await confirmAndSubmit(page);
+  await expect(page).toHaveURL(/\/app\/business$/);
+});
+
+test("only-online forces pickup to No and hides the branch section", async ({
+  page,
+}) => {
+  await seedCustomerBecomingSeller(page);
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await fillKzIp(page);
+
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-online-only").click();
+
+  // The pickup question and branch picker disappear entirely once online-only
+  // is checked — there is nothing left to answer about a physical location.
+  await expect(page.getByTestId("business-pickup-YES")).toHaveCount(0);
+
+  await page.locator('button[type="submit"]').click();
+  await confirmAndSubmit(page);
   await expect(page).toHaveURL(/\/app\/business$/);
 });
 
@@ -259,9 +363,7 @@ test("back returns to an earlier step without losing what was already typed", as
   await seedCustomerBecomingSeller(page);
   await page.goto("/app/business/register");
   await fillIdentity(page);
-  await page.getByTestId("business-legal-form-KZ_IP").click();
-  await page.locator("#business-legal-identifier").fill("123456789012");
-  await page.locator("#business-legal-name").fill("IP Aigul Nurlankyzy");
+  await fillKzIp(page);
 
   await page.locator('button[type="submit"]').click();
   await expect(page.getByTestId("business-scope-ITEM")).toBeVisible();
@@ -292,4 +394,78 @@ test("an existing seller is sent to the cabinet instead of registering twice", a
   await page.goto("/app/business/register");
   await expect(page).toHaveURL(/\/app\/business$/);
   expect(posted).toBe(false);
+});
+
+test("PickUp available: Yes opens the branch map picker, and a drafted branch is created after the business", async ({
+  page,
+}) => {
+  await seedCustomerBecomingSeller(page);
+  await stubMapNetwork(page);
+
+  let branchBody: Record<string, unknown> | null = null;
+  let branchBusinessId: string | null = null;
+  await page.route(
+    "**/api/v1/businesses/*/branches",
+    async (route) => {
+      branchBusinessId = new URL(route.request().url()).pathname
+        .split("/")
+        .at(-2)!;
+      branchBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        json: { id: "br1", business_id: "b1", ...branchBody },
+      });
+    },
+  );
+
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await fillKzIp(page);
+
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+
+  // Answering Yes opens the map modal automatically (RegisterStepDelivery).
+  await page.getByTestId("business-pickup-YES").click();
+  await expect(page.getByTestId("branch-map")).toBeVisible();
+
+  await page.locator("#branch-name").fill("Aigul Flowers — Abay Ave");
+  // Wait for Leaflet itself to mount (next/dynamic, ssr:false) before
+  // clicking — the container exists immediately, but its click handler only
+  // attaches once `.leaflet-container` renders inside it.
+  await page
+    .getByTestId("branch-map")
+    .locator(".leaflet-container")
+    .waitFor();
+  // Reverse-geocode is stubbed to fail, so the address field stays empty for
+  // the test to fill directly — deterministic, no dependency on Nominatim.
+  await page
+    .getByTestId("branch-map")
+    .click({ position: { x: 150, y: 120 } });
+  await page.locator("#branch-address").fill("Abay Ave 10, Almaty");
+  await page
+    .locator("#branch-address-details")
+    .fill("2nd floor, entrance from the courtyard");
+
+  await page.getByTestId("branch-modal-add").click();
+  // Shows in the modal's own list immediately.
+  await expect(
+    page.getByRole("dialog").getByText("Aigul Flowers — Abay Ave"),
+  ).toBeVisible();
+
+  await page.getByTestId("branch-modal-done").click();
+  await expect(page.getByTestId("branch-map")).toBeHidden();
+  // ...and stays visible in step 3's own list once the modal closes.
+  await expect(page.getByText("Aigul Flowers — Abay Ave")).toBeVisible();
+
+  await page.locator('button[type="submit"]').click();
+  await confirmAndSubmit(page);
+
+  await expect(page).toHaveURL(/\/app\/business$/);
+  expect(branchBusinessId).toBe("b1");
+  expect(branchBody).toMatchObject({
+    name: "Aigul Flowers — Abay Ave",
+    address: "Abay Ave 10, Almaty",
+    address_details: "2nd floor, entrance from the courtyard",
+  });
 });

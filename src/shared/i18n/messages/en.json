@@ -48,7 +48,6 @@
   "search": {
     "home": {
       "headline": "Find the right one, faster",
-      "subtitle": "Reliable, accurate search across products and services - no more digging through a dozen marketplaces to decide",
       "modeLabel": "Search for",
       "mode": {
         "ITEM": "Products",
@@ -204,13 +203,14 @@
   "businessCabinet": {
     "register": {
       "pageTitle": "Register a business",
-      "title": "Set up your business on ASK",
-      "subtitle": "Tell us who you are and what you sell. You can add branches, products and services once your cabinet is open.",
+      "title": "Launch your business on ASK",
       "progress": "Step {step} of {total}",
       "steps": {
         "identity": "Who you are",
         "scope": "What you sell",
-        "delivery": "Delivery & pickup"
+        "delivery": "Delivery & branches",
+        "links": "Proof of trade",
+        "review": "Review & confirm"
       }
     },
     "fields": {
@@ -226,14 +226,17 @@
       "verification": "Where do you already sell or publish?",
       "deliveryCoverage": "Where do you deliver?",
       "deliveryCities": "Which cities?",
-      "pickup": "Is pickup available?"
+      "onlineOnly": "Only online — no physical branch",
+      "pickup": "PickUp available",
+      "catalogSetup": "How do you want to build your catalog?"
     },
     "hints": {
       "legalForm": "This decides what we need to confirm your business.",
       "legalIdentifier": "12 digits, exactly as registered.",
       "legalName": "The name on the registration, if it differs from the one above.",
       "verification": "Pick the places that are yours and paste the links. One is enough.",
-      "deliveryCities": "Add each city, then press Enter or Add."
+      "deliveryCities": "Type a city, then press Enter or a comma.",
+      "onlineOnly": "No storefront, warehouse, or pickup point — everything ships or is delivered."
     },
     "placeholders": {
       "businessName": "For example, Aigul Flowers",
@@ -281,9 +284,53 @@
       "yes": "Yes",
       "no": "No"
     },
+    "catalogSetup": {
+      "manual": {
+        "title": "Add products manually",
+        "description": "Add items yourself, or upload a prepared file, whenever you're ready."
+      },
+      "managedImport": {
+        "title": "Order a catalog import from Ask",
+        "description": "The Ask team gathers and prepares your catalog of products and services.",
+        "reassurance": "Skip the manual transfer — going it alone means adding and checking every item one by one; the Ask team moves your catalog fast and formats it for cards and search from the start.",
+        "price": "Estimated ₸{range}",
+        "priceNote": "Depends on volume and material quality — our team will follow up after your business is created to confirm the exact scope and price."
+      }
+    },
+    "branchModal": {
+      "title": "Add a branch",
+      "searchPlaceholder": "Search for an address",
+      "mapHint": "Search, or click the map to drop a pin. Drag the pin to fine-tune it.",
+      "fields": {
+        "name": "Branch name",
+        "address": "Address",
+        "addressDetails": "Details for customers"
+      },
+      "placeholders": {
+        "name": "For example, Aigul Flowers — Abay Ave",
+        "address": "Street and building",
+        "addressDetails": "Floor, entrance, landmarks — anything that helps someone find you"
+      },
+      "hints": {
+        "addressDetails": "Optional, but it saves customers a phone call."
+      },
+      "addBranch": "Add branch",
+      "addAnotherBranch": "Add another branch",
+      "removeBranch": "Remove {name}",
+      "done": "Done",
+      "errors": {
+        "incomplete": "Give the branch a name, an address, and a location on the map."
+      }
+    },
+    "review": {
+      "intro": "Check everything below before you create your business — you can still go back and fix anything.",
+      "notSet": "Not set",
+      "linkCount": "{count, plural, =0 {No links} one {# link} other {# links}}",
+      "branchCount": "Branches added",
+      "agreement": "I confirm this information is accurate and I agree to ASK's terms."
+    },
     "actions": {
       "createBusiness": "Create business",
-      "addCity": "Add",
       "removeCity": "Remove {city}",
       "back": "Back",
       "next": "Next"
@@ -304,6 +351,8 @@
       "deliveryCoverageRequired": "Choose where you deliver.",
       "deliveryCitiesRequired": "Add at least one city.",
       "pickupRequired": "Say whether pickup is available.",
+      "agreementRequired": "Confirm the information above before you continue.",
+      "branchFailed": "{name} was not saved — you can add it again from your Branches tab.",
       "onboardingInvalid": "Some details are missing or invalid. Check the form and try again.",
       "network": "Something went wrong. Check your connection and try again."
     }
