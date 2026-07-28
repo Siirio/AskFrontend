@@ -212,7 +212,7 @@ composition root (R3):
 | Guard | Mounted at | Rule | While loading | Denied → |
 |-------|-----------|------|---------------|----------|
 | `RequireAuth` | `app/app/(main)/layout.tsx` — wraps the whole `(main)` group | Rule 2: logged-out cannot enter `/app/*` | `GuardFallback` spinner | `/app/auth/login` |
-| `RequireDashboardAccess` | `app/app/(main)/business/(cabinet)/layout.tsx` | Rule 1: customer-only cannot open the Dashboard | `GuardFallback` spinner | `/app` |
+| `RequireDashboardAccess` | `app/app/(main)/business/(cabinet)/layout.tsx` | Rule 1: customer-only cannot open the Dashboard | `GuardFallback` spinner | `/app/business/register` (2026-07-28; was `/app`) |
 
 - **The auth pages are the exception** because they sit OUTSIDE the `(main)` group — the route-group boundary is the "gated vs. sign-in entry" line, so there is no per-URL allowlist. `/app/auth/*` and the top-level `/oauth/callback` are reachable logged-out by construction.
 - **Client-side by necessity:** the token is localStorage-only (D5/D6), invisible to the server/middleware, so the guard runs after hydration. Sequence: server renders → `AuthProvider` restores → guard reveals or redirects. A server/middleware guard waits on the Phase-4 cookie migration.

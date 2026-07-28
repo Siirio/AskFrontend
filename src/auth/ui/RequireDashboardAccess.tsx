@@ -19,8 +19,8 @@ import { GuardFallback } from "./GuardFallback";
  * route access can never disagree (P6.2).
  *
  * - authenticated + may access → render the cabinet.
- * - authenticated + customer-only → replace() to /app (Home). Never show the
- *   cabinet, not even for a frame.
+ * - authenticated + customer-only → replace() to /app/business/register, the
+ *   one way IN (locks.md). Never show the cabinet, not even for a frame.
  * - otherwise (loading, or the parent still resolving auth) → the fallback.
  */
 export function RequireDashboardAccess({ children }: { children: ReactNode }) {
@@ -29,7 +29,8 @@ export function RequireDashboardAccess({ children }: { children: ReactNode }) {
   const allowed = canAccessDashboard(user);
 
   useEffect(() => {
-    if (status === "authenticated" && !allowed) router.replace("/app");
+    if (status === "authenticated" && !allowed)
+      router.replace("/app/business/register");
   }, [status, allowed, router]);
 
   if (status === "authenticated" && allowed) return <>{children}</>;
