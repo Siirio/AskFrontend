@@ -1185,8 +1185,8 @@
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 300px;
-    height: 300px;
+    width: 260px;
+    height: 260px;
     z-index: 0;
     color: var(--foreground-subtle);
     background-image: radial-gradient(currentColor 2px, transparent 2px);
@@ -1210,6 +1210,28 @@
     mask-image: radial-gradient(circle at 0% 100%, black 0%, black 35%, transparent 85%);
     -webkit-mask-image: radial-gradient(circle at 0% 100%, black 0%, black 35%, transparent 85%);
     pointer-events: none;
+  }
+
+  /* Below `sm` (< 640px, same boundary the bottom-nav padding rule above
+   * uses) BOTH corners shrink hard rather than just scaling proportionally.
+   * At the desktop footprint the two circles sit far enough apart to read as
+   * two distinct corner accents; on a ~390px phone width they are close
+   * enough to touch and merge into one continuous dotted band running the
+   * full width of the screen — busier than the mode cards sitting right
+   * above them, which is the opposite of "quiet decoration" (owner report:
+   * "messing up UX/UI" on mobile). Shrunk small enough that they read as two
+   * separate corner marks again, with real empty space between them. */
+  @media (max-width: 639px) {
+    .neu-skin .neu-hero-dots {
+      width: 130px;
+      height: 130px;
+      opacity: 0.7;
+    }
+    .neu-skin .neu-hero-dots-secondary {
+      width: 100px;
+      height: 100px;
+      opacity: 0.5;
+    }
   }
 
   /* The search bar's own elevated stage: a `.neu-card` raised further still

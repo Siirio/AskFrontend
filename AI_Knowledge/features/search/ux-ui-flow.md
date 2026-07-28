@@ -72,12 +72,24 @@ list, and an empty state that no longer routes to the deleted requests feature.
   warm glow, `.neu-hero-decor`) stays at the TOP only, where it does real work revealing the
   nav's glass — the bottom is bookended by two ASYMMETRIC dot-grid corners instead
   (`.neu-hero-dots` bottom-right, larger/denser; `.neu-hero-dots-secondary` bottom-left,
-  smaller/sparser — deliberately uneven, an exact mirror reads as a template) coloured from
-  `--border`, never orange. All decoration stays `aria-hidden`/`pointer-events: none`. The one
-  surviving engineering note from the removed blob: any full-bleed decorative circle wider than a
-  phone viewport needs its OWN `overflow: hidden` clipping wrapper, or it pushes the page's
-  scrollable width past the viewport — verified with `document.documentElement.scrollWidth`
-  against `clientWidth` at 390px and 1280px on every pass.
+  smaller/sparser — deliberately uneven, an exact mirror reads as a template). All decoration
+  stays `aria-hidden`/`pointer-events: none`. The one surviving engineering note from the removed
+  blob: any full-bleed decorative circle wider than a phone viewport needs its OWN
+  `overflow: hidden` clipping wrapper, or it pushes the page's scrollable width past the
+  viewport — verified with `document.documentElement.scrollWidth` against `clientWidth` at
+  390px and 1280px on every pass.
+- **Two follow-up fixes, same-day review.** (1) Both dot corners were built from `--border`,
+  which is deliberately a near-invisible groove-fill token (`.neu-rule`'s job) — corrected to
+  `--foreground-subtle` (the measured, AA-checked "quiet but legible" token), with larger dots
+  and a wider fade, so both corners actually read instead of one being invisible and the other
+  barely there. Still neutral ink, never orange. (2) The right corner was shrunk slightly
+  (300px→260px), and — the more load-bearing fix — **both corners now shrink hard under
+  `@media (max-width: 639px)`** (the same breakpoint the bottom-nav padding rule already uses):
+  at the desktop footprint the two circles read as distinct corner accents, but at a ~390px
+  phone width they were close enough to merge into one continuous dotted band spanning the
+  whole screen, busier than the mode cards sitting above them (owner report: "messing up
+  UX/UI" on mobile). Below 640px they drop to 130px/100px so real empty space returns between
+  them.
 - Catalog Page/result cards are unchanged — explicitly out of scope until that surface gets its
   own full design pass (owner decision: catalog's cards/islands are designed once, later, not
   iterated now).
