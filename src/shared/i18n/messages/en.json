@@ -47,12 +47,16 @@
   },
   "search": {
     "home": {
-      "headline": "Find it without the noise",
-      "subtitle": "Search products and services near you",
+      "headline": "Find the right one, faster",
+      "subtitle": "Reliable, accurate search across products and services - no more digging through a dozen marketplaces to decide",
       "modeLabel": "Search for",
       "mode": {
         "ITEM": "Products",
         "SERVICE": "Services"
+      },
+      "modeHint": {
+        "ITEM": "Goods you can buy",
+        "SERVICE": "Specialists and services"
       },
       "queryLabel": "Search query",
       "queryPlaceholder": "What are you looking for?",

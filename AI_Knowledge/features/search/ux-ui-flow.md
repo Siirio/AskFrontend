@@ -27,6 +27,32 @@ list, and an empty state that no longer routes to the deleted requests feature.
 - Gate **G1**'s three parked controls (Unique-Offers sort, Companies filter, map-area filter)
   are not built, per the gate.
 
+**Home redesigned same day (owner review).** Three changes, all `src/search/ui/{HomePage,SearchForm}.tsx` + `design-system/neumorphism.css`:
+- **Copy rewritten against §1/§2 (RASE), not "local search."** The mission is saving time
+  choosing the best product across the multitude of marketplaces — not proximity. Headline/
+  subtitle no longer say "near you"; they name reliability, accuracy, and the anti-marketplace-
+  multitude framing directly (`search.home.headline`/`subtitle`, all three locales).
+- **The goods/services toggle is now a card pair, not an inline tab pair** — `ModeCard`,
+  duplicated from `auth/ui/RoleSelectionModal`'s `RoleCard` shape per D8 (same LOOK — icon,
+  label, hint, pressed-in selection — different owner/data). Each card carries its own
+  `home.modeHint.{ITEM,SERVICE}` i18n key.
+- **The search bar is its own elevated stage** (`.neu-search-bar` on a `.neu-card`), not a bare
+  input — a leading search icon inside the field, a full `size="lg"` accent button with a label
+  (not icon-only), and a stronger focus-within glow (new CSS, `neumorphism.css`). It LEADS the
+  form, with the mode cards below it (reordered same day, second review pass) — the query is
+  what the customer is actually here to type; the mode choice follows.
+- **The hero is vertically centred** (`min-h-svh` + `justify-center` on the content column, same
+  convention `auth/ui/AuthShell` already uses) rather than pinned near the top with dead space
+  below it (second review pass, same day).
+- **Two blurred decorative orbs** (`.neu-hero-decor`) sit behind the hero, extending UP behind
+  the sticky nav bar on purpose: `.neu-topbar`/`.neu-nav-link` already carry
+  `backdrop-filter: blur(...)`, but a blur over one flat page colour is indistinguishable from no
+  blur at all — the orb gives the glass something to actually show. A subtle GSAP entrance
+  (fade + rise, `shared/motion.ts`) plays on mount, reduced-motion handled centrally as always.
+- Catalog Page/result cards are unchanged — explicitly out of scope until that surface gets its
+  own full design pass (owner decision: catalog's cards/islands are designed once, later, not
+  iterated now).
+
 ## Screens
 | Screen | Route | Rendering |
 |--------|-------|-----------|

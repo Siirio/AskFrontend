@@ -49,7 +49,7 @@ test("Home renders the query input and the mode toggle, and submitting navigates
   await expect(
     page.getByRole("textbox", { name: "Search query" }),
   ).toBeVisible();
-  const serviceOption = page.getByRole("button", { name: "Services" });
+  const serviceOption = page.getByTestId("mode-card-service");
   await expect(serviceOption).toBeVisible();
   await serviceOption.click();
 

@@ -1088,6 +1088,79 @@
     background: var(--neu-accent-vivid);
     box-shadow: 0 0 0 4px var(--neu-accent-glow);
   }
+
+  /* ── HERO DECORATION (search Home) ───────────────────────────────────────
+   * Two blurred orbs behind the hero content — decoration only, no text ever
+   * sits on them, so the vivid accent + gradient are legal here (header note
+   * 1) even though they may never carry a label. `pointer-events: none` keeps
+   * them inert; `aria-hidden` on the host element (set in the component)
+   * removes them from the accessibility tree entirely. `z-index: 0` (not a
+   * negative value) is deliberate: a negative z-index on an element whose
+   * parent has `position: relative` but no z-index of its own falls out of
+   * the parent's stacking context entirely and can paint behind the PAGE
+   * background instead of just behind its siblings — the actual hero content
+   * sits at `z-10` in a wrapper (the component), which is the simpler, less
+   * surprising way to guarantee the stacking order. Values are fixed here,
+   * not Tailwind arbitrary values in the component, so the shape stays a
+   * single owned thing (P9.2 — geometry lives in the design system, same
+   * reasoning as every other `.neu-*` shape class). */
+  .neu-skin .neu-hero-decor {
+    position: absolute;
+    /* Extends ABOVE the hero content's own top edge, into the area the
+     * sticky nav bar sits over — on purpose. `.neu-topbar`/`.neu-nav-link`
+     * already carry `backdrop-filter: blur(...)` + a translucent fill, but a
+     * blur has nothing to DO when the only thing behind it is one flat page
+     * colour — it reads as indistinguishable from a solid fill. Letting the
+     * glow bleed up here is what makes that glass surface actually legible
+     * as glass without waiting for the customer to scroll something
+     * colourful underneath it. */
+    top: -180px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .neu-skin .neu-hero-decor::before,
+  .neu-skin .neu-hero-decor::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(70px);
+  }
+  .neu-skin .neu-hero-decor::before {
+    top: 0;
+    left: -100px;
+    width: 360px;
+    height: 360px;
+    background: var(--neu-gradient-primary);
+    opacity: 0.32;
+  }
+  .neu-skin .neu-hero-decor::after {
+    /* 220px = the old 40px offset + the 180px the box grew upward by, so
+     * this orb stays where it was relative to the actual page content. */
+    top: 220px;
+    right: -120px;
+    width: 280px;
+    height: 280px;
+    background: var(--neu-accent-vivid);
+    opacity: 0.2;
+  }
+
+  /* The search bar's own elevated stage: a `.neu-card` raised further still
+   * (`--neu-raised-lg` is already the card default, so this earns its
+   * prominence from SIZE and the focus glow, not a bigger shadow token —
+   * a second shadow scale would be a new value, not reuse). The glow starts
+   * the moment focus lands ANYWHERE inside (`:focus-within`), not just on the
+   * input, because the input and the submit button are one control from the
+   * customer's point of view. */
+  .neu-skin .neu-search-bar {
+    transition: box-shadow var(--duration-base, 0.2s) ease;
+  }
+  .neu-skin .neu-search-bar:focus-within {
+    box-shadow: var(--neu-raised-lg), var(--neu-focus-glow);
+  }
 }
 
 /*

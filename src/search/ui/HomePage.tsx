@@ -9,6 +9,16 @@ import { SearchForm } from "./SearchForm";
  * is no per-request data to fetch here — only the client `SearchForm` island
  * is interactive.
  *
+ * The two blurred orbs (`.neu-hero-decor`, design-system/neumorphism.css) are
+ * pure decoration — `aria-hidden`, `pointer-events: none`, sat behind the
+ * content (z-0 vs. the content's z-10) — giving the page some real presence
+ * beyond a bare form (owner request, 2026-07-28). The wrapper needs
+ * `relative` for that absolutely-positioned layer to anchor to.
+ *
+ * `min-h-svh` centres the hero in the viewport rather than pinning it near
+ * the top with a lot of dead space below (owner review, same day) — the
+ * same centring convention `auth/ui/AuthShell` already uses.
+ *
  * `locale` is passed by the route file (resolved from the `ask.locale`
  * cookie, D19) rather than read here — `getTranslations(namespace)` alone
  * always falls back to `defaultLocale` (shared/i18n/request.ts never reads
@@ -19,16 +29,21 @@ export async function HomePage({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "search" });
 
   return (
-    <main className="mx-auto flex max-w-xl flex-col items-center gap-8 px-4 py-16 text-center sm:py-24">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
-          {t("home.headline")}
-        </h1>
-        <p className="text-sm text-foreground-muted sm:text-base">
-          {t("home.subtitle")}
-        </p>
+    <main className="relative">
+      {/* Spans the full-bleed width so the blur fades out naturally instead
+          of cutting off at the narrower content column's edge. */}
+      <span className="neu-hero-decor" aria-hidden="true" />
+      <div className="relative z-10 mx-auto flex min-h-svh max-w-2xl flex-col items-center justify-center gap-8 px-4 py-12 text-center">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-3xl font-semibold text-balance text-foreground sm:text-4xl">
+            {t("home.headline")}
+          </h1>
+          <p className="text-base text-pretty text-foreground-muted sm:text-lg">
+            {t("home.subtitle")}
+          </p>
+        </div>
+        <SearchForm />
       </div>
-      <SearchForm />
     </main>
   );
 }
