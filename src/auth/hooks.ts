@@ -344,44 +344,50 @@ export function useVerifyStep(verificationId: string, purpose?: string) {
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<VerifyResult | null>(null);
 
-  const submit = useCallback(async (codeOverride?: string) => {
-    // CodeInput's onComplete fires synchronously with the just-completed
-    // value, in the same tick as the setCode() that produced it — before
-    // React has committed that state update. Reading `code` here in that path
-    // would validate the PREVIOUS (5-digit) value and reject a code the
-    // screen already shows as complete (found 2026-07-28). The override lets
-    // the caller hand over the value it already has instead of waiting on
-    // the closure to catch up.
-    const value = codeOverride ?? code;
-    setError(null);
-    if (!CODE_RE.test(value)) {
-      setError(t("errors.codeLength"));
-      return;
-    }
-    setPending(true);
-    try {
-      const session = await api.verifyCode({ verificationId, code: value });
-      applySession(session);
-      // Arm the role-choosing modal BEFORE the page navigates to /app: the flag
-      // lives in storage + store, so it survives the navigation (and a reload)
-      // until the user actually answers.
-      //
-      // Fires for a SIGN-UP only. A log-in 2FA challenge runs this same step
-      // (P6.2 — one implementation), and it carries no purpose because
-      // useLoginFlow builds its Challenge by hand from the login response, so
-      // signing in never re-opens a choice the person already made.
-      if (session.suggestRoleExpansion || purpose === ROLE_EXPANSION_PURPOSE) {
-        persistPendingRoleSelection(store, true);
+  const submit = useCallback(
+    async (codeOverride?: string) => {
+      // CodeInput's onComplete fires synchronously with the just-completed
+      // value, in the same tick as the setCode() that produced it — before
+      // React has committed that state update. Reading `code` here in that path
+      // would validate the PREVIOUS (5-digit) value and reject a code the
+      // screen already shows as complete (found 2026-07-28). The override lets
+      // the caller hand over the value it already has instead of waiting on
+      // the closure to catch up.
+      const value = codeOverride ?? code;
+      setError(null);
+      if (!CODE_RE.test(value)) {
+        setError(t("errors.codeLength"));
+        return;
       }
-      setResult({ targetPath: startRouteToPath(session.startRoute) });
-    } catch (e) {
-      const message = describeError(e, t, "errors.codeInvalid");
-      setError(message);
-      toast.error(message);
-    } finally {
-      setPending(false);
-    }
-  }, [verificationId, purpose, code, applySession, store, t]);
+      setPending(true);
+      try {
+        const session = await api.verifyCode({ verificationId, code: value });
+        applySession(session);
+        // Arm the role-choosing modal BEFORE the page navigates to /app: the flag
+        // lives in storage + store, so it survives the navigation (and a reload)
+        // until the user actually answers.
+        //
+        // Fires for a SIGN-UP only. A log-in 2FA challenge runs this same step
+        // (P6.2 — one implementation), and it carries no purpose because
+        // useLoginFlow builds its Challenge by hand from the login response, so
+        // signing in never re-opens a choice the person already made.
+        if (
+          session.suggestRoleExpansion ||
+          purpose === ROLE_EXPANSION_PURPOSE
+        ) {
+          persistPendingRoleSelection(store, true);
+        }
+        setResult({ targetPath: startRouteToPath(session.startRoute) });
+      } catch (e) {
+        const message = describeError(e, t, "errors.codeInvalid");
+        setError(message);
+        toast.error(message);
+      } finally {
+        setPending(false);
+      }
+    },
+    [verificationId, purpose, code, applySession, store, t],
+  );
 
   return { code, setCode, error, pending, result, submit };
 }
