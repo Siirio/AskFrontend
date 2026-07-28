@@ -1169,40 +1169,46 @@
    * (`.neu-hero-decor::before`); `.neu-hero-dots-secondary` (bottom-left,
    * smaller, sparser) is the quiet counterweight, never a mirror-image copy
    * — an exact mirror reads as a template, an uneven pair reads composed.
-   * `currentColor` reads `--border`, the same quiet token `.neu-rule`
-   * already uses, so nothing new enters the palette; ONLY the warm glow
-   * (top) keeps any colour at all, keeping the "one accent, used sparingly"
-   * rule intact even in the decoration. Both masked to fade to nothing
-   * rather than end in a hard rectangle, matching how the blurred orbs never
-   * show a straight edge either. */
+   *
+   * `currentColor` reads `--foreground-subtle`, NOT `--border` (corrected
+   * 2026-07-28 — the first version was nearly invisible on both corners):
+   * `--border` is deliberately a barely-there groove-fill token (`.neu-rule`'s
+   * job, a 2px line that must recede), never meant to carry a standalone
+   * pattern at this scale. `--foreground-subtle` is the measured, AA-checked
+   * "quiet but legible" token used for muted icons/subtext — still neutral
+   * ink, never orange, so the "one accent, used sparingly" rule still holds;
+   * it is simply the correct token for something meant to be SEEN, at low
+   * opacity, rather than nearly hidden. Both masked to fade to nothing rather
+   * than end in a hard rectangle, matching how the blurred orbs never show a
+   * straight edge either. */
   .neu-skin .neu-hero-dots {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 280px;
-    height: 280px;
+    width: 300px;
+    height: 300px;
     z-index: 0;
-    color: var(--border);
-    background-image: radial-gradient(currentColor 1.5px, transparent 1.5px);
-    background-size: 22px 22px;
-    opacity: 0.6;
-    mask-image: radial-gradient(circle at 100% 100%, black 0%, black 35%, transparent 75%);
-    -webkit-mask-image: radial-gradient(circle at 100% 100%, black 0%, black 35%, transparent 75%);
+    color: var(--foreground-subtle);
+    background-image: radial-gradient(currentColor 2px, transparent 2px);
+    background-size: 20px 20px;
+    opacity: 0.8;
+    mask-image: radial-gradient(circle at 100% 100%, black 0%, black 45%, transparent 90%);
+    -webkit-mask-image: radial-gradient(circle at 100% 100%, black 0%, black 45%, transparent 90%);
     pointer-events: none;
   }
   .neu-skin .neu-hero-dots-secondary {
     position: absolute;
     left: 0;
     bottom: 0;
-    width: 180px;
-    height: 180px;
+    width: 200px;
+    height: 200px;
     z-index: 0;
-    color: var(--border);
-    background-image: radial-gradient(currentColor 1.5px, transparent 1.5px);
-    background-size: 26px 26px;
-    opacity: 0.4;
-    mask-image: radial-gradient(circle at 0% 100%, black 0%, black 25%, transparent 65%);
-    -webkit-mask-image: radial-gradient(circle at 0% 100%, black 0%, black 25%, transparent 65%);
+    color: var(--foreground-subtle);
+    background-image: radial-gradient(currentColor 1.75px, transparent 1.75px);
+    background-size: 24px 24px;
+    opacity: 0.6;
+    mask-image: radial-gradient(circle at 0% 100%, black 0%, black 35%, transparent 85%);
+    -webkit-mask-image: radial-gradient(circle at 0% 100%, black 0%, black 35%, transparent 85%);
     pointer-events: none;
   }
 
