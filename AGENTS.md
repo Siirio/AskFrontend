@@ -168,7 +168,7 @@ Never commit or push unless the user explicitly asks. When they do, these rules 
 **Type** — `feat` (new user-facing capability) · `fix` (bug) · `docs` (documentation only) · `refactor` (no behavior change) · `perf` · `test` · `build` (deps, bundler, config) · `ci` · `chore` (housekeeping) · `style` (formatting only) · `revert`
 
 **Scope** — the slice, or the area:
-- slices: `auth` `search` `catalog` `services` `chats` `requests` `profile` `business-cabinet`
+- slices: `auth` `search` `catalog` `services` `chats` `profile` `business-cabinet`
 - everything else: `app` `marketing` `shared` `design-system` `lib` `e2e` `deps` `ai-knowledge`
 - Omit the scope only when the change is genuinely repo-wide.
 
@@ -252,15 +252,20 @@ Run at session start:
 
 A **feature folder == a slice**, 1:1. Slice names mirror AskBackend module names (architecture D1).
 
+Backend module paths verified against `dev` `ee542d9` (2026-07-28) — the 2026-07-22 refactor renamed most of them.
+
 | Slice | Folder | Backend module | Route(s) | Rendering |
 |-------|--------|----------------|----------|-----------|
-| Auth & Roles | auth/ | identity | /app/auth | client |
-| Search & Catalog list | search/ | search | /app, /app/catalog | server |
-| Product Card | catalog/ | catalog, import | /app/product/[id] | server |
-| Services | services/ | service | business cabinet tab | client |
-| Chats | chats/ | chat | /app/chats | client |
-| Requests | requests/ | request | business cabinet tab | client |
-| Profile | profile/ | identity | /app/profile | client |
-| Business Cabinet | business-cabinet/ | business, offers | /app/business | client |
+| Auth & Roles | auth/ | `identity` | /app/auth | client |
+| Search & Catalog list | search/ | `search/basic` | /app, /app/catalog | server (auth-gated, D23) |
+| Product Card | catalog/ | `offer/item`, `importing` | modal over /app/catalog | client |
+| Services | services/ | `offer/service` | business cabinet tab | client |
+| Chats | chats/ | `chat` | /app/chats | client |
+| Profile | profile/ | `identity` | /app/profile | client |
+| Business Cabinet | business-cabinet/ | `business`, `offer` | /app/business | client |
 
-Backend modules with no V1 surface (`autodump`, `contact`, `shipping`) get no slice yet. Marketing (`app/(marketing)`) is app-level wiring, NOT a slice — it never gets a feature folder.
+`/app/product/[id]` is **deferred** — there is no public item read on `dev` (see `features/catalog/contracts.md`). The Product Card ships as a modal rendered from the search payload.
+
+**`requests/` was REMOVED 2026-07-28** (product decision — the auto-request behaviour collapses at scale). Docs in `AI_Knowledge/features/_archived/requests/`; the backend's `request` domain was deleted 2026-07-21. The cabinet's "Requests" tab is `chats` and is unaffected.
+
+Backend modules with no V1 surface (`ai`/autodump, `moderation`, `managedimport`, `platform`, `audit`, `legal`) get no slice yet — `legal` is consumed directly by `auth` (registration consent), not as a slice. The `contact` and `shipping` modules were **deleted** by the backend and are not coming back. Marketing (`app/(marketing)`) is app-level wiring, NOT a slice — it never gets a feature folder.

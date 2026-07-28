@@ -15,8 +15,7 @@ import importPlugin from "eslint-plugin-import";
  * The slice list MUST stay in sync with architecture §2; `boundaries/no-unknown-dependencies`
  * and `boundaries/no-unknown-files` turn a forgotten sync into a lint error.
  */
-const SLICES =
-  "auth|search|catalog|services|chats|requests|profile|business-cabinet";
+const SLICES = "auth|search|catalog|services|chats|profile|business-cabinet";
 const SLICE_SET = new Set(SLICES.split("|"));
 const TOOLBOX = new Set(["shared", "design-system", "lib"]);
 

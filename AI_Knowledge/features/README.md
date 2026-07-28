@@ -32,4 +32,9 @@ features/{slice}/
 - **Toolbox** (`shared/`, `design-system/`, `lib/`) — domain-free by definition.
 
 ## Tracked slices
-auth · search · catalog · services · chats · requests · profile · business-cabinet
+auth · search · catalog · services · chats · profile · business-cabinet
+
+## Archived
+`_archived/requests/` — removed from the product 2026-07-28 (owner decision; the auto-request
+behaviour collapses at scale). Never built, no `src/requests/` ever existed. The backend's
+`request` domain was deleted 2026-07-21. Read its README before ever proposing it again.

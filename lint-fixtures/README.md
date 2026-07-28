@@ -8,15 +8,15 @@ deliberately violates ONE import law from `AI_Knowledge/ARCHITECTURE_PATTERN_FRO
 and FAILS THE BUILD unless ESLint reports the expected rule as an error —
 i.e. the build breaks if the boundary enforcement ever stops working.
 
-| Fixture                                        | Violates                               | Expected ESLint rule                     |
-| ---------------------------------------------- | -------------------------------------- | ---------------------------------------- |
-| `src/shared/bad-r1-imports-slice.ts`           | R1 — toolbox never imports a slice     | `boundaries/dependencies`                |
-| `src/search/bad-r2-deep-import.ts`             | R2 — cross-slice only via `index.ts`   | `boundaries/dependencies`                |
-| `src/auth/bad-r3-imports-app.ts`               | R3 — no slice imports `app/`           | `boundaries/dependencies`                |
-| `src/auth/bad-r4-relative-escape.ts`           | R4 — relative escape to a legal target | `local/no-cross-element-relative-import` |
-| `src/chats/index.ts` ⇄ `src/requests/index.ts` | R5 — cycles between slices             | `import/no-cycle`                        |
-| `src/widgets/widget.ts`                        | unknown top-level folder               | `boundaries/no-unknown-files`            |
-| `src/app/bad-imports-unknown.ts`               | import from an unknown folder          | `boundaries/no-unknown-dependencies`     |
+| Fixture                                       | Violates                               | Expected ESLint rule                     |
+| --------------------------------------------- | -------------------------------------- | ---------------------------------------- |
+| `src/shared/bad-r1-imports-slice.ts`          | R1 — toolbox never imports a slice     | `boundaries/dependencies`                |
+| `src/search/bad-r2-deep-import.ts`            | R2 — cross-slice only via `index.ts`   | `boundaries/dependencies`                |
+| `src/auth/bad-r3-imports-app.ts`              | R3 — no slice imports `app/`           | `boundaries/dependencies`                |
+| `src/auth/bad-r4-relative-escape.ts`          | R4 — relative escape to a legal target | `local/no-cross-element-relative-import` |
+| `src/chats/index.ts` ⇄ `src/profile/index.ts` | R5 — cycles between slices             | `import/no-cycle`                        |
+| `src/widgets/widget.ts`                       | unknown top-level folder               | `boundaries/no-unknown-files`            |
+| `src/app/bad-imports-unknown.ts`              | import from an unknown folder          | `boundaries/no-unknown-dependencies`     |
 
 (R1–R3 share one rule id: eslint-plugin-boundaries v7 folded `element-types`
 and `entry-point` into the canonical `dependencies` rule — see the dated §8

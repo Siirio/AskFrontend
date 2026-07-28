@@ -58,7 +58,7 @@ This is a deliberate hybrid, not textbook Vertical Slice Architecture. When exte
 
 | Aspect | Canonical VSA | This project | Borrowed from |
 |---|---|---|---|
-| Slice granularity | Slice = use case ("AddToCart", "CancelOrder") | Slice = **business domain** ("search", "requests"); use-case subfolders allowed inside a slice if it grows | Package-by-feature / modular monolith |
+| Slice granularity | Slice = use case ("AddToCart", "CancelOrder") | Slice = **business domain** ("search", "chats"); use-case subfolders allowed inside a slice if it grows | Package-by-feature / modular monolith |
 | Slice internals | Free-form per slice | **Fixed anatomy**: `index.ts`, `api.ts`, `model.ts`, `hooks.ts`, `store.ts`, `ui/` (§3) | FSD segments |
 | Slice boundary | Informal — "minimize coupling", relies on team discipline | **Public API via `index.ts`**, deep imports forbidden, ESLint-enforced (R2, §8) | FSD public API |
 | Cross-layer imports | Not regulated | **One direction only** (slices → shared, never back) + formalized `shared` with the zero-business-logic litmus test (R1, §5) | FSD import rules |
@@ -121,7 +121,7 @@ Ask_Frontend/                    # ONE Next.js app: marketing at `/`, platform a
     catalog/                     # ← backend: catalog   — Product Card (modal + page, D10); seller Products tab
     services/                    # ← backend: service   — seller Services tab; service details in the card
     chats/                       # ← backend: chat      — Chats Page, chat thread, business chat views
-    requests/                    # ← backend: request   — customer requests, supplier tasks (cabinet "Requests")
+    # requests/ — REMOVED 2026-07-28 (product decision; see features/_archived/requests/)
     profile/                     # ← backend: identity  — profile card content, settings, sign out
     business-cabinet/            # ← backend: business  — seller workspace shell (UF 3.1): Overview/Requests,
                                  #     Branches, Unique Offers, Company Profile, Company Dashboard;
@@ -198,7 +198,7 @@ business-cabinet/
     dashboard/
 ```
 
-- A cabinet tab that manages ANOTHER domain's data (Products → `catalog`, Services → `services`, Requests → `requests`) is built inside the slice that owns the data and embedded into `business-cabinet` via that slice's `index.ts` (R2, D8) — the cabinet is composition, not ownership.
+- A cabinet tab that manages ANOTHER domain's data (Products → `catalog`, Services → `services`, the "Requests" tab → `chats`) is built inside the slice that owns the data and embedded into `business-cabinet` via that slice's `index.ts` (R2, D8) — the cabinet is composition, not ownership.
 - A feature becomes a new top-level slice ONLY when it maps to its own backend module, via the §2 process (doc entry + ESLint pattern in the same commit).
 
 ## 4. Import Rules (strict)
@@ -239,7 +239,7 @@ business-cabinet/
 | A data-fetching/orchestration hook | Owning slice `hooks.ts` (P1.2) |
 | A component used by one slice | That slice's `ui/` (private, not exported) |
 | A component needed by a 2nd slice | Ownership test (§5, D8): embeds the owner's live feature (same data/behavior) → import via owner's `index.ts`; otherwise duplicate into the consuming slice |
-| A business-cabinet tab managing another domain's data | The owning slice (Products → `catalog`, Services → `services`, Requests → `requests`), embedded via its `index.ts` (§3, R2) |
+| A business-cabinet tab managing another domain's data | The owning slice (Products → `catalog`, Services → `services`, the "Requests" tab → `chats`), embedded via its `index.ts` (§3, R2) |
 | Sorting/filter logic and types for the catalog | `search/` — the search module owns list/sort/filter data (`PRODUCT_VISION.md` §4) |
 | A domain-free primitive (3+ consumers) | `shared/ui` |
 | A domain-aware "reusable" component (e.g. ResultCard, OfferBadge) | The owning slice — NEVER `shared/ui` |
@@ -293,7 +293,7 @@ ESLint (`eslint-plugin-boundaries` + `eslint-plugin-import`) — element types a
 settings: {
   "boundaries/elements": [
     { type: "app",    pattern: "src/app/**" },
-    { type: "slice",  pattern: "src/(auth|search|catalog|services|chats|requests|profile|business-cabinet)/**", capture: ["slice"] },
+    { type: "slice",  pattern: "src/(auth|search|catalog|services|chats|profile|business-cabinet)/**", capture: ["slice"] },
     { type: "shared", pattern: "src/(shared|design-system|lib)/**" }
   ]
 },

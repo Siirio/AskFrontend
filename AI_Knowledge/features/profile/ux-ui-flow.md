@@ -22,7 +22,7 @@ Traces PRODUCT_VISION **UF 2.3** (configure something, log out, or find addition
 
 ## Cross-slice
 - Sign out is an `@/auth` action (R6, D8) — this slice renders the control, `auth/` performs it.
-- "My requests" inside the profile area is `@/requests` embedded via its `index.ts` — same knowledge, live feature, never a copy.
+- ~~"My requests" inside the profile area~~ — **removed 2026-07-28.** The `requests` slice was removed from the product and its backend domain deleted; the section was never in PRODUCT_VISION UF 2.3 either. Do not build it (see `contracts.md`).
 - The card's *shell* is app chrome (`app/_components/`); its *content* comes from this slice.
 
 ## Not in V1
