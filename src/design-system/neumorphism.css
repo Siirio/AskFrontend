@@ -1161,62 +1161,26 @@
     opacity: 0.2;
   }
 
-  /* A third, quieter presence at the FOOT of the hero (owner review,
-   * 2026-07-28) — the centred hero leaves real empty space below the form on
-   * anything taller than a phone, and `.neu-hero-decor` above only reaches
-   * the top. Same mechanism (blurred, `pointer-events: none`, no text ever
-   * sits on it), independent element because `.neu-hero-decor` already
-   * spends both of its pseudo-elements on the top pair. Much lower opacity
-   * than the top orbs — a footer glow, not a second focal point.
-   *
-   * TWO layers, same reason `.neu-hero-decor` needs its own `overflow:
-   * hidden` wrapper: the glow circle (460px) is wider than a phone viewport,
-   * and this element has no `left/right: 0` sibling clipping it the way
-   * `.neu-hero-decor`'s pseudo-elements are clipped by THEIR OWN parent — so
-   * without a dedicated clipping box, a centred, transform-shifted circle
-   * this wide would push the page's scrollable width past the viewport and
-   * put a horizontal scrollbar on the whole platform shell. The wrapper
-   * spans full width (`left/right: 0`) and clips; the glow itself is its
-   * `::before`, positioned in the wrapper's own coordinate space. */
-  .neu-skin .neu-hero-decor-bottom {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 320px;
-    overflow: hidden;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .neu-skin .neu-hero-decor-bottom::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: -140px;
-    width: 460px;
-    height: 460px;
-    transform: translateX(-50%);
-    border-radius: 9999px;
-    filter: blur(90px);
-    background: var(--neu-gradient-primary);
-    opacity: 0.14;
-  }
-
-  /* One quiet texture accent, ONE corner only (owner review — "add some
-   * decoration," explicitly NOT the scattered-icon/arrow/card-mockup
-   * treatment of a marketing landing: this product's chrome recedes, so a
-   * single restrained accent beats several competing ones). A dot grid, not
-   * a shape — `currentColor` reads `--border`, the same quiet token the
-   * skin's one hairline-adjacent surface already uses (`.neu-rule`), so nothing
-   * new enters the palette. The mask fades it to nothing rather than ending
-   * in a hard rectangle, matching how the blurred orbs never show a straight
-   * edge either. */
+  /* The bottom of the hero is bookended by TEXTURE, not a second glow (owner
+   * review, 2026-07-28 — a centred blob at the foot read as a generic
+   * "SaaS hero" move, not a deliberate composition). Two quiet dot-grid
+   * corners, asymmetric on purpose: `.neu-hero-dots` (bottom-right, larger,
+   * denser) balances the diagonal from the top-left warm orb
+   * (`.neu-hero-decor::before`); `.neu-hero-dots-secondary` (bottom-left,
+   * smaller, sparser) is the quiet counterweight, never a mirror-image copy
+   * — an exact mirror reads as a template, an uneven pair reads composed.
+   * `currentColor` reads `--border`, the same quiet token `.neu-rule`
+   * already uses, so nothing new enters the palette; ONLY the warm glow
+   * (top) keeps any colour at all, keeping the "one accent, used sparingly"
+   * rule intact even in the decoration. Both masked to fade to nothing
+   * rather than end in a hard rectangle, matching how the blurred orbs never
+   * show a straight edge either. */
   .neu-skin .neu-hero-dots {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 260px;
-    height: 260px;
+    width: 280px;
+    height: 280px;
     z-index: 0;
     color: var(--border);
     background-image: radial-gradient(currentColor 1.5px, transparent 1.5px);
@@ -1224,6 +1188,21 @@
     opacity: 0.6;
     mask-image: radial-gradient(circle at 100% 100%, black 0%, black 35%, transparent 75%);
     -webkit-mask-image: radial-gradient(circle at 100% 100%, black 0%, black 35%, transparent 75%);
+    pointer-events: none;
+  }
+  .neu-skin .neu-hero-dots-secondary {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 180px;
+    height: 180px;
+    z-index: 0;
+    color: var(--border);
+    background-image: radial-gradient(currentColor 1.5px, transparent 1.5px);
+    background-size: 26px 26px;
+    opacity: 0.4;
+    mask-image: radial-gradient(circle at 0% 100%, black 0%, black 25%, transparent 65%);
+    -webkit-mask-image: radial-gradient(circle at 0% 100%, black 0%, black 25%, transparent 65%);
     pointer-events: none;
   }
 

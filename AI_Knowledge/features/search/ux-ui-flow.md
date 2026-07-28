@@ -61,18 +61,23 @@ list, and an empty state that no longer routes to the deleted requests feature.
   guards independently: a blank/missing `query` param (a typed, bookmarked, or hand-edited URL)
   never reaches `search()` at all — it renders a validation `EmptyState` (`search.validation.*`)
   with a link back to Home, never a wasted round trip to a request known to fail (P9.4).
-- **Decoration extended, fourth review pass (owner request: "make it beautiful, don't hurt the
-  UX").** Weighed against a UmitPath-style treatment (scattered arrow/plus icons, dot-grid
-  panels, floating card mockups) and deliberately NOT adopted — that reads as a marketing-landing
-  pitch, competes with the search bar for attention, and puts orange on purely decorative
-  elements, which conflicts with the "saturation is action" lock. Instead: a third, much quieter
-  glow at the FOOT of the hero (`.neu-hero-decor-bottom`, filling what was dead space below the
-  centred form on anything taller than a phone) and ONE corner dot-grid texture
-  (`.neu-hero-dots`, colored from `--border`, not orange) — same restrained, single-accent
-  language as everything else on this surface. Both are `aria-hidden`/`pointer-events: none` like
-  the original pair. The footer glow needed its own `overflow: hidden` clipping wrapper (its
-  circle is wider than a phone viewport) — verified with `document.documentElement.scrollWidth`
-  against `clientWidth` at 390px and 1280px to prove no horizontal scrollbar was introduced.
+- **Decoration extended, then corrected, across two more review passes (owner: "make it
+  beautiful, don't hurt the UX," then "I don't like the glowing blob in center bottom").**
+  Weighed against a UmitPath-style treatment (scattered arrow/plus icons, dot-grid panels,
+  floating card mockups) and deliberately NOT adopted at any point — that reads as a
+  marketing-landing pitch, competes with the search bar for attention, and puts orange on purely
+  decorative elements, conflicting with the "saturation is action" lock. First attempt added a
+  third glow at the FOOT of the hero (a centred blob) plus one corner dot-grid texture; the blob
+  read as a generic template move on review and was REMOVED. **Final composition:** colour (the
+  warm glow, `.neu-hero-decor`) stays at the TOP only, where it does real work revealing the
+  nav's glass — the bottom is bookended by two ASYMMETRIC dot-grid corners instead
+  (`.neu-hero-dots` bottom-right, larger/denser; `.neu-hero-dots-secondary` bottom-left,
+  smaller/sparser — deliberately uneven, an exact mirror reads as a template) coloured from
+  `--border`, never orange. All decoration stays `aria-hidden`/`pointer-events: none`. The one
+  surviving engineering note from the removed blob: any full-bleed decorative circle wider than a
+  phone viewport needs its OWN `overflow: hidden` clipping wrapper, or it pushes the page's
+  scrollable width past the viewport — verified with `document.documentElement.scrollWidth`
+  against `clientWidth` at 390px and 1280px on every pass.
 - Catalog Page/result cards are unchanged — explicitly out of scope until that surface gets its
   own full design pass (owner decision: catalog's cards/islands are designed once, later, not
   iterated now).
