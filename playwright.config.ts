@@ -27,10 +27,24 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
   ],
-  webServer: {
-    command: "next build && next start",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 240_000,
-  },
+  webServer: [
+    // The search slice's Catalog Page calls `POST /api/v1/search` SERVER-SIDE
+    // (D7) — a request `page.route` cannot intercept, since that only sees
+    // requests the BROWSER makes. This tiny stand-in backend is the one thing
+    // e2e/search.spec.ts needs that no earlier slice did (see its header
+    // comment and e2e/mock-backend.mjs).
+    {
+      command: "node e2e/mock-backend.mjs",
+      url: "http://localhost:4100/healthz",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command: "next build && next start",
+      url: "http://localhost:3000",
+      reuseExistingServer: !process.env.CI,
+      timeout: 240_000,
+      env: { NEXT_PUBLIC_API_BASE_URL: "http://localhost:4100" },
+    },
+  ],
 });

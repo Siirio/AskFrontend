@@ -45,6 +45,70 @@
     "placeholder": "Section under construction",
     "loading": "Loading…"
   },
+  "search": {
+    "home": {
+      "headline": "Find it without the noise",
+      "subtitle": "Search products and services near you",
+      "modeLabel": "Search for",
+      "mode": {
+        "ITEM": "Products",
+        "SERVICE": "Services"
+      },
+      "queryLabel": "Search query",
+      "queryPlaceholder": "What are you looking for?",
+      "submit": "Search"
+    },
+    "pages": {
+      "catalog": "Catalog"
+    },
+    "sort": {
+      "label": "Sort by",
+      "relevance": "Relevance",
+      "distance": "Distance",
+      "price_asc": "Cost"
+    },
+    "filters": {
+      "minPrice": "Min price",
+      "maxPrice": "Max price",
+      "city": "City",
+      "cityPlaceholder": "For example, Almaty",
+      "cityLoading": "Looking for cities",
+      "within100km": "Search within 100 km",
+      "locationPending": "Finding your location…",
+      "locationDenied": "Location access was denied.",
+      "retryLocation": "Try again",
+      "apply": "Apply filters"
+    },
+    "results": {
+      "section": {
+        "EXACT": "Matches",
+        "ALTERNATIVE": "Alternatives"
+      }
+    },
+    "card": {
+      "distanceMeters": "{value} m",
+      "distanceKm": "{value} km",
+      "unavailable": "Currently unavailable"
+    },
+    "badges": {
+      "officialChannel": "Official channel",
+      "completeCard": "Complete card",
+      "pickup": "Pickup"
+    },
+    "empty": {
+      "title": "No matches yet",
+      "description": "Try different words, clear your filters, or search the other mode.",
+      "clearFilters": "Clear filters",
+      "tryMode": {
+        "ITEM": "Search products instead",
+        "SERVICE": "Search services instead"
+      }
+    },
+    "errors": {
+      "searchFailed": "Something went wrong. Check your connection and try again.",
+      "retry": "Try again"
+    }
+  },
   "auth": {
     "login": {
       "pageTitle": "Sign in",

@@ -2,6 +2,39 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-28 | **The `search` slice shipped (roadmap Phase 1 #2) — Home + Catalog Page, the first
+slice with a genuine SSR data fetch, which surfaced a real gap in the e2e harness.** Built
+strictly from the same-day reconciled `features/search/contracts.md` (the local backend at
+`:2020` was unreachable during the build, so nothing here was live-verified against a running
+server — flagged to the user before starting). Three decisions worth recording: **(1) State is
+the URL, never a `store.ts`** — `CatalogSearchParams` (model.ts) is the Catalog Page's one param
+vocabulary; the route file parses it and calls `search()` server-side (D7), sort/filter controls
+push new params via a client hook. Nothing here outlives one render, so no zustand store exists
+for this slice. **(2) Result cards are non-interactive** — the Product Card modal (D10) belongs
+to `catalog` (slice #3, not built yet); rather than link to a page that doesn't exist, cards
+render full data with no click target at all (the "a reachable control must DO something" lock
+read literally: no control is safer than a dead one). **(3) The e2e harness gained a second
+`webServer`** (`e2e/mock-backend.mjs`, wired in `playwright.config.ts`) — `page.route` only
+intercepts requests the BROWSER makes, but the Catalog Page's `POST /api/v1/search` is called
+SERVER-SIDE from inside the Next.js process per D7, which no earlier slice's e2e coverage had
+ever exercised (every previous authenticated page was client-rendered behind a thin route). The
+mock backend selects its response by the query TEXT (a "magic string" convention, e.g.
+`roses-empty`, `roses-error`) rather than a mutable per-test fixture, because it is one long-lived
+process shared by every parallel test worker. Also corrected: `platform-ui-design/SKILL.md`'s
+empty-state guidance still said the empty catalog "offers to send a request" — stale since the
+`requests` feature was removed the same day (previous entry below); fixed to match
+`features/search/ux-ui-flow.md`'s actual empty state (suggestions/clear-filters/other-mode).
+**Found, not fixed:** `guard.spec.ts`'s and `business-register.spec.ts`'s customer-bounce
+assertions (`toHaveURL(/\/app$/)`) and two `auth.spec.ts` role-modal tests were already failing
+against the unmodified codebase (confirmed by stashing this slice's changes and re-running) —
+the first two are stale against D27's redirect-target change, the last two are a pre-existing
+flake unrelated to search. Out of scope for this change; raised here so they are not mistaken
+for a regression it caused | src/search/*, src/app/app/(main)/{page,catalog/page}.tsx,
+next.config.ts (images.remotePatterns wildcard — business-uploaded logos have no enumerable
+host), shared/i18n/messages/{en,ru,kk}.json (search namespace), e2e/{search.spec.ts,
+mock-backend.mjs} (new), playwright.config.ts (webServer array),
+AI_Knowledge/features/search/{README,ux-ui-flow}.md, .claude/skills/platform-ui-design/SKILL.md
+
 2026-07-28 | **The `requests` slice was REMOVED from the product — the one V1 slice that dies rather than ships (owner decision).** It was roadmap #5 and delivered "fallback requests": when a search returned nothing, the query was dispatched **automatically** to businesses whose profile description loosely matched it — a shop described as selling clothing would receive "sneakers". Removed for a **logic gap, not a missing backend**: the behaviour collapses at scale, because once every loosely-matching company answers, the customer is handed exactly the noise ASK exists to remove. That is the anti-marketplace mission failing inside its own core flow, so no rebuild is planned and it does NOT move to Phase 2. Backend deleted the `request` domain (`CustomerRequest`/`RequestTarget`/`SupplierResponse`) on 2026-07-21, which is the same decision arriving from the other side. Docs moved to `features/_archived/requests/` per the removal procedure — **archived, never deleted**, with the full rationale on its README so the idea cannot be silently re-proposed. No code was removed: `src/requests/` never existed. **Two things deliberately NOT changed:** PRODUCT_VISION UF 3.1 item 1 ("Overview (should be 'Requests') … **these are all chats**") is a different feature and survives intact — that cabinet tab is composed from `@/chats` and always was; and `search`'s empty state, which lost its request CTA and now ends in the response's own `suggestions`/`ambiguity`, a cleared filter, a widened radius, or the other mode — never a CTA pointing at something that does not exist (project lock) | AI_Knowledge/{ROADMAP.md (slice table renumbered 5–11), features/README.md, features/_archived/requests/* (moved), features/search/{README,ux-ui-flow}.md}
 
 2026-07-28 | **The search form gets a goods/services mode toggle, and the slice lock forbidding one was RETIRED — the lock's premise had been deleted out from under it.** `features/search/locks.md` carried `No product/service scope toggle in the UI`, justified as *"One unified endpoint — the AI determines intent from the query."* That endpoint no longer exists: `UnifiedSearchRequest` was replaced by `POST /api/v1/search`, whose `mode` is `@NotNull` and whose `SearchScope` enum admits only `ITEM` and `SERVICE`. There is no "everything" option and no AI-infers-intent path left to protect — the API **refuses** a request that does not choose. So something must choose, and the choice was given to the customer rather than hidden in a default, because defaulting in code makes half the catalogue unreachable with no control to discover it — the same silent dead end D26's lock exists to prevent. Surrounding extension was proven insufficient before reversing (the lock system's rule 2): a code default hides content, and firing ITEM+SERVICE in parallel and merging would put final ordering in the client, violating the still-live server-capability lock. Appended to **PRODUCT_VISION UF 2.1** with date + justification (CORE files change by append only) — it names a distinction the vision already draws (§1 "goods and/or services"; UF 3.1's separate Products and Services tabs) rather than inventing one. The lock is retired, not deleted, so the reversal stays legible. Gate **G1b** opened and closed the same day | AI_Knowledge/{PRODUCT_VISION.md (§3 UF 2.1 append), ROADMAP.md (G1b), features/search/{locks,README,ux-ui-flow,contracts}.md}

@@ -102,7 +102,7 @@ Composition rules from the vendored shadcn skill (semantic tokens over raw value
 
 The vision does not draw these. Build them anyway, for every surface: **loading · empty · error · validation**.
 
-**The empty catalog is the most important state in the product.** When search finds nothing it must NEVER be a dead end: it offers to send a **request** to businesses, who can then respond. That path is the feature, not a consolation message.
+**The empty catalog is the most important state in the product — and it must NEVER be a dead end.** Corrected 2026-07-28: this note used to say the empty state offers to send a "request" to businesses — that feature was REMOVED from the product the same day (the auto-request behaviour collapses at scale; `AI_Knowledge/features/_archived/requests/` carries the rationale, and `features/search/ux-ui-flow.md` records the replacement). The honest endings today are the search response's OWN `suggestions[]`/`ambiguity` when present, a link to clear filters or widen the radius, and a link to try the other mode (goods ⇄ services) — never a control pointing at a destination that no longer exists (project lock, "a reachable control must DO something").
 
 Use the standard `shared/ui` patterns (Loading/skeleton, EmptyState, Toast) — never invented visuals (P9.3).
 
@@ -145,7 +145,7 @@ Desktop and mobile web both matter now; the customer flow is **mobile-first**. A
 - [ ] Result-card surfaces: decidable in under 2 seconds; brand layer not out-competed by ASK's chrome.
 - [ ] Every value traces to a `design-system/` token. Zero raw hex, zero raw px (P9.2). No unrestyled shadcn default anywhere (D12).
 - [ ] Light and dark both designed. AA contrast, including orange with its stated foreground.
-- [ ] Loading, empty, error and validation all exist. The empty catalog offers the request path.
+- [ ] Loading, empty, error and validation all exist. The empty catalog never dead-ends (suggestions/clear-filters/other-mode — no request path, see §5).
 - [ ] Survives ru / kk / en with real strings. Touch targets ≥ 44px on the customer path.
 - [ ] Server/client split per D7. No fetch in a component. No module-scope store.
 - [ ] Reduced-motion path verified.

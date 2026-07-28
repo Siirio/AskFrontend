@@ -45,6 +45,70 @@
     "placeholder": "Раздел в разработке",
     "loading": "Загрузка…"
   },
+  "search": {
+    "home": {
+      "headline": "Находите нужное без лишнего шума",
+      "subtitle": "Ищите товары и услуги рядом с вами",
+      "modeLabel": "Искать",
+      "mode": {
+        "ITEM": "Товары",
+        "SERVICE": "Услуги"
+      },
+      "queryLabel": "Поисковый запрос",
+      "queryPlaceholder": "Что вы ищете?",
+      "submit": "Искать"
+    },
+    "pages": {
+      "catalog": "Каталог"
+    },
+    "sort": {
+      "label": "Сортировать по",
+      "relevance": "Актуальность",
+      "distance": "Расстояние",
+      "price_asc": "Цена"
+    },
+    "filters": {
+      "minPrice": "Цена от",
+      "maxPrice": "Цена до",
+      "city": "Город",
+      "cityPlaceholder": "Например, Алматы",
+      "cityLoading": "Ищем города",
+      "within100km": "Искать в радиусе 100 км",
+      "locationPending": "Определяем ваше местоположение…",
+      "locationDenied": "Доступ к геолокации отклонён.",
+      "retryLocation": "Попробовать снова",
+      "apply": "Применить фильтры"
+    },
+    "results": {
+      "section": {
+        "EXACT": "Совпадения",
+        "ALTERNATIVE": "Альтернативы"
+      }
+    },
+    "card": {
+      "distanceMeters": "{value} м",
+      "distanceKm": "{value} км",
+      "unavailable": "Сейчас недоступно"
+    },
+    "badges": {
+      "officialChannel": "Официальный канал",
+      "completeCard": "Полная карточка",
+      "pickup": "Самовывоз"
+    },
+    "empty": {
+      "title": "Пока нет совпадений",
+      "description": "Попробуйте другие слова, снимите фильтры или переключите режим поиска.",
+      "clearFilters": "Сбросить фильтры",
+      "tryMode": {
+        "ITEM": "Искать товары",
+        "SERVICE": "Искать услуги"
+      }
+    },
+    "errors": {
+      "searchFailed": "Что-то пошло не так. Проверьте соединение и попробуйте снова.",
+      "retry": "Попробовать снова"
+    }
+  },
   "auth": {
     "login": {
       "pageTitle": "Вход",

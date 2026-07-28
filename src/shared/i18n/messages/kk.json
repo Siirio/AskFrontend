@@ -45,6 +45,70 @@
     "placeholder": "Бөлім әзірлену үстінде",
     "loading": "Жүктелуде…"
   },
+  "search": {
+    "home": {
+      "headline": "Керегіңізді артық шусыз табыңыз",
+      "subtitle": "Жаныңыздағы тауарлар мен қызметтерді іздеңіз",
+      "modeLabel": "Іздеу",
+      "mode": {
+        "ITEM": "Тауарлар",
+        "SERVICE": "Қызметтер"
+      },
+      "queryLabel": "Іздеу сұранысы",
+      "queryPlaceholder": "Нені іздеп жатырсыз?",
+      "submit": "Іздеу"
+    },
+    "pages": {
+      "catalog": "Каталог"
+    },
+    "sort": {
+      "label": "Сұрыптау",
+      "relevance": "Сәйкестік",
+      "distance": "Қашықтық",
+      "price_asc": "Баға"
+    },
+    "filters": {
+      "minPrice": "Ең төмен баға",
+      "maxPrice": "Ең жоғары баға",
+      "city": "Қала",
+      "cityPlaceholder": "Мысалы, Алматы",
+      "cityLoading": "Қалалар ізделуде",
+      "within100km": "100 км радиуста іздеу",
+      "locationPending": "Орналасқан жеріңіз анықталуда…",
+      "locationDenied": "Геолокацияға рұқсат берілмеді.",
+      "retryLocation": "Қайталап көру",
+      "apply": "Сүзгілерді қолдану"
+    },
+    "results": {
+      "section": {
+        "EXACT": "Сәйкестіктер",
+        "ALTERNATIVE": "Балама нұсқалар"
+      }
+    },
+    "card": {
+      "distanceMeters": "{value} м",
+      "distanceKm": "{value} км",
+      "unavailable": "Қазір қолжетімсіз"
+    },
+    "badges": {
+      "officialChannel": "Ресми арна",
+      "completeCard": "Толық карточка",
+      "pickup": "Өзі алып кету"
+    },
+    "empty": {
+      "title": "Әзірге сәйкестік жоқ",
+      "description": "Басқа сөздерді қолданып көріңіз, сүзгілерді алып тастаңыз немесе іздеу режимін ауыстырыңыз.",
+      "clearFilters": "Сүзгілерді тазалау",
+      "tryMode": {
+        "ITEM": "Тауарларды іздеу",
+        "SERVICE": "Қызметтерді іздеу"
+      }
+    },
+    "errors": {
+      "searchFailed": "Бірдеңе дұрыс болмады. Байланысты тексеріп, қайталаңыз.",
+      "retry": "Қайталап көру"
+    }
+  },
   "auth": {
     "login": {
       "pageTitle": "Кіру",

@@ -1,5 +1,8 @@
 # Search & Catalog List
 
+**Shipped 2026-07-28** (roadmap Phase 1 #2) — `src/search/`, routed at `/app` (Home) and
+`/app/catalog` (Catalog Page). See `ux-ui-flow.md` for the implementation notes.
+
 Mirrors backend module: **search** (`../Ask_Backend/AI_Knowledge/features/search/`).
 
 Owns the two entry surfaces of the product: **Home** (the search form — the platform's front door) and the **Catalog Page** (result list with sorting and filters). This is where the mission lives: save time choosing the best product.
