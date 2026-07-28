@@ -52,6 +52,22 @@ The 4 key features of our platform:
 4. It can open the chat pop-up straight away
 ```
 
+> **Search mode — goods or services (added 2026-07-28 — owner directive; append-only change to this CORE file).**
+> The search form carries ONE additional control: a two-state toggle choosing whether the query
+> searches **goods (ITEM)** or **services (SERVICE)**. It is not a filter and not a sort — it is
+> part of the query itself, and every search carries exactly one mode.
+>
+> **Justification.** The backend's `POST /api/v1/search` declares `mode` as `@NotNull` and its
+> `SearchScope` enum admits only `ITEM` and `SERVICE` — "search everything" is not an option the
+> API offers (verified against `dev` `ee542d9`, 2026-07-27). Something must choose, so the choice
+> is given to the customer rather than hidden in a default that silently makes half the catalogue
+> unreachable. This names a distinction the product already draws everywhere else — §1 says "goods
+> and/or services", and UF 3.1 gives Products and Services separate tabs — rather than inventing a
+> new one. Supersedes the `No product/service scope toggle in the UI` slice lock, which rested on a
+> unified endpoint that no longer exists (`features/search/locks.md`, retired the same day).
+>
+> The toggle is the ONLY search-form control. Sorting and filtering stay on the Catalog Page (§4).
+
 #### UF 2.2 — The customer wants to find a chat
 
 ```text

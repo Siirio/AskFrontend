@@ -73,11 +73,11 @@ the landing tab — the client never hardcodes it.
 ## Tabs (UF 3.1, in the vision's order)
 | # | Tab | Owner slice | Notes |
 |---|-----|-------------|-------|
-| 1 | Overview — **should be "Requests"** | `@/requests` + `@/chats` | Filters: All · Active · New Requests. These are all chats. |
-| 2 | Products | `@/catalog` | List, add, **import**. Needs a friendlier branch picker (the vision calls this out). |
+| 1 | Overview — **should be "Requests"** | `@/chats` | Filters: All · Active · New Requests. **These are all chats** — the vision's own words, and since 2026-07-28 the only possible source (the `requests` slice was removed). The tab name is a label, not a second data source. |
+| 2 | Products | `@/catalog` | List, add, **import**. Backend calls them **items**; `branchId` is now OPTIONAL, so the "friendlier branch picker" the vision calls out is no longer a required field. |
 | 3 | Services | `@/services` | Same as Products, **no import**. |
 | 4 | Branches | business-cabinet | Same as products/services, **no import**. |
-| 5 | Unique Offers | business-cabinet | Sales, collabs. |
+| 5 | Unique Offers | business-cabinet | Sales, collabs. **`drops` on the wire** — `/api/v1/businesses/{businessId}/drops`. |
 | 6 | Company Profile | business-cabinet | **Coming in a future update** — placeholder only. |
 | 7 | Company Dashboard | business-cabinet | Customization; staff and invites. |
 

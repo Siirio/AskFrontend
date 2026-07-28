@@ -6,9 +6,10 @@ The seller workspace (UF 3.1). Owns the cabinet shell and the tabs whose data be
 
 ## Key decisions
 - **The cabinet is composition, not ownership.** Tabs that manage another domain's data are built in the slice that owns it and embedded here via its `index.ts` (R2, D8):
-  - **Products** → `@/catalog` · **Services** → `@/services` · **Overview/"Requests"** → `@/requests` + `@/chats`
+  - **Products** → `@/catalog` · **Services** → `@/services` · **Overview/"Requests"** → `@/chats`
   - Owned here: **Branches**, **Unique Offers**, **Company Profile**, **Company Dashboard**
-- **Overview should be called "Requests"** (the vision says so explicitly), filtered All / Active / New Requests. Its content is chats and requests.
+- **Overview should be called "Requests"** (the vision says so explicitly), filtered All / Active / New Requests. **Its content is chats — only chats.** PRODUCT_VISION UF 3.1 item 1 says so itself ("these are all chats"), and since 2026-07-28 there is nothing else it could be: the `requests` slice was removed from the product and the backend's `request` domain deleted. The tab name is a label, not a second data source.
+- **Unique Offers are `drops` on the wire** — `/api/v1/businesses/{businessId}/drops` (verified on `dev` `ee542d9`). The `business-admin/offers` paths this doc once carried never existed on `dev`.
 - **Branches are like products/services but without import** — no branch import wizard exists or should be built.
 - **Company Profile is "coming in a future update".** Ship the placeholder the vision describes — do not invent the screen (P9.1).
 - Unique Offers (sales, collabs) are **brand signals and boosters**, never standalone search results — a backend lock that this slice's editor must not contradict.

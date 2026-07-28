@@ -69,21 +69,27 @@ Goal: the V1 product from `PRODUCT_VISION.md`, one vertical slice at a time. Not
 | # | Slice | Delivers | UF |
 |---|-------|----------|-----|
 | 1 | `auth` | Authorization Page, role-choosing modal, the session foundation every other slice imports (R6) | UF 1 |
-| 2 | `search` | Home (search form) + Catalog Page (list, sort, filters). Public, server-rendered. **Gate G1.** | UF 2.1 · 1–2 |
-| 3 | `catalog` | Product Card — modal over the catalog + the same component server-rendered at `/app/product/:id` (D10). **Gate G3.** | UF 2.1 · 3–4 |
+| 2 | `search` | Home (search form + the goods/services mode toggle) + Catalog Page (sectioned list, sort, filters). **Gate G1** parks 3 controls; the rest ships | UF 2.1 · 1–2 |
+| 3 | `catalog` | Product Card — modal over the catalog, rendered from the search card payload. **`/app/product/:id` is DEFERRED** (no public item endpoint — cross-repo table). **Gate G3** parks one button | UF 2.1 · 3–4 |
 | 4 | `chats` | Chats Page + thread; then wire the card's chat button to open the chat modal directly (D8 embed) | UF 2.2, UF 2.1 · 4 |
-| 5 | `requests` | Fallback requests; then wire them into `search`'s empty state so a dead-end catalog becomes a request | UF 2.1 (empty) |
-| 6 | `profile` | Profile card in the navigation menu, settings, sign out | UF 2.3 |
+| 5 | `profile` | Profile card in the navigation menu, settings, sign out | UF 2.3 |
 |   | — | **Customer path complete end to end** | |
-| 7 | `business-cabinet` | Cabinet shell + its OWN tabs: Branches, Unique Offers, Company Dashboard, Company Profile placeholder (**Gate G2**). Overview/"Requests" composed from `requests` + `chats`. **Seller registration is already DONE (2026-07-27, D26)** — `/app/business/register`, pulled forward because the role modal's "set up your business" was routing into the cabinet's own guard and being bounced, so the choice silently did nothing. The rest of the item is unchanged | UF 3.1 · 1, 4–7 |
-| 8 | `catalog` (2nd pass) | The seller half: Products tab — list, add, import wizard (upload → map → preview → approve) | UF 3.1 · 2 |
-| 9 | `services` | Services tab — mirrors Products, **no import**. Duplicated, never parameterized (D8, P6.3) | UF 3.1 · 3 |
+| 6 | `business-cabinet` | Cabinet shell + its OWN tabs: Branches, Unique Offers (backend calls them **drops**), Company Dashboard, Company Profile placeholder (**Gate G2**). Overview/"Requests" composed from `chats` alone. **Seller registration is already DONE (2026-07-27, D26)** — `/app/business/register`, pulled forward because the role modal's "set up your business" was routing into the cabinet's own guard and being bounced, so the choice silently did nothing. The rest of the item is unchanged | UF 3.1 · 1, 4–7 |
+| 7 | `catalog` (2nd pass) | The seller half: Products tab — list, add, import wizard (upload → map → preview → approve). Backend calls products **items** | UF 3.1 · 2 |
+| 8 | `services` | Services tab — mirrors Products, **no import**. Duplicated, never parameterized (D8, P6.3) | UF 3.1 · 3 |
 |   | — | **Seller path complete** | |
-| 10 | `app/(marketing)` | The landing at `/` — content only, static, SEO-first. Logged-in redirect to `/app/` via `ask.accessToken`, suppressed by `?from=app` (D6) | UF 1 |
-| 11 | — | SEO base: `sitemap.ts`, `robots.ts`, OG images | |
-| 12 | — | **Launch:** owner-authored legal copy replaces the Terms/Privacy/Cookies placeholders + each `noindex` removed (see Parked fixes — the register consent links depend on it) → e2e suite green → deploy (marketing `/` + platform `/app/*`, one app) | |
+| 9 | `app/(marketing)` | The landing at `/` — content only, static, SEO-first. Logged-in redirect to `/app/` via `ask.accessToken`, suppressed by `?from=app` (D6) | UF 1 |
+| 10 | — | SEO base: `sitemap.ts`, `robots.ts`, OG images. **Marketing + legal pages only** — D23 put every `/app/*` surface behind the auth gate, so none of them is crawlable | |
+| 11 | — | **Launch:** owner-authored legal copy replaces the Terms/Privacy/Cookies placeholders + each `noindex` removed (see Parked fixes — the register consent links depend on it) → e2e suite green → deploy (marketing `/` + platform `/app/*`, one app) | |
 
-Slices 7–9 are one product surface but three slices: the cabinet **composes**, it does not own other domains' data (R2, D8).
+Slices 6–8 are one product surface but three slices: the cabinet **composes**, it does not own other domains' data (R2, D8).
+
+> **Renumbered 2026-07-28.** The old slice #5 `requests` was REMOVED from the product — the
+> auto-request behaviour it delivered collapses at scale (once every loosely-matching company
+> answers, the customer gets exactly the noise ASK exists to remove), and the backend deleted the
+> `request` domain on 2026-07-21. Docs archived to `features/_archived/requests/`, which carries
+> the full rationale. **UF 3.1 item 1's "Requests" tab is unaffected** — the vision itself says
+> "these are all chats", and it is composed from `@/chats`.
 
 ### Parked fixes (2026-07-14 audit) — attach to the item that triggers them
 
@@ -91,6 +97,26 @@ Slices 7–9 are one product surface but three slices: the cabinet **composes**,
 - [ ] **With item 10 (the landing):** the smoke test locates the `/app` link via bare `getByRole("link")` — it breaks on ambiguity the moment the landing gains a second link. Scope it by `href`, not by accessible name (name would couple the test to translated copy).
 - [ ] **With item 10 (the landing): `public/logo_vertical.svg` has no consumer yet** (2026-07-16 audit, P8.1). The asset was exported with `logo_horizontal.svg` but nothing in `src/` references it; the landing is its expected first consumer. If the landing ships without it, delete it then.
 - [x] **Done early (2026-07-21, with the platform guard — D23): `/terms`, `/privacy` AND `/cookies` now exist** as static, content-only routes under `app/(marketing)/` (owner rule 3 — legal pages live OUTSIDE `/app`). The register agreement + the nav "Learn more" links resolve; no change to `auth`. Bodies are a neutral "being prepared" placeholder — the legal copy is still the owner's to write, never invented client-side (P9.1). The three pages are `noindex` while placeholder, so they stay out of search results and are never surfaced as the real documents. **LAUNCH BLOCKER (item 12):** owner-authored Terms / Privacy / Cookies copy MUST replace the placeholders before launch — the register consent checkbox links to these pages, so shipping live consent against placeholder text is not acceptable in production; removing each `noindex` (and adding SEO metadata) is the same step, with the full landing (item 10).
+
+### Auth follow-up — record the registration consent (found 2026-07-28, a LIVE defect in shipped slice #1)
+
+**The sign-up consent checkbox currently goes nowhere.** `RegisterForm` collects
+`acceptedUserAgreement` and `hooks.ts` sends it, but the backend removed that field from
+`CustomerRegisterRequest`, and Spring Boot ignores unknown JSON properties by default — so
+registration returns 201 and the consent is silently discarded. Nothing in the UI reveals it.
+This is a legal artefact, not decoration: the checkbox links to Terms/Privacy and gates the form.
+
+- [ ] After a successful `verify` (the point where a Bearer token first exists), call
+      `POST /api/v1/legal/registration-acceptances` with the codes the form actually presented —
+      `USER_TERMS` + `PRIVACY_POLICY` — plus `countryCode` and the active `locale`.
+      Drop `acceptedUserAgreement` from the register body; it is a field the backend does not have.
+- [ ] **Do not invent the document set.** `GET /api/v1/legal/documents` is in the backend's public
+      allowlist but has **no controller**, so the client cannot discover which documents/versions
+      are active. Send only the two codes the form visibly links to, and raise the missing endpoint
+      (cross-repo table). Sending codes for text the user was never shown would be a worse defect
+      than the one being fixed.
+- Blocking-adjacent to launch item 11: shipping live consent against placeholder legal copy is
+  already called out there. This item makes the consent *recorded*; that item makes it *true*.
 
 ### Auth follow-up — Google OAuth (owner directive 2026-07-19, an addition to shipped slice #1)
 
@@ -141,9 +167,10 @@ Do NOT build these early. Recorded so today's decisions don't block them.
 
 | Gate | Question | Parks (everything else in that slice still ships) | Status |
 |---|---|---|---|
-| **G1** | **Search sort & filter contract — MOSTLY RESOLVED 2026-07-19.** The vision (§4) wants sorts relevance / distance / cost / unique-offers and filters price / companies / location (100 km · city · map area). The backend replaced `UnifiedSearchRequest` with `POST /api/v1/search` (see `features/search/contracts.md`), which now supports sorts `intent_match` (relevance) · `distance` · `price_asc` (cost), and `filters`/`overrides` for price (`min_price`/`max_price`), `city`, `category`, `scope`. **Still missing:** a Unique-Offers sort, a Companies filter, and the 100 km-radius / map-area location filters. The lock still forbids faking any of these by re-sorting a loaded page client-side. | Only the three unbuilt controls — the Unique-Offers sort tab, the Companies filter, and radius/map-area. **Ships now:** Home, the search form, the Catalog Page, result cards, and the relevance/distance/cost sorts + price/city/category filters — all backend-supported. | **PARTIAL — the missing three raise with backend** |
+| **G1** | **Search sort & filter contract — NARROWED 2026-07-28** (re-read against `dev` `ee542d9`). The vision (§4) wants sorts relevance / distance / cost / unique-offers and filters price / companies / location (100 km · city · map area). `POST /api/v1/search` supports sorts `relevance` · `distance` · `price_asc`, and `explicitFilters` for `minPrice`/`maxPrice`, `city`, `category`, `country`, `openNow`, **and `radiusMeters` (1–100 000)**. **The 100 km radius is DELIVERED** — that control leaves the parked list. **Still missing:** a Unique-Offers sort, a Companies filter, and a map-area (bbox) filter. The lock still forbids faking any of these by re-sorting a loaded page client-side. | Three controls: the Unique-Offers sort tab, the Companies filter, and map-area. **Ships now:** Home, the search form + mode toggle, the Catalog Page, sectioned results, result cards, the relevance/distance/cost sorts, and price/city/category **+ the 100 km radius** filters. | **PARTIAL — three left, raise with backend** |
+| **G1b** | **Search `mode` — RESOLVED 2026-07-28 (owner).** `mode` is `@NotNull` and `SearchScope` admits only `ITEM`/`SERVICE`; there is no "search everything", so something must choose. | Nothing. The search form gets a **goods/services toggle**, appended to PRODUCT_VISION UF 2.1 with justification. The `No product/service scope toggle` slice lock was retired the same day — its premise (a unified endpoint where the AI infers intent) no longer exists. | **CLOSED** |
 | **G2** | **Company Profile scope.** The vision marks it "coming in a future update"; no backend endpoints exist. | Nothing. The placeholder IS the spec — ship it and move on. Re-open when the vision describes a screen. | Open, not blocking |
-| **G3** | **What does "Proceed to Purchase" do?** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. Likely candidate: the backend's `contact` module (`ContactActionController`, the `contactActionId` privacy pattern). If so, a `contact` slice must be registered per §2. | One button's click handler. **Ships anyway:** the whole Product Card — every field, the modal, the `/app/product/:id` page, SEO, and the chat button. | **OPEN — raise with backend + product** |
+| **G3** | **What does "Proceed to Purchase" do? — RE-OPENED 2026-07-28: its candidate is DEAD.** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. The standing answer was the backend's `contact` module (`contactActionId` privacy pattern) — **that module was DELETED 2026-07-21**, and `contactActions` is gone from `SearchCardResponse`. No contact-action concept remains anywhere on the wire. What survives on the card is `businessProfile.{number, email, websiteUrl, instagramUrl, telegramUrl}` — the business's **public** channels, NOT a privacy-preserving handle. Routing the button there exposes real contact details, which is a product decision, not a fallback an agent may choose. | One button's click handler. **Ships anyway:** the whole Product Card — every field, the modal, and the chat button. | **OPEN — needs a FRESH answer; the old candidate no longer exists** |
 | **G4** | World-wide domain/brand choice (ask.kz is KZ-branded) | Nothing before Phase 4 | Open, not urgent |
 
 ## Cross-Repo Dependencies
@@ -152,14 +179,18 @@ What the frontend needs FROM `../Ask_Backend` — tracked here because a missing
 
 | Need | For | Status |
 |---|---|---|
-| Unique-Offers sort, Companies filter, and 100 km-radius / map-area location filters on `POST /api/v1/search` | G1 → the remaining Catalog Page controls | **Partly delivered 2026-07-19:** relevance/distance/cost sorts + price/city/category filters now exist on `/api/v1/search`; these three remain |
-| The "Proceed to Purchase" contract | G3 → the Product Card | Not requested yet |
+| Unique-Offers sort, Companies filter, and a map-area (bbox) filter on `POST /api/v1/search` | G1 → the last three Catalog Page controls | **Radius DELIVERED 2026-07-27** as `radiusMeters` (1–100 000) — the vision's 100 km filter is now buildable. These three remain |
+| **A public item/service read — `GET /api/v1/items/{id}` (or equivalent)** | **Slice #3's `/app/product/:id` deep link.** There is NO public item endpoint on `dev`: the security allowlist permits only `/search`, `/cities`, `/categories`, `/businesses/*/business-profile`, `/businesses/*/drops`, `/business-media/files/*`. `/api/v1/businesses/{id}/items` is authenticated AND business-scoped — a list endpoint, unusable as a detail read. The Product Card modal ships from the search payload; the deep link cannot | **RAISED 2026-07-28 — blocks the `/app/product/:id` half of D10 only; the modal ships** |
+| **Populate `openingSummary` on `SearchCardResponse`, or remove the field** | An open/closed indicator on result cards | **RAISED 2026-07-28.** Declared on the DTO but never assigned in `StructuredSearchProcessor.toCard()` — always null. (`BranchResponse` populates it correctly; the search card does not.) Same failure shape as `suggestRoleExpansion` |
+| **Return badge TOKENS, not English prose** — `badges[]` currently emits literal `"official channel"`, `"complete card"`, `"pickup"` | Result-card badges in ru/kk | **RAISED 2026-07-28 — not blocking.** The client maps the three known tokens to i18n keys and drops unknown ones (slice lock), so nothing ships in English. A stable token contract would make that mapping safe against a silent backend addition |
+| **`GET /api/v1/legal/documents` — in the public allowlist, but NO controller exists** | Knowing which legal documents/versions to submit to `POST /api/v1/legal/registration-acceptances` | **RAISED 2026-07-28.** Also flagged: `/api/v1/businesses/*/storefront` is allowlisted with no controller. Two dead entries in `SecurityConfig` |
+| The "Proceed to Purchase" contract | G3 → the Product Card | **RE-RAISED 2026-07-28.** The `contact` module that was the presumed answer was deleted 2026-07-21; the gate needs a fresh product answer, not a follow-up |
 | CORS origin for THIS client — every backend profile allows only Vite ports (5173/5174); `http://localhost:3000` (dev) + the deploy domain must be added to `ask.cors.allowed-origins` | Any browser call to the real backend | **Local dev DONE (2026-07-18):** `http://localhost:3000` + `http://127.0.0.1:3000` added to Ask_Backend `application-local.yml` (preflight + register 201 verified from the :3000 origin). The **deploy domain** still pending |
 | `GET /api/v1/auth/session` returns a real `access_token` under `ASK_SESSION` cookie auth | Google OAuth on the auth pages — the option-2 cookie→Bearer hand-off (`features/auth/contracts.md`) | **DONE 2026-07-19 (Final Major Update):** `/session` accepts the bridge cookie, returns the HS256 JWT + `expires_in`, then clears the single-use `ASK_SESSION`. Frontend fully unblocked |
 | `OAUTH2_FRONTEND_REDIRECT_URI` per environment + Google Console redirect URIs + `OAUTH2_GOOGLE_CLIENT_ID/SECRET` set | Google OAuth redirect landing on `/oauth/callback` | Dev/prod defaults aligned to `:3000`/`ask.com.kz` (2026-07-19); **stage must override** the redirect URI, and Google Console must whitelist each backend callback |
-| **Redeploy `localhost:2020` / the shared backend from `dev`** — it currently runs a `master` build | **This client targets `dev`** (owner decision 2026-07-27). Until the redeploy: sign-up's verify step fails (`master` wants `auth_challenge_id`, we send `verification_id`), `POST /api/v1/business/onboarding` **404s** so `/app/business/register` cannot complete, and `GET /categories` returns a tree instead of the flat suggestion list the combobox reads. All three clear on redeploy; none is a client defect | **RAISED 2026-07-27 — blocking local verification of auth + the whole seller path** |
+| **Redeploy `localhost:2020` / the shared backend from `dev`** — it was last seen running a `master` build | **This client targets `dev`** (owner decision 2026-07-27). Until the redeploy: sign-up's verify step fails (`master` wants `auth_challenge_id`, we send `verification_id`), `POST /api/v1/business/onboarding` **404s** so `/app/business/register` cannot complete, and `GET /categories` returns a tree instead of the flat suggestion list the combobox reads. All three clear on redeploy; none is a client defect. **Slice #2 raises the stakes:** `POST /api/v1/search` on `master` still speaks the old `scope`/`intent_match`/`filters`+`overrides` shape, so the reconciled contract cannot be verified against a `master` build at all | **STILL OPEN 2026-07-28 — `:2020` was UNREACHABLE at audit time, so which branch it serves is unverified. Probe before trusting any local result** |
 | **Populate `suggestRoleExpansion` on `AuthSessionResponse`** — it is declared and assigned NOWHERE in the backend source (verified 2026-07-27) | The role-choosing modal (PRODUCT_VISION UF 1 step 3). **Email sign-up is unblocked** — the client now arms the modal from `purpose === "REGISTER"` on the challenge, real data from the same flow, and still honours this field when it arrives. **Google OAuth is NOT** — `/oauth/callback` has no first-signup signal on the wire at all, so a Google-first account gets no modal and there is nothing honest to substitute (P9.4) | **RAISED 2026-07-27 — blocking the OAuth half only** |
-| **Decide what happens to `acceptedUserAgreement`** — `CustomerRegisterRequest` no longer declares it, so the consent the sign-up form collects is not recorded anywhere | The register agreement checkbox links to Terms/Privacy and is a legal artefact, not decoration. The checkbox stays in the UI (it is in the vision and the lock); whether the backend must store the consent, and how, is a backend/product answer — not something to silently drop client-side | **RAISED 2026-07-27 — not blocking, but a launch-item question (see item 12)** |
+| ~~Decide what happens to `acceptedUserAgreement`~~ — **ANSWERED by the backend 2026-07-28** | The register agreement checkbox is a legal artefact, not decoration | **RESOLVED — now a CLIENT task, see the auth follow-up below.** The backend shipped a `legal` module: `POST /api/v1/legal/registration-acceptances` (Bearer) taking `documentCodes` from `USER_TERMS · PRIVACY_POLICY · SELLER_TERMS · PERSONAL_DATA_CONSENT · MANAGED_IMPORT_TERMS · PROHIBITED_PRODUCTS_POLICY · CONTENT_POLICY`, plus `countryCode` and `locale`. The consent has a real home; the client is what has not moved |
 | `AUTH_VERIFICATION_TEST_MODE=false`, real secrets, prod CORS origins | Phase 1 · Launch | Backend-owned |
 
 Architecture decisions D1–D10 live in `ARCHITECTURE_PATTERN_FRONTEND.md` §11 — that is the decision log. This file plans; it does not decide.
