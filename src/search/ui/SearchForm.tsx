@@ -79,11 +79,16 @@ function ModeCard({
  * the Catalog Page route file reads them server-side and calls `search()`
  * directly (D7); there is no client fetch here.
  */
+/** The `queryError` id, referenced by the input's `aria-describedby` — one
+ *  convention, so the two can never drift apart (P6.2). */
+const QUERY_ERROR_ID = "home-query-error";
+
 export function SearchForm() {
   const t = useTranslations("search");
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<SearchMode>("ITEM");
+  const [error, setError] = useState<string | null>(null);
   const scope = useRef<HTMLFormElement>(null);
 
   // A quiet entrance rather than the page just appearing — transform/opacity
@@ -105,7 +110,18 @@ export function SearchForm() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams({ query: query.trim(), mode });
+    const trimmed = query.trim();
+    // `rawQuery` is `@NotBlank` on the backend (contracts.md) — an empty
+    // search would either 400 once the real backend answers, or (today,
+    // unreachable) burn a round trip just to land on the error state. Catch
+    // it here instead: no navigation, no request, a validation message in
+    // its place (P8.4/P9.3 — validation is a mandatory state).
+    if (!trimmed) {
+      setError(t("errors.queryRequired"));
+      return;
+    }
+    setError(null);
+    const params = new URLSearchParams({ query: trimmed, mode });
     router.push(`/app/catalog?${params.toString()}`);
   };
 
@@ -120,29 +136,45 @@ export function SearchForm() {
           the whole control reads as a destination, not a stray text field.
           Leads the form (owner review, 2026-07-28): the query is what the
           customer is actually here to type; the mode choice follows it. */}
-      <div className="search-form-reveal neu-card neu-search-bar flex items-center gap-2 p-2 sm:p-2.5">
-        <div className="relative flex-1">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-4 my-auto size-5 text-foreground-subtle"
-          />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("home.queryPlaceholder")}
-            aria-label={t("home.queryLabel")}
-            className="h-14 pl-12 text-base"
-          />
+      <div className="flex flex-col gap-2">
+        <div className="search-form-reveal neu-card neu-search-bar flex items-center gap-2 p-2 sm:p-2.5">
+          <div className="relative flex-1">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-4 my-auto size-5 text-foreground-subtle"
+            />
+            <Input
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={t("home.queryPlaceholder")}
+              aria-label={t("home.queryLabel")}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? QUERY_ERROR_ID : undefined}
+              className="h-14 pl-12 text-base"
+            />
+          </div>
+          <Button
+            type="submit"
+            size="lg"
+            aria-label={t("home.submit")}
+            className="h-14 gap-2 px-6"
+          >
+            <Search aria-hidden="true" className="size-5" />
+            <span className="hidden sm:inline">{t("home.submit")}</span>
+          </Button>
         </div>
-        <Button
-          type="submit"
-          size="lg"
-          aria-label={t("home.submit")}
-          className="h-14 gap-2 px-6"
-        >
-          <Search aria-hidden="true" className="size-5" />
-          <span className="hidden sm:inline">{t("home.submit")}</span>
-        </Button>
+        {error ? (
+          <p
+            id={QUERY_ERROR_ID}
+            role="alert"
+            className="ps-1 text-sm font-medium text-destructive"
+          >
+            {error}
+          </p>
+        ) : null}
       </div>
 
       <div

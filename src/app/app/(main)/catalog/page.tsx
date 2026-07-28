@@ -33,6 +33,15 @@ export default async function CatalogRoute({
   const params = parseCatalogSearchParams(raw);
   const locale = (await localeFromCookies()) ?? defaultLocale;
 
+  // `rawQuery` is `@NotBlank` on the backend (contracts.md). The search
+  // form already refuses to submit an empty query, but this route is
+  // reachable directly (a typed/bookmarked/edited URL), so the guard
+  // belongs here too — never send a request known to fail (P9.4), and never
+  // spend a round trip just to land on the generic error state.
+  if (!params.query?.trim()) {
+    return <CatalogPage locale={locale} params={params} emptyQuery />;
+  }
+
   try {
     const response = await search(toSearchRequest(params, locale));
     return (

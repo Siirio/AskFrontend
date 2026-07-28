@@ -62,6 +62,36 @@ test("Home renders the query input and the mode toggle, and submitting navigates
   expect(url.searchParams.get("mode")).toBe("SERVICE");
 });
 
+test("Home refuses to submit an empty query, and never navigates", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app");
+
+  await page.getByRole("button", { name: "Search" }).click();
+
+  await expect(
+    page.getByText("Enter what you're looking for."),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/app$/);
+});
+
+test("a blank/missing query on the Catalog URL renders validation, not a search attempt", async ({
+  page,
+}) => {
+  await seedSession(page);
+
+  // No `query` param at all — a typed/bookmarked/hand-edited URL. The route
+  // file's own guard (never call `search()` with a known-invalid request,
+  // P9.4) is what this proves: if it were bypassed, the mock backend would
+  // answer as a normal search (see `sectionsResponse`'s echoed `raw_query`)
+  // instead of this validation state ever appearing.
+  await page.goto("/app/catalog?mode=ITEM");
+
+  await expect(page.getByText("Enter what you're looking for.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to Home" })).toBeVisible();
+});
+
 test("Catalog Page renders sectioned results with the ALTERNATIVE reason", async ({
   page,
 }) => {

@@ -49,6 +49,18 @@ list, and an empty state that no longer routes to the deleted requests feature.
   `backdrop-filter: blur(...)`, but a blur over one flat page colour is indistinguishable from no
   blur at all — the orb gives the glass something to actually show. A subtle GSAP entrance
   (fade + rise, `shared/motion.ts`) plays on mount, reduced-motion handled centrally as always.
+- **Nav glass strengthened** (third review pass, same day) — `.neu-topbar`/`.neu-bottom-nav` went
+  from 85% to 60% surface opacity and gained `saturate(160%)` alongside their blur; `.neu-nav-link`
+  followed (45%→38%, saturate 140%→160%). A blur over one flat page colour reads as no blur at
+  all, which is why the hero's decorative glow (above) bleeds up behind the sticky nav on
+  purpose — the glass needs something underneath it to actually show.
+- **Empty-query defense, two layers (owner request, same day).** `rawQuery` is `@NotBlank` on the
+  backend (contracts.md); an empty search must never reach it. (1) `SearchForm` refuses to
+  submit a blank/whitespace query — no navigation, an inline validation message
+  (`search.errors.queryRequired`) instead (P8.4/P9.3). (2) The Catalog Page's OWN route file
+  guards independently: a blank/missing `query` param (a typed, bookmarked, or hand-edited URL)
+  never reaches `search()` at all — it renders a validation `EmptyState` (`search.validation.*`)
+  with a link back to Home, never a wasted round trip to a request known to fail (P9.4).
 - Catalog Page/result cards are unchanged — explicitly out of scope until that surface gets its
   own full design pass (owner decision: catalog's cards/islands are designed once, later, not
   iterated now).

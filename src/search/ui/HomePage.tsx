@@ -33,7 +33,7 @@ export async function HomePage({ locale }: { locale: string }) {
       {/* Spans the full-bleed width so the blur fades out naturally instead
           of cutting off at the narrower content column's edge. */}
       <span className="neu-hero-decor" aria-hidden="true" />
-      <div className="relative z-10 mx-auto flex min-h-svh max-w-2xl flex-col items-center justify-center gap-8 px-4 py-12 text-center">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-3.5rem)] max-w-2xl flex-col items-center justify-center gap-8 px-4 text-center">
         <div className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold text-balance text-foreground sm:text-4xl">
             {t("home.headline")}

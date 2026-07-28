@@ -409,10 +409,20 @@
     box-shadow: var(--neu-inset-hairline);
   }
 
+  /* More transparent than the D25 original (85% surface -> 60%) plus
+   * saturate() alongside the blur — a plain blur on translucent chrome reads
+   * as "dirty glass" (muddy, low-contrast); saturating the colour showing
+   * through first is what makes it read as GLASS rather than fog (owner
+   * review, 2026-07-28 — "where is the glass?"). The inset top highlight is
+   * the one line a glass EDGE can have on a skin with no hairline borders:
+   * a light catching the top rim, not an outline around the whole bar. */
   .neu-skin .neu-topbar {
-    background: color-mix(in oklab, var(--surface) 85%, transparent);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 10px 24px -16px var(--neu-shadow-dark);
+    background: color-mix(in oklab, var(--surface) 60%, transparent);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    box-shadow:
+      0 10px 24px -16px var(--neu-shadow-dark),
+      inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 70%, transparent);
   }
 
   /* Mobile thumb-zone nav (platform-ui-design §7, neumorui bottom-nav
@@ -421,9 +431,12 @@
    * instead of above it. `env(safe-area-inset-bottom)` clears the home
    * indicator on notched phones without adding dead tap space elsewhere. */
   .neu-skin .neu-bottom-nav {
-    background: color-mix(in oklab, var(--surface) 85%, transparent);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 -10px 24px -16px var(--neu-shadow-dark);
+    background: color-mix(in oklab, var(--surface) 60%, transparent);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    box-shadow:
+      0 -10px 24px -16px var(--neu-shadow-dark),
+      inset 0 -1px 0 color-mix(in oklab, var(--neu-shadow-light) 70%, transparent);
     padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
   }
 
@@ -668,9 +681,9 @@
     gap: 6px;
     border: none;
     border-radius: 9999px;
-    background: color-mix(in oklab, var(--surface) 45%, transparent);
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    background: color-mix(in oklab, var(--surface) 38%, transparent);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
     box-shadow:
       var(--neu-raised-sm),
       inset 0 1px 0 color-mix(in oklab, var(--neu-shadow-light) 90%, transparent),
@@ -1135,7 +1148,7 @@
     width: 360px;
     height: 360px;
     background: var(--neu-gradient-primary);
-    opacity: 0.32;
+    opacity: 0.38;
   }
   .neu-skin .neu-hero-decor::after {
     /* 220px = the old 40px offset + the 180px the box grew upward by, so

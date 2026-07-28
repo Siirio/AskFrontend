@@ -1,6 +1,9 @@
+import { SearchX } from "lucide-react";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { Button } from "@/shared/ui/button";
+import { EmptyState } from "@/shared/ui/empty-state";
 
 import type { CatalogSearchParams, SearchResponse, SortOption } from "../model";
 import { CatalogEmptyState } from "./CatalogEmptyState";
@@ -12,11 +15,13 @@ import { SortControl } from "./SortControl";
 /**
  * The Catalog Page (UF 2.1 step 2) — result list, sorting, filters. Server
  * component (D7); the route file already ran `search()` and hands the
- * outcome down as one of three states — `pending` (route re-renders while a
- * new URL is in flight; Next shows this only via its own loading.tsx, so in
- * practice this component always receives a settled `response` or `error`,
- * but the type keeps the loading state honest for anyone reusing it),
- * `error`, or `response`.
+ * outcome down as one of four states — `emptyQuery` (a blank/missing `query`
+ * param — a typed, bookmarked, or hand-edited URL; the route never calls
+ * `search()` with a known-invalid request, P9.4), `error`, `response`, or
+ * `pending` (route re-renders while a new URL is in flight; Next shows this
+ * only via its own loading.tsx, so in practice this component always
+ * receives a settled state, but the type keeps the loading state honest for
+ * anyone reusing it).
  *
  * State is the URL (no `store.ts` for this slice) — `SortControl` and
  * `FilterPanel` are client islands that push new params via
@@ -27,11 +32,13 @@ export async function CatalogPage({
   params,
   response,
   error,
+  emptyQuery,
 }: {
   locale: string;
   params: CatalogSearchParams;
   response?: SearchResponse;
   error?: boolean;
+  emptyQuery?: boolean;
 }) {
   const t = await getTranslations({ locale, namespace: "search" });
   const sort: SortOption =
@@ -47,7 +54,18 @@ export async function CatalogPage({
         {t("pages.catalog")}
       </h1>
 
-      {error ? (
+      {emptyQuery ? (
+        <EmptyState
+          icon={SearchX}
+          title={t("errors.queryRequired")}
+          description={t("validation.emptyQueryDescription")}
+          action={
+            <Button asChild>
+              <Link href="/app">{t("validation.backToHome")}</Link>
+            </Button>
+          }
+        />
+      ) : error ? (
         <div className="neu-card flex flex-col items-center gap-3 px-8 py-12 text-center">
           <p className="text-lg font-semibold text-foreground">
             {t("errors.searchFailed")}
