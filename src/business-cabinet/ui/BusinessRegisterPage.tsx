@@ -56,9 +56,9 @@ const STEP_TITLE_KEYS = [
  * trade moved off step 1 onto its own page (step 4), and a branch map picker
  * was added to step 3: `CreateBranchRequest` (read from the backend source)
  * requires `latitude`/`longitude`, so drafted branches are real, not
- * decorative — each is POSTed via `api.createBranch` right after the business
- * itself is created (see `useSellerOnboarding.submit`, hooks.ts), once
- * `businessId` exists. Step 4 is SKIPPED entirely when the legal form does
+ * decorative — they travel inline as `pickupBranches` on the same onboarding
+ * request (see `toOnboardingRequest`, model.ts), created atomically with the
+ * business itself (backend commit 9a90f5c, 2026-07-29). Step 4 is SKIPPED entirely when the legal form does
  * not need verification (`stepIsSkippable`, model.ts) — `useSellerOnboarding`'s
  * `goNext`/`goBack` step over it rather than render an empty page.
  * `validateOnboardingStep` still validates ONLY the current step — never the

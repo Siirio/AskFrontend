@@ -352,7 +352,6 @@
       "deliveryCitiesRequired": "Add at least one city.",
       "pickupRequired": "Say whether pickup is available.",
       "agreementRequired": "Confirm the information above before you continue.",
-      "branchFailed": "{name} was not saved — you can add it again from your Branches tab.",
       "onboardingInvalid": "Some details are missing or invalid. Check the form and try again.",
       "network": "Something went wrong. Check your connection and try again."
     }

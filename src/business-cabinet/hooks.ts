@@ -344,29 +344,14 @@ export function useSellerOnboarding() {
 
     setPending(true);
     try {
-      const onboarding = await api.onboardSeller(
+      // Drafted branches travel inline on the request (model.ts
+      // `toOnboardingRequest`) — business, membership, profile, verification,
+      // and every branch commit in ONE transaction, so there is no follow-up
+      // per-branch call to fail independently here.
+      await api.onboardSeller(
         toOnboardingRequest(values, api.REGISTRATION_COUNTRY_CODE),
       );
       submitted.current = true;
-
-      // The business exists from here on. Branches are drafted client-side
-      // during step 3 and only become real now that `businessId` exists — one
-      // branch failing to save does not undo the business itself, so each
-      // failure is reported and the rest still try (see api.createBranch).
-      for (const branch of values.branches) {
-        try {
-          await api.createBranch(onboarding.businessId, {
-            name: branch.name,
-            address: branch.address.trim() || undefined,
-            addressDetails: branch.addressDetails.trim() || undefined,
-            latitude: branch.latitude,
-            longitude: branch.longitude,
-            pickupAvailable: true,
-          });
-        } catch {
-          toast.error(t("errors.branchFailed", { name: branch.name }));
-        }
-      }
 
       // A failure to re-read the session is NOT a failed registration, so it
       // must not be reported as one: fall through to the cabinet and let

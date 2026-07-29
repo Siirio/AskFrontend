@@ -31,7 +31,10 @@ have; corrected in the same change).
 five — proof-of-trade links moved to their own page, and a "review & confirm" page was added —
 and step 3 (delivery) gained a real branch-creation flow: a Leaflet/OpenStreetMap picker
 (`BranchMapModal.tsx`, OSM tiles + Nominatim search/reverse-geocode, both free/keyless) drafts
-one or more branches, each POSTed via `api.createBranch` right after the business itself exists.
+one or more branches, submitted inline as `SellerOnboardingRequest.pickupBranches` and created
+atomically with the business (corrected 2026-07-29 same-day, backend commit `9a90f5c` —
+an earlier revision of this note described a separate `api.createBranch` POST per branch,
+which the backend now rejects the business creation itself for, not just the branch).
 This was a deliberate reversal of the 2026-07-28 design, which explicitly excluded a
 "branch-drafting/map-picker modal for pickup" — reversed because `CreateBranchRequest` (read
 from the backend source, `kz.ask.business.branch.api.dto.CreateBranchRequest.java`) turned out

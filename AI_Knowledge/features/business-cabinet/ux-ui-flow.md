@@ -45,7 +45,7 @@ so `goNext` only ever needs to reveal this step's problems. Step 4 is SKIPPED en
 | 3 | | ↳ Which cities? | free-text chip list, Enter or trailing comma | `SELECTED_CITIES` only. At least one city required — not the `/cities` picker, since the backend accepts any non-blank name. No visible "Add" button since 2026-07-29 (Enter/comma commits) |
 | 3 | | Only online — no physical branch | full-width toggle row (`ToggleRow`, switch indicator) | Added 2026-07-29, UI-only (not a backend field); redesigned same day from a small chip to a full-width row with icon + switch. Forces `pickupAvailable: false` and empties any drafted branches |
 | 3 | | PickUp available | segmented, Yes/No | `pickupAvailable`, `@NotNull` — always sent. Renamed from "Is pickup available?" 2026-07-29. Answering Yes opens the branch map modal |
-| 3 | | ↳ Branch map picker | Leaflet/OpenStreetMap modal | Added 2026-07-29 (`BranchMapModal.tsx`) — OSM tiles, Nominatim search/reverse-geocode (both free, keyless, contracts.md). Drafts `DraftBranch[]` (name, address, address details, lat/lng); each is POSTed for real via `api.createBranch` once `businessId` exists (see submit flow below), not part of `SellerOnboardingRequest`. Address is required here — a branch drafted through this modal is always a pickup point. Scrollable (`max-h-[85vh] overflow-y-auto`) since 2026-07-29 — found by e2e: the footer button could land off-screen |
+| 3 | | ↳ Branch map picker | Leaflet/OpenStreetMap modal | Added 2026-07-29 (`BranchMapModal.tsx`) — OSM tiles, Nominatim search/reverse-geocode (both free, keyless, contracts.md). Drafts `DraftBranch[]` (name, address, address details, lat/lng); every drafted branch travels inline as `SellerOnboardingRequest.pickupBranches` on submit (backend commit `9a90f5c`, same day — created atomically with the business, not a follow-up `api.createBranch` call). Address is required here — a branch drafted through this modal is always a pickup point. Scrollable (`max-h-[85vh] overflow-y-auto`) since 2026-07-29 — found by e2e: the footer button could land off-screen |
 | 4 | `register.steps.links` | Verification sources | icon-card grid (`VerificationSources`), checkbox indicator | Moved off step 1 onto its own page 2026-07-29; redesigned same day from a flat chip row to a responsive grid of icon cards (item 5 revision) and the page-level duplicate intro paragraph removed. Only reached when `legalForm: NONE` — SKIPPED otherwise (`stepIsSkippable`). **Progressive**: pick WHICH platforms, then fill only those. At least one valid `http(s)` link required |
 | 5 | `register.steps.review` | Review & confirm | read-only recap + `ToggleRow` (checkbox indicator) | Added 2026-07-29. Recaps every field from steps 1–4 (including the catalog-setup choice) plus the branch count; "I confirm this information is accurate" is required (`agreementConfirmed`, UI-only) and gates the submit button, which lives on this page. Uses the same `ToggleRow` component as step 3's online-only toggle (D8, two consumers) — both were originally a small chip, redesigned same day to a full-width row |
 
@@ -57,10 +57,13 @@ surface. Each step lives in its own component (`RegisterStepIdentity` / `Registe
 `SellerOnboardingValues` the hook owns. `BranchMapModal.tsx` and `BranchList.tsx` are shared
 UI, not steps of their own.
 
-**Submit now does two things, not one (2026-07-29).** After `POST /business/onboarding`
-succeeds, `useSellerOnboarding.submit` loops any drafted branches through
-`api.createBranch(businessId, …)` before re-reading the session — see the submit-flow note
-below and contracts.md's Branches section.
+**Submit is one call, not two (corrected 2026-07-29, backend commit `9a90f5c`).** Drafted
+branches travel inline as `pickupBranches` on the SAME `POST /business/onboarding` request
+(`toOnboardingRequest`, model.ts) — business, membership, profile, verification, and every
+branch commit in one backend transaction. `useSellerOnboarding.submit` re-reads the session
+right after that single call resolves; there is no follow-up per-branch loop. (An earlier
+version of this doc described a two-call flow — `onboardSeller` then a loop of
+`api.createBranch` — that shape 400s against the live backend as of this commit.)
 
 **Then the session is re-read.** A 201 promotes the account to BUSINESS_OWNER server-side;
 until `GET /auth/session` is re-read the client still thinks it is a customer and the guard
@@ -79,11 +82,11 @@ managed-import SCOPING/PRICING dialog (roadmap #8) does not exist — but `catal
 itself is no longer restricted (reversed 2026-07-29, see locks.md's Retired Locks): step 2's two
 cards are both real, selectable choices, and whichever is picked is what gets submitted.
 
-**Branch creation is now real here too (2026-07-29), not exclusive to the Branches tab.** Step
-3's map picker drafts branches and submits them via `api.createBranch` right after the business
-is created — see the step table above. This is manual, one-at-a-time creation through the same
-endpoint the future Branches tab will use, not the bulk IMPORT this doc's "Hard rules" still
-forbids below.
+**Branch creation is real during registration too (2026-07-29), not exclusive to the Branches
+tab.** Step 3's map picker drafts branches manually, one at a time, then submits all of them
+inline with the onboarding request (see the step table above and the submit note). This is
+still manual creation, not the bulk IMPORT this doc's "Hard rules" forbids below — the atomic
+submit is a transaction-boundary detail, not a bulk-upload mechanism.
 
 ## Entry — after registration
 Seller registration → the cabinet. `startRoute` (OWNER_BRANCHES / BRANCH_WORKSPACE) decides

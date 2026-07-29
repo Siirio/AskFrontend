@@ -26,9 +26,9 @@ import { ToggleRow } from "./ToggleRow";
  * forces `pickupAvailable: false` and empties any drafted branches
  * (hooks.ts `setOnlineOnly`), so a seller who has no physical presence never
  * sees the pickup question or the map at all. Answering "PickUp available:
- * Yes" opens `BranchMapModal`; each branch drafted there is submitted for
- * real via `api.createBranch` once the business exists (hooks.ts `submit`) —
- * not part of `SellerOnboardingRequest`.
+ * Yes" opens `BranchMapModal`; every branch drafted there travels inline as
+ * `SellerOnboardingRequest.pickupBranches` on submit (model.ts
+ * `toOnboardingRequest`), created atomically with the business.
  */
 export function RegisterStepDelivery({
   values,

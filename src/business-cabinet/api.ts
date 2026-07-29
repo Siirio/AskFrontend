@@ -68,11 +68,11 @@ export async function suggestBusinessCategories(
 }
 
 /**
- * Create a branch for the just-created business (OWNER, Bearer). 201 on
- * success. Called once per drafted branch, right after `onboardSeller`
- * resolves — see `useSellerOnboarding.submit` (hooks.ts). A single branch
- * failing here does not undo the business that already exists; the caller
- * reports it and lets the seller retry from the cabinet's Branches tab.
+ * Create a branch for an existing business (OWNER, Bearer). 201 on success.
+ * NOT used during registration — onboarding's drafted branches travel inline
+ * as `SellerOnboardingRequest.pickupBranches` instead (model.ts
+ * `toOnboardingRequest`), created atomically with the business. This is the
+ * cabinet's own Branches-tab "add a branch" call (roadmap #6).
  */
 export function createBranch(
   businessId: string,

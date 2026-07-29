@@ -74,6 +74,11 @@ export type SellerOnboardingRequest = {
   deliveryCoverage: DeliveryCoverage;
   deliveryCities?: string[];
   pickupAvailable: boolean;
+  /** Confirmed live 2026-07-29 against backend commit 9a90f5c: `pickupAvailable:
+   *  true` with this empty/absent now 400s (`@AssertTrue`, "At least one pickup
+   *  branch is required when pickup is enabled") — branches are created in the
+   *  SAME transaction as the business, not via a follow-up `createBranch` call. */
+  pickupBranches?: CreateBranchRequest[];
 } & Partial<Record<VerificationSource, string>>;
 
 export type SellerOnboardingResponse = {
@@ -86,10 +91,12 @@ export type SellerOnboardingResponse = {
   startRoute?: string;
 };
 
-/** POST /api/v1/businesses/{businessId}/branches (OWNER, Bearer). Mirrors
- *  `kz.ask.business.branch.api.dto.CreateBranchRequest` exactly — `latitude`/
- *  `longitude` are `@NotNull` on the backend, so the map picker in the
- *  registration wizard is not decorative: it is how this request gets built. */
+/** Mirrors `kz.ask.business.branch.api.dto.CreateBranchRequest` exactly —
+ *  `latitude`/`longitude` are `@NotNull` on the backend, so the map picker in
+ *  the registration wizard is not decorative: it is how this request gets
+ *  built. Used both inline in `SellerOnboardingRequest.pickupBranches` (during
+ *  registration) and standalone at POST /api/v1/businesses/{businessId}/branches
+ *  (OWNER, Bearer — adding a branch later from the cabinet's Branches tab). */
 export type CreateBranchRequest = {
   name: string;
   address?: string;
@@ -114,8 +121,9 @@ export type BranchResponse = {
 };
 
 /** A branch drafted during registration, before the business (and therefore
- *  `businessId`) exists. Submitted for real via `api.createBranch` right
- *  after `onboardSeller` resolves — never part of `SellerOnboardingRequest`. */
+ *  `businessId`) exists. Submitted inline as `SellerOnboardingRequest.pickupBranches`
+ *  (2026-07-29, backend commit 9a90f5c) — business, membership, profile,
+ *  verification, and every drafted branch commit in ONE transaction. */
 export type DraftBranch = {
   /** Client-only key for list rendering/removal; never sent to the backend. */
   draftId: string;
@@ -168,8 +176,8 @@ export type SellerOnboardingValues = {
    *  section. Never sent to the backend as its own field. */
   onlineOnly: boolean;
   pickupAvailable: boolean | null;
-  /** Drafted during step 3's map modal, submitted individually via
-   *  `api.createBranch` once `businessId` exists (see hooks.ts `submit`). */
+  /** Drafted during step 3's map modal, submitted inline as
+   *  `pickupBranches` on the same onboarding request (see hooks.ts `submit`). */
   branches: DraftBranch[];
   /** Step 5's "I confirm this information is accurate" gate. UI-only. */
   agreementConfirmed: boolean;
@@ -386,6 +394,20 @@ export function toOnboardingRequest(
     // Non-null by validation; the form cannot submit without an answer.
     pickupAvailable: values.pickupAvailable as boolean,
   };
+
+  // The backend rejects pickupAvailable: true with no branches (`@AssertTrue`
+  // on SellerOnboardingRequest) — every drafted branch travels inline, created
+  // atomically with the business rather than via a follow-up call.
+  if (values.pickupAvailable && values.branches.length > 0) {
+    body.pickupBranches = values.branches.map((branch) => ({
+      name: branch.name,
+      address: branch.address.trim() || undefined,
+      addressDetails: branch.addressDetails.trim() || undefined,
+      latitude: branch.latitude,
+      longitude: branch.longitude,
+      pickupAvailable: true,
+    }));
+  }
 
   if (values.deliveryCoverage === "SELECTED_CITIES") {
     const cities = values.deliveryCities

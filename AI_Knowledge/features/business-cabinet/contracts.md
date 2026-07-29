@@ -6,7 +6,7 @@ Sources: `../Ask_Backend/AI_Knowledge/features/business/contracts.md`, `.../offe
 | Method | Path | Auth | Used by |
 |--------|------|------|---------|
 | GET | /api/v1/businesses/{businessId}/branches | OWNER/MANAGER | Branches tab (not built yet) |
-| POST | /api/v1/businesses/{businessId}/branches | OWNER | **CONSUMED since 2026-07-29** — `BusinessRegisterPage` step 3's map picker, once `businessId` exists (see Seller Onboarding below). Also the future Branches tab's "Add branch" |
+| POST | /api/v1/businesses/{businessId}/branches | OWNER | **NOT used by registration since 2026-07-29** (backend commit `9a90f5c` — see Seller Onboarding below). Reserved for the future Branches tab's "Add branch" to an EXISTING business |
 | PATCH | /api/v1/businesses/{businessId}/branches/{branchId} | OWNER | Update branch (not built yet) |
 
 **`CreateBranchRequest`** (read from `kz.ask.business.branch.api.dto.CreateBranchRequest.java`,
@@ -14,7 +14,9 @@ not inferred): `name` (`@NotBlank`), `address`, `addressDetails`, `cityId` all o
 `latitude`/`longitude` **`@NotNull`** — the map picker exists because these two are required, not
 as decoration. `pickupAvailable` optional; the registration wizard always sends `true` (every
 branch drafted through that modal is a pickup point). `BranchResponse` mirrors the request plus
-`id`, `businessId`, `cityName`.
+`id`, `businessId`, `cityName`. **Registration wizard branches travel inline as
+`SellerOnboardingRequest.pickupBranches: CreateBranchRequest[]`** (same shape, different
+envelope) — this standalone endpoint is for the cabinet's Branches tab only.
 
 ## Unique Offers
 | Method | Path | Auth | Used by |
@@ -73,17 +75,27 @@ Staff & Invites above; prefer these for company-level people management.
 > inferred. There is no vision entry for delivery/pickup (P9.1) — the fields are backend-
 > required, not product-described; raised as a doc gap, built anyway because the endpoint
 > is otherwise unusable.
+>
+> **Corrected 2026-07-29 (backend commit `9a90f5c`).** Two more gaps closed:
+> 1. `pickupBranches?: CreateBranchRequest[]` — `@AssertTrue` now 400s
+>    `pickupAvailable: true` with this empty/absent ("At least one pickup branch
+>    is required when pickup is enabled"), confirmed live. Branches, business,
+>    membership, profile, and verification commit in ONE transaction.
+> 2. `catalogSetupMode` row below said "we send `MANUAL` only" — stale since
+>    D29 (2026-07-29, owner directive, same day as this correction): `ASK_MANAGED_IMPORT`
+>    is sent for real too. The row is fixed below.
 
 | Field | Values | Notes |
 |---|---|---|
 | `businessScope` | `ITEM` · `SERVICE` · `BOTH` | NOT `PRODUCTS`/`SERVICES` — the module speaks `ITEM` |
 | `legalForm` | `KZ_IP` · `KZ_TOO` · `NONE` | The form's one branch |
-| `catalogSetupMode` | `MANUAL` · `ASK_MANAGED_IMPORT` | **We send `MANUAL` only** — see below |
+| `catalogSetupMode` | `MANUAL` · `ASK_MANAGED_IMPORT` | Both sent for real (D29) — `ASK_MANAGED_IMPORT` still lacks its own follow-up scoping screen (roadmap #8), but the field itself is not manual-only |
 | `legalIdentifier`, `legalName` | — | REQUIRED for `KZ_IP`/`KZ_TOO`; identifier is exactly 12 digits (IIN / BIN) |
 | `twoGisUrl` `kaspiUrl` `ozonUrl` `wildberriesUrl` `websiteUrl` `instagramUrl` `telegramUrl` | `^(?:https?://\S+)?$` | For `legalForm: NONE`, **at least one** must be non-blank |
 | `deliveryCoverage` | `NO_DELIVERY` · `SELECTED_CITIES` · `KAZAKHSTAN` · `WORLDWIDE` | `kz.ask.business.profile.domain.enums.DeliveryCoverage`, `@NotNull` |
 | `deliveryCities` | `string[]`, max 50 items, 120 chars each | REQUIRED (≥1 non-blank) only when `deliveryCoverage: SELECTED_CITIES`; free text, not the `/cities` picker used by branches |
 | `pickupAvailable` | `boolean` | `@NotNull` — always sent |
+| `pickupBranches` | `CreateBranchRequest[]`, max 50 | REQUIRED (≥1) only when `pickupAvailable: true` (`@AssertTrue`, confirmed live 2026-07-29). Each entry needs `name` + `latitude`/`longitude`; `pickupAvailable: true` set per-branch to match `CreateBranchRequest`'s own shape |
 | `phone`, `corporateEmail` | — | Optional; not collected in V1 (no vision entry — P9.1) |
 
 **`SellerOnboardingResponse`**: `businessId`, `catalogSetupMode`, `startRoute`
@@ -154,6 +166,7 @@ two callers that merely look alike (P6.3, D8).
 - MemberResponse: membershipId, email, displayName, role, status
 - InvitationResponse: invitationId, email, role, status (business-scoped invites)
 - UniqueOffer: id, businessId, name, description, type, status, discountPercent, discountAmount, currency, enabled, tags, startDate, endDate, coverUrl. M2M links to products / services / branches.
+  - **Not yet reflected above — backend commit `9a90f5c` (2026-07-29), read but not built** (Offers tab is roadmap #6, unbuilt): `discountPercent`/`discountAmount` are optional and only meaningful when `type` is `DISCOUNT` — don't require them for other offer types. `coverUrl` is an ASK-managed upload (same pattern as business logo/cover, `locks.md`), never a client-supplied URL field, matching the "uploaded cover image" wording in the backend's own create-form spec.
 
 ## Errors surfaced (backend added 2026-07-18)
 - INVITATION_NOT_FOUND / INVITATION_NOT_PENDING / INVITATION_EMAIL_MISMATCH / INVITATION_MEMBER_EXISTS / INVITATION_ROLE_NOT_ALLOWED — invite accept/create paths
