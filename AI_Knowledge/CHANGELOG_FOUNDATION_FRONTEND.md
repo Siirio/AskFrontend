@@ -1,5 +1,12 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-29 — Account security and chat cleanup
+
+- Replaced direct password and 2FA mutations with separate email-verified request/confirm dialogs using exact 6-digit codes and resend.
+- Simplified the personal account screen to profile data, security, conditional company onboarding, logout, and a distinct deletion danger zone.
+- Removed duplicated preferences, notification, and legal sections; removed the dedicated chat status-filter bar while retaining text search.
+- Confirmed search surfaces remain free of notification-bell controls.
+
 ## 2026-07-29 — Platform cabinet redesign
 
 - Replaced the seven-section admin shell with `Сводка`, `Бизнесы`, `Чаты`, `Аккаунты`, and `Команда Ask`.

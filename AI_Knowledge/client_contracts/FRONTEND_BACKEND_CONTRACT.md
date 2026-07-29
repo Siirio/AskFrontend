@@ -54,6 +54,14 @@ Response `AuthSessionResponse` includes `activationRequired: boolean`. When `tru
 
 `all_roles` is the deduplicated union of the personal AppUser role, active `business_memberships[].role` values, and `platform_membership.role`. Context-specific access must still use the corresponding membership object.
 
+## Account Security
+
+`AuthSessionResponse.is_two_factor_enabled` is the persisted 2FA setting. `requires_two_factor` is used only when a login is waiting for verification.
+
+Password changes use `POST /api/v1/auth/password-change/request` with `current_password`, `new_password`, and `password_confirmation`, followed by `POST /api/v1/auth/password-change/confirm` with `verification_id` and a 6-digit `code`.
+
+Two-factor changes use `POST /api/v1/auth/two-factor/request` with the explicit `enabled` target, followed by `POST /api/v1/auth/two-factor/confirm` with `verification_id` and a 6-digit `code`. Closing either dialog clears locally held passwords and codes. Resend repeats the request endpoint and replaces the earlier challenge.
+
 ## Customer Request Statuses
 
 Frontend should expect stable machine-readable statuses and own visible localization.
@@ -326,6 +334,8 @@ When a brand has an active drop, its product cards receive `hasActiveDrop: true`
 - Business import accepts `.xlsx`; assigned platform import additionally exposes TXT/MD/PDF Autodump.
 - `POST /api/v1/platform/ai-enrichment` enriches selected `PRODUCT`, `SERVICE`, or `UNIQUE_OFFER` aggregate IDs from their own text fields and returns `enrichedCount`; the platform UI refreshes the affected data immediately.
 - Account export was removed; account deletion remains.
+- The personal account page contains profile data, verified password and 2FA actions, a company-onboarding action only when `business_memberships` is empty, logout, and a visually separate account-deletion danger zone. It does not duplicate preferences, notification, or legal-document management.
+- The dedicated chats page keeps text search and removes synthetic status filter controls; conversation status may still be displayed when returned by the API.
 
 ## 2026-07-19 OAuth and business-scope updates
 - `GET /api/v1/auth/session` accepts the OAuth bridge cookie or a Bearer token and returns `access_token`, `token_type`, `expires_in`, plus the normal session context. The bridge cookie is cleared by the response.

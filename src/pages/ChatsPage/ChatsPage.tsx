@@ -28,8 +28,6 @@ import {
 import type { BrandProfileDto, ChatConversationDto, ChatMessageDto } from "../../shared/api/dto";
 import { MessageReadStatus } from "../../shared/ui/MessageReadStatus/MessageReadStatus";
 
-type StatusFilter = "ALL" | "PENDING" | "IN_CHAT" | "CLOSED";
-
 function shortTime(value: string) {
   const date = new Date(value);
   const now = new Date();
@@ -55,7 +53,6 @@ export function ChatsPage() {
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
   const [profile, setProfile] = useState<BrandProfileDto | null>(null);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("ALL");
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(true);
   const [threadBusy, setThreadBusy] = useState(false);
@@ -142,12 +139,11 @@ export function ChatsPage() {
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return conversations.filter(item => {
-      if (status !== "ALL" && item.conversationStatus !== status) return false;
-      if (!normalized) return true;
-      return `${item.subject} ${item.customerName ?? ""}`.toLowerCase().includes(normalized);
-    });
-  }, [conversations, query, status]);
+    if (!normalized) return conversations;
+    return conversations.filter(item => (
+      `${item.subject} ${item.customerName ?? ""}`.toLowerCase().includes(normalized)
+    ));
+  }, [conversations, query]);
 
   const send = async () => {
     const text = reply.trim();
@@ -210,19 +206,6 @@ export function ChatsPage() {
           <Search size={18} />
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Поиск по чату" />
         </label>
-
-        <div className="ask-chat-filters">
-          {(["ALL", "PENDING", "IN_CHAT", "CLOSED"] as const).map(filter => (
-            <button
-              key={filter}
-              type="button"
-              className={status === filter ? "is-active" : ""}
-              onClick={() => setStatus(filter)}
-            >
-              {filter === "ALL" ? "Все" : statusLabel(filter)}
-            </button>
-          ))}
-        </div>
 
         <div className="ask-chat-list__items">
           {busy && Array.from({ length: 5 }).map((_, index) => <div key={index} className="ask-chat-list__skeleton" />)}
