@@ -29,6 +29,7 @@ Read:
 - All application and customer-discovery routes require a restored authenticated session; anonymous users are redirected to `/auth` with their intended internal return URL because search must never bypass login or registration.
 - Item and Service create forms never expose active-state controls and always create records with `isActive: true`; active state may be changed only after creation because drafts are not part of this flow.
 - The city control is a location selector and never routes to the user account; public Business profiles are separate from owner User profiles and search-result rows open the Business profile by `businessId`.
+- Account settings never render legal documents or agreements for customer or Business contexts because legal acceptance belongs to registration and dedicated legal routes, not account management.
 - Business overview conversations open in the shared fixed right-side chat drawer instead of rendering an inline thread inside dashboard layout containers.
 - Never show internal implementation, backend/frontend architecture, stack, PWA, token, renderer, builder, plugin, or design-system explanations in the product UI; these belong only in docs and code, not visible screens.
 

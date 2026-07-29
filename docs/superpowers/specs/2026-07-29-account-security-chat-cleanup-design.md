@@ -4,7 +4,7 @@
 
 This change simplifies the ordinary customer account, secures password and two-factor changes with email verification, removes chat status filtering, removes the search-bar notification action, and exposes company creation to customers without a Business membership.
 
-The implementation spans AskFrontend and AskBackend. Existing Business account legal surfaces remain available. The ordinary customer account no longer shows legal documents or agreements.
+The implementation spans AskFrontend and AskBackend. Account settings never show legal documents or agreements, regardless of whether the user has a Business membership. Registration-time legal acceptance and dedicated legal routes remain unchanged.
 
 ## Account layout
 
@@ -15,7 +15,7 @@ The ordinary customer account contains:
 - a company-creation action when the customer has no Business membership;
 - a visually distinct account-deletion danger zone.
 
-The preferences section and browser-notification control are removed for every account context. Legal documents and agreements are hidden from ordinary customers and remain available only in the Business account context.
+The preferences section and browser-notification control are removed for every account context. Legal documents and agreements are also removed from account settings for every account context.
 
 The company-creation action routes to the existing seller onboarding flow. It is hidden when the current session already contains a Business membership.
 
