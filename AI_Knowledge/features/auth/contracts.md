@@ -55,6 +55,15 @@ boundary, so slice code only ever sees camelCase.
 > **Open, dev-only:** `dev`'s `CustomerRegisterRequest` drops `acceptedUserAgreement` and
 > renames `rememberMe` → `isRememberMe`. `master` still accepts the consent field, so the
 > consent stops being recorded the moment dev deploys. Backend/product question.
+>
+> **Re-confirmed 2026-07-29** against `../Ask_Backend` `dev` @ `9a90f5c`, run locally
+> (`mvn spring-boot:run -Dspring-boot.run.profiles=local`) against a freshly-migrated
+> local Postgres: `verification_id` (not `authChallengeId`), the onboarding endpoint,
+> and the flat `/categories` shape all confirmed live. **This does not mean `:2020`
+> stays on `dev` forever** — it reflects whichever checkout/branch was last used to
+> start it. `:2020` is a local port, not a shared server; before trusting this table,
+> confirm what's actually running with the same curl-the-server method (see
+> `[[backend-dev-vs-master-split]]`), don't assume from a prior session's notes.
 
 ## Endpoints consumed by slice #1 (the customer path)
 
@@ -163,10 +172,20 @@ Google-first account currently gets no role modal. Raised with backend (ROADMAP 
 table); do not guess a client-side substitute (P9.4).
   - GET /session under a **Bearer** token returns `accessToken: null` (the token is already stored); under the **OAuth bridge cookie** it returns a REAL `access_token` (the exchange). `role` is the bare enum name ("CUSTOMER") rather than the authority ("ROLE_CUSTOMER") returned by verify — the client maps both (`roleToKind`).
   - ⚠ **`role`/`startRoute` stay account-level and neutral even for a business owner** — verified live 2026-07-28: a login for an OWNER account returns `role: "CUSTOMER"`, `startRoute: "CLIENT_SEARCH"`, `all_roles: ["CUSTOMER"]`, WITH a populated `business` object (`member_role: "OWNER"`) and a matching `business_memberships` entry. The backend's business/role model lives separately from the account role (`business_member` table), so `role` never becomes `"OWNER"`/`"BUSINESS_OWNER"` on login. The client derives `AuthUser.kind` from `session.business.memberRole` (`toAuthUser`), NOT from `session.role` — `roleToKind(session.role)` would always resolve to `"customer"` for a real business owner and hide the Dashboard nav link (`canAccessDashboard`). `businessMemberships` (plural) is not yet consumed; today's UI only surfaces the single active `business` context.
-- **AuthUserResponse**: userId, displayName (**nullable** — registration accepts an empty name and the backend stores null), email, status — **no `phone`** (removed from AppUser in backend V8; identity lock)
+- **AuthUserResponse**: userId, displayName (**nullable** — registration accepts an empty name and the backend stores null), email, **phone** (nullable — reinstated on AppUser by backend commit `9a90f5c`, 2026-07-29; the earlier "removed in V8" note is stale), status
 - **AuthBusinessContextResponse**: businessId, businessName, branchId, branchName, membershipId, memberRole
 - **RoleOption**: userId, role, displayName
 - **LogoutResponse**: success
+- **Undocumented on the wire, confirmed live 2026-07-29** (present on `AuthSessionResponse`, not yet modelled by this client): `customerProfile: { isEnabled: boolean }`, `businessMemberships: AuthBusinessContextResponse[]` (plural — see the OWNER-login note above; `session.business` is the single active context, this is the full list), `pendingInvitationsCount: number`. Not consumed anywhere in V1 code; raised here so a future consumer doesn't have to re-discover them by curling the server.
+
+### `allRoles` semantics (backend commit `9a90f5c`, 2026-07-29)
+
+`allRoles` is the deduplicated union of the personal AppUser role, every active
+`businessMemberships[].role`, and `platformMembership.role` when present — a
+backend lock now guarantees a field named `allRoles` can't quietly omit a work
+context. It is informational only; context-specific authorization still comes
+from `business`/`businessMemberships`/`platformMembership`, never from scanning
+this array (unchanged from before — this just confirms the shape in writing).
 
 ## startRoute → route
 
