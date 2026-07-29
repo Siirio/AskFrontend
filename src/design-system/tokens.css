@@ -61,6 +61,8 @@
   --fcw-color-border-hover: var(--fcw-gray-300);
   --fcw-color-error: var(--fcw-red-500);
   --fcw-color-success: var(--fcw-green-500);
+  --fcw-chat-customer-accent: var(--fcw-blue-500);
+  --fcw-chat-business-accent: #22a06b;
 
   /* --- Type Scale --- */
   --fcw-font-size-display-xl: clamp(4rem, 8vw, 8rem);

@@ -1803,17 +1803,26 @@ select {
 }
 
 .ask-message {
+  --ask-message-accent: var(--fcw-color-border);
   align-self: flex-start;
   max-width: min(78%, 620px);
   padding: 10px 13px 7px;
   color: var(--fcw-color-text);
-  background: var(--fcw-color-surface-secondary);
+  background: color-mix(in srgb, var(--ask-message-accent) 9%, var(--fcw-color-surface));
+  border: 1px solid color-mix(in srgb, var(--ask-message-accent) 22%, var(--fcw-color-border));
   border-radius: 4px 13px 13px;
+}
+
+.ask-message--customer {
+  --ask-message-accent: var(--fcw-chat-customer-accent);
+}
+
+.ask-message--business {
+  --ask-message-accent: var(--fcw-chat-business-accent);
 }
 
 .ask-message.is-own {
   align-self: flex-end;
-  background: color-mix(in srgb, var(--fcw-color-primary) 13%, var(--fcw-color-surface));
   border-radius: 13px 4px 13px 13px;
 }
 
@@ -1823,6 +1832,7 @@ select {
   color: var(--fcw-color-text-secondary);
   text-align: center;
   background: transparent;
+  border-color: transparent;
 }
 
 .ask-message p {

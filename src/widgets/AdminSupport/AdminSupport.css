@@ -273,14 +273,14 @@
 }
 
 .platform-message--customer {
-  background: color-mix(in srgb, #3b82f6 10%, var(--fcw-color-surface));
-  border: 1px solid color-mix(in srgb, #3b82f6 23%, var(--fcw-color-border));
+  background: color-mix(in srgb, var(--fcw-chat-customer-accent) 10%, var(--fcw-color-surface));
+  border: 1px solid color-mix(in srgb, var(--fcw-chat-customer-accent) 23%, var(--fcw-color-border));
 }
 
 .platform-message--business {
   align-self: flex-end;
-  background: color-mix(in srgb, #22a06b 11%, var(--fcw-color-surface));
-  border: 1px solid color-mix(in srgb, #22a06b 24%, var(--fcw-color-border));
+  background: color-mix(in srgb, var(--fcw-chat-business-accent) 11%, var(--fcw-color-surface));
+  border: 1px solid color-mix(in srgb, var(--fcw-chat-business-accent) 24%, var(--fcw-color-border));
 }
 
 .platform-message.has-violation {

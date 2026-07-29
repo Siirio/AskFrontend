@@ -310,12 +310,11 @@ export function CompanyCard({ data, onClose }: Props) {
                                 }}
                               >
                                 <div
+                                  className={`chat-participant-bubble is-${msg.senderType.toLowerCase()}`}
                                   style={{
                                     maxWidth: "80%",
                                     padding: "0.625rem 0.875rem",
                                     borderRadius: isMe ? "var(--fcw-radius-lg) var(--fcw-radius-lg) 0 var(--fcw-radius-lg)" : "var(--fcw-radius-lg) var(--fcw-radius-lg) var(--fcw-radius-lg) 0",
-                                    backgroundColor: isMe ? "var(--fcw-color-primary)" : "var(--fcw-color-surface-secondary)",
-                                    color: isMe ? "#fff" : "var(--fcw-color-text)",
                                   }}
                                 >
                                   {msg.text ? <p className="fcw-body-s" style={{ margin: 0, lineHeight: 1.5 }}>{msg.text}</p> : null}
@@ -328,7 +327,6 @@ export function CompanyCard({ data, onClose }: Props) {
                                         display: "flex",
                                         alignItems: "center",
                                         gap: "0.375rem",
-                                        color: isMe ? "#fff" : "var(--fcw-color-primary)",
                                         marginTop: msg.text ? "0.375rem" : 0,
                                         fontSize: "0.8125rem",
                                       }}

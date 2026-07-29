@@ -107,7 +107,7 @@ export function BusinessChatDrawer({
             {messages.map(message => (
               <div
                 key={message.messageId}
-                className={`support-message${message.senderType === "BUSINESS" ? " is-own" : ""}`}
+                className={`support-message support-message--${message.senderType.toLowerCase()}${message.senderType === "BUSINESS" ? " is-own" : ""}`}
               >
                 <small>{t(`chats.conversations.sender.${message.senderType}`)}</small>
                 {message.text && <p>{message.text}</p>}

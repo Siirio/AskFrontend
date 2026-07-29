@@ -272,7 +272,10 @@ export function ChatsPage() {
                 const own = message.senderType === "CUSTOMER";
                 const system = message.senderType === "SYSTEM";
                 return (
-                  <div key={message.messageId} className={`ask-message${own ? " is-own" : ""}${system ? " is-system" : ""}`}>
+                  <div
+                    key={message.messageId}
+                    className={`ask-message ask-message--${message.senderType.toLowerCase()}${own ? " is-own" : ""}${system ? " is-system" : ""}`}
+                  >
                     {message.text && <p>{message.text}</p>}
                     {message.attachmentUrl && (
                       <a href={message.attachmentUrl} target="_blank" rel="noreferrer">
