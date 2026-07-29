@@ -167,11 +167,42 @@ Do NOT build these early. Recorded so today's decisions don't block them.
 
 | Gate | Question | Parks (everything else in that slice still ships) | Status |
 |---|---|---|---|
-| **G1** | **Search sort & filter contract — NARROWED 2026-07-28** (re-read against `dev` `ee542d9`). The vision (§4) wants sorts relevance / distance / cost / unique-offers and filters price / companies / location (100 km · city · map area). `POST /api/v1/search` supports sorts `relevance` · `distance` · `price_asc`, and `explicitFilters` for `minPrice`/`maxPrice`, `city`, `category`, `country`, `openNow`, **and `radiusMeters` (1–100 000)**. **The 100 km radius is DELIVERED** — that control leaves the parked list. **Still missing:** a Unique-Offers sort, a Companies filter, and a map-area (bbox) filter. The lock still forbids faking any of these by re-sorting a loaded page client-side. | Three controls: the Unique-Offers sort tab, the Companies filter, and map-area. **Ships now:** Home, the search form + mode toggle, the Catalog Page, sectioned results, result cards, the relevance/distance/cost sorts, and price/city/category **+ the 100 km radius** filters. | **PARTIAL — three left, raise with backend** |
+| **G1** | **Search sort & filter contract — NARROWED 2026-07-28** (re-read against `dev` `ee542d9`). The vision (§4) wants sorts relevance / distance / cost / unique-offers and filters price / companies / location (100 km · city · map area). `POST /api/v1/search` supports sorts `relevance` · `distance` · `price_asc`, and `explicitFilters` for `minPrice`/`maxPrice`, `city`, `category`, `country`, `openNow`, **and `radiusMeters` (1–100 000)**. **The 100 km radius is DELIVERED** — that control leaves the parked list. **Still missing:** a Unique-Offers sort, a Companies filter, and a map-area (bbox) filter. The lock still forbids faking any of these by re-sorting a loaded page client-side. **OPEN QUESTION added 2026-07-29 (backend commit `9a90f5c`, not yet resolved — see below).** | Three controls: the Unique-Offers sort tab, the Companies filter, and map-area. **Ships now:** Home, the search form + mode toggle, the Catalog Page, sectioned results, result cards, the relevance/distance/cost sorts, and price/city/category **+ the 100 km radius** filters. | **PARTIAL — three left, scope question open (below)** |
 | **G1b** | **Search `mode` — RESOLVED 2026-07-28 (owner).** `mode` is `@NotNull` and `SearchScope` admits only `ITEM`/`SERVICE`; there is no "search everything", so something must choose. | Nothing. The search form gets a **goods/services toggle**, appended to PRODUCT_VISION UF 2.1 with justification. The `No product/service scope toggle` slice lock was retired the same day — its premise (a unified endpoint where the AI infers intent) no longer exists. | **CLOSED** |
 | **G2** | **Company Profile scope.** The vision marks it "coming in a future update"; no backend endpoints exist. | Nothing. The placeholder IS the spec — ship it and move on. Re-open when the vision describes a screen. | Open, not blocking |
 | **G3** | **What does "Proceed to Purchase" do? — RE-OPENED 2026-07-28: its candidate is DEAD.** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. The standing answer was the backend's `contact` module (`contactActionId` privacy pattern) — **that module was DELETED 2026-07-21**, and `contactActions` is gone from `SearchCardResponse`. No contact-action concept remains anywhere on the wire. What survives on the card is `businessProfile.{number, email, websiteUrl, instagramUrl, telegramUrl}` — the business's **public** channels, NOT a privacy-preserving handle. Routing the button there exposes real contact details, which is a product decision, not a fallback an agent may choose. | One button's click handler. **Ships anyway:** the whole Product Card — every field, the modal, and the chat button. | **OPEN — needs a FRESH answer; the old candidate no longer exists** |
 | **G4** | World-wide domain/brand choice (ask.kz is KZ-branded) | Nothing before Phase 4 | Open, not urgent |
+
+### G1 — scope question added 2026-07-29, NOT decided (documented only, per owner instruction)
+
+Backend commit `9a90f5c` added a `search/locks.md` lock and a `search/ux-ui-flow.md`
+section describing **"Filter & Sort V1"**: relevance is the only server-ordered
+pass; distance/cost/unique-offer ordering are described as **client-side
+reorderings** of the cards already loaded for the current page (no new search
+request), and price/company/city/radius/map-area are described as **client-side
+removals** from that same loaded set, with company choices/counts "derived from
+the same loaded cards."
+
+Read literally, that also covers price/city/radius/distance/price_asc — filters
+and sorts this client currently sends to the SERVER on every change (`hooks.ts`
+`useUpdateCatalogParams` → `router.push` → route re-fetch). That would reverse
+the existing lock ("never re-sort or re-filter a page of results client-side,"
+`search/locks.md`) for more than just the three gate-parked controls, and would
+mean today's `hooks.ts` premise ("nothing here needs to outlive one render, no
+`store.ts`") no longer holds.
+
+**Not resolved which of these it means:**
+1. ALL catalog filters/sorts move client-side over one loaded page (bigger
+   change — new client state, rewritten `SortControl`/`FilterPanel`, locks.md
+   rewrite).
+2. Only the 3 previously-parked controls (Companies, Unique-Offers sort,
+   map-area) become a new client-side refinement layer ON TOP of today's
+   server round-trip, which keeps working unchanged for relevance/distance/
+   price_asc/price/city/radius.
+3. Raise the ambiguity with backend before either.
+
+No implementation should start against this gate until someone (not an agent
+inferring from backend prose) picks one of the three.
 
 ## Cross-Repo Dependencies
 

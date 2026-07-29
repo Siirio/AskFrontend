@@ -62,4 +62,25 @@ does not have in V1 (owner decision pending); do not build it here.
 - **CONVERSATION_CLOSED** (new) → sending into a `CLOSED` conversation; surface "this chat is closed".
 - FILE_INVALID / ATTACHMENT_NOT_FOUND → upload rejected / bad attachment reference.
 
-No delivered/read receipts per message. No typing indicators. The model has neither.
+No typing indicators. The model has none.
+
+## Not yet reflected above — backend commit `9a90f5c` (2026-07-29), read but not built
+
+This slice has no code yet (roadmap #4) — noted here so whoever builds it starts
+from the current contract instead of the state above, which predates this pull:
+
+- **`ChatMessage` gains `readAt`** (nullable timestamp) — the one receipt model
+  across every chat surface (customer, business, support, managed-import): own
+  messages render "sent" until the counterpart opens/reads the conversation,
+  then "read". Backend lock: no separate mutable delivery-status enum exists —
+  do not invent a `DELIVERED`/`SEEN` enum client-side, derive purely from
+  `readAt` being null or not.
+- **`conversationType` gains a third canonical value `PLATFORM_SUPPORT`**
+  (alongside `GENERAL_SUPPORT`, `MANAGED_IMPORT`) — the permanent platform
+  support conversation, opened via `POST /api/v1/chat/support`. Still no V1
+  chats-slice surface for it (platform cabinet territory, see below).
+- Platform staff access to **ordinary `GENERAL_SUPPORT` chats is now read-only**
+  by backend lock: they may inspect history and moderate a reported `MESSAGE`,
+  but cannot send into or close a customer↔business conversation. Doesn't change
+  this slice's own customer/business endpoints — noted for completeness since
+  the messaging backend module is shared.
