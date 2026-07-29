@@ -24,6 +24,7 @@ export type AuthSession = {
   business?: { businessId: string; businessName: string; membershipId?: string; memberRole?: string; branchId?: string; branchName?: string };
   requiresRoleSelection?: boolean;
   requiresTwoFactor?: boolean;
+  isTwoFactorEnabled?: boolean;
   verificationId?: string;
   allRoles?: Array<"CUSTOMER" | "OWNER" | "MANAGER" | "WORKER" | "SUPER_ADMIN" | "ADMIN" | "MODERATOR">;
   customerProfile?: { isEnabled: boolean };
@@ -138,18 +139,39 @@ export function updateProfile(data: { displayName?: string; email?: string; phon
   });
 }
 
-export function changePassword(currentPassword: string, newPassword: string) {
-  return apiRequest<AuthSession>("/api/v1/auth/change-password", {
+export function requestPasswordChange(
+  currentPassword: string,
+  newPassword: string,
+  passwordConfirmation: string,
+) {
+  return apiRequest<AuthChallenge>("/api/v1/auth/password-change/request", {
     method: "POST",
     auth: true,
-    body: { currentPassword, newPassword },
+    body: { currentPassword, newPassword, passwordConfirmation },
   });
 }
 
-export function toggleTwoFactor() {
-  return apiRequest<AuthSession>("/api/v1/auth/toggle-2fa", {
+export function confirmPasswordChange(verificationId: string, code: string) {
+  return apiRequest<AuthSession>("/api/v1/auth/password-change/confirm", {
     method: "POST",
     auth: true,
+    body: { verificationId, code },
+  });
+}
+
+export function requestTwoFactorChange(enabled: boolean) {
+  return apiRequest<AuthChallenge>("/api/v1/auth/two-factor/request", {
+    method: "POST",
+    auth: true,
+    body: { enabled },
+  });
+}
+
+export function confirmTwoFactorChange(verificationId: string, code: string) {
+  return apiRequest<AuthSession>("/api/v1/auth/two-factor/confirm", {
+    method: "POST",
+    auth: true,
+    body: { verificationId, code },
   });
 }
 

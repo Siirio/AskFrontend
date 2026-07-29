@@ -1316,8 +1316,7 @@ a {
 }
 
 .account-fields input,
-.account-inline-form input,
-.account-password-form input {
+.account-inline-form input {
   width: 100%;
   min-width: 0;
   border: 0;
@@ -1361,8 +1360,7 @@ a {
   cursor: pointer;
 }
 
-.account-inline-form,
-.account-password-form {
+.account-inline-form {
   display: flex;
   gap: 0.625rem;
   margin-top: 0.875rem;
@@ -1371,8 +1369,7 @@ a {
   background: var(--fcw-color-surface-secondary);
 }
 
-.account-inline-form input,
-.account-password-form input {
+.account-inline-form input {
   min-height: 40px;
   padding: 0 0.625rem;
   border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
@@ -1381,7 +1378,6 @@ a {
 }
 
 .account-inline-form button,
-.account-password-form button,
 .account-setting-row > button {
   min-height: 36px;
   padding: 0 0.75rem;
@@ -1393,15 +1389,6 @@ a {
   font-size: var(--fcw-font-size-body-s);
   font-weight: var(--fcw-font-weight-semibold);
   cursor: pointer;
-}
-
-.account-password-form {
-  flex-direction: column;
-  margin: 0.75rem 0;
-}
-
-.account-password-form button {
-  align-self: flex-start;
 }
 
 .account-setting-row {
@@ -1442,27 +1429,6 @@ a {
   color: var(--fcw-color-success);
 }
 
-.account-legal-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.account-legal-list button {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: 0;
-  border-radius: var(--fcw-radius-md);
-  background: var(--fcw-color-surface-secondary);
-  color: var(--fcw-color-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
 .account-footer {
   display: flex;
   justify-content: space-between;
@@ -1472,8 +1438,7 @@ a {
   border-top: var(--fcw-border-width-thin) solid var(--fcw-color-border);
 }
 
-.account-footer button,
-.account-delete-confirmation button {
+.account-footer button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -1487,27 +1452,230 @@ a {
   cursor: pointer;
 }
 
-.account-footer button.is-danger,
-.account-delete-confirmation button.is-danger {
+.account-company-action > button,
+.account-danger-zone > button,
+.account-modal footer button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0 0.875rem;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-md);
+  background: var(--fcw-color-surface);
+  color: var(--fcw-color-text);
+  font: inherit;
+  font-size: var(--fcw-font-size-body-s);
+  font-weight: var(--fcw-font-weight-semibold);
+  cursor: pointer;
+}
+
+.account-company-action > button {
+  width: 100%;
+  border-color: color-mix(in srgb, var(--fcw-color-primary) 35%, var(--fcw-color-border));
+  background: color-mix(in srgb, var(--fcw-color-primary) 8%, var(--fcw-color-surface));
+  color: var(--fcw-color-primary);
+}
+
+.account-danger-zone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1.125rem 1.25rem;
+  border: var(--fcw-border-width-thin) solid color-mix(in srgb, var(--fcw-color-error) 42%, var(--fcw-color-border));
+  border-radius: var(--fcw-radius-lg);
+  background: color-mix(in srgb, var(--fcw-color-error) 7%, var(--fcw-color-surface));
+}
+
+.account-danger-zone > div {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.account-danger-zone > div > span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: var(--fcw-radius-md);
+  background: color-mix(in srgb, var(--fcw-color-error) 12%, var(--fcw-color-surface));
   color: var(--fcw-color-error);
 }
 
-.account-delete-confirmation {
-  margin-top: 0.75rem;
-  padding: 1rem;
-  border-radius: var(--fcw-radius-md);
-  background: color-mix(in srgb, var(--fcw-color-error) 8%, var(--fcw-color-surface));
-}
-
-.account-delete-confirmation p {
+.account-danger-zone h2,
+.account-danger-zone p {
   margin: 0;
 }
 
-.account-delete-confirmation > div {
+.account-danger-zone h2 {
+  color: var(--fcw-color-error);
+  font-size: 1rem;
+}
+
+.account-danger-zone p {
+  margin-top: 0.2rem;
+  color: var(--fcw-color-text-secondary);
+  font-size: var(--fcw-font-size-body-s);
+}
+
+.account-danger-zone > button {
+  flex: 0 0 auto;
+  border-color: color-mix(in srgb, var(--fcw-color-error) 45%, var(--fcw-color-border));
+  background: transparent;
+  color: var(--fcw-color-error);
+}
+
+.account-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--fcw-color-text) 45%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.account-modal {
+  width: min(100%, 500px);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 1.25rem;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-lg);
+  background: var(--fcw-color-surface);
+  box-shadow: var(--fcw-shadow-lg);
+}
+
+.account-modal > header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 32px;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.account-modal > header > span {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--fcw-radius-md);
+  background: color-mix(in srgb, var(--fcw-color-primary) 10%, var(--fcw-color-surface));
+  color: var(--fcw-color-primary);
+}
+
+.account-modal > header h2,
+.account-modal > header p {
+  margin: 0;
+}
+
+.account-modal > header h2 {
+  font-size: 1.05rem;
+}
+
+.account-modal > header p {
+  margin-top: 0.25rem;
+  color: var(--fcw-color-text-secondary);
+  font-size: var(--fcw-font-size-body-s);
+  line-height: 1.45;
+}
+
+.account-modal > header > button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--fcw-radius-full);
+  background: transparent;
+  color: var(--fcw-color-text-secondary);
+  cursor: pointer;
+}
+
+.account-modal__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.account-modal__fields input,
+.account-code-field input {
+  width: 100%;
+  min-height: 44px;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-md);
+  background: var(--fcw-color-background);
+  color: var(--fcw-color-text);
+  font: inherit;
+}
+
+.account-code-field {
+  display: block;
+  margin-top: 1.25rem;
+}
+
+.account-code-field > span {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--fcw-color-text-secondary);
+  font-size: var(--fcw-font-size-body-s);
+  font-weight: var(--fcw-font-weight-medium);
+}
+
+.account-code-field input {
+  padding: 0 0.75rem;
+  font-size: 1.125rem;
+  letter-spacing: 0.28em;
+}
+
+.account-modal__error {
+  margin: 0.875rem 0 0;
+  padding: 0.75rem;
+  border-radius: var(--fcw-radius-md);
+  background: color-mix(in srgb, var(--fcw-color-error) 10%, var(--fcw-color-surface));
+  color: var(--fcw-color-error);
+  font-size: var(--fcw-font-size-body-s);
+}
+
+.account-modal > footer {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: 0.625rem;
+  margin-top: 1.25rem;
+}
+
+.account-modal footer button.is-primary {
+  border-color: var(--fcw-color-primary);
+  background: var(--fcw-color-primary);
+  color: var(--fcw-color-primary-text);
+}
+
+.account-modal footer button.is-secondary {
+  color: var(--fcw-color-primary);
+}
+
+.account-modal--danger > header > span {
+  background: color-mix(in srgb, var(--fcw-color-error) 12%, var(--fcw-color-surface));
+  color: var(--fcw-color-error);
+}
+
+.account-modal footer button.is-danger {
+  border-color: var(--fcw-color-error);
+  background: var(--fcw-color-error);
+  color: var(--fcw-color-primary-text);
+}
+
+.account-modal button:disabled,
+.account-danger-zone button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .message-read-status {
@@ -1576,6 +1744,28 @@ a {
 
   .account-footer button {
     justify-content: flex-start;
+  }
+
+  .account-danger-zone {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-danger-zone > button {
+    width: 100%;
+  }
+
+  .account-modal {
+    padding: 1rem;
+  }
+
+  .account-modal > footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .account-modal > footer button {
+    width: 100%;
   }
 
   .home-search-row {
