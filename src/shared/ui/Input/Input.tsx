@@ -1,4 +1,6 @@
-import { type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes, forwardRef } from "react";
+import { type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes, forwardRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -7,17 +9,34 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helper, className = "", id, ...props }, ref) => {
+  ({ label, error, helper, className = "", id, type, ...props }, ref) => {
+    const { t } = useTranslation();
+    const [passwordVisible, setPasswordVisible] = useState(false);
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
+    const isPassword = type === "password";
     return (
       <div className="fcw-flex-col fcw-gap-sm" style={{ gap: "0.25rem" }}>
         {label && <label htmlFor={inputId} className="fcw-input-label">{label}</label>}
-        <input
-          ref={ref}
-          id={inputId}
-          className={`fcw-input ${error ? "fcw-input-error" : ""} ${className}`}
-          {...props}
-        />
+        <div className={isPassword ? "fcw-password-input" : undefined}>
+          <input
+            ref={ref}
+            id={inputId}
+            type={isPassword && passwordVisible ? "text" : type}
+            className={`fcw-input ${error ? "fcw-input-error" : ""} ${className}`}
+            {...props}
+          />
+          {isPassword && (
+            <button
+              type="button"
+              className="fcw-password-input__toggle"
+              onClick={() => setPasswordVisible(value => !value)}
+              aria-label={t(passwordVisible ? "auth.password.hide" : "auth.password.show")}
+              aria-pressed={passwordVisible}
+            >
+              {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          )}
+        </div>
         {error && <span className="fcw-input-error-msg">{error}</span>}
         {helper && !error && <span className="fcw-input-helper">{helper}</span>}
       </div>

@@ -1,0 +1,194 @@
+.platform-businesses-count {
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.76rem;
+}
+
+.platform-business-list {
+  overflow: hidden;
+  background: var(--fcw-color-surface);
+  border: 1px solid var(--fcw-color-border);
+  border-radius: 14px;
+}
+
+.platform-business-head,
+.platform-business-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) minmax(150px, 0.8fr) 90px 90px minmax(130px, auto);
+  align-items: center;
+  gap: 15px;
+}
+
+.platform-business-head {
+  min-height: 42px;
+  padding: 0 16px;
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.7rem;
+  font-weight: 650;
+  background: var(--fcw-color-surface-secondary);
+  border-bottom: 1px solid var(--fcw-color-border);
+}
+
+.platform-business-row {
+  width: 100%;
+  min-height: 70px;
+  padding: 9px 16px;
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.78rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--fcw-color-border);
+  cursor: pointer;
+}
+
+.platform-business-row:last-child {
+  border-bottom: 0;
+}
+
+.platform-business-row:hover {
+  background: color-mix(in srgb, var(--fcw-color-surface-secondary) 65%, transparent);
+}
+
+.platform-business-row:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid color-mix(in srgb, var(--fcw-color-primary) 25%, transparent);
+  outline-offset: -3px;
+}
+
+.platform-business-identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.platform-business-identity > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  color: var(--fcw-color-primary);
+  background: color-mix(in srgb, var(--fcw-color-primary) 11%, transparent);
+  border-radius: 10px;
+}
+
+.platform-business-identity > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.platform-business-identity strong,
+.platform-business-identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-business-identity strong {
+  color: var(--fcw-color-text);
+  font-size: 0.84rem;
+}
+
+.platform-business-identity small {
+  margin-top: 2px;
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.72rem;
+}
+
+.platform-risk-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: max-content;
+  padding: 5px 8px;
+  color: var(--fcw-color-success);
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--fcw-color-success) 10%, transparent);
+  border-radius: 7px;
+}
+
+.platform-risk-label.is-review {
+  color: #7a4900;
+  background: #f9e2a7;
+}
+
+.platform-business-catalog-counts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  color: var(--fcw-color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.platform-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.platform-pagination button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 0 11px;
+  color: var(--fcw-color-text-secondary);
+  background: var(--fcw-color-surface);
+  border: 1px solid var(--fcw-color-border);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.platform-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.platform-pagination span {
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .platform-business-head {
+    display: none;
+  }
+
+  .platform-business-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .platform-business-row > span:nth-child(3),
+  .platform-business-row > span:nth-child(4) {
+    display: none;
+  }
+
+  .platform-business-catalog-counts {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 600px) {
+  .platform-business-row {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-risk-label,
+  .platform-business-catalog-counts {
+    grid-column: 1;
+    margin-left: 49px;
+  }
+
+  .platform-business-catalog-counts {
+    justify-content: flex-start;
+  }
+}
+

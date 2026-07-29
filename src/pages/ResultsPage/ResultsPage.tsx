@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Clock3,
   Filter,
-  Globe,
   MapPin,
   MessageCircle,
   Search,
@@ -18,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import { buildRoute, ROUTES } from "../../app/routes";
 import {
   searchAskV2,
-  type SearchExplicitFilters,
+  type SearchLocalFilters,
 } from "../../shared/api/askClient";
 import type { SearchV2CardDto } from "../../shared/api/dto";
 import { ResultCard, type ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
@@ -28,11 +27,62 @@ import {
   clearActiveSearchRoute,
   saveActiveSearchRoute,
 } from "../../entities/search-session/model/activeSearchSession";
+import {
+  SearchFilterSort,
+  type SearchCompanyOption,
+  type SearchSortKey,
+} from "../../widgets/SearchFilterSort/SearchFilterSort";
 
 type SearchMode = "ITEM" | "SERVICE";
-type SortKey = "relevance" | "distance" | "price_asc";
 
 const PAGE_SIZE = 20;
+
+function hasStoredUserLocation() {
+  try {
+    const raw = window.localStorage.getItem("ask.geo");
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { lat?: number; lng?: number };
+    return typeof parsed.lat === "number" && typeof parsed.lng === "number";
+  } catch {
+    return false;
+  }
+}
+
+function getStoredUserLocation() {
+  try {
+    const raw = window.localStorage.getItem("ask.geo");
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as { lat?: number; lng?: number };
+    if (typeof parsed.lat !== "number" || typeof parsed.lng !== "number") return undefined;
+    return { lat: parsed.lat, lng: parsed.lng };
+  } catch {
+    return undefined;
+  }
+}
+
+function requestUserLocation() {
+  return new Promise<boolean>(resolve => {
+    if (hasStoredUserLocation()) {
+      resolve(true);
+      return;
+    }
+    if (!navigator.geolocation) {
+      resolve(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        window.localStorage.setItem("ask.geo", JSON.stringify({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        }));
+        resolve(true);
+      },
+      () => resolve(false),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    );
+  });
+}
 
 function toMoney(value: number | null | undefined, currency?: string | null) {
   if (value === null || value === undefined) return undefined;
@@ -40,7 +90,29 @@ function toMoney(value: number | null | undefined, currency?: string | null) {
   return `${new Intl.NumberFormat("ru-KZ").format(value)} ${suffix}`;
 }
 
-function mapCard(card: SearchV2CardDto): ResultCardData {
+type SearchResultCard = ResultCardData & {
+  priceValue?: number;
+  distanceMeters?: number;
+  latitude?: number;
+  longitude?: number;
+  hasActiveOffer: boolean;
+};
+
+function distanceBetween(
+  origin: { lat: number; lng: number },
+  destination: { latitude: number; longitude: number },
+) {
+  const earthRadius = 6371000;
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  const latitudeDelta = radians(destination.latitude - origin.lat);
+  const longitudeDelta = radians(destination.longitude - origin.lng);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(radians(origin.lat)) * Math.cos(radians(destination.latitude))
+    * Math.sin(longitudeDelta / 2) ** 2;
+  return Math.round(earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function mapCard(card: SearchV2CardDto): SearchResultCard {
   return {
     id: card.resultId,
     resultType: card.resultType,
@@ -62,6 +134,11 @@ function mapCard(card: SearchV2CardDto): ResultCardData {
     openingLabel: card.openingSummary?.label ?? undefined,
     openingState: card.openingSummary?.state,
     businessProfile: card.businessProfile,
+    priceValue: card.price ?? undefined,
+    distanceMeters: card.distanceMeters ?? undefined,
+    latitude: card.latitude ?? undefined,
+    longitude: card.longitude ?? undefined,
+    hasActiveOffer: card.hasActiveOffer ?? false,
   };
 }
 
@@ -77,23 +154,92 @@ export function ResultsPage() {
 
   const [query, setQuery] = useState(initialQuery);
   const [mode] = useState<SearchMode>(initialMode);
-  const [sort, setSort] = useState<SortKey>("relevance");
+  const [sort, setSort] = useState<SearchSortKey>("relevance");
   const [page, setPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<SearchExplicitFilters>({
+  const [filters, setFilters] = useState<SearchLocalFilters>({
     city: initialCity || undefined,
-    country: "KZ",
   });
-  const [draftFilters, setDraftFilters] = useState<SearchExplicitFilters>({
+  const [draftFilters, setDraftFilters] = useState<SearchLocalFilters>({
     city: initialCity || undefined,
-    country: "KZ",
   });
-  const [cards, setCards] = useState<ResultCardData[]>([]);
+  const [sourceCards, setSourceCards] = useState<SearchResultCard[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [locationError, setLocationError] = useState("");
+
+  const companies = useMemo<SearchCompanyOption[]>(() => {
+    const values = new Map<string, SearchCompanyOption>();
+    sourceCards.forEach(card => {
+      if (!card.businessId) return;
+      const existing = values.get(card.businessId);
+      if (existing) {
+        existing.resultCount += 1;
+        return;
+      }
+      values.set(card.businessId, {
+        businessId: card.businessId,
+        businessName: card.brandName || card.title,
+        resultCount: 1,
+      });
+    });
+    return [...values.values()];
+  }, [sourceCards]);
+
+  const cards = useMemo(() => {
+    const userLocation = getStoredUserLocation();
+    const withDistance = sourceCards.map((card, index) => ({
+      card: card.latitude !== undefined && card.longitude !== undefined && userLocation
+        ? {
+            ...card,
+            distanceMeters: distanceBetween(userLocation, {
+              latitude: card.latitude,
+              longitude: card.longitude,
+            }),
+          }
+        : card,
+      index,
+    }));
+    const filtered = withDistance.filter(({ card }) => {
+      if (filters.minPrice !== undefined && (card.priceValue === undefined || card.priceValue < filters.minPrice)) return false;
+      if (filters.maxPrice !== undefined && (card.priceValue === undefined || card.priceValue > filters.maxPrice)) return false;
+      if (filters.businessIds?.length && (!card.businessId || !filters.businessIds.includes(card.businessId))) return false;
+      if (filters.city && card.city?.toLocaleLowerCase() !== filters.city.toLocaleLowerCase()) return false;
+      if (filters.radiusMeters && (card.distanceMeters === undefined || card.distanceMeters > filters.radiusMeters)) return false;
+      if (filters.mapBounds) {
+        if (card.latitude === undefined || card.longitude === undefined) return false;
+        if (card.latitude > filters.mapBounds.north || card.latitude < filters.mapBounds.south
+            || card.longitude > filters.mapBounds.east || card.longitude < filters.mapBounds.west) return false;
+      }
+      return true;
+    });
+    const numberValue = (value: number | undefined, descending = false) => {
+      if (value === undefined) return Number.POSITIVE_INFINITY;
+      return descending ? -value : value;
+    };
+    return filtered
+      .sort((left, right) => {
+        if (sort === "distance") {
+          return numberValue(left.card.distanceMeters) - numberValue(right.card.distanceMeters) || left.index - right.index;
+        }
+        if (sort === "price_asc") {
+          return numberValue(left.card.priceValue) - numberValue(right.card.priceValue) || left.index - right.index;
+        }
+        if (sort === "price_desc") {
+          return numberValue(left.card.priceValue, true) - numberValue(right.card.priceValue, true) || left.index - right.index;
+        }
+        if (sort === "unique_offers") {
+          return Number(right.card.hasActiveOffer) - Number(left.card.hasActiveOffer) || left.index - right.index;
+        }
+        return left.index - right.index;
+      })
+      .map(({ card }) => ({
+        ...card,
+        distance: card.distanceMeters !== undefined ? `${(card.distanceMeters / 1000).toFixed(1)} км` : card.distance,
+      }));
+  }, [filters, sort, sourceCards]);
 
   const selected = cards.find(card => card.id === selectedId) ?? cards[0] ?? null;
 
@@ -110,22 +256,20 @@ export function ResultsPage() {
     searchAskV2({
       rawQuery: initialQuery,
       mode,
-      sort,
+      sort: "relevance",
       page,
       pageSize: PAGE_SIZE,
-      explicitFilters: filters,
     })
       .then(response => {
         if (!active) return;
         const nextCards = response.sections.flatMap(section => section.cards.map(mapCard));
-        setCards(nextCards);
-        setTotal(response.total);
+        setSourceCards(nextCards);
         setHasNext(response.hasNext);
         setSelectedId(current => nextCards.some(card => card.id === current) ? current : nextCards[0]?.id ?? null);
       })
       .catch(reason => {
         if (!active) return;
-        setCards([]);
+        setSourceCards([]);
         setError(reason instanceof Error ? reason.message : t("results.error.title"));
       })
       .finally(() => {
@@ -134,12 +278,15 @@ export function ResultsPage() {
     return () => {
       active = false;
     };
-  }, [initialQuery, mode, sort, page, filters, t]);
+  }, [initialQuery, mode, page, t]);
 
-  const activeFilterCount = useMemo(
-    () => Object.entries(filters).filter(([, value]) => value !== undefined && value !== "" && value !== false).length - 1,
-    [filters],
-  );
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) count += 1;
+    if (filters.businessIds?.length) count += filters.businessIds.length;
+    if (filters.city || filters.radiusMeters || filters.mapBounds) count += 1;
+    return count;
+  }, [filters]);
 
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -159,10 +306,57 @@ export function ResultsPage() {
     window.dispatchEvent(new Event(ACTIVE_SEARCH_ROUTE_CHANGED_EVENT));
   };
 
-  const applyFilters = () => {
+  const applyFilters = async () => {
+    if (draftFilters.minPrice !== undefined && draftFilters.maxPrice !== undefined
+        && draftFilters.minPrice > draftFilters.maxPrice) {
+      setLocationError(t("results.filters.priceError"));
+      return;
+    }
+    if (draftFilters.radiusMeters && !await requestUserLocation()) {
+      setLocationError(t("results.filters.locationRequired"));
+      return;
+    }
+    setLocationError("");
     setPage(0);
     setFilters(draftFilters);
     setFiltersOpen(false);
+  };
+
+  const changeSort = async (nextSort: SearchSortKey) => {
+    if (nextSort === "distance" && !await requestUserLocation()) {
+      setLocationError(t("results.filters.locationRequired"));
+      setFiltersOpen(true);
+      return;
+    }
+    setLocationError("");
+    setPage(0);
+    setSort(nextSort);
+  };
+
+  const resetFilters = () => {
+    const reset = {} satisfies SearchLocalFilters;
+    setDraftFilters(reset);
+    setFilters(reset);
+    setLocationError("");
+    setPage(0);
+  };
+
+  const removeFilter = (key: "price" | "location" | string) => {
+    if (key === "price") {
+      const next = { ...filters, minPrice: undefined, maxPrice: undefined };
+      setFilters(next);
+      setDraftFilters(next);
+    } else if (key === "location") {
+      const next = { ...filters, city: undefined, radiusMeters: undefined, mapBounds: undefined };
+      setFilters(next);
+      setDraftFilters(next);
+    } else {
+      const businessIds = filters.businessIds?.filter(id => id !== key);
+      const next = { ...filters, businessIds: businessIds?.length ? businessIds : undefined };
+      setFilters(next);
+      setDraftFilters(next);
+    }
+    setPage(0);
   };
 
   return (
@@ -188,117 +382,51 @@ export function ResultsPage() {
       </form>
 
       <div className="ask-results-layout">
-        <aside className={`ask-results-filters ask-surface${filtersOpen ? " is-open" : ""}`}>
-          <div className="ask-results-filters__header">
-            <h2>Фильтры</h2>
-            <button type="button" onClick={() => setFiltersOpen(false)} aria-label="Закрыть"><X size={18} /></button>
-          </div>
-
-          <label className="ask-filter-field">
-            <span>Категория</span>
-            <input
-              className="ask-field"
-              value={draftFilters.category ?? ""}
-              onChange={event => setDraftFilters(current => ({ ...current, category: event.target.value || undefined }))}
-              placeholder={mode === "ITEM" ? "Например, рюкзаки" : "Например, ремонт"}
-            />
-          </label>
-
-          <label className="ask-filter-field">
-            <span>Город</span>
-            <span className="ask-filter-field__icon">
-              <MapPin size={16} />
-              <input
-                className="ask-field"
-                value={draftFilters.city ?? ""}
-                onChange={event => setDraftFilters(current => ({ ...current, city: event.target.value || undefined }))}
-                placeholder="Алматы"
-              />
-            </span>
-          </label>
-
-          <label className="ask-filter-field">
-            <span>Страна</span>
-            <span className="ask-filter-field__icon">
-              <Globe size={16} />
-              <input className="ask-field" value="Казахстан" disabled />
-            </span>
-          </label>
-
-          <fieldset className="ask-filter-price">
-            <legend>Цена, ₸</legend>
-            <input
-              className="ask-field"
-              type="number"
-              min="0"
-              value={draftFilters.minPrice ?? ""}
-              onChange={event => setDraftFilters(current => ({
-                ...current,
-                minPrice: event.target.value ? Number(event.target.value) : undefined,
-              }))}
-              placeholder="от"
-            />
-            <span>—</span>
-            <input
-              className="ask-field"
-              type="number"
-              min="0"
-              value={draftFilters.maxPrice ?? ""}
-              onChange={event => setDraftFilters(current => ({
-                ...current,
-                maxPrice: event.target.value ? Number(event.target.value) : undefined,
-              }))}
-              placeholder="до"
-            />
-          </fieldset>
-
-          <label className="ask-filter-toggle">
-            <span>
-              <strong>Открыто сейчас</strong>
-              <small>Только с подтверждённым расписанием</small>
-            </span>
-            <input
-              type="checkbox"
-              checked={draftFilters.openNow ?? false}
-              onChange={event => setDraftFilters(current => ({ ...current, openNow: event.target.checked || undefined }))}
-            />
-          </label>
-
-          <label className="ask-filter-field">
-            <span>Радиус поиска</span>
-            <select
-              className="ask-field"
-              value={draftFilters.radiusMeters ?? ""}
-              onChange={event => setDraftFilters(current => ({
-                ...current,
-                radiusMeters: event.target.value ? Number(event.target.value) : undefined,
-              }))}
-            >
-              <option value="">Без ограничения</option>
-              <option value="3000">3 км</option>
-              <option value="10000">10 км</option>
-              <option value="30000">30 км</option>
-            </select>
-          </label>
-
-          <button type="button" className="ask-primary-button ask-results-filters__apply" onClick={applyFilters}>
-            <Filter size={17} />
-            Показать результаты
-          </button>
-        </aside>
+        <SearchFilterSort
+          open={filtersOpen}
+          sort={sort}
+          filters={draftFilters}
+          companies={companies}
+          locationError={locationError}
+          onClose={() => setFiltersOpen(false)}
+          onSortChange={nextSort => void changeSort(nextSort)}
+          onFiltersChange={setDraftFilters}
+          onApply={() => void applyFilters()}
+          onReset={resetFilters}
+        />
 
         <section className="ask-results-list ask-surface">
           <header className="ask-results-list__header">
-            <strong>Найдено: {total}</strong>
-            <label>
-              <span>Сортировка:</span>
-              <select value={sort} onChange={event => { setPage(0); setSort(event.target.value as SortKey); }}>
-                <option value="relevance">По релевантности</option>
-                <option value="distance">По расстоянию</option>
-                <option value="price_asc">Сначала дешевле</option>
-              </select>
-            </label>
+            <strong>{t("results.found", { count: cards.length })}</strong>
+            <button type="button" className="search-filter-mobile-trigger" onClick={() => setFiltersOpen(true)}>
+              <SlidersHorizontal size={16} />
+              {t("results.filters.title")}
+              {activeFilterCount > 0 && <span>{activeFilterCount}</span>}
+            </button>
           </header>
+
+          {activeFilterCount > 0 && (
+            <div className="search-applied-filters" aria-label={t("results.filters.applied")}>
+              {(filters.minPrice !== undefined || filters.maxPrice !== undefined) && (
+                <button type="button" onClick={() => removeFilter("price")}>
+                  {filters.minPrice ?? 0}–{filters.maxPrice ?? "∞"} ₸<X size={13} />
+                </button>
+              )}
+              {(filters.city || filters.radiusMeters || filters.mapBounds) && (
+                <button type="button" onClick={() => removeFilter("location")}>
+                  {filters.city
+                    || (filters.radiusMeters ? `${Math.round(filters.radiusMeters / 1000)} ${t("results.filters.km")}` : t("results.filters.mapArea"))}
+                  <X size={13} />
+                </button>
+              )}
+              {filters.businessIds?.map(businessId => (
+                <button type="button" key={businessId} onClick={() => removeFilter(businessId)}>
+                  {companies.find(company => company.businessId === businessId)?.businessName ?? t("results.filters.company")}
+                  <X size={13} />
+                </button>
+              ))}
+            </div>
+          )}
 
           {busy && (
             <div className="ask-results-skeletons" aria-label={t("results.searching")}>

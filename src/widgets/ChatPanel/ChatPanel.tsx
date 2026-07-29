@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, Pin, PinOff, CheckCheck, Paperclip, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, MessageCircle, X, Send, Loader2, Pin, PinOff, Paperclip, FileText } from "lucide-react";
 import { useChat } from "./ChatContext";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { startChatConversation, getChatMessages, sendChatMessage, markChatRead, getPublicBusinessCard, uploadChatFile } from "../../shared/api/askClient";
 import type { BusinessCardDto, ChatMessageDto } from "../../shared/api/dto";
 import { ROUTES } from "../../app/routes";
+import { MessageReadStatus } from "../../shared/ui/MessageReadStatus/MessageReadStatus";
 
 const PANEL_WIDTH = 380;
 
@@ -382,7 +383,7 @@ export function ChatPanel() {
                                   <span className="fcw-body-xs" style={{ color: "var(--fcw-color-text-tertiary)", fontSize: "0.65rem" }}>
                                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                   </span>
-                                  {isMe && msg.readAt && <CheckCheck size={10} style={{ color: "var(--fcw-color-primary)" }} />}
+                                  {isMe && <MessageReadStatus readAt={msg.readAt} compact />}
                                 </div>
                               </motion.div>
                             );

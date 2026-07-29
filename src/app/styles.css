@@ -22,6 +22,42 @@ body {
     var(--fcw-color-surface);
 }
 
+.fcw-password-input {
+  position: relative;
+}
+
+.fcw-password-input .fcw-input {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.fcw-password-input__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  color: var(--fcw-color-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--fcw-radius-md);
+  place-items: center;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.fcw-password-input__toggle:hover {
+  color: var(--fcw-color-primary);
+  background: color-mix(in srgb, var(--fcw-color-primary) 8%, transparent);
+}
+
+.fcw-password-input__toggle:focus-visible {
+  outline: 2px solid var(--fcw-color-primary);
+  outline-offset: 1px;
+}
+
 button,
 input,
 textarea,
@@ -871,6 +907,60 @@ a {
   gap: 0.25rem;
 }
 
+.delivery-city-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.delivery-city-selector__trigger {
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-md);
+  background: var(--fcw-color-surface);
+  color: var(--fcw-color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.delivery-city-selector__values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.delivery-city-selector__values > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 32px;
+  padding: 0.25rem 0.375rem 0.25rem 0.625rem;
+  border-radius: var(--fcw-radius-full);
+  background: var(--fcw-color-surface-secondary);
+  color: var(--fcw-color-text);
+  font-size: var(--fcw-font-size-body-s);
+}
+
+.delivery-city-selector__values button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--fcw-radius-full);
+  background: transparent;
+  color: var(--fcw-color-text-secondary);
+  cursor: pointer;
+}
+
 .profile-pickup-toggle {
   display: flex;
   align-items: center;
@@ -1022,6 +1112,401 @@ a {
   color: var(--fcw-color-primary-text);
 }
 
+.account-page {
+  min-height: calc(100vh - 72px);
+  padding: 2.5rem 1rem 5rem;
+  background: var(--fcw-color-background);
+}
+
+.account-shell {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+}
+
+.account-hero {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding-bottom: 1.75rem;
+  border-bottom: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+}
+
+.account-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  flex: 0 0 82px;
+  overflow: hidden;
+  border-radius: var(--fcw-radius-lg);
+  background: var(--fcw-color-primary);
+  color: var(--fcw-color-primary-text);
+  cursor: pointer;
+}
+
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account-avatar > span {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--fcw-radius-full);
+  background: var(--fcw-color-surface);
+  color: var(--fcw-color-text);
+}
+
+.account-avatar input {
+  display: none;
+}
+
+.account-hero p,
+.account-hero h1,
+.account-hero span {
+  margin: 0;
+}
+
+.account-hero p {
+  margin-bottom: 0.25rem;
+  color: var(--fcw-color-primary);
+  font-size: var(--fcw-font-size-body-s);
+  font-weight: var(--fcw-font-weight-semibold);
+}
+
+.account-hero h1 {
+  font-size: 1.75rem;
+  letter-spacing: -0.025em;
+}
+
+.account-hero > div > span {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--fcw-color-text-secondary);
+}
+
+.account-feedback {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--fcw-radius-md);
+  background: color-mix(in srgb, var(--fcw-color-success) 12%, var(--fcw-color-surface));
+  color: var(--fcw-color-text);
+  font-size: var(--fcw-font-size-body-s);
+}
+
+.account-feedback.is-error {
+  background: color-mix(in srgb, var(--fcw-color-error) 12%, var(--fcw-color-surface));
+  color: var(--fcw-color-error);
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.account-section {
+  align-self: start;
+  padding: 1.25rem;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-lg);
+  background: var(--fcw-color-surface);
+}
+
+.account-section--identity {
+  grid-row: span 2;
+}
+
+.account-section__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.account-section__heading > span,
+.account-setting-row > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: var(--fcw-radius-md);
+  background: color-mix(in srgb, var(--fcw-color-primary) 10%, var(--fcw-color-surface));
+  color: var(--fcw-color-primary);
+}
+
+.account-section__heading h2,
+.account-section__heading p {
+  margin: 0;
+}
+
+.account-section__heading h2 {
+  font-size: 1rem;
+}
+
+.account-section__heading p {
+  max-width: 58ch;
+  margin-top: 0.2rem;
+  color: var(--fcw-color-text-secondary);
+  font-size: var(--fcw-font-size-body-s);
+  line-height: 1.45;
+}
+
+.account-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.account-fields label > span {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--fcw-color-text-secondary);
+  font-size: var(--fcw-font-size-body-s);
+  font-weight: var(--fcw-font-weight-medium);
+}
+
+.account-fields label > div {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 46px;
+  padding: 0 0.75rem;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-md);
+  background: var(--fcw-color-background);
+  color: var(--fcw-color-text-secondary);
+}
+
+.account-fields input,
+.account-inline-form input,
+.account-password-form input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fcw-color-text);
+  font: inherit;
+}
+
+.account-fields label > div:focus-within {
+  border-color: var(--fcw-color-primary);
+}
+
+.account-fields label > div > button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 0;
+  border-radius: var(--fcw-radius-full);
+  background: transparent;
+  color: var(--fcw-color-text-secondary);
+  cursor: pointer;
+}
+
+.account-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 42px;
+  margin-top: 1rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: var(--fcw-radius-md);
+  background: var(--fcw-color-primary);
+  color: var(--fcw-color-primary-text);
+  font: inherit;
+  font-weight: var(--fcw-font-weight-semibold);
+  cursor: pointer;
+}
+
+.account-inline-form,
+.account-password-form {
+  display: flex;
+  gap: 0.625rem;
+  margin-top: 0.875rem;
+  padding: 0.75rem;
+  border-radius: var(--fcw-radius-md);
+  background: var(--fcw-color-surface-secondary);
+}
+
+.account-inline-form input,
+.account-password-form input {
+  min-height: 40px;
+  padding: 0 0.625rem;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-sm);
+  background: var(--fcw-color-surface);
+}
+
+.account-inline-form button,
+.account-password-form button,
+.account-setting-row > button {
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+  border-radius: var(--fcw-radius-sm);
+  background: var(--fcw-color-surface);
+  color: var(--fcw-color-text);
+  font: inherit;
+  font-size: var(--fcw-font-size-body-s);
+  font-weight: var(--fcw-font-weight-semibold);
+  cursor: pointer;
+}
+
+.account-password-form {
+  flex-direction: column;
+  margin: 0.75rem 0;
+}
+
+.account-password-form button {
+  align-self: flex-start;
+}
+
+.account-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 58px;
+}
+
+.account-setting-row + .account-setting-row {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+}
+
+.account-setting-row > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.account-setting-row strong,
+.account-setting-row small {
+  display: block;
+}
+
+.account-setting-row strong {
+  font-size: var(--fcw-font-size-body-s);
+}
+
+.account-setting-row small {
+  margin-top: 0.125rem;
+  color: var(--fcw-color-text-secondary);
+  font-size: var(--fcw-font-size-body-xs);
+}
+
+.account-setting-row > button.is-active {
+  border-color: color-mix(in srgb, var(--fcw-color-success) 55%, var(--fcw-color-border));
+  color: var(--fcw-color-success);
+}
+
+.account-legal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.account-legal-list button {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: 0;
+  border-radius: var(--fcw-radius-md);
+  background: var(--fcw-color-surface-secondary);
+  color: var(--fcw-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: var(--fcw-border-width-thin) solid var(--fcw-color-border);
+}
+
+.account-footer button,
+.account-delete-confirmation button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: var(--fcw-radius-md);
+  background: transparent;
+  color: var(--fcw-color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.account-footer button.is-danger,
+.account-delete-confirmation button.is-danger {
+  color: var(--fcw-color-error);
+}
+
+.account-delete-confirmation {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--fcw-radius-md);
+  background: color-mix(in srgb, var(--fcw-color-error) 8%, var(--fcw-color-surface));
+}
+
+.account-delete-confirmation p {
+  margin: 0;
+}
+
+.account-delete-confirmation > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.message-read-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.68rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.message-read-status.is-read {
+  color: var(--fcw-color-primary);
+}
+
+.message-read-status.is-compact {
+  opacity: 0.85;
+}
+
+.ask-message__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
 /* Skip link */
 .fcw-skip-link {
   position: fixed;
@@ -1041,6 +1526,30 @@ a {
 }
 
 @media (max-width: 820px) {
+  .account-page {
+    padding: 1.25rem 0.75rem 6rem;
+  }
+
+  .account-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-section--identity {
+    grid-row: auto;
+  }
+
+  .account-inline-form {
+    flex-direction: column;
+  }
+
+  .account-footer {
+    flex-direction: column;
+  }
+
+  .account-footer button {
+    justify-content: flex-start;
+  }
+
   .home-search-row {
     grid-template-columns: 1fr;
   }

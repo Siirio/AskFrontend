@@ -87,6 +87,9 @@ export type SearchV2CardDto = {
   matchReasons?: string[];
   badges?: string[];
   distanceMeters?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  hasActiveOffer?: boolean | null;
   branchName?: string | null;
   branchAddress?: string | null;
   branchCity?: string | null;
@@ -171,11 +174,13 @@ export type BrandDropDto = {
   coverUrl?: string;
   discountPercent?: number;
   discountAmount?: number;
-  isEnabled?: boolean;
+  isActive?: boolean;
   currency?: string;
   productCount?: number;
   tags?: string[];
-  productIds?: string[];
+  itemIds?: string[];
+  serviceIds?: string[];
+  branchIds?: string[];
 };
 
 export type SearchResultSectionDto = {

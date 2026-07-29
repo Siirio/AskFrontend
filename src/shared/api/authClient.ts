@@ -25,6 +25,7 @@ export type AuthSession = {
   requiresRoleSelection?: boolean;
   requiresTwoFactor?: boolean;
   verificationId?: string;
+  allRoles?: Array<"CUSTOMER" | "OWNER" | "MANAGER" | "WORKER" | "SUPER_ADMIN" | "ADMIN" | "MODERATOR">;
   customerProfile?: { isEnabled: boolean };
   businessMemberships?: Array<{
     membershipId: string;
@@ -138,10 +139,17 @@ export function updateProfile(data: { displayName?: string; email?: string; phon
 }
 
 export function changePassword(currentPassword: string, newPassword: string) {
-  return apiRequest<{ success: boolean }>("/api/v1/auth/change-password", {
+  return apiRequest<AuthSession>("/api/v1/auth/change-password", {
     method: "POST",
     auth: true,
     body: { currentPassword, newPassword },
+  });
+}
+
+export function toggleTwoFactor() {
+  return apiRequest<AuthSession>("/api/v1/auth/toggle-2fa", {
+    method: "POST",
+    auth: true,
   });
 }
 

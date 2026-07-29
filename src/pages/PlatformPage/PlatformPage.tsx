@@ -1,33 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { ROUTES } from "../../app/routes";
 import { Loading } from "../../shared/ui/Loading/Loading";
-import { AdminLayout } from "../../widgets/AdminLayout/AdminLayout";
 import { AdminDashboard } from "../../widgets/AdminDashboard/AdminDashboard";
 import { AdminBusinesses } from "../../widgets/AdminBusinesses/AdminBusinesses";
-import { AdminBusinessDetail } from "../../widgets/AdminBusinessDetail/AdminBusinessDetail";
 import { AdminSupport } from "../../widgets/AdminSupport/AdminSupport";
-import { AdminModeration } from "../../widgets/AdminModeration/AdminModeration";
 import { AdminUsers } from "../../widgets/AdminUsers/AdminUsers";
-import { AdminRequests } from "../../widgets/AdminRequests/AdminRequests";
-import { AdminManagedImports } from "../../widgets/AdminManagedImports/AdminManagedImports";
-
-type Section =
-  | "dashboard"
-  | "businesses"
-  | "managedImports"
-  | "support"
-  | "moderation"
-  | "users"
-  | "requests";
+import { AdminAccounts } from "../../widgets/AdminAccounts/AdminAccounts";
+import { AdminCatalog } from "../../widgets/AdminCatalog/AdminCatalog";
+import {
+  getPlatformEventCounts,
+  type PlatformCatalogType,
+} from "../../shared/api/platformClient";
+import { PlatformShell } from "../../widgets/PlatformShell/PlatformShell";
+import {
+  EMPTY_PLATFORM_EVENT_COUNTS,
+  type PlatformEventCounts,
+  type PlatformSection,
+} from "../../widgets/PlatformShell/platformTypes";
 
 export function PlatformPage() {
   const { state } = useAuth();
   const membership = state.session?.platformMembership;
 
-  const [section, setSection] = useState<Section>("dashboard");
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [section, setSection] = useState<PlatformSection>("summary");
+  const [catalogView, setCatalogView] = useState<PlatformCatalogType | null>(null);
+  const [eventCounts, setEventCounts] = useState<PlatformEventCounts>(EMPTY_PLATFORM_EVENT_COUNTS);
+
+  const refreshEventCounts = () => {
+    getPlatformEventCounts()
+      .then(setEventCounts)
+      .catch(() => setEventCounts(EMPTY_PLATFORM_EVENT_COUNTS));
+  };
+
+  useEffect(() => {
+    if (membership) refreshEventCounts();
+  }, [membership]);
 
   if (!state.sessionReady) {
     return <Loading />;
@@ -37,44 +46,42 @@ export function PlatformPage() {
     return <Navigate to={ROUTES.home} replace />;
   }
 
-  const handleOpenChat = (_businessId: string) => {
-    setSection("support");
-  };
-
   const renderContent = () => {
-    if (section === "businesses" && selectedBusinessId) {
+    if (catalogView) {
       return (
-        <AdminBusinessDetail
-          businessId={selectedBusinessId}
-          onBack={() => setSelectedBusinessId(null)}
-          onOpenChat={handleOpenChat}
+        <AdminCatalog
+          initialType={catalogView}
+          onBack={() => setCatalogView(null)}
+          onEventsChanged={refreshEventCounts}
         />
       );
     }
-
     switch (section) {
-      case "dashboard":
-        return <AdminDashboard />;
+      case "summary":
+        return <AdminDashboard onNavigate={setSection} onOpenCatalog={setCatalogView} />;
       case "businesses":
-        return <AdminBusinesses onSelectBusiness={setSelectedBusinessId} />;
-      case "managedImports":
-        return <AdminManagedImports onOpenChat={handleOpenChat} />;
-      case "support":
-        return <AdminSupport />;
-      case "moderation":
-        return <AdminModeration />;
-      case "users":
+        return <AdminBusinesses onEventsChanged={refreshEventCounts} />;
+      case "chats":
+        return <AdminSupport onEventsChanged={refreshEventCounts} />;
+      case "accounts":
+        return <AdminAccounts onEventsChanged={refreshEventCounts} />;
+      case "team":
         return <AdminUsers />;
-      case "requests":
-        return <AdminRequests />;
       default:
-        return <AdminDashboard />;
+        return <AdminDashboard onNavigate={setSection} onOpenCatalog={setCatalogView} />;
     }
   };
 
   return (
-    <AdminLayout activeSection={section} onSectionChange={(s) => { setSection(s); setSelectedBusinessId(null); }}>
+    <PlatformShell
+      activeSection={section}
+      eventCounts={eventCounts}
+      onSectionChange={nextSection => {
+        setCatalogView(null);
+        setSection(nextSection);
+      }}
+    >
       {renderContent()}
-    </AdminLayout>
+    </PlatformShell>
   );
 }

@@ -1,5 +1,13 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-29 — Platform cabinet redesign
+
+- Replaced the seven-section admin shell with `Сводка`, `Бизнесы`, `Чаты`, `Аккаунты`, and `Команда Ask`.
+- Embedded catalog, chat, and account moderation in their owning sections.
+- Added backend-authored yellow review and red critical event counters that exclude ordinary unread messages.
+- Kept all normal active Items and Services immediately searchable; only suspicious autocheck results enter moderation.
+- Unified platform chats into support, managed-import help, and ordinary conversation tabs while preserving the assigned seven-day managed-import grant.
+
 ## 2026-07-27 — Seller delivery onboarding and editable profile
 
 - Added the penultimate seller-onboarding screen for business-wide delivery coverage, selected city names, and pickup availability.

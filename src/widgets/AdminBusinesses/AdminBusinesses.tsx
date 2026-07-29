@@ -1,138 +1,159 @@
-import { useEffect, useState, useCallback } from "react";
-import { Search, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  ShieldAlert,
+  Store,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import { buildRoute, ROUTES } from "../../app/routes";
 import {
   listPlatformBusinesses,
   type PlatformBusinessRowResponse,
 } from "../../shared/api/platformClient";
-import { Card } from "../../shared/ui/Card/Card";
-import { Loading } from "../../shared/ui/Loading/Loading";
+import { AdminBusinessDetail } from "../AdminBusinessDetail/AdminBusinessDetail";
+import "./AdminBusinesses.css";
 
 type Props = {
-  onSelectBusiness: (businessId: string) => void;
+  onEventsChanged: () => void;
 };
 
-export function AdminBusinesses({ onSelectBusiness }: Props) {
+export function AdminBusinesses({ onEventsChanged }: Props) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [items, setItems] = useState<PlatformBusinessRowResponse[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [query, setQuery] = useState("");
 
-  const load = useCallback((p: number, q: string) => {
+  const load = useCallback(() => {
     setLoading(true);
-    listPlatformBusinesses(p, 20, q || undefined)
-      .then(res => {
-        setItems(res.items);
-        setTotalPages(res.totalPages);
+    setFailed(false);
+    listPlatformBusinesses(page, 24, query.trim() || undefined)
+      .then(response => {
+        setItems(response.items);
+        setTotalPages(response.totalPages);
       })
-      .catch(() => setItems([]))
+      .catch(() => {
+        setItems([]);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, query]);
 
-  useEffect(() => { load(page, query); }, [page, load, query]);
+  useEffect(() => {
+    const timer = window.setTimeout(load, 250);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-    load(0, query);
-  };
+  if (selectedId) {
+    return (
+      <AdminBusinessDetail
+        businessId={selectedId}
+        onBack={() => setSelectedId(null)}
+        onOpenChat={() => undefined}
+        onEventsChanged={() => {
+          onEventsChanged();
+          load();
+        }}
+      />
+    );
+  }
 
   return (
-    <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
-      <div>
-        <h1 className="fcw-h2" style={{ margin: 0 }}>{t("platform.businesses.title")}</h1>
+    <section className="platform-businesses">
+      <header className="platform-page-header">
+        <div>
+          <h1>{t("platform.sections.businesses")}</h1>
+          <p>{t("platform.businesses.subtitle")}</p>
+        </div>
+      </header>
+
+      <div className="platform-list-toolbar">
+        <label className="platform-search-field">
+          <Search size={17} />
+          <input
+            value={query}
+            placeholder={t("platform.businesses.search")}
+            onChange={event => {
+              setQuery(event.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
+        <span className="platform-businesses-count">
+          {t("platform.businesses.onPage", { count: items.length })}
+        </span>
       </div>
-      <form onSubmit={handleSearch} className="fcw-flex" style={{ gap: "0.5rem" }}>
-        <input
-          className="fcw-input"
-          style={{ maxWidth: 360 }}
-          value={query}
-          placeholder={t("platform.businesses.search")}
-          onChange={e => setQuery(e.target.value)}
-        />
-        <button type="submit" className="fcw-btn fcw-btn-secondary fcw-btn-sm">
-          <Search size={15} />
-        </button>
-      </form>
-      {loading ? <Loading /> : items.length === 0 ? (
-        <Card padding="md">
-          <p className="fcw-body-s fcw-text-secondary">{t("platform.businesses.empty")}</p>
-        </Card>
-      ) : (
-        <>
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t("platform.businesses.columns.name")}</th>
-                  <th>{t("platform.businesses.columns.email")}</th>
-                  <th>{t("platform.businesses.columns.branches")}</th>
-                  <th>{t("platform.businesses.columns.members")}</th>
-                  <th>{t("platform.businesses.columns.products")}</th>
-                  <th>{t("platform.businesses.columns.services")}</th>
-                  <th>{t("platform.businesses.columns.drops")}</th>
-                  <th>{t("platform.businesses.columns.catalog")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(biz => (
-                  <tr
-                    key={biz.businessId}
-                    className="admin-table-row-clickable"
-                    onClick={() => onSelectBusiness(biz.businessId)}
-                  >
-                    <td>
-                      <span className="fcw-body-s fcw-weight-medium">{biz.name}</span>
-                      {biz.legalName && (
-                        <span className="fcw-body-xs fcw-text-tertiary" style={{ display: "block" }}>
-                          {biz.legalName}
-                        </span>
-                      )}
-                    </td>
-                    <td className="fcw-body-xs">{biz.contactEmail || "-"}</td>
-                    <td className="fcw-body-s">{biz.branchCount}</td>
-                    <td className="fcw-body-s">{biz.memberCount}</td>
-                    <td className="fcw-body-s">{biz.productCount}</td>
-                    <td className="fcw-body-s">{biz.serviceCount}</td>
-                    <td className="fcw-body-s">{biz.dropCount}</td>
-                    <td>
-                      <span className="fcw-body-xs fcw-text-secondary">
-                        {biz.catalogStatus || "-"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+      <div className="platform-business-list">
+        <div className="platform-business-head">
+          <span>{t("platform.businesses.columns.name")}</span>
+          <span>{t("platform.businesses.columns.catalog")}</span>
+          <span>{t("platform.businesses.columns.branches")}</span>
+          <span>{t("platform.businesses.columns.members")}</span>
+          <span />
+        </div>
+
+        {loading ? (
+          <div className="platform-list-loading"><span /><span /><span /><span /></div>
+        ) : failed ? (
+          <div className="platform-list-empty">
+            <ShieldAlert size={24} />
+            <strong>{t("platform.businesses.loadError")}</strong>
+            <button type="button" onClick={load}>{t("platform.accounts.retry")}</button>
           </div>
-          {totalPages > 1 && (
-            <div className="fcw-flex fcw-items-center" style={{ gap: "0.5rem", justifyContent: "center" }}>
-              <button
-                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}
-              >
-                <ChevronLeft size={15} />
-              </button>
-              <span className="fcw-body-s fcw-text-secondary">
-                {page + 1} / {totalPages}
+        ) : items.length === 0 ? (
+          <div className="platform-list-empty">
+            <Building2 size={25} />
+            <strong>{t("platform.businesses.empty")}</strong>
+            <p>{t("platform.businesses.emptyHint")}</p>
+          </div>
+        ) : items.map(business => {
+          const reviewRequired = business.catalogStatus === "REVIEW_REQUIRED";
+          return (
+            <button
+              type="button"
+              className="platform-business-row"
+              key={business.businessId}
+              onClick={() => setSelectedId(business.businessId)}
+            >
+              <span className="platform-business-identity">
+                <span><Store size={17} /></span>
+                <span>
+                  <strong>{business.name}</strong>
+                  <small>{business.legalName || business.contactEmail || "—"}</small>
+                </span>
               </span>
-              <button
-                className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage(p => p + 1)}
-              >
-                <ChevronRight size={15} />
-              </button>
-            </div>
-          )}
-        </>
+              <span className={reviewRequired ? "platform-risk-label is-review" : "platform-risk-label"}>
+                {reviewRequired && <ShieldAlert size={13} />}
+                {t(`platform.businesses.catalogStatus.${business.catalogStatus || "ACTIVE"}`)}
+              </span>
+              <span>{business.branchCount}</span>
+              <span>{business.memberCount}</span>
+              <span className="platform-business-catalog-counts">
+                {business.productCount} / {business.serviceCount}
+                <ChevronRight size={16} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="platform-pagination">
+          <button type="button" disabled={page === 0} onClick={() => setPage(value => value - 1)}>
+            <ChevronLeft size={16} />{t("common.previous")}
+          </button>
+          <span>{page + 1} / {totalPages}</span>
+          <button type="button" disabled={page + 1 >= totalPages} onClick={() => setPage(value => value + 1)}>
+            {t("common.next")}<ChevronRight size={16} />
+          </button>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

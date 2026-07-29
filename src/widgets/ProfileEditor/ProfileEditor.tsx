@@ -4,6 +4,7 @@ import { Globe, Image, Instagram, Loader2, Mail, MapPin, MessageCircle, Palette,
 import { Card } from "../../shared/ui/Card/Card";
 import type { BrandProfileDto } from "../../shared/api/dto";
 import { uploadBusinessProfileCover, uploadBusinessProfileLogo } from "../../shared/api/askClient";
+import { DeliveryCitySelector } from "../../shared/ui/DeliveryCitySelector/DeliveryCitySelector";
 
 const BRAND_COLOR_PRESETS = [
   "#e8824e", "#4e8ce8", "#e84e4e", "#4ee882",
@@ -16,23 +17,6 @@ function normalizeUrl(value: string): string {
   if (!trimmed) return trimmed;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return "https://" + trimmed;
-}
-
-function formatPhoneNumber(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 0) return "";
-
-  let d = digits;
-  if (d.startsWith("8")) d = "7" + d.slice(1);
-  if (!d.startsWith("7")) d = "7" + d;
-  d = d.slice(0, 11);
-
-  let result = "+7";
-  if (d.length > 1) result += " (" + d.substring(1, Math.min(d.length, 4));
-  if (d.length >= 4) result += ") " + d.substring(4, Math.min(d.length, 7));
-  if (d.length >= 7) result += "-" + d.substring(7, Math.min(d.length, 9));
-  if (d.length >= 9) result += "-" + d.substring(9, 11);
-  return result;
 }
 
 interface ProfileEditorProps {
@@ -235,14 +219,9 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly, field
                 <span className="fcw-label fcw-flex fcw-items-center" style={{ gap: "0.375rem" }}>
                   <MapPin size={13} />{t("seller.deliveryCities")}
                 </span>
-                <input
-                  key={profile.id || "new-profile"}
-                  className="fcw-input"
-                  defaultValue={(profile.deliveryCities || []).join(", ")}
-                  onChange={event => update({
-                    deliveryCities: event.target.value.split(",").map(city => city.trim()).filter(Boolean),
-                  })}
-                  placeholder={t("seller.deliveryCities.placeholder")}
+                <DeliveryCitySelector
+                  values={profile.deliveryCities || []}
+                  onChange={deliveryCities => update({ deliveryCities })}
                 />
               </label>
             )}
@@ -254,10 +233,8 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly, field
               <input
                 className="fcw-input"
                 value={profile.number || ""}
-                onChange={e => {
-                  const formatted = formatPhoneNumber(e.target.value);
-                  update({ number: formatted });
-                }}
+                type="tel"
+                onChange={e => update({ number: e.target.value })}
                 placeholder="+7 (700) 000-00-00"
               />
               {fieldError("number") && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{fieldError("number")}</span>}

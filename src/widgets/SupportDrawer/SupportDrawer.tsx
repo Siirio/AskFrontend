@@ -4,10 +4,12 @@ import { Headphones, Loader2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   getChatMessages,
+  markChatRead,
   openPlatformSupportConversation,
   sendChatMessage,
 } from "../../shared/api/askClient";
 import type { ChatMessageDto } from "../../shared/api/dto";
+import { MessageReadStatus } from "../../shared/ui/MessageReadStatus/MessageReadStatus";
 
 type SupportDrawerProps = {
   open: boolean;
@@ -34,6 +36,7 @@ export function SupportDrawer({ open, businessId, businessName, onClose }: Suppo
         setConversationId(conversation.conversationId);
         const response = await getChatMessages(conversation.conversationId);
         setMessages(response.items);
+        await markChatRead(conversation.conversationId);
       })
       .catch(() => setError(t("supportDrawer.error")))
       .finally(() => setBusy(false));
@@ -94,6 +97,7 @@ export function SupportDrawer({ open, businessId, businessName, onClose }: Suppo
               >
                 <small>{t(`chats.conversations.sender.${message.senderType}`)}</small>
                 <p>{message.text}</p>
+                {message.senderType === "CUSTOMER" && <MessageReadStatus readAt={message.readAt} />}
               </div>
             ))}
             <div ref={endRef} />

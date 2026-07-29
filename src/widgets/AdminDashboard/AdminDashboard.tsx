@@ -1,19 +1,26 @@
 import { useEffect, useState } from "react";
-import { Building2, Package, Briefcase, Sparkles, MessageCircle, ShieldAlert, Users } from "lucide-react";
+import {
+  ArrowUpRight,
+  Building2,
+  CircleAlert,
+  MessageSquareText,
+  BadgePercent,
+  PackageCheck,
+  UsersRound,
+  Wrench,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getPlatformDashboard, type PlatformDashboardResponse } from "../../shared/api/platformClient";
-import { Card } from "../../shared/ui/Card/Card";
-import { Loading } from "../../shared/ui/Loading/Loading";
+import type { PlatformCatalogType } from "../../shared/api/platformClient";
+import type { PlatformSection } from "../PlatformShell/platformTypes";
+import "./AdminDashboard.css";
 
-type StatCard = {
-  key: string;
-  label: string;
-  value: number;
-  icon: typeof Building2;
-  color: string;
+type Props = {
+  onNavigate: (section: PlatformSection) => void;
+  onOpenCatalog: (type: PlatformCatalogType) => void;
 };
 
-export function AdminDashboard() {
+export function AdminDashboard({ onNavigate, onOpenCatalog }: Props) {
   const { t } = useTranslation();
   const [data, setData] = useState<PlatformDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,57 +32,120 @@ export function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Loading />;
-
-  if (!data) {
-    return (
-      <Card padding="md">
-        <p className="fcw-body-s fcw-text-secondary">{t("platform.dashboard.error")}</p>
-      </Card>
-    );
-  }
-
-  const stats: StatCard[] = [
-    { key: "totalBusinesses", label: t("platform.dashboard.totalBusinesses"), value: data.totalBusinesses, icon: Building2, color: "var(--fcw-color-primary)" },
-    { key: "totalActiveProducts", label: t("platform.dashboard.activeProducts"), value: data.totalActiveProducts, icon: Package, color: "var(--fcw-color-accent)" },
-    { key: "totalActiveServices", label: t("platform.dashboard.activeServices"), value: data.totalActiveServices, icon: Briefcase, color: "#3b82f6" },
-    { key: "totalActiveDrops", label: t("platform.dashboard.activeDrops"), value: data.totalActiveDrops, icon: Sparkles, color: "#f59e0b" },
-    { key: "openSupportConversations", label: t("platform.dashboard.openChats"), value: data.openSupportConversations, icon: MessageCircle, color: "#10b981" },
-    { key: "pendingModerationItems", label: t("platform.dashboard.pendingModeration"), value: data.pendingModerationItems, icon: ShieldAlert, color: "#ef4444" },
-    { key: "totalUsers", label: t("platform.dashboard.totalUsers"), value: data.totalUsers, icon: Users, color: "var(--fcw-color-primary)" },
-  ];
-
   return (
-    <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-lg)" }}>
-      <div>
-        <h1 className="fcw-h2" style={{ margin: 0 }}>{t("platform.sections.dashboard")}</h1>
-        <p className="fcw-body-s fcw-text-secondary">{t("platform.dashboard.subtitle")}</p>
-      </div>
-      <div className="admin-dashboard-grid">
-        {stats.map(stat => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.key} padding="lg" className="admin-stat-card">
-              <div className="fcw-flex-between" style={{ gap: "0.75rem" }}>
-                <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                  <span className="fcw-display" style={{ fontWeight: 700, lineHeight: 1.1 }}>
-                    {stat.value.toLocaleString()}
-                  </span>
-                  <span className="fcw-body-s fcw-text-secondary">{stat.label}</span>
-                </div>
-                <div style={{
-                  width: 44, height: 44, borderRadius: "var(--fcw-radius-md)",
-                  backgroundColor: `color-mix(in srgb, ${stat.color} 12%, transparent)`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <Icon size={22} style={{ color: stat.color }} />
+    <section className="platform-dashboard">
+      <header className="platform-page-header">
+        <div>
+          <h1>{t("platform.sections.summary")}</h1>
+          <p>{t("platform.dashboard.subtitle")}</p>
+        </div>
+        <span className="platform-dashboard-date">
+          {new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long" }).format(new Date())}
+        </span>
+      </header>
+
+      {loading ? (
+        <div className="platform-dashboard-skeleton" aria-label={t("common.loading")}>
+          <span /><span /><span />
+        </div>
+      ) : !data ? (
+        <div className="platform-state">
+          <CircleAlert size={22} />
+          <div>
+            <strong>{t("platform.dashboard.error")}</strong>
+            <p>{t("platform.dashboard.errorHint")}</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="platform-attention">
+            <div className="platform-attention-copy">
+              <span className={data.pendingModerationItems > 0 ? "is-review" : "is-clear"}>
+                <CircleAlert size={17} />
+              </span>
+              <div>
+                <strong>
+                  {data.pendingModerationItems > 0
+                    ? t("platform.dashboard.needsAttention", { count: data.pendingModerationItems })
+                    : t("platform.dashboard.allClear")}
+                </strong>
+                <p>{t("platform.dashboard.attentionHint")}</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => onNavigate("businesses")}>
+              {t("platform.dashboard.openBusinesses")}
+              <ArrowUpRight size={16} />
+            </button>
+          </div>
+
+          <div className="platform-dashboard-columns">
+            <div className="platform-dashboard-panel">
+              <div className="platform-panel-heading">
+                <div>
+                  <h2>{t("platform.dashboard.platformNow")}</h2>
+                  <p>{t("platform.dashboard.platformNowHint")}</p>
                 </div>
               </div>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
+
+              <div className="platform-metric-list">
+                <button type="button" onClick={() => onNavigate("businesses")}>
+                  <Building2 size={18} />
+                  <span>{t("platform.dashboard.totalBusinesses")}</span>
+                  <strong>{data.totalBusinesses.toLocaleString()}</strong>
+                </button>
+                <button type="button" onClick={() => onOpenCatalog("items")}>
+                  <PackageCheck size={18} />
+                  <span>{t("platform.dashboard.activeProducts")}</span>
+                  <strong>{data.totalActiveProducts.toLocaleString()}</strong>
+                </button>
+                <button type="button" onClick={() => onOpenCatalog("services")}>
+                  <Wrench size={18} />
+                  <span>{t("platform.dashboard.activeServices")}</span>
+                  <strong>{data.totalActiveServices.toLocaleString()}</strong>
+                </button>
+                <button type="button" onClick={() => onOpenCatalog("drops")}>
+                  <BadgePercent size={18} />
+                  <span>{t("platform.dashboard.activeDrops")}</span>
+                  <strong>{data.totalActiveDrops.toLocaleString()}</strong>
+                </button>
+                <button type="button" onClick={() => onNavigate("accounts")}>
+                  <UsersRound size={18} />
+                  <span>{t("platform.dashboard.totalUsers")}</span>
+                  <strong>{data.totalUsers.toLocaleString()}</strong>
+                </button>
+              </div>
+            </div>
+
+            <div className="platform-dashboard-panel platform-dashboard-panel--inbox">
+              <div className="platform-panel-heading">
+                <div>
+                  <h2>{t("platform.dashboard.workQueue")}</h2>
+                  <p>{t("platform.dashboard.workQueueHint")}</p>
+                </div>
+              </div>
+
+              <button className="platform-queue-row" type="button" onClick={() => onNavigate("chats")}>
+                <span className="platform-queue-icon"><MessageSquareText size={18} /></span>
+                <span>
+                  <strong>{t("platform.sections.chats")}</strong>
+                  <small>{t("platform.dashboard.openChats")}</small>
+                </span>
+                <b>{data.openSupportConversations}</b>
+                <ArrowUpRight size={15} />
+              </button>
+              <button className="platform-queue-row" type="button" onClick={() => onNavigate("businesses")}>
+                <span className="platform-queue-icon platform-queue-icon--review"><CircleAlert size={18} /></span>
+                <span>
+                  <strong>{t("platform.dashboard.suspiciousContent")}</strong>
+                  <small>{t("platform.dashboard.suspiciousContentHint")}</small>
+                </span>
+                <b>{data.pendingModerationItems}</b>
+                <ArrowUpRight size={15} />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

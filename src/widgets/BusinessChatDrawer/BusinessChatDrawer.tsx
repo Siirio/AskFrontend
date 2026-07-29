@@ -9,6 +9,7 @@ import {
   uploadChatFile,
 } from "../../shared/api/askClient";
 import type { ChatConversationDto, ChatMessageDto } from "../../shared/api/dto";
+import { MessageReadStatus } from "../../shared/ui/MessageReadStatus/MessageReadStatus";
 
 type BusinessChatDrawerProps = {
   businessId: string;
@@ -115,6 +116,7 @@ export function BusinessChatDrawer({
                     {t("business.chats.attachment")}
                   </a>
                 )}
+                {message.senderType === "BUSINESS" && <MessageReadStatus readAt={message.readAt} compact />}
               </div>
             ))}
             <div ref={endRef} />

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ExternalLink, Globe, Instagram, MapPin, MessageCircle, X, Send, Loader2, CheckCheck, Paperclip, FileText, Flag } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe, Instagram, MapPin, MessageCircle, X, Send, Loader2, Paperclip, FileText, Flag } from "lucide-react";
 import type { ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
 import { useMotion } from "../../app/providers/MotionProvider";
 import { getBrandProfile, getPublicBusinessCard, resolveContactAction, startChatConversation, getChatMessages, sendChatMessage, uploadChatFile } from "../../shared/api/askClient";
 import { ReportDialog } from "../ReportDialog/ReportDialog";
 import type { BrandProfileDto, BusinessCardDto, ChatMessageDto } from "../../shared/api/dto";
+import { MessageReadStatus } from "../../shared/ui/MessageReadStatus/MessageReadStatus";
 
 interface Props {
   data: ResultCardData | null;
@@ -341,7 +342,7 @@ export function CompanyCard({ data, onClose }: Props) {
                                   <span className="fcw-body-xs" style={{ color: "var(--fcw-color-text-tertiary)", fontSize: "0.65rem" }}>
                                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                   </span>
-                                  {isMe && msg.readAt && <CheckCheck size={10} style={{ color: "var(--fcw-color-primary)" }} />}
+                                  {isMe && <MessageReadStatus readAt={msg.readAt} compact />}
                                 </div>
                               </motion.div>
                             );

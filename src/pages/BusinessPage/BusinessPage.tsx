@@ -31,7 +31,7 @@ import { BusinessChatDrawer } from "../../widgets/BusinessChatDrawer/BusinessCha
 import {
   getBrandProfile, listDrops,
   updateBrandProfile,
-  createDrop, cancelDrop, deleteDrop,
+  createDrop, cancelDrop, deleteDrop, uploadDropCover,
   listProducts, createProduct, updateProduct, deleteProduct,
   listServices, createService, updateService,
   listBranches, createBranch, updateBranch,
@@ -597,14 +597,15 @@ export function BusinessPage() {
     }
   };
 
-  const handleCreateDrop = async (data: Partial<BrandDropDto>) => {
+  const handleCreateDrop = async (data: Partial<BrandDropDto>, coverFile: File | null) => {
     if (!businessId) {
       toast.show(t("business.toast.sessionNotFound"), "error");
       return;
     }
     try {
       const created = await createDrop(businessId, data);
-      setDrops(current => [created, ...current]);
+      const completed = coverFile ? await uploadDropCover(created.id, coverFile) : created;
+      setDrops(current => [completed, ...current]);
       toast.show(t("business.toast.dropCreated"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.dropCreateError"), "error");
@@ -614,13 +615,13 @@ export function BusinessPage() {
 
   const handleCancelDrop = async (drop: BrandDropDto) => {
     if (!businessId) return;
-    const updated = await cancelDrop(businessId, drop.id);
-    setDrops(drops.map(d => d.id === updated.id ? updated : d));
+    await cancelDrop(drop.id);
+    setDrops(drops.map(d => d.id === drop.id ? { ...d, isActive: !d.isActive } : d));
   };
 
   const handleDeleteDrop = async (drop: BrandDropDto) => {
     if (!businessId) return;
-    await deleteDrop(businessId, drop.id);
+    await deleteDrop(drop.id);
     setDrops(drops.filter(d => d.id !== drop.id));
   };
 
@@ -1417,14 +1418,6 @@ export function BusinessPage() {
                           {t("business.businessProfileDescription")}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        className="fcw-btn fcw-btn-secondary"
-                        onClick={() => navigate(buildRoute(ROUTES.storefront, { businessId }))}
-                      >
-                        <ExternalLink size={16} />
-                        {t("business.viewBusinessProfile")}
-                      </button>
                     </div>
                     <ProfileEditor
                       profile={profile}

@@ -52,6 +52,22 @@
 
 **Scope:** BusinessPage platform workspace, managedImportClient, platform permission UI.
 
+## LOCKED: Exception-only platform moderation
+
+**Approved signal:** User clarification on 2026-07-29.
+
+**Protected behavior:** Normal active Items, Services, and UniqueOffers from every Business, including legal form `NONE`, publish immediately. Only suspicious content identified by automated checks or explicit reports enters platform moderation. The platform UI must never fill the moderation workload with every new catalog row.
+
+**Scope:** Platform Businesses, Chats, event counters, Item/Service/UniqueOffer publication, moderation queue.
+
+## LOCKED: Ordinary customer-business chats are read-only for platform staff
+
+**Approved signal:** User clarification on 2026-07-29.
+
+**Protected behavior:** In the platform cabinet, `GENERAL_SUPPORT` conversations between a customer and a Business can be inspected and moderated, but platform staff cannot send Messages or close those conversations. Reply controls exist only for platform support and authorized managed-import chats.
+
+**Scope:** AdminSupport, PlatformChatProcessor, messaging contracts.
+
 ## LOCKED: Hidden map-derived coordinates and branch hours
 
 **Approved signal:** User clarification on 2026-07-23.

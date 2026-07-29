@@ -1,416 +1,358 @@
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { UserRound, MapPin, Bell, BellOff, LogOut, Building2, Camera, CheckCircle2, Loader2, AlertTriangle, RefreshCw, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import {
+  Bell,
+  BellOff,
+  Camera,
+  Check,
+  FileCheck2,
+  KeyRound,
+  Loader2,
+  LockKeyhole,
+  LogOut,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+  X,
+} from "lucide-react";
+import { ROUTES } from "../../app/routes";
 import { useAuth } from "../../app/providers/AuthProvider";
-import { useMotion } from "../../app/providers/MotionProvider";
-import { Card } from "../../shared/ui/Card/Card";
+import {
+  changePassword,
+  confirmEmailChange,
+  deleteAccount,
+  requestEmailChange,
+  toggleTwoFactor,
+} from "../../shared/api/authClient";
 import { Loading } from "../../shared/ui/Loading/Loading";
-import { buildRoute, ROUTES } from "../../app/routes";
-import { confirmEmailChange, deleteAccount, requestEmailChange } from "../../shared/api/authClient";
-
-type GeoStatus = "active" | "off" | "expired" | "denied" | "requesting" | "notGranted" | "unavailable";
+import { Input } from "../../shared/ui/Input/Input";
 
 const AVATAR_STORAGE_KEY = "ask.profileAvatar";
-const GEO_STORAGE_KEY = "ask.geo";
-const GEO_MAX_AGE_HOURS = 24;
 
-function getStoredGeo(): { lat: number; lng: number; updatedAt: string } | null {
-  try {
-    const raw = window.localStorage.getItem(GEO_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.lat === "number" && typeof parsed.lng === "number") return parsed;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function isGeoExpired(updatedAt: string): boolean {
-  const age = Date.now() - new Date(updatedAt).getTime();
-  return age > GEO_MAX_AGE_HOURS * 60 * 60 * 1000;
-}
+type PasswordForm = {
+  current: string;
+  next: string;
+  confirmation: string;
+};
 
 export function ProfilePage() {
   const { t } = useTranslation();
   const { state, actions } = useAuth();
-  const { reduced } = useMotion();
   const navigate = useNavigate();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => window.localStorage.getItem("ask.notifications") === "granted");
-  const [avatar, setAvatar] = useState(() => window.localStorage.getItem(AVATAR_STORAGE_KEY) || "");
-  const [geoActive, setGeoActive] = useState(() => {
-    const stored = getStoredGeo();
-    return stored !== null && !isGeoExpired(stored.updatedAt);
-  });
-  const [geoBusy, setGeoBusy] = useState(false);
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>(() => {
-    const stored = getStoredGeo();
-    if (!stored) return "off";
-    if (isGeoExpired(stored.updatedAt)) return "expired";
-    return "active";
-  });
-
-  const geoStatusLabels: Record<GeoStatus, string> = {
-    active: t("profile.geo.active"),
-    off: t("profile.geo.off"),
-    expired: t("profile.geo.expired"),
-    denied: t("profile.geo.denied"),
-    unavailable: t("profile.geo.unavailable"),
-    requesting: t("profile.geo.requesting"),
-    notGranted: t("profile.geo.notGranted"),
-  };
   const user = state.session?.user;
-  const businessMemberships = state.session?.businessMemberships ?? [];
-  const isBusiness = businessMemberships.length > 0;
-  const [editForm, setEditForm] = useState({
+  const isBusiness = Boolean(state.session?.businessMemberships?.length);
+  const [avatar, setAvatar] = useState(() => window.localStorage.getItem(AVATAR_STORAGE_KEY) || "");
+  const [form, setForm] = useState({
     displayName: user?.displayName || "",
     email: user?.email || "",
     phone: user?.phone || "",
   });
-  const [profileFormDirty, setProfileFormDirty] = useState(false);
-  const [formErrors, setFormErrors] = useState<{ email?: string; phone?: string }>({});
   const [emailChallengeId, setEmailChallengeId] = useState("");
   const [emailCode, setEmailCode] = useState("");
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [accountActionError, setAccountActionError] = useState("");
-
-  function validateEmail(email: string) {
-    if (!email) return undefined;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? undefined : t("profile.validation.invalidEmail");
-  }
-
-  function validatePhone(phone: string) {
-    if (!phone) return undefined;
-    return /^\+?[\d\s()-]{7,18}$/.test(phone) ? undefined : t("profile.validation.invalidPhone");
-  }
+  const [passwordForm, setPasswordForm] = useState<PasswordForm>({ current: "", next: "", confirmation: "" });
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => window.localStorage.getItem("ask.notifications") === "granted",
+  );
+  const [busyAction, setBusyAction] = useState<"profile" | "password" | "2fa" | "delete" | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
-    if (!navigator.permissions) return;
-    navigator.permissions.query({ name: "geolocation" }).then(perm => {
-      if (perm.state === "denied") {
-        setGeoActive(false);
-        setGeoStatus("denied");
-        window.localStorage.removeItem(GEO_STORAGE_KEY);
-      } else if (perm.state === "prompt") {
-        const stored = getStoredGeo();
-        if (!stored) {
-          setGeoActive(false);
-          setGeoStatus("off");
-        }
-      }
-      perm.addEventListener("change", () => {
-        if (perm.state === "denied") {
-          setGeoActive(false);
-          setGeoStatus("denied");
-          window.localStorage.removeItem(GEO_STORAGE_KEY);
-        }
-      });
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!user || profileFormDirty) return;
-    setEditForm({
+    if (!user) return;
+    setForm({
       displayName: user.displayName || "",
       email: user.email || "",
       phone: user.phone || "",
     });
-  }, [user?.userId, user?.displayName, user?.email, user?.phone, profileFormDirty]);
+  }, [user?.displayName, user?.email, user?.phone, user?.userId]);
 
-  if (!state.sessionReady) {
-    return <Loading />;
-  }
+  if (!state.sessionReady) return <Loading />;
+  if (!state.authenticated) return <Navigate to={ROUTES.auth} replace />;
 
-  if (!state.authenticated) {
-    return <Navigate to={ROUTES.auth} replace />;
-  }
-
-  const handleAvatar = (file: File | undefined) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = String(reader.result || "");
-      setAvatar(value);
-      window.localStorage.setItem(AVATAR_STORAGE_KEY, value);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSaveProfile = async () => {
-    const emailErr = validateEmail(editForm.email);
-    const phoneErr = validatePhone(editForm.phone);
-    setFormErrors({ email: emailErr, phone: phoneErr });
-    if (emailErr || phoneErr) return;
-
-    await actions.updateProfile({
-      displayName: editForm.displayName,
-      phone: editForm.phone,
-    });
-    if (editForm.email && editForm.email !== user?.email) {
-      const challenge = await requestEmailChange(editForm.email);
-      setEmailChallengeId(challenge.verificationId);
-    } else {
-      setProfileFormDirty(false);
+  const saveProfile = async () => {
+    setBusyAction("profile");
+    setError("");
+    setMessage("");
+    try {
+      await actions.updateProfile({
+        displayName: form.displayName.trim(),
+        phone: form.phone.trim(),
+      });
+      if (form.email.trim() && form.email.trim() !== user?.email) {
+        const challenge = await requestEmailChange(form.email.trim());
+        setEmailChallengeId(challenge.verificationId);
+        setMessage(t("profile.security.emailCodeSent"));
+      } else {
+        setMessage(t("profile.saved"));
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("profile.saveError"));
+    } finally {
+      setBusyAction(null);
     }
   };
 
-  const handleConfirmEmail = async () => {
-    if (!emailChallengeId || emailCode.length !== 6) return;
-    await confirmEmailChange(emailChallengeId, emailCode);
-    setEmailChallengeId("");
-    setEmailCode("");
-    await actions.refreshSession();
-    setProfileFormDirty(false);
+  const confirmEmail = async () => {
+    if (emailCode.length !== 6) return;
+    setBusyAction("profile");
+    setError("");
+    try {
+      await confirmEmailChange(emailChallengeId, emailCode);
+      await actions.refreshSession();
+      setEmailChallengeId("");
+      setEmailCode("");
+      setMessage(t("profile.security.emailChanged"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("profile.saveError"));
+    } finally {
+      setBusyAction(null);
+    }
   };
 
-  const handleDeleteAccount = async () => {
-    setAccountActionError("");
+  const savePassword = async () => {
+    if (!passwordForm.current || passwordForm.next.length < 8 || passwordForm.next !== passwordForm.confirmation) {
+      setError(t("profile.security.passwordValidation"));
+      return;
+    }
+    setBusyAction("password");
+    setError("");
+    try {
+      await changePassword(passwordForm.current, passwordForm.next);
+      setPasswordForm({ current: "", next: "", confirmation: "" });
+      setPasswordOpen(false);
+      setMessage(t("profile.security.passwordChanged"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("profile.security.passwordError"));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const updateTwoFactor = async () => {
+    setBusyAction("2fa");
+    setError("");
+    try {
+      await toggleTwoFactor();
+      await actions.refreshSession();
+      setMessage(t(state.session?.requiresTwoFactor ? "profile.security.twoFactorDisabled" : "profile.security.twoFactorEnabled"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("profile.security.twoFactorError"));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const updateNotifications = () => {
+    if (!("Notification" in window)) return;
+    if (notificationsEnabled) {
+      setNotificationsEnabled(false);
+      window.localStorage.setItem("ask.notifications", "denied");
+      return;
+    }
+    Notification.requestPermission().then(permission => {
+      const enabled = permission === "granted";
+      setNotificationsEnabled(enabled);
+      window.localStorage.setItem("ask.notifications", permission);
+    });
+  };
+
+  const removeAccount = async () => {
+    setBusyAction("delete");
+    setError("");
     try {
       await deleteAccount();
       await actions.logout();
       navigate(ROUTES.auth, { replace: true });
     } catch (cause) {
-      setAccountActionError(cause instanceof Error ? cause.message : t("profile.account.deleteError"));
+      setError(cause instanceof Error ? cause.message : t("profile.account.deleteError"));
+      setBusyAction(null);
     }
   };
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) {
-      setGeoStatus("unavailable");
-      return;
-    }
-    setGeoBusy(true);
-    setGeoStatus("requesting");
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        window.localStorage.setItem(GEO_STORAGE_KEY, JSON.stringify({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          updatedAt: new Date().toISOString(),
-        }));
-        setGeoActive(true);
-        setGeoBusy(false);
-        setGeoStatus("active");
-      },
-      () => {
-        setGeoActive(false);
-        setGeoBusy(false);
-        setGeoStatus("notGranted");
-      },
-      { enableHighAccuracy: true, maximumAge: 60000, timeout: 10000 },
-    );
-  };
-
-  const handleLogout = async () => {
+  const logout = async () => {
     await actions.logout();
     navigate(ROUTES.auth, { replace: true });
   };
 
+  const legalDocuments = isBusiness
+    ? [
+        { href: "/legal/seller-terms", label: t("legal.seller-terms.title") },
+        { href: "/legal/personal-data-consent", label: t("legal.personal-data-consent.title") },
+      ]
+    : [
+        { href: "/legal/user-terms", label: t("legal.user-terms.title") },
+        { href: "/legal/privacy", label: t("legal.privacy.title") },
+      ];
+
   return (
-    <main id="main-content">
-      <div className="fcw-container" style={{ paddingTop: "var(--fcw-space-lg)", paddingBottom: "var(--fcw-space-xl)" }}>
-        <motion.div
-          className="fcw-flex-col"
-          style={{ gap: "var(--fcw-space-md)", maxWidth: "920px", margin: "0 auto" }}
-          initial={reduced ? {} : { opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <Card padding="lg" className="profile-identity-card">
-            <div className="fcw-flex fcw-items-center fcw-flex-wrap" style={{ gap: "1rem" }}>
-              <div
-                className="profile-avatar fcw-flex-center fcw-radius-full"
-                style={{
-                  width: 72,
-                  height: 72,
-                  background: "linear-gradient(135deg, var(--fcw-color-primary), var(--fcw-color-primary-hover))",
-                  color: "var(--fcw-color-primary-text)",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                }}
-              >
-                {avatar ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <UserRound size={32} />}
-              </div>
+    <main id="main-content" className="account-page">
+      <div className="account-shell">
+        <header className="account-hero">
+          <label className="account-avatar">
+            {avatar ? <img src={avatar} alt="" /> : <UserRound size={34} />}
+            <span><Camera size={14} /></span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={event => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const value = String(reader.result || "");
+                  setAvatar(value);
+                  window.localStorage.setItem(AVATAR_STORAGE_KEY, value);
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+          </label>
+          <div>
+            <p>{t(isBusiness ? "profile.role.business" : "profile.role.customer")}</p>
+            <h1>{user?.displayName || user?.email || t("profile.displayNameFallback")}</h1>
+            <span>{user?.email}</span>
+          </div>
+        </header>
 
-              <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-                <h1 className="fcw-h2" style={{ margin: "0 0 0.25rem 0" }}>{user?.displayName || t("profile.displayNameFallback")}</h1>
-                <p className="fcw-body-s fcw-text-secondary" style={{ margin: 0 }}>{user?.email || t("profile.emailFallback")}</p>
-                <p className="fcw-body-s fcw-text-tertiary" style={{ margin: "0.125rem 0 0" }}>{user?.phone || t("profile.phoneFallback")}</p>
-              </div>
+        {(message || error) && (
+          <div className={`account-feedback${error ? " is-error" : ""}`}>
+            {error || message}
+          </div>
+        )}
 
-              {isBusiness && (
-                <span className="fcw-label" style={{ color: "var(--fcw-color-primary)" }}>
-                  {t("profile.role.business")}
-                </span>
-              )}
-              {!isBusiness && (
-                <span className="fcw-label" style={{ color: "var(--fcw-color-primary)" }}>
-                  {t("profile.role.customer")}
-                </span>
-              )}
+        <div className="account-grid">
+          <section className="account-section account-section--identity">
+            <div className="account-section__heading">
+              <span><UserRound size={19} /></span>
+              <div>
+                <h2>{t("profile.section.profileData")}</h2>
+                <p>{t("profile.identity.description")}</p>
+              </div>
             </div>
-          </Card>
 
-          <section className="profile-action-zone">
-          <Card padding="lg" className="profile-section-card">
-            <div className="fcw-flex-between fcw-flex-wrap" style={{ gap: "0.75rem", marginBottom: "var(--fcw-space-md)" }}>
-              <h2 className="fcw-h3" style={{ margin: 0 }}>{t("profile.section.profileData")}</h2>
-              <label className="fcw-btn fcw-btn-secondary fcw-btn-sm">
-                <Camera size={14} />
-                {t("profile.avatar")}
-                <input type="file" accept="image/*" onChange={event => handleAvatar(event.target.files?.[0])} style={{ display: "none" }} />
+            <div className="account-fields">
+              <label>
+                <span>{t("profile.placeholder.name")}</span>
+                <div><UserRound size={17} /><input value={form.displayName} onChange={event => setForm(current => ({ ...current, displayName: event.target.value }))} /></div>
+              </label>
+              <label>
+                <span>{t("profile.placeholder.email")}</span>
+                <div><Mail size={17} /><input type="email" value={form.email} onChange={event => setForm(current => ({ ...current, email: event.target.value }))} /></div>
+              </label>
+              <label>
+                <span>{t("profile.placeholder.phone")}</span>
+                <div>
+                  <Phone size={17} />
+                  <input type="tel" value={form.phone} onChange={event => setForm(current => ({ ...current, phone: event.target.value }))} />
+                  {form.phone && <button type="button" onClick={() => setForm(current => ({ ...current, phone: "" }))} aria-label={t("profile.phone.remove")}><X size={16} /></button>}
+                </div>
               </label>
             </div>
-            <div className="fcw-flex-col" style={{ gap: "0.75rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}>
-                <input className="fcw-input" value={editForm.displayName} onChange={event => { setProfileFormDirty(true); setEditForm(prev => ({ ...prev, displayName: event.target.value })); }} placeholder={t("profile.placeholder.name")} />
-                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
-                  <input
-                    className="fcw-input"
-                    type="email"
-                    value={editForm.email}
-                    onChange={event => { setProfileFormDirty(true); setEditForm(prev => ({ ...prev, email: event.target.value })); setFormErrors(prev => ({ ...prev, email: undefined })); }}
-                    placeholder={t("profile.placeholder.email")}
-                    style={formErrors.email ? { borderColor: "var(--fcw-color-error)" } : undefined}
-                  />
-                  {formErrors.email && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{formErrors.email}</span>}
-                  {emailChallengeId && (
-                    <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                      <input
-                        className="fcw-input"
-                        inputMode="numeric"
-                        maxLength={6}
-                        value={emailCode}
-                        onChange={event => setEmailCode(event.target.value.replace(/\D/g, ""))}
-                        placeholder={t("profile.emailChange.code")}
-                      />
-                      <button
-                        className="fcw-btn fcw-btn-secondary fcw-btn-sm"
-                        type="button"
-                        onClick={handleConfirmEmail}
-                        disabled={emailCode.length !== 6}
-                      >
-                        {t("profile.emailChange.confirm")}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="fcw-flex-col" style={{ gap: "0.125rem" }}>
-                  <input
-                    className="fcw-input"
-                    value={editForm.phone}
-                    onChange={event => { setProfileFormDirty(true); setEditForm(prev => ({ ...prev, phone: event.target.value })); setFormErrors(prev => ({ ...prev, phone: undefined })); }}
-                    placeholder={t("profile.placeholder.phone")}
-                    style={formErrors.phone ? { borderColor: "var(--fcw-color-error)" } : undefined}
-                  />
-                  {formErrors.phone && <span className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{formErrors.phone}</span>}
-                </div>
+
+            {emailChallengeId && (
+              <div className="account-inline-form">
+                <input inputMode="numeric" maxLength={6} value={emailCode} onChange={event => setEmailCode(event.target.value.replace(/\D/g, ""))} placeholder={t("profile.emailChange.code")} />
+                <button type="button" onClick={confirmEmail} disabled={emailCode.length !== 6}>{t("profile.emailChange.confirm")}</button>
               </div>
-              <button className="fcw-btn fcw-btn-primary fcw-btn-sm" style={{ alignSelf: "flex-start" }} onClick={handleSaveProfile} disabled={state.busy}>
-                {state.busy ? <Loader2 className="fcw-animate-spin" size={14} /> : <CheckCircle2 size={14} />}
-                {t("profile.save")}
-              </button>
-            </div>
-          </Card>
-
-          <Card padding="none" className="profile-section-card profile-quick-actions">
-            <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)" }} onClick={requestLocation} disabled={geoBusy}>
-              {geoBusy ? <Loader2 className="fcw-animate-spin" size={18} /> : geoActive ? <CheckCircle2 size={18} style={{ color: "var(--fcw-color-accent)" }} /> : geoStatus === "expired" ? <AlertTriangle size={18} style={{ color: "var(--fcw-amber-500)" }} /> : <MapPin size={18} style={{ color: "var(--fcw-color-primary)" }} />}
-              <span className="fcw-flex-1 fcw-text-left">
-                <span className="fcw-body" style={{ display: "block" }}>{t("profile.geo")}</span>
-                <span className="fcw-body-s fcw-text-tertiary">{geoStatusLabels[geoStatus]}</span>
-              </span>
-              {geoStatus === "expired" && <RefreshCw size={14} style={{ color: "var(--fcw-amber-500)" }} />}
-            </button>
-
-            <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={() => {
-              if (!("Notification" in window)) return;
-              if (Notification.permission === "granted") {
-                setNotificationsEnabled(false);
-                window.localStorage.setItem("ask.notifications", "denied");
-              } else if (Notification.permission === "denied") {
-                setNotificationsEnabled(true);
-                Notification.requestPermission().then(p => {
-                  setNotificationsEnabled(p === "granted");
-                  window.localStorage.setItem("ask.notifications", p);
-                });
-              } else {
-                Notification.requestPermission().then(p => {
-                  setNotificationsEnabled(p === "granted");
-                  window.localStorage.setItem("ask.notifications", p);
-                });
-              }
-            }}>
-              {notificationsEnabled ? <Bell size={18} style={{ color: "var(--fcw-color-primary)" }} /> : <BellOff size={18} />}
-              <span className="fcw-flex-1 fcw-text-left">{t("profile.notifications")}</span>
-              <span className="fcw-label" style={{ color: notificationsEnabled ? "var(--fcw-color-accent)" : "var(--fcw-color-text-tertiary)" }}>
-                {notificationsEnabled ? t("profile.notifications.on") : t("profile.notifications.off")}
-              </span>
-            </button>
-
-            {businessMemberships.length === 0 && (
-              <button
-                className="fcw-btn fcw-btn-ghost fcw-w-full"
-                style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}
-                onClick={() => navigate(ROUTES.sellerOnboarding)}
-              >
-                <Building2 size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                <span className="fcw-flex-1 fcw-text-left">{t("profile.createBusiness")}</span>
-              </button>
             )}
 
-            {businessMemberships.map(membership => (
-              <button
-                key={membership.membershipId}
-                className="fcw-btn fcw-btn-ghost fcw-w-full"
-                style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }}
-                onClick={() => {
-                  actions.selectBusiness(membership.businessId);
-                  navigate(buildRoute(ROUTES.business, { businessId: membership.businessId }));
-                }}
-              >
-                <Building2 size={18} style={{ color: "var(--fcw-color-primary)" }} />
-                <span className="fcw-flex-1 fcw-text-left">{membership.businessName}</span>
-              </button>
-            ))}
-
-            <button className="fcw-btn fcw-btn-ghost fcw-w-full" style={{ justifyContent: "flex-start", gap: "0.75rem", padding: "var(--fcw-space-md)", color: "var(--fcw-color-error)", borderTop: "var(--fcw-border-width-thin) solid var(--fcw-color-border)" }} onClick={handleLogout}>
-              <LogOut size={18} />
-              <span className="fcw-flex-1 fcw-text-left">{t("profile.logout")}</span>
+            <button className="account-primary-action" type="button" onClick={saveProfile} disabled={busyAction === "profile"}>
+              {busyAction === "profile" ? <Loader2 className="fcw-animate-spin" size={17} /> : <Check size={17} />}
+              {t("profile.save")}
             </button>
-          </Card>
+          </section>
 
-          <Card padding="lg" className="profile-section-card profile-danger-card">
-            <div className="profile-danger-heading">
-              <h2 className="fcw-h3" style={{ margin: 0 }}>{t("profile.account.title")}</h2>
-              <div className="fcw-flex fcw-flex-wrap" style={{ gap: "0.5rem" }}>
-                <button className="fcw-btn fcw-btn-secondary fcw-btn-sm" onClick={() => setShowDeleteConfirmation(true)}>
-                  <Trash2 size={14} />
-                  {t("profile.account.delete")}
-                </button>
+          <section className="account-section">
+            <div className="account-section__heading">
+              <span><ShieldCheck size={19} /></span>
+              <div>
+                <h2>{t("profile.security.title")}</h2>
+                <p>{t("profile.security.description")}</p>
               </div>
             </div>
-            <div className="fcw-flex-col" style={{ gap: "var(--fcw-space-sm)" }}>
-              {showDeleteConfirmation && (
-                <div className="fcw-flex-col fcw-radius-md" style={{ gap: "0.5rem", padding: "0.75rem", background: "var(--fcw-color-surface-secondary)" }}>
-                  <p className="fcw-body-s">{t("profile.account.deleteConfirm")}</p>
-                  <div className="fcw-flex" style={{ gap: "0.5rem" }}>
-                    <button className="fcw-btn fcw-btn-primary fcw-btn-sm" onClick={handleDeleteAccount}>
-                      {t("profile.account.deleteFinal")}
-                    </button>
-                    <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" onClick={() => setShowDeleteConfirmation(false)}>
-                      {t("common.cancel")}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {accountActionError && <p className="fcw-body-s" style={{ color: "var(--fcw-color-error)" }}>{accountActionError}</p>}
+
+            <div className="account-setting-row">
+              <span><KeyRound size={18} /></span>
+              <div><strong>{t("profile.security.password")}</strong><small>{t("profile.security.passwordHint")}</small></div>
+              <button type="button" onClick={() => setPasswordOpen(value => !value)}>{t("profile.security.change")}</button>
             </div>
-          </Card>
+
+            {passwordOpen && (
+              <div className="account-password-form">
+                <Input type="password" value={passwordForm.current} onChange={event => setPasswordForm(current => ({ ...current, current: event.target.value }))} placeholder={t("profile.security.currentPassword")} autoComplete="current-password" aria-label={t("profile.security.currentPassword")} />
+                <Input type="password" value={passwordForm.next} onChange={event => setPasswordForm(current => ({ ...current, next: event.target.value }))} placeholder={t("profile.security.newPassword")} autoComplete="new-password" aria-label={t("profile.security.newPassword")} />
+                <Input type="password" value={passwordForm.confirmation} onChange={event => setPasswordForm(current => ({ ...current, confirmation: event.target.value }))} placeholder={t("profile.security.confirmPassword")} autoComplete="new-password" aria-label={t("profile.security.confirmPassword")} />
+                <button type="button" onClick={savePassword} disabled={busyAction === "password"}>{t("profile.security.savePassword")}</button>
+              </div>
+            )}
+
+            <div className="account-setting-row">
+              <span><LockKeyhole size={18} /></span>
+              <div><strong>{t("profile.security.twoFactor")}</strong><small>{t(state.session?.requiresTwoFactor ? "profile.security.twoFactorOn" : "profile.security.twoFactorOff")}</small></div>
+              <button type="button" className={state.session?.requiresTwoFactor ? "is-active" : ""} onClick={updateTwoFactor} disabled={busyAction === "2fa"}>
+                {busyAction === "2fa" ? <Loader2 className="fcw-animate-spin" size={15} /> : t(state.session?.requiresTwoFactor ? "profile.security.disable" : "profile.security.enable")}
+              </button>
+            </div>
           </section>
-        </motion.div>
+
+          <section className="account-section">
+            <div className="account-section__heading">
+              <span><Bell size={19} /></span>
+              <div>
+                <h2>{t("profile.preferences.title")}</h2>
+                <p>{t("profile.preferences.description")}</p>
+              </div>
+            </div>
+            <div className="account-setting-row">
+              <span>{notificationsEnabled ? <Bell size={18} /> : <BellOff size={18} />}</span>
+              <div><strong>{t("profile.notifications")}</strong><small>{t(notificationsEnabled ? "profile.notifications.on" : "profile.notifications.off")}</small></div>
+              <button type="button" className={notificationsEnabled ? "is-active" : ""} onClick={updateNotifications}>
+                {t(notificationsEnabled ? "profile.security.disable" : "profile.security.enable")}
+              </button>
+            </div>
+          </section>
+
+          <section className="account-section">
+            <div className="account-section__heading">
+              <span><FileCheck2 size={19} /></span>
+              <div>
+                <h2>{t("profile.legal.title")}</h2>
+                <p>{t(isBusiness ? "profile.legal.businessDescription" : "profile.legal.customerDescription")}</p>
+              </div>
+            </div>
+            <div className="account-legal-list">
+              {legalDocuments.map(document => (
+                <button key={document.href} type="button" onClick={() => navigate(document.href)}>
+                  <FileCheck2 size={17} />
+                  <span>{document.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <footer className="account-footer">
+          <button type="button" onClick={logout}><LogOut size={17} />{t("profile.logout")}</button>
+          <button type="button" className="is-danger" onClick={() => setDeleteOpen(true)}><Trash2 size={17} />{t("profile.account.delete")}</button>
+        </footer>
+
+        {deleteOpen && (
+          <div className="account-delete-confirmation">
+            <p>{t("profile.account.deleteConfirm")}</p>
+            <div>
+              <button type="button" onClick={() => setDeleteOpen(false)}>{t("common.cancel")}</button>
+              <button type="button" className="is-danger" onClick={removeAccount} disabled={busyAction === "delete"}>
+                {busyAction === "delete" && <Loader2 className="fcw-animate-spin" size={15} />}
+                {t("profile.account.deleteFinal")}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

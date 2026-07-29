@@ -1,0 +1,220 @@
+.platform-catalog-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.platform-catalog-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.platform-catalog-page-header h1 {
+  margin: 16px 0 4px;
+  color: var(--fcw-color-text);
+  font-size: 1.75rem;
+  letter-spacing: -0.035em;
+}
+
+.platform-catalog-page-header p {
+  margin: 0;
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.86rem;
+}
+
+.platform-catalog-page-header > strong {
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.82rem;
+}
+
+.platform-catalog-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.platform-catalog-page-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--fcw-color-surface-secondary);
+  border-radius: 11px;
+}
+
+.platform-catalog-page-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 13px;
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 650;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.platform-catalog-page-tabs button.is-active {
+  color: var(--fcw-color-text);
+  background: var(--fcw-color-surface);
+  box-shadow: 0 1px 4px rgb(25 31 38 / 8%);
+}
+
+.platform-catalog-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 320px);
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--fcw-color-text-tertiary);
+  background: var(--fcw-color-surface);
+  border: 1px solid var(--fcw-color-border);
+  border-radius: 10px;
+}
+
+.platform-catalog-search input {
+  width: 100%;
+  color: var(--fcw-color-text);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.platform-catalog-table {
+  overflow: hidden;
+  background: var(--fcw-color-surface);
+  border: 1px solid var(--fcw-color-border);
+  border-radius: 14px;
+}
+
+.platform-catalog-table-head,
+.platform-catalog-table-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.35fr) minmax(150px, 1fr) minmax(130px, .8fr) 120px 110px minmax(160px, auto);
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+}
+
+.platform-catalog-table-head {
+  min-height: 43px;
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .055em;
+  background: var(--fcw-color-surface-secondary);
+}
+
+.platform-catalog-table-row {
+  min-height: 70px;
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.79rem;
+  border-top: 1px solid var(--fcw-color-border);
+}
+
+.platform-catalog-table-row > div:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.platform-catalog-table-row strong {
+  overflow: hidden;
+  color: var(--fcw-color-text);
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-catalog-table-row small {
+  margin-top: 3px;
+  color: var(--fcw-color-text-tertiary);
+  font-size: 0.68rem;
+}
+
+.platform-catalog-table-row .platform-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.platform-catalog-table-row .platform-row-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 9px;
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 650;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--fcw-color-border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.platform-catalog-table-row .platform-row-actions button.is-danger {
+  color: var(--fcw-color-error);
+  border-color: color-mix(in srgb, var(--fcw-color-error) 30%, var(--fcw-color-border));
+}
+
+.platform-catalog-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  color: var(--fcw-color-text-secondary);
+  font-size: 0.78rem;
+}
+
+.platform-catalog-pagination button {
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--fcw-color-text);
+  background: var(--fcw-color-surface);
+  border: 1px solid var(--fcw-color-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.platform-catalog-pagination button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+@media (max-width: 1050px) {
+  .platform-catalog-table {
+    overflow-x: auto;
+  }
+
+  .platform-catalog-table-head,
+  .platform-catalog-table-row {
+    min-width: 960px;
+  }
+}
+
+@media (max-width: 650px) {
+  .platform-catalog-page-header,
+  .platform-catalog-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .platform-catalog-page-tabs,
+  .platform-catalog-search {
+    width: 100%;
+  }
+
+  .platform-catalog-page-tabs button {
+    justify-content: center;
+    flex: 1;
+  }
+}

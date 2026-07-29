@@ -4,9 +4,11 @@ import { Loader2, MessageCircle, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   getBusinessChatMessages,
+  markBusinessChatRead,
   sendBusinessChatMessage,
 } from "../../shared/api/askClient";
 import type { ChatMessageDto } from "../../shared/api/dto";
+import { MessageReadStatus } from "../../shared/ui/MessageReadStatus/MessageReadStatus";
 
 type ManagedImportChatDrawerProps = {
   open: boolean;
@@ -29,7 +31,10 @@ export function ManagedImportChatDrawer({ open, conversationId, businessId, busi
     setBusy(true);
     setError("");
     getBusinessChatMessages(conversationId, businessId)
-      .then(response => setMessages(response.items))
+      .then(async response => {
+        setMessages(response.items);
+        await markBusinessChatRead(conversationId, businessId);
+      })
       .catch(() => setError(t("managedImport.chatError")))
       .finally(() => setBusy(false));
   }, [open, conversationId, businessId, t]);
@@ -77,17 +82,18 @@ export function ManagedImportChatDrawer({ open, conversationId, businessId, busi
             {!busy && messages.length === 0 && !error && (
               <div className="support-drawer-empty">
                 <MessageCircle size={28} />
-                <strong>{t("managedImport.chatEmpty")}</strong>
-                <p>{t("managedImport.chatEmptyDesc")}</p>
+                <strong>{t(conversationId ? "managedImport.chatEmpty" : "managedImport.chatSubmitted")}</strong>
+                <p>{t(conversationId ? "managedImport.chatEmptyDesc" : "managedImport.chatSubmittedDesc")}</p>
               </div>
             )}
             {messages.map(message => (
               <div
                 key={message.messageId}
-                className={`support-message${message.senderType === "CUSTOMER" ? " is-own" : ""}`}
+                className={`support-message${message.senderType === "BUSINESS" ? " is-own" : ""}`}
               >
                 <small>{t(`chats.conversations.sender.${message.senderType}`)}</small>
                 <p>{message.text}</p>
+                {message.senderType === "BUSINESS" && <MessageReadStatus readAt={message.readAt} />}
               </div>
             ))}
             <div ref={endRef} />

@@ -120,16 +120,21 @@ export interface AutodumpPublishResponse {
 function getStoredUserLocation() {
   try {
     const raw = window.localStorage.getItem("ask.geo");
-    if (!raw) return { lat: null, lng: null };
+    if (!raw) return undefined;
     const parsed = JSON.parse(raw) as { lat?: number; lng?: number };
-    return {
-      lat: typeof parsed.lat === "number" ? parsed.lat : null,
-      lng: typeof parsed.lng === "number" ? parsed.lng : null,
-    };
+    if (typeof parsed.lat !== "number" || typeof parsed.lng !== "number") return undefined;
+    return { lat: parsed.lat, lng: parsed.lng };
   } catch {
-    return { lat: null, lng: null };
+    return undefined;
   }
 }
+
+export type SearchMapBounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
 
 export type SearchExplicitFilters = {
   category?: string;
@@ -139,6 +144,15 @@ export type SearchExplicitFilters = {
   maxPrice?: number;
   openNow?: boolean;
   radiusMeters?: number;
+};
+
+export type SearchLocalFilters = {
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  radiusMeters?: number;
+  businessIds?: string[];
+  mapBounds?: SearchMapBounds;
 };
 
 export function searchAskV2(params: {
@@ -507,26 +521,42 @@ export function createDrop(businessId: string, data: Partial<BrandDropDto>) {
   });
 }
 
-export function updateDrop(businessId: string, dropId: string, data: Partial<BrandDropDto>) {
-  return apiRequest<BrandDropDto>(`/api/v1/businesses/${businessId}/drops/${dropId}`, {
+export function updateDrop(dropId: string, data: Partial<BrandDropDto>) {
+  return apiRequest<BrandDropDto>(`/api/v1/drops/${dropId}`, {
     method: "PATCH",
     auth: true,
     body: data,
   });
 }
 
-export function cancelDrop(businessId: string, dropId: string) {
-  return apiRequest<BrandDropDto>(`/api/v1/businesses/${businessId}/drops/${dropId}/cancel`, {
+export function cancelDrop(dropId: string) {
+  return apiRequest<void>(`/api/v1/drops/${dropId}/cancel`, {
     method: "POST",
     auth: true,
   });
 }
 
-export function deleteDrop(businessId: string, dropId: string) {
-  return apiRequest<void>(`/api/v1/businesses/${businessId}/drops/${dropId}`, {
+export function deleteDrop(dropId: string) {
+  return apiRequest<void>(`/api/v1/drops/${dropId}`, {
     method: "DELETE",
     auth: true,
   });
+}
+
+export async function uploadDropCover(dropId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`${API_BASE_URL}/api/v1/drops/${dropId}/cover`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: form,
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new ApiError(response.status, message, null);
+  }
+  return transformKeys(await response.json()) as BrandDropDto;
 }
 
 export function getBusinessCard(businessId: string) {

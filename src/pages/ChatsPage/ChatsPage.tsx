@@ -26,6 +26,7 @@ import {
   uploadChatFile,
 } from "../../shared/api/askClient";
 import type { BrandProfileDto, ChatConversationDto, ChatMessageDto } from "../../shared/api/dto";
+import { MessageReadStatus } from "../../shared/ui/MessageReadStatus/MessageReadStatus";
 
 type StatusFilter = "ALL" | "PENDING" | "IN_CHAT" | "CLOSED";
 
@@ -279,7 +280,10 @@ export function ChatsPage() {
                         Скачать вложение
                       </a>
                     )}
-                    <time>{shortTime(message.createdAt)}</time>
+                    <span className="ask-message__meta">
+                      <time>{shortTime(message.createdAt)}</time>
+                      {own && <MessageReadStatus readAt={message.readAt} compact />}
+                    </span>
                   </div>
                 );
               })}

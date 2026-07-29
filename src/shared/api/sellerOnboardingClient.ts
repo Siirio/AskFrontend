@@ -25,13 +25,26 @@ export type SellerOnboardingData = {
   telegramUrl: string;
 };
 
+export type SellerOnboardingBranchData = {
+  name: string;
+  address: string;
+  addressDetails?: string;
+  cityId?: string;
+  latitude: number;
+  longitude: number;
+  pickupAvailable: true;
+};
+
 export type SellerOnboardingResult = {
   businessId: string;
   catalogSetupMode: "MANUAL" | "ASK_MANAGED_IMPORT";
   startRoute: "BUSINESS_CABINET" | "MANAGED_IMPORT";
 };
 
-export function completeSellerOnboarding(data: SellerOnboardingData) {
+export function completeSellerOnboarding(
+  data: SellerOnboardingData,
+  pickupBranches: SellerOnboardingBranchData[],
+) {
   const {
     legalIdentifier,
     locale: _locale,
@@ -54,8 +67,8 @@ export function completeSellerOnboarding(data: SellerOnboardingData) {
     telegramUrl,
   };
   const body = data.legalForm === "NONE"
-    ? { ...base, ...Object.fromEntries(Object.entries(sourceLinks).filter(([, value]) => value.trim())) }
-    : { ...base, legalIdentifier };
+    ? { ...base, pickupBranches, ...Object.fromEntries(Object.entries(sourceLinks).filter(([, value]) => value.trim())) }
+    : { ...base, pickupBranches, legalIdentifier };
 
   return apiRequest<SellerOnboardingResult>("/api/v1/business/onboarding", {
     method: "POST",

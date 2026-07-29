@@ -52,6 +52,8 @@ Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth
 
 Response `AuthSessionResponse` includes `activationRequired: boolean`. When `true`, the frontend must navigate to the password change screen (`POST /api/v1/auth/change-temporary-password`). The activation session TTL is 5 minutes.
 
+`all_roles` is the deduplicated union of the personal AppUser role, active `business_memberships[].role` values, and `platform_membership.role`. Context-specific access must still use the corresponding membership object.
+
 ## Customer Request Statuses
 
 Frontend should expect stable machine-readable statuses and own visible localization.

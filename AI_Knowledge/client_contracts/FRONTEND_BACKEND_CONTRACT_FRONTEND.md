@@ -48,6 +48,8 @@ Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth
 
 Response `AuthSessionResponse` includes `activationRequired: boolean`. When `true`, the frontend must navigate to the password change screen (`POST /api/v1/auth/change-temporary-password`). The activation session TTL is 5 minutes.
 
+`all_roles` is the deduplicated union of the personal AppUser role, active `business_memberships[].role` values, and `platform_membership.role`. Context-specific access must still use the corresponding membership object.
+
 ## Customer Request Statuses
 
 Frontend should expect stable machine-readable statuses and own visible localization.
@@ -429,3 +431,22 @@ Base: `/api/v1/businesses/{businessId}/item-imports`. Multipart upload is authen
 - Business Item and Service lists are ordered newest first.
 - A normal active Item is synchronously auto-approved and published immediately; a prohibited-keyword autoban saves it as rejected and excludes it from search.
 - An active Service publishes immediately without a moderation approval gate.
+- Legal form `NONE` does not introduce a publication gate. Automated checks add only suspicious Items, Services, or Messages to platform moderation; safe catalog rows never appear in the moderation queue.
+
+## Platform cabinet
+
+The platform cabinet contains exactly `Сводка`, `Бизнесы`, `Чаты`, `Аккаунты`, and `Команда Ask`. Moderation appears in the section that owns the target instead of a separate primary navigation item.
+
+Chat tabs map directly to `PLATFORM_SUPPORT`, `MANAGED_IMPORT`, and `GENERAL_SUPPORT`. Yellow counters mean backend severity `REVIEW`; red counters mean `CRITICAL`. These counters represent unresolved moderation events and never ordinary unread messages.
+
+`GENERAL_SUPPORT` conversations between a customer and a Business are read-only in the platform cabinet. The platform UI never renders reply or close controls there; it only exposes history and Message moderation.
+
+Platform chat moderation uses distinct message colors for `CUSTOMER`, `BUSINESS`, and `PLATFORM` senders. Ordinary customer-Business chats render `readAt` as colored single-check/double-check icons without visible status text; accessible labels retain the sent/read meaning.
+
+- Summary uses `GET /api/v1/platform/dashboard`.
+- Business browsing uses `GET /api/v1/platform/businesses`, the business detail endpoint, and nested `/products` and `/services`.
+- Summary Item, Service, and Drop metrics open a platform-wide catalog using `/api/v1/platform/catalog/items`, `/services`, and `/drops`; this flow never enters a Business workspace.
+- The platform-wide catalog exposes block/restore and a superadmin-only soft-delete action for Items, Services, and Drops.
+- Platform navigation is a primary navigation item immediately after Chats for platform members; it is not duplicated in the account menu.
+- Account browsing uses `GET /api/v1/platform/accounts`; superadmin soft deletion uses `DELETE /api/v1/platform/accounts/{userId}`.
+- Report resolution sends `PATCH /api/v1/platform/reports/{reportId}?status=VALID|BANNED` with the resolution note in the body.

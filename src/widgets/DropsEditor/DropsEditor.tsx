@@ -13,12 +13,12 @@ function formatDateShort(value?: string | null): string {
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "drops.statusActive",
   CANCELLED: "drops.statusCancelled",
-  COMPLETED: "drops.statusCompleted",
+  ENDED: "drops.statusCompleted",
 };
 
 interface DropsEditorProps {
   drops: BrandDropDto[];
-  onCreate: (data: Partial<BrandDropDto>) => Promise<void>;
+  onCreate: (data: Partial<BrandDropDto>, coverFile: File | null) => Promise<void>;
   onCancel: (drop: BrandDropDto) => Promise<void>;
   onDelete: (drop: BrandDropDto) => Promise<void>;
   busy: boolean;
@@ -35,7 +35,7 @@ interface DropForm {
   startDate: string;
   endDate: string;
   tags: string;
-  coverUrl: string;
+  coverFile: File | null;
   discountPercent: string;
   discountAmount: string;
   currency: string;
@@ -48,7 +48,7 @@ const emptyForm: DropForm = {
   startDate: "",
   endDate: "",
   tags: "",
-  coverUrl: "",
+  coverFile: null,
   discountPercent: "",
   discountAmount: "",
   currency: "KZT",
@@ -67,7 +67,7 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
     { key: "NEW_COLLECTION", label: t("drops.typeNewCollection"), description: t("drops.typeNewCollectionDesc") },
     { key: "LIMITED_RELEASE", label: t("drops.typeLimitedRelease"), description: t("drops.typeLimitedReleaseDesc") },
     { key: "SEASONAL", label: t("drops.typeSeasonal"), description: t("drops.typeSeasonalDesc") },
-    { key: "PROMO", label: t("drops.typePromo"), description: t("drops.typePromoDesc") },
+    { key: "DISCOUNT", label: t("drops.typePromo"), description: t("drops.typePromoDesc") },
   ];
 
   const openEditor = () => {
@@ -114,6 +114,7 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
     setSaveState("saving");
     setErrorMessage("");
     try {
+      const hasDiscount = form.type === "DISCOUNT";
       await onCreate({
         name: form.name.trim(),
         type: form.type,
@@ -122,12 +123,11 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
         startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
         tags: form.tags.split(",").map(tag => tag.trim()).filter(Boolean),
-        coverUrl: form.coverUrl.trim() || undefined,
-        discountPercent: form.discountPercent ? Number(form.discountPercent) : undefined,
-        discountAmount: form.discountAmount ? Number(form.discountAmount) : undefined,
-        currency: form.currency,
-        isEnabled: true,
-      });
+        discountPercent: hasDiscount && form.discountPercent ? Number(form.discountPercent) : undefined,
+        discountAmount: hasDiscount && form.discountAmount ? Number(form.discountAmount) : undefined,
+        currency: hasDiscount ? form.currency : undefined,
+        isActive: true,
+      }, form.coverFile);
       setSaveState("saved");
       closeEditor();
     } catch (error: unknown) {
@@ -247,20 +247,29 @@ export function DropsEditor({ drops, onCreate, onCancel, onDelete, busy, readOnl
               </div>
               <div className="ask-editor-field ask-editor-field--wide">
                 <label>{t("drops.coverUrl")}</label>
-                <input className="fcw-input" type="url" value={form.coverUrl} onChange={event => update({ coverUrl: event.target.value })} placeholder={t("drops.coverUrlPlaceholder")} />
+                <input
+                  className="fcw-input"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={event => update({ coverFile: event.target.files?.[0] ?? null })}
+                />
               </div>
               <div className="ask-editor-field ask-editor-field--wide">
                 <label>{t("drops.tags")}</label>
                 <input className="fcw-input" value={form.tags} onChange={event => update({ tags: event.target.value })} placeholder={t("drops.tagsPlaceholder")} />
               </div>
-              <div className="ask-editor-field">
-                <label>{t("drops.discountPercent")}</label>
-                <input className="fcw-input" type="number" min="0" max="100" value={form.discountPercent} onChange={event => update({ discountPercent: event.target.value })} />
-              </div>
-              <div className="ask-editor-field">
-                <label>{t("drops.discountAmount")}</label>
-                <input className="fcw-input" type="number" min="0" value={form.discountAmount} onChange={event => update({ discountAmount: event.target.value })} />
-              </div>
+              {form.type === "DISCOUNT" && (
+                <>
+                  <div className="ask-editor-field">
+                    <label>{t("drops.discountPercent")}</label>
+                    <input className="fcw-input" type="number" min="1" max="100" value={form.discountPercent} onChange={event => update({ discountPercent: event.target.value })} />
+                  </div>
+                  <div className="ask-editor-field">
+                    <label>{t("drops.discountAmount")}</label>
+                    <input className="fcw-input" type="number" min="1" value={form.discountAmount} onChange={event => update({ discountAmount: event.target.value })} />
+                  </div>
+                </>
+              )}
             </div>
           </EditorSection>
         )}

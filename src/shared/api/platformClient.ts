@@ -4,7 +4,10 @@ import type {
   ChatConversationListResponse,
   ChatMessageDto,
   ChatMessageListResponse,
+  BusinessProductListDto,
+  BusinessServiceListDto,
 } from "./dto";
+import type { PlatformEventCounts } from "../../widgets/PlatformShell/platformTypes";
 
 export function requestAiEnrichment(targetType: "PRODUCT" | "SERVICE" | "UNIQUE_OFFER", aggregateIds: string[]) {
   return apiRequest<{ enrichedCount: number }>("/api/v1/platform/ai-enrichment", {
@@ -26,11 +29,12 @@ export type PlatformMembershipItem = {
 
 export type ContentReportItem = {
   id: string;
-  targetType: "PRODUCT" | "BUSINESS" | "MESSAGE" | "USER";
+  targetType: "PRODUCT" | "SERVICE" | "UNIQUE_OFFER" | "BUSINESS" | "MESSAGE" | "USER";
   targetId: string;
   reasonCode: string;
   details?: string;
-  status: "OPEN" | "RESOLVED" | "REJECTED";
+  severity?: "REVIEW" | "CRITICAL";
+  status: "BEING_DISCUSSED" | "VALID" | "BANNED";
   reporterUserId: string;
   reporterName?: string;
   createdAt: string;
@@ -93,6 +97,13 @@ export function deactivatePlatformUser(membershipId: string) {
   });
 }
 
+export function deletePlatformUser(membershipId: string) {
+  return apiRequest<void>(`/api/v1/platform/users/${membershipId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
 export function listOpenReports() {
   return apiRequest<ContentReportItem[]>("/api/v1/platform/reports", { auth: true });
 }
@@ -111,16 +122,14 @@ export function reviewCatalog(businessId: string, approved: boolean) {
 
 export function resolveReport(
   reportId: string,
-  status: "RESOLVED" | "REJECTED",
+  status: "VALID" | "BANNED",
   resolution: string,
 ) {
-  return apiRequest<ContentReportItem>(`/api/v1/platform/reports/${reportId}`, {
+  const params = new URLSearchParams({ status });
+  return apiRequest<ContentReportItem>(`/api/v1/platform/reports/${reportId}?${params}`, {
     method: "PATCH",
     auth: true,
-    body: {
-      status,
-      resolution,
-    },
+    body: resolution,
   });
 }
 
@@ -159,6 +168,68 @@ export type PlatformDashboardResponse = {
 
 export function getPlatformDashboard() {
   return apiRequest<PlatformDashboardResponse>("/api/v1/platform/dashboard", { auth: true });
+}
+
+export type PlatformCatalogType = "items" | "services" | "drops";
+
+export type PlatformCatalogEntry = {
+  id: string;
+  type: "ITEM" | "SERVICE" | "DROP";
+  name: string;
+  businessId: string;
+  businessName: string;
+  categoryLabel?: string | null;
+  price?: number | null;
+  status: string;
+  isActive: boolean;
+  discountPercent?: number | null;
+  discountAmount?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  createdAt: string;
+};
+
+export type PlatformCatalogPage = {
+  items: PlatformCatalogEntry[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export function listPlatformCatalog(type: PlatformCatalogType, page = 0, size = 50) {
+  return apiRequest<PlatformCatalogPage>(
+    `/api/v1/platform/catalog/${type}?page=${page}&size=${size}`,
+    { auth: true },
+  );
+}
+
+export async function getPlatformEventCounts(): Promise<PlatformEventCounts> {
+  const [reports, moderationQueue] = await Promise.all([
+    listOpenReports(),
+    listModerationQueue(0, 100),
+  ]);
+  const counts: PlatformEventCounts = {
+    summary: { review: 0, critical: 0 },
+    businesses: { review: moderationQueue.totalElements, critical: 0 },
+    chats: { review: 0, critical: 0 },
+    accounts: { review: 0, critical: 0 },
+    team: { review: 0, critical: 0 },
+  };
+
+  for (const report of reports) {
+    const section = report.targetType === "MESSAGE"
+      ? "chats"
+      : report.targetType === "USER"
+        ? "accounts"
+        : "businesses";
+    const level = report.severity === "CRITICAL" ? "critical" : "review";
+    counts[section][level] += 1;
+    counts.summary[level] += 1;
+  }
+
+  counts.summary.review += moderationQueue.totalElements;
+  return counts;
 }
 
 export type PlatformBusinessRowResponse = {
@@ -212,6 +283,70 @@ export type PlatformBusinessDetailResponse = {
 
 export function getPlatformBusinessDetail(businessId: string) {
   return apiRequest<PlatformBusinessDetailResponse>(`/api/v1/platform/businesses/${businessId}`, { auth: true });
+}
+
+export function listPlatformBusinessItems(businessId: string, page = 0, size = 50) {
+  return apiRequest<BusinessProductListDto>(
+    `/api/v1/platform/businesses/${businessId}/products?page=${page}&size=${size}`,
+    { auth: true },
+  );
+}
+
+export function listPlatformBusinessServices(businessId: string, page = 0, size = 50) {
+  return apiRequest<BusinessServiceListDto>(
+    `/api/v1/platform/businesses/${businessId}/services?page=${page}&size=${size}`,
+    { auth: true },
+  );
+}
+
+export type PlatformModerationTarget = "PRODUCT" | "SERVICE" | "UNIQUE_OFFER" | "BUSINESS" | "USER" | "MESSAGE";
+export type PlatformModerationAction = "BLOCK" | "UNBLOCK" | "FLAG" | "APPROVE" | "REJECT";
+
+export function applyPlatformModerationAction(data: {
+  targetType: PlatformModerationTarget;
+  targetId: string;
+  action: PlatformModerationAction;
+  reasonCode?: string;
+  note?: string;
+  expiresAt?: string;
+}) {
+  return apiRequest<void>("/api/v1/platform/moderation-actions", {
+    method: "POST",
+    auth: true,
+    body: data,
+  });
+}
+
+export type PlatformAccountItem = {
+  userId: string;
+  email: string;
+  displayName: string;
+  status: "ACTIVE" | "BLOCKED" | "DELETED";
+  businessNames: string[];
+  createdAt: string;
+};
+
+export type PlatformAccountListResponse = {
+  items: PlatformAccountItem[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export function listPlatformAccounts(page = 0, size = 30, query?: string, status?: string) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (query) params.set("query", query);
+  if (status) params.set("status", status);
+  return apiRequest<PlatformAccountListResponse>(`/api/v1/platform/accounts?${params}`, { auth: true });
+}
+
+export function deletePlatformAccount(userId: string, reason: string) {
+  return apiRequest<void>(`/api/v1/platform/accounts/${userId}`, {
+    method: "DELETE",
+    auth: true,
+    body: { reason },
+  });
 }
 
 export function createPlatformBusinessProduct(businessId: string, data: {

@@ -10,10 +10,11 @@ import {
   completeSellerOnboarding,
   type SellerOnboardingData,
 } from "../../shared/api/sellerOnboardingClient";
-import { listCities, createBranch } from "../../shared/api/askClient";
+import { listCities } from "../../shared/api/askClient";
 import MapLocationPicker from "../../widgets/MapLocationPicker/MapLocationPicker";
 import { Card } from "../../shared/ui/Card/Card";
 import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/CategoryAutocomplete";
+import { DeliveryCitySelector } from "../../shared/ui/DeliveryCitySelector/DeliveryCitySelector";
 import { Loading } from "../../shared/ui/Loading/Loading";
 import { hasValidBusinessVerificationSource, isValidHttpUrl } from "../../shared/utils/validation";
 
@@ -213,6 +214,11 @@ export function SellerOnboardingPage() {
       setStep(1);
       return;
     }
+    if (data.pickupAvailable && branchDrafts.length === 0) {
+      setStep(2);
+      setError(t("seller.validation.pickupBranch"));
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -221,27 +227,21 @@ export function SellerOnboardingPage() {
       const result = await completeSellerOnboarding({
         ...data,
         locale,
-      });
+      }, branchDrafts
+        .filter((draft): draft is BranchDraft & { latitude: number; longitude: number } =>
+          draft.latitude !== null && draft.longitude !== null)
+        .map(draft => ({
+          name: draft.name,
+          address: draft.address,
+          addressDetails: draft.addressDetails || undefined,
+          cityId: draft.cityId || undefined,
+          latitude: draft.latitude,
+          longitude: draft.longitude,
+          pickupAvailable: true,
+        })));
       sessionStorage.removeItem(DRAFT_KEY);
       sessionStorage.removeItem(BRANCH_DRAFTS_KEY);
       await actions.refreshSession();
-      // Create drafted branches
-      for (const draft of branchDrafts) {
-        if (!draft.latitude || !draft.longitude) continue;
-        try {
-          await createBranch(result.businessId, {
-            name: draft.name,
-            address: draft.address,
-            addressDetails: draft.addressDetails || undefined,
-            cityId: draft.cityId || undefined,
-            latitude: draft.latitude,
-            longitude: draft.longitude,
-            pickupAvailable: true,
-          });
-        } catch {
-          // Branch creation failed — continue with others
-        }
-      }
       const businessRoute = buildRoute(ROUTES.business, { businessId: result.businessId });
       if (data.catalogSetupMode === "ASK_MANAGED_IMPORT") {
         const sourceUrls = Object.fromEntries(Object.entries({
@@ -453,16 +453,10 @@ export function SellerOnboardingPage() {
                 {data.deliveryCoverage === "SELECTED_CITIES" && (
                   <label className="fcw-flex-col" style={{ gap: "0.35rem" }}>
                     <span className="fcw-label">{t("seller.deliveryCities")}</span>
-                    <input
-                      className="fcw-input"
-                      defaultValue={data.deliveryCities.join(", ")}
-                      onChange={event => update("deliveryCities", event.target.value
-                        .split(",")
-                        .map(city => city.trim())
-                        .filter(Boolean))}
-                      placeholder={t("seller.deliveryCities.placeholder")}
+                    <DeliveryCitySelector
+                      values={data.deliveryCities}
+                      onChange={value => update("deliveryCities", value)}
                     />
-                    <small className="fcw-body-xs fcw-text-tertiary">{t("seller.deliveryCities.description")}</small>
                   </label>
                 )}
                 <button
@@ -576,7 +570,11 @@ export function SellerOnboardingPage() {
                         <button className="fcw-btn fcw-btn-ghost" onClick={() => setShowPickupModal(false)}>
                           {t("business.cancel")}
                         </button>
-                        <button className="fcw-btn fcw-btn-primary" onClick={() => setShowPickupModal(false)}>
+                        <button
+                          className="fcw-btn fcw-btn-primary"
+                          onClick={() => setShowPickupModal(false)}
+                          disabled={branchDrafts.length === 0}
+                        >
                           {t("seller.pickupBranchModal.done")}
                         </button>
                       </div>
