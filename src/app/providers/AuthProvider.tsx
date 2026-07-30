@@ -155,9 +155,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       setChallenge(result);
     } catch (cause) {
-      setError(cause instanceof ApiError
-        ? cause.message
-        : cause instanceof Error ? cause.message : t("auth.error.registerFailed"));
+      setError(cause instanceof ApiError && cause.errorCode === "EMAIL_ALREADY_REGISTERED"
+        ? t("auth.error.emailTaken")
+        : cause instanceof ApiError
+          ? cause.message
+          : cause instanceof Error ? cause.message : t("auth.error.registerFailed"));
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,11 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-30 — Existing-email registration rejection
+
+- Kept the registration form open when the backend returns `EMAIL_ALREADY_REGISTERED`.
+- Replaced the generic backend text with the localized instruction that the account already exists and the user must sign in.
+- Synchronized the frontend auth contract and UX with the backend `409` behavior.
+
 ## 2026-07-30 — Durable OAuth legal registration
 
 - Persisted the first Google registration signal through the callback and page reload until role-specific legal acceptance succeeds.
