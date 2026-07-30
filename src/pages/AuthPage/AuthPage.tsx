@@ -125,13 +125,13 @@ export function AuthPage() {
 
   const continueAsBuyer = () => {
     sessionStorage.removeItem(SELLER_ONBOARDING_DRAFT_KEY);
-    actions.dismissRoleExpansion();
+    actions.completeRegistration();
     navigate(ROUTES.results);
   };
 
   const continueAsCompany = () => {
     sessionStorage.setItem(SELLER_ONBOARDING_DRAFT_KEY, "{}");
-    actions.dismissRoleExpansion();
+    actions.completeRegistration();
     navigate(ROUTES.sellerOnboarding);
   };
 

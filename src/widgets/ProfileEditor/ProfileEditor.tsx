@@ -225,6 +225,14 @@ export function ProfileEditor({ profile, onChange, onSave, busy, readOnly, field
                 />
               </label>
             )}
+            <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                checked={Boolean(profile.pickupAvailable)}
+                onChange={event => update({ pickupAvailable: event.target.checked })}
+              />
+              <span className="fcw-label">{t("business.branch.pickupAvailable")}</span>
+            </label>
           </div>
 
           <div className="fcw-flex-col" style={{ gap: "0.5rem" }}>

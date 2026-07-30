@@ -22,7 +22,6 @@ export type AuthSession = {
   startRoute?: string;
   user?: { userId: string; displayName: string; email?: string; phone?: string; status?: string };
   business?: { businessId: string; businessName: string; membershipId?: string; memberRole?: string; branchId?: string; branchName?: string };
-  requiresRoleSelection?: boolean;
   requiresTwoFactor?: boolean;
   isTwoFactorEnabled?: boolean;
   verificationId?: string;

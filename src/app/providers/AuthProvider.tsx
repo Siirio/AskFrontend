@@ -13,6 +13,11 @@ import {
 } from "../../shared/api/authClient";
 import { ApiError } from "../../shared/api/httpClient";
 import { setAccessToken } from "../../shared/api/authTokenStore";
+import {
+  clearPendingRegistration,
+  hasPendingRegistration,
+  markPendingRegistration,
+} from "../../shared/auth/pendingRegistration";
 
 export type AuthMode = "login" | "register";
 
@@ -46,7 +51,7 @@ interface AuthActions {
   activateStaffAccount: (newPassword: string, passwordConfirmation: string) => Promise<void>;
   selectBusiness: (businessId: string) => void;
   refreshSession: () => Promise<void>;
-  dismissRoleExpansion: () => void;
+  completeRegistration: () => void;
 }
 
 const AuthContext = createContext<{ state: AuthState; actions: AuthActions } | null>(null);
@@ -65,7 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeBusinessId, setActiveBusinessId] = useState<string | null>(
     () => window.localStorage.getItem(ACTIVE_BUSINESS_KEY),
   );
-  const [registrationJustCompleted, setRegistrationJustCompleted] = useState(false);
+  const [registrationJustCompleted, setRegistrationJustCompleted] = useState(
+    () => hasPendingRegistration(window.sessionStorage),
+  );
 
   useEffect(() => {
     if (!activeBusinessId && session?.businessMemberships?.length) {
@@ -82,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRequiresTwoFactor(false);
     setTwoFactorChallengeId(null);
     setActivationRequired(Boolean(nextSession.isActivationRequired));
-    setRegistrationJustCompleted(Boolean(nextSession.requiresRoleSelection));
+    setRegistrationJustCompleted(hasPendingRegistration(window.sessionStorage));
   }, []);
 
   useEffect(() => {
@@ -166,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       acceptSession(await verifyCode(challenge.verificationId, code));
       if (wasRegistration) {
+        markPendingRegistration(window.sessionStorage);
         setRegistrationJustCompleted(true);
       }
     } catch (cause) {
@@ -209,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTwoFactorChallengeId(null);
     setActivationRequired(false);
     setActiveBusinessId(null);
+    clearPendingRegistration(window.sessionStorage);
   }, []);
 
   const updateProfile = useCallback(async (
@@ -265,7 +274,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(ACTIVE_BUSINESS_KEY, businessId);
   }, []);
 
-  const dismissRoleExpansion = useCallback(() => {
+  const completeRegistration = useCallback(() => {
+    clearPendingRegistration(window.sessionStorage);
     setRegistrationJustCompleted(false);
   }, []);
 
@@ -301,7 +311,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     activateStaffAccount,
     selectBusiness,
     refreshSession,
-    dismissRoleExpansion,
+    completeRegistration,
   };
 
   return <AuthContext.Provider value={{ state, actions }}>{children}</AuthContext.Provider>;

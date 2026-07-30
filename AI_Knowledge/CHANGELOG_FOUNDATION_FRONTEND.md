@@ -1,5 +1,11 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-07-30 — Durable OAuth legal registration
+
+- Persisted the first Google registration signal through the callback and page reload until role-specific legal acceptance succeeds.
+- Removed frontend dependence on the permanently false `requiresRoleSelection` session field.
+- Kept customer and seller document sets aligned with the authenticated legal registration endpoint.
+
 ## 2026-07-29 — Account security and chat cleanup
 
 - Replaced direct password and 2FA mutations with separate email-verified request/confirm dialogs using exact 6-digit codes and resend.

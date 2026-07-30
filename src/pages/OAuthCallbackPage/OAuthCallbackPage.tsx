@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../../shared/api/httpClient";
 import type { AuthSession } from "../../shared/api/authClient";
 import { setAccessToken } from "../../shared/api/authTokenStore";
+import {
+  isOAuthRegistrationCallback,
+  markPendingRegistration,
+} from "../../shared/auth/pendingRegistration";
 import { ROUTES } from "../../app/routes";
 
 export function OAuthCallbackPage() {
@@ -11,6 +15,7 @@ export function OAuthCallbackPage() {
     const fragment = new URLSearchParams(window.location.hash.slice(1));
     const query = new URLSearchParams(window.location.search);
     const oauthError = fragment.get("error") ?? query.get("error");
+    const registrationCallback = isOAuthRegistrationCallback(window.location.search);
     window.history.replaceState(null, "", window.location.pathname);
     if (oauthError) {
       setError("OAuth authentication failed");
@@ -20,7 +25,10 @@ export function OAuthCallbackPage() {
     apiRequest<AuthSession>("/api/v1/auth/session", { auth: true })
       .then(session => {
         setAccessToken(session.accessToken);
-        window.location.replace(session.requiresRoleSelection ? ROUTES.auth : ROUTES.home);
+        if (registrationCallback) {
+          markPendingRegistration(window.sessionStorage);
+        }
+        window.location.replace(registrationCallback ? ROUTES.auth : ROUTES.home);
       })
       .catch(() => {
         setError("OAuth authentication failed");
