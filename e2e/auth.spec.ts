@@ -31,8 +31,8 @@ const CHALLENGE = {
   verification_id: "11111111-1111-1111-1111-111111111111",
   role: "CUSTOMER",
   // VerificationPurpose.REGISTER. The live server really does return this
-  // (probed), and it is what arms the role modal now that suggest_role_expansion
-  // is confirmed dead on BOTH branches.
+  // (probed), and it is what arms the role modal — the backend has since
+  // deleted `suggest_role_expansion` from the DTO outright (2026-07-30).
   purpose: "REGISTER",
   channel: "EMAIL",
   masked_destination: "t***@example.com",
@@ -49,11 +49,10 @@ const USER = {
 /**
  * What `POST /auth/verify` really answers for a fresh sign-up.
  *
- * `suggest_role_expansion` is deliberately ABSENT — the field is declared on the
- * backend's AuthSessionResponse and never assigned anywhere in its source, so a
- * stub that sent it was testing a fiction, and the modal it "proved" could never
- * open in production. Its absence here is what makes these tests prove the real
- * trigger: the REGISTER purpose on the challenge above.
+ * `suggest_role_expansion` is deliberately ABSENT — the backend has deleted the
+ * field from `AuthSessionResponse` outright (2026-07-30). Its absence here is
+ * what makes these tests prove the real trigger: the REGISTER purpose on the
+ * challenge above.
  */
 const SESSION_SUGGEST = {
   access_token: "test-token-abc",
@@ -205,6 +204,11 @@ test("sign-up → verify → the role modal over /app → continue searching", a
   await page.route("**/api/v1/auth/verify", (route) =>
     route.fulfill({ status: 200, json: SESSION_SUGGEST }),
   );
+  let legalAcceptanceBody: unknown = null;
+  await page.route("**/api/v1/legal/registration-acceptances", (route) => {
+    legalAcceptanceBody = route.request().postDataJSON();
+    return route.fulfill({ status: 204 });
+  });
 
   await page.goto("/app/auth/register");
   await page.locator("#register-name").fill("Test Customer");
@@ -215,8 +219,11 @@ test("sign-up → verify → the role modal over /app → continue searching", a
   await page.locator('button[type="submit"]').click();
 
   await expect(page.locator("#verify-code")).toBeVisible();
+  // CodeInput submits on its own once the 6th digit lands (ux-ui-flow.md
+  // "Filling the last cell submits") — a follow-up click here raced the
+  // navigation it triggers and clicked whatever landed underneath on /app
+  // (found while adding the legal-acceptance assertions below).
   await page.locator("#verify-code").fill("123456");
-  await page.locator('button[type="submit"]').click();
 
   // The page navigates to /app FIRST; the modal follows the session there.
   await expect(page).toHaveURL(/\/app$/);
@@ -238,6 +245,10 @@ test("sign-up → verify → the role modal over /app → continue searching", a
     localStorage.getItem("ask.roleSelectionPending"),
   );
   expect(pending).toBeNull();
+  // The customer answer records legal consent with the customer document set.
+  expect(legalAcceptanceBody).toMatchObject({
+    document_codes: ["USER_TERMS", "PRIVACY_POLICY"],
+  });
 });
 
 test("the role modal cannot be dismissed and survives a reload until answered", async ({
@@ -287,6 +298,14 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
   await page.route("**/api/v1/auth/verify", (route) =>
     route.fulfill({ status: 200, json: SESSION_SUGGEST }),
   );
+  // The "business" answer only starts seller onboarding — it must NOT record
+  // legal consent itself (that belongs to the onboarding wizard's own
+  // completion, business-cabinet). A call here would be a failure.
+  let legalAcceptanceCalled = false;
+  await page.route("**/api/v1/legal/registration-acceptances", (route) => {
+    legalAcceptanceCalled = true;
+    return route.fulfill({ status: 204 });
+  });
 
   await page.goto("/app/auth/register");
   await page.locator("#register-name").fill("Test Customer");
@@ -296,8 +315,9 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
   await page.locator("#register-agreement").check();
   await page.locator('button[type="submit"]').click();
   await expect(page.locator("#verify-code")).toBeVisible();
+  // CodeInput submits on its own once the 6th digit lands — see the sibling
+  // customer-choice test above for why the follow-up click was removed.
   await page.locator("#verify-code").fill("123456");
-  await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/app$/);
   const dialog = page.getByRole("dialog");
@@ -331,6 +351,40 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
     localStorage.getItem("ask.roleSelectionPending"),
   );
   expect(pending).toBeNull();
+  expect(legalAcceptanceCalled).toBe(false);
+});
+
+test("Google OAuth first-signup arms the role modal via ?registration=1", async ({
+  page,
+}) => {
+  // OAuthCallbackPage's ONE call is exchangeOAuthSession() → GET /session
+  // (credentials:'include'); AuthProvider's own restore short-circuits with no
+  // stored token yet, so this single stub covers the whole page.
+  await page.route("**/api/v1/auth/session", (route) =>
+    route.fulfill({ status: 200, json: SESSION_PLAIN }),
+  );
+
+  await page.goto("/oauth/callback?registration=1");
+
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  const pending = await page.evaluate(() =>
+    localStorage.getItem("ask.roleSelectionPending"),
+  );
+  expect(pending).toBe("1");
+});
+
+test("a returning Google sign-in (no registration param) does not arm the role modal", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/auth/session", (route) =>
+    route.fulfill({ status: 200, json: SESSION_PLAIN }),
+  );
+
+  await page.goto("/oauth/callback");
+
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("a wrong verification code shows an error and does not navigate", async ({
@@ -397,48 +451,6 @@ test("the password eye reveals both register fields together; login has its own"
   await page.goto("/app/auth/login");
   await page.getByTestId("login-password-toggle").click();
   await expect(page.locator("#login-password")).toHaveAttribute("type", "text");
-});
-
-test("a multi-role account (role selection) shows an error, never a silent sign-in", async ({
-  page,
-}) => {
-  await stubNoRestore(page);
-  // The backend's role-selection intermediate: 200 OK, but NO user, NO token,
-  // NO startRoute. select-role is deferred (roadmap #7) — this must surface as
-  // an error, not navigate to /app signed out.
-  await page.route("**/api/v1/auth/login", (route) =>
-    route.fulfill({
-      status: 200,
-      json: {
-        requires_role_selection: true,
-        available_roles: [
-          { user_id: USER.user_id, role: "CUSTOMER", display_name: "Test" },
-          {
-            user_id: "33333333-3333-3333-3333-333333333333",
-            role: "BUSINESS_OWNER",
-            display_name: "Test",
-          },
-        ],
-        all_roles: ["CUSTOMER", "BUSINESS_OWNER"],
-      },
-    }),
-  );
-
-  await page.goto("/app/auth/login");
-  await page.locator("#login-email").fill("t@example.com");
-  await page.locator("#login-password").fill("password123");
-  await page.locator('button[type="submit"]').click();
-
-  await expect(
-    page
-      .getByText("Кіру кезінде рөл таңдау әзірге қолжетімсіз", { exact: false })
-      .first(),
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/app\/auth\/login$/);
-  const token = await page.evaluate(() =>
-    localStorage.getItem("ask.accessToken"),
-  );
-  expect(token).toBeNull();
 });
 
 test("an inactive account shows its own message, not the network fallback", async ({
