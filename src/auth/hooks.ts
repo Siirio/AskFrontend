@@ -189,12 +189,14 @@ let oauthGeneration = 0; // bumped on sign-out to abandon in-flight exchanges
 /**
  * Drives /oauth/callback: performs the ONE cookie→Bearer exchange
  * (`api.exchangeOAuthSession` → GET /session with the single-use ASK_SESSION
- * cookie), applies the session exactly like verify/login, and — for a first-time
- * Google sign-up carrying `suggestRoleExpansion` — arms the persistent role
- * modal (the /app layout renders it once the page redirects there). The exchange
- * runs at most once: the cookie is single-use, so a StrictMode re-invoke or a
- * reload must not replay it against a cleared cookie. A token-less response is
- * never applied as a sign-in (P9.4) — it surfaces as an inline error.
+ * cookie), applies the session exactly like verify/login, and — for a
+ * first-time Google sign-up, signalled by `?registration=1` on the callback
+ * URL (`OAuth2AuthSuccessHandler`, backend 2026-07-30) — arms the persistent
+ * role modal (the /app layout renders it once the page redirects there). The
+ * exchange runs at most once: the cookie is single-use, so a StrictMode
+ * re-invoke or a reload must not replay it against a cleared cookie. A
+ * token-less response is never applied as a sign-in (P9.4) — it surfaces as
+ * an inline error.
  */
 export function useOAuthCallback(): OAuthCallbackState {
   const store = useAuthStoreApi();
@@ -231,7 +233,10 @@ export function useOAuthCallback(): OAuthCallbackState {
           return;
         }
         applySession(session);
-        if (session.suggestRoleExpansion) {
+        const isFirstSignup =
+          new URLSearchParams(window.location.search).get("registration") ===
+          "1";
+        if (isFirstSignup) {
           persistPendingRoleSelection(store, true);
         }
         setState({
@@ -282,16 +287,15 @@ export type Challenge = {
  * IS backend data, returned by `POST /auth/customer/register` and set from
  * `VerificationPurpose.REGISTER`.
  *
- * What changed is which real field carries it. `suggestRoleExpansion` is
+ * What changed is which real field carries it. `suggestRoleExpansion` was
  * declared on `AuthSessionResponse` and never assigned anywhere in the backend
- * (model.ts records the check), so it is permanently null — the modal the vision
- * puts at UF 1 step 3 could not appear at all, on any account. Surrounding
- * extension was not available: there is no other populated field that
- * distinguishes a fresh sign-up, and PRODUCT_VISION UF 1 makes the modal
- * unconditional after registration rather than conditional on a backend hint.
- *
- * `suggestRoleExpansion` is still honoured when it arrives — the two are OR'd,
- * so the day the backend starts sending it nothing here has to change.
+ * — permanently null, so the modal the vision puts at UF 1 step 3 could not
+ * appear at all, on any account. Surrounding extension was not available:
+ * there is no other populated field that distinguishes a fresh sign-up, and
+ * PRODUCT_VISION UF 1 makes the modal unconditional after registration rather
+ * than conditional on a backend hint. The backend has since deleted the field
+ * outright (2026-07-30) — Google OAuth's equivalent trigger is now the
+ * `?registration=1` query param on the callback URL (see useOAuthCallback).
  */
 const ROLE_EXPANSION_PURPOSE = "REGISTER";
 
@@ -371,10 +375,7 @@ export function useVerifyStep(verificationId: string, purpose?: string) {
         // (P6.2 — one implementation), and it carries no purpose because
         // useLoginFlow builds its Challenge by hand from the login response, so
         // signing in never re-opens a choice the person already made.
-        if (
-          session.suggestRoleExpansion ||
-          purpose === ROLE_EXPANSION_PURPOSE
-        ) {
+        if (purpose === ROLE_EXPANSION_PURPOSE) {
           persistPendingRoleSelection(store, true);
         }
         setResult({ targetPath: startRouteToPath(session.startRoute) });
@@ -515,14 +516,6 @@ export function useLoginFlow() {
           verificationId: session.verificationId,
           maskedDestination: email.trim(),
         });
-      } else if (session.requiresRoleSelection) {
-        // Multi-role account: the backend answered with the role-selection
-        // step (no user, no token). /auth/select-role is deferred to the
-        // seller/staff paths (roadmap #7), so this surfaces as an explicit
-        // error — never an empty session applied as if sign-in succeeded.
-        const message = t("errors.roleSelection");
-        setFormError(message);
-        toast.error(message);
       } else {
         applySession(session);
         setResult({ targetPath: startRouteToPath(session.startRoute) });

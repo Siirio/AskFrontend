@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Store } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -14,12 +14,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog";
+import { Spinner } from "@/shared/ui/spinner";
+import { toast } from "@/shared/ui/sonner";
 
+import * as api from "../api";
 import { useRoleSelection } from "../hooks";
+
+/** Document codes the backend requires per role choice (identity contracts.md,
+ *  `LegalDocumentCode`). Only the CUSTOMER set is submitted here — choosing
+ *  "business" only starts seller onboarding (routes to business/register);
+ *  that flow's own completion is where SELLER_TERMS/PERSONAL_DATA_CONSENT
+ *  belongs (business-cabinet, not this slice). */
+const CUSTOMER_LEGAL_DOCUMENT_CODES = ["USER_TERMS", "PRIVACY_POLICY"];
 
 /**
  * The role-choosing modal (PRODUCT_VISION UF 1), shown over /app after a fresh
- * signup sets `suggestRoleExpansion`. Self-driven from the auth store
+ * sign-up (a REGISTER-purpose verify, or a Google OAuth callback carrying
+ * `?registration=1`). Self-driven from the auth store
  * (useRoleSelection) and hosted by the platform layout (EVERY /app/* route,
  * auth included — 2026-07-18 review), so it follows the session — NOT the page
  * that opened it: it survives the navigation to /app, a reload, and a detour
@@ -125,9 +136,11 @@ function RoleCard({
 
 export function RoleSelectionModal() {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const router = useRouter();
   const { open, resolve } = useRoleSelection();
   const [choice, setChoice] = useState<RoleChoice>("customer");
+  const [pending, setPending] = useState(false);
   const cardRefs = useRef<Record<RoleChoice, HTMLButtonElement | null>>({
     customer: null,
     business: null,
@@ -139,7 +152,24 @@ export function RoleSelectionModal() {
     cardRefs.current[role]?.focus();
   };
 
-  const confirm = () => {
+  const confirm = async () => {
+    setPending(true);
+    // Only the customer answer records legal consent here — choosing
+    // "business" only starts seller onboarding, which records its own
+    // SELLER_TERMS/PERSONAL_DATA_CONSENT acceptance at completion.
+    if (choice === "customer") {
+      try {
+        await api.acceptRegistrationLegal({
+          documentCodes: CUSTOMER_LEGAL_DOCUMENT_CODES,
+          locale,
+        });
+      } catch {
+        // Best-effort: the modal has no dismissal affordance, so blocking
+        // navigation on a network hiccup traps the user worse than a missed
+        // consent record. Surface it and move on.
+        toast.error(t("errors.network"));
+      }
+    }
     resolve();
     router.push(ROLE_TARGET[choice]);
   };
@@ -194,9 +224,14 @@ export function RoleSelectionModal() {
           size="lg"
           className="w-full"
           data-testid="role-continue"
-          onClick={confirm}
+          disabled={pending}
+          onClick={() => void confirm()}
         >
-          {t("roleModal.continue")}
+          {pending ? (
+            <Spinner label={t("actions.sending")} />
+          ) : (
+            t("roleModal.continue")
+          )}
         </Button>
       </DialogContent>
     </Dialog>

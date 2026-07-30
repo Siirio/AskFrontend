@@ -2,6 +2,19 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-30 | Closed a batch of auth/identity gaps found by re-auditing against backend `dev@2e06cbe`
+(4 commits ahead of the previous audit's `9a90f5c`): removed `requiresRoleSelection`/`availableRoles`/
+`RoleOption`/`suggestRoleExpansion` (the backend deleted the concept outright); armed the Google
+OAuth first-signup role modal via the callback's new `?registration=1` query param instead of the
+dead session field; modelled `isTwoFactorEnabled` and the `AuthBusinessContextResponse` category/
+scope fields the backend added; added `phone` to `AuthUserResponse` (code now matches the doc fix
+from 2026-07-29); wired `POST /api/v1/legal/registration-acceptances` from `RoleSelectionModal`
+for the customer answer only (business answer is `business-cabinet`'s gap, flagged not fixed);
+corrected the auth contracts.md endpoint table (email-change/password-change/two-factor
+request+confirm, not the five routes it used to name); dropped the dead `rememberMe` field. The
+OAuth redirect port default and the `app_user.email` uniqueness gap were raised in the same audit
+but are explicitly out of scope (owner call) | src/auth/*, e2e/auth.spec.ts, features/auth/*
+
 2026-07-29 | **Step 2's catalog-setup cards, screenshotted by the owner, had two real bugs, not
 just a rough edge — fixed and re-verified with a Playwright screenshot before reporting done.**
 (1) `items-stretch` + `h-full` + `justify-center` forced both cards to the same height, and

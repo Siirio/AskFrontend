@@ -19,7 +19,6 @@ export type CustomerRegisterRequest = {
   password: string;
   passwordConfirmation: string;
   acceptedUserAgreement: boolean;
-  rememberMe?: boolean;
 };
 
 /** POST /api/v1/auth/login — unified password login (all roles). Returns a
@@ -80,62 +79,44 @@ export type AuthUserResponse = {
    *  registration dies at verify; raised with backend, the form requires it). */
   displayName: string | null;
   email: string;
+  phone: string | null;
   status: string;
-  // NOTE: no `phone` — the backend removed it from AppUser in V8 (identity locks).
 };
 
 export type AuthBusinessContextResponse = {
   businessId: string;
   businessName: string;
+  businessCategoryId: string | null;
+  businessCategoryName: string | null;
+  businessScope: string | null;
   branchId: string;
   branchName: string;
   membershipId: string;
   memberRole: string;
 };
 
-export type RoleOption = {
-  userId: string;
-  role: string;
-  displayName: string | null;
-};
-
 /** The full session contract. Only a subset is consumed by the V1 customer path
- *  (see api.ts); the password-login fields — requiresRoleSelection,
- *  availableRoles, requiresTwoFactor, activationRequired — are modelled for
- *  completeness and consumed when the seller/staff paths land (roadmap #7). */
+ *  (see api.ts); the password-login fields — requiresTwoFactor,
+ *  isActivationRequired — are modelled for completeness and consumed when the
+ *  seller/staff paths land (roadmap #7). */
 export type AuthSessionResponse = {
   accessToken?: string | null;
   tokenType?: string;
   expiresAt?: string;
-  remembered?: boolean;
-  activationRequired?: boolean;
+  isRemembered?: boolean;
+  isActivationRequired?: boolean;
   role?: string;
   startRoute?: string;
   user?: AuthUserResponse;
   business?: AuthBusinessContextResponse;
-  requiresRoleSelection?: boolean;
-  availableRoles?: RoleOption[];
   allRoles?: string[];
   requiresTwoFactor?: boolean;
+  /** Whether the account currently has 2FA enabled — sent on every session
+   *  response (added by the backend 2026-07-30). Not yet consumed anywhere
+   *  (no security-settings screen exists in V1). */
+  isTwoFactorEnabled?: boolean;
   /** The 2FA challenge id — same master/dev split as VerifyCodeRequest above. */
   verificationId?: string;
-  /**
-   * Intended as the backend's "this account could also be a seller" signal, and
-   * the documented trigger for the role-choosing modal.
-   *
-   * **Never assigned on EITHER branch** — verified 2026-07-27: `git grep
-   * suggestRoleExpansion master` finds nothing at all, and on `dev` the field is
-   * declared on `AuthSessionResponse` with no `.suggestRoleExpansion(...)`
-   * builder call anywhere. So it is always null, and a modal gated on it alone
-   * could never open — which is exactly what shipped. Raised with backend
-   * (ROADMAP cross-repo table).
-   *
-   * Unlike the id rename, this diagnosis was NOT branch-dependent, so the fix
-   * built on it stands: the modal now arms on the challenge's `purpose`, which
-   * the live server does return (`"purpose":"REGISTER"`, confirmed by probing
-   * it). This field is still read and still wins when it arrives.
-   */
-  suggestRoleExpansion?: boolean;
 };
 
 // ── View model ──────────────────────────────────────────────────────────────
@@ -143,6 +124,9 @@ export type AuthSessionResponse = {
 export type BusinessContext = {
   businessId: string;
   businessName: string;
+  businessCategoryId: string | null;
+  businessCategoryName: string | null;
+  businessScope: string | null;
   branchId: string;
   branchName: string;
   membershipId: string;
@@ -204,6 +188,9 @@ function toBusinessContext(
   return {
     businessId: business.businessId,
     businessName: business.businessName,
+    businessCategoryId: business.businessCategoryId,
+    businessCategoryName: business.businessCategoryName,
+    businessScope: business.businessScope,
     branchId: business.branchId,
     branchName: business.branchName,
     membershipId: business.membershipId,

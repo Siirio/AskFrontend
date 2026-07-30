@@ -187,7 +187,6 @@
       "invalidCredentials": "Incorrect email or password.",
       "accountNotActive": "This account is not active.",
       "nameRequired": "Enter your name.",
-      "roleSelection": "This email is linked to several roles. Choosing a role at sign-in is not available yet.",
       "requestRejected": "That request was rejected before it reached your account. This is a fault on our side, not your code - please try again."
     },
     "roleModal": {

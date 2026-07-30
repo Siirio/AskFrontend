@@ -79,19 +79,48 @@ Sign up verifies the email with a 6-digit code; **log in is email + password**
 (no code, unless the account has 2FA — then verify runs). `customer/login/start`
 (passwordless OTP login) is NOT used in V1.
 
+## Legal consent (customer path — 2026-07-30)
+
+`POST /api/v1/legal/registration-acceptances` (Bearer, `LegalController#acceptRegistration`)
+records consent once the session exists. Called from `RoleSelectionModal.confirm()`
+(auth/ui) **only when the customer card is answered** — `documentCodes: ["USER_TERMS",
+"PRIVACY_POLICY"]`, `locale` from `useLocale()`. Best-effort: a failure toasts
+`errors.network` but still resolves the modal and navigates, since the modal has no
+dismissal affordance and trapping the user on a network hiccup is worse than a missed
+consent record.
+
+**The "business" answer does NOT call this endpoint here.** Choosing "business" only
+starts seller onboarding (routes to `/app/business/register`); per the backend's identity
+docs, `SELLER_TERMS`/`PERSONAL_DATA_CONSENT` belongs to that onboarding's own completion.
+That call is **not yet built** — it is `business-cabinet`'s gap, not this slice's, and is
+flagged here so it isn't lost: whoever finishes the seller onboarding wizard needs to add
+the equivalent `acceptRegistrationLegal({ documentCodes: ["SELLER_TERMS",
+"PERSONAL_DATA_CONSENT"] })` call at the wizard's completion step.
+
+`CustomerRegisterRequest` still has no `acceptedUserAgreement` field on `dev` (only
+`countryCode`/`locale`, defaulted "KZ"/"ru") — the register form's checkbox posts a field
+the backend silently drops. The checkbox stays (client-side validation gate, P9.4 — never
+lets a sign-up through without agreeing), but the actual consent record now comes from the
+call above, not from that POST body.
+
 ## Endpoints deferred (backend exists; built with the seller/staff paths, roadmap #7)
 
 | Method | Path | Auth | Deferred to |
 |--------|------|------|-------------|
 | POST | /api/v1/auth/customer/login/start | No | passwordless OTP login — not used in V1 (password login chosen) |
-| POST | /api/v1/auth/select-role | No | multi-role selection (needs email+password; pairs with /auth/login) |
 | POST | /api/v1/auth/business/register | No | business registration (UF 3.1 entry) |
 | POST | /api/v1/auth/business/login/start | No | business OTP login |
 | POST | /api/v1/auth/change-temporary-password | Activation session | staff first login |
-| POST | /api/v1/auth/switch-role · toggle-2fa | Bearer | profile / cabinet |
-| POST | /api/v1/auth/change-password | Bearer | profile — body is `currentPassword` + `newPassword` (backend clarified 2026-07-18) |
+| POST | /api/v1/auth/email-change/request · /email-change/confirm | Bearer | profile — validate + email a code to the new address, then confirm + revoke old sessions |
+| POST | /api/v1/auth/password-change/request · /password-change/confirm | Bearer | profile — two-step: validate current password + email a code, then confirm (preserves the current session, revokes the rest) |
+| POST | /api/v1/auth/two-factor/request · /two-factor/confirm | Bearer | profile — two-step: email a code for the target enabled/disabled state, then confirm |
 | POST | /api/v1/auth/profile | Bearer | profile slice (#6) |
-| GET | /api/v1/auth/email-info | No | login hint (not in the vision yet) |
+
+**Corrected 2026-07-30** — the previous version of this table named
+`/auth/select-role`, `/auth/switch-role`, `/auth/change-password`, `/auth/toggle-2fa`, and
+`/auth/email-info`: none of these exist in the current backend. The rows above are what
+actually ships (`AuthController.java`, confirmed against `dev@2e06cbe`); `select-role` and
+`switch-role` were removed along with `requiresRoleSelection` (see Response DTOs below).
 
 **Non-enumerating login-start (2026-07-18):** the public `login/start` responses no
 longer reveal whether an email exists — a hint UX must not infer account existence
@@ -130,7 +159,7 @@ confirmed exchange (backend identity ux-ui-flow):
 3. Every later request is pure Bearer, no cookie.
 
 - **Backend task: DONE** (was the only blocker). CORS `allowCredentials(true)` on `/api/**` (`CorsConfig.java`) makes the credentialed call work.
-- **Frontend (to build):** the callback pipes that `getSession()` result straight through the existing `applySessionTo()` (stores the Bearer JWT, hydrates user/role/startRoute; `suggestRoleExpansion` arms the role modal exactly like verify) → an OAuth login is identical to a password login from the next call on. The only httpClient change is a per-request `credentials?: RequestCredentials` option, set only on that one call.
+- **Frontend (built):** the callback pipes that `getSession()` result straight through the existing `applySessionTo()` (stores the Bearer JWT, hydrates user/role/startRoute; a first-signup arms the role modal via the callback URL's `?registration=1`, see "Role modal trigger" below) → an OAuth login is identical to a password login from the next call on. The only httpClient change is a per-request `credentials?: RequestCredentials` option, set only on that one call.
 
 Rejected: the fragment hand-off (`#access_token=…` puts a token in browser history) and
 cookie-native auth (would break the token lock + the React Native path).
@@ -144,7 +173,7 @@ business OWNER. There is no account *export* (the backend removed it). Documente
 
 ## Request DTOs (slice #1)
 
-- **CustomerRegisterRequest**: `displayName?`, `email`, `password` (8–128), `passwordConfirmation` (must equal password — backend `@AssertTrue`), `acceptedUserAgreement` (must be true — backend `@AssertTrue`), `rememberMe?`
+- **CustomerRegisterRequest**: `displayName?`, `email`, `password` (8–128), `passwordConfirmation` (must equal password — backend `@AssertTrue`), `acceptedUserAgreement` (must be true — client-side gate only, see "Legal consent" above; the backend field it used to name no longer exists on `dev`)
   - ⚠ `displayName` is optional in the DTO but **`app_user.display_name` is NOT NULL in the schema** — omitting it makes `verify` fail with 409 `DATA_CONFLICT` (proven live 2026-07-17). The form therefore REQUIRES the name until backend reconciles DTO and schema. Raised with backend.
 - **LoginRequest**: `email`, `password` (both `@NotBlank`)
 - **VerifyCodeRequest**: **`verificationId`** (UUID, `@NotNull`), `code` (`\d{6}`) — renamed 2026-07-27, see the warning at the top
@@ -152,29 +181,30 @@ business OWNER. There is no account *export* (the backend removed it). Documente
 ## Response DTOs
 
 - **AuthChallengeResponse** (Java: `VerificationResponse`): **`verificationId`**, role, **`purpose`** (`VerificationPurpose` — `LOGIN` · `REGISTER` · `EMAIL_CHANGE`; set from `challenge.getPurpose().name()`), channel, maskedDestination, expiresAt, **code?** (populated ONLY in backend verification test-mode; prod omits it and emails the code)
-- **AuthSessionResponse**: accessToken, tokenType, **expiresIn** (`expires_in`, token lifetime in seconds — added 2026-07-19), expiresAt, remembered, activationRequired, role, startRoute, user (AuthUserResponse), business? (AuthBusinessContextResponse), requiresRoleSelection?, availableRoles? (RoleOption[]), allRoles? (string[]), requiresTwoFactor?, **`verificationId?`** (the 2FA challenge id — renamed), **suggestRoleExpansion? — DECLARED BUT NEVER SENT** (see below)
+- **AuthSessionResponse**: accessToken, tokenType, **expiresIn** (`expires_in`, token lifetime in seconds — added 2026-07-19), expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business? (AuthBusinessContextResponse), allRoles? (string[]), requiresTwoFactor?, **isTwoFactorEnabled** (sent on every response, added by the backend 2026-07-30 — not yet consumed anywhere, no security-settings screen exists in V1), **`verificationId?`** (the 2FA challenge id — renamed)
 
-### Role modal trigger (corrected 2026-07-27)
+### Role modal trigger (corrected 2026-07-27, OAuth closed 2026-07-30)
 
-`suggestRoleExpansion` was the documented trigger and is dead: declared on the DTO, assigned
-nowhere. The modal is now armed by **`purpose === "REGISTER"` on the challenge** — real
-backend data from the same flow, returned by `POST /auth/customer/register`. The two are
-OR'd (`useVerifyStep`), so the day the backend starts populating `suggestRoleExpansion`
-nothing on this side has to change.
+`suggestRoleExpansion` was the documented trigger and was dead — declared on the DTO,
+assigned nowhere; the backend has since **deleted the field from the DTO outright**
+(2026-07-30). The modal is armed by **`purpose === "REGISTER"` on the challenge** for the
+email sign-up path — real backend data, returned by `POST /auth/customer/register`.
 
 A log-in 2FA challenge deliberately carries no purpose (`useLoginFlow` builds that Challenge
 by hand from the login response), so signing in never re-opens a choice already answered.
 
-**Google OAuth is NOT covered by this fix.** `/oauth/callback` still arms the modal only on
-`suggestRoleExpansion`, and the callback has no equivalent "this is a first sign-up" signal —
-a Google user's first session is indistinguishable from their tenth on the wire. So a
-Google-first account currently gets no role modal. Raised with backend (ROADMAP cross-repo
-table); do not guess a client-side substitute (P9.4).
-  - GET /session under a **Bearer** token returns `accessToken: null` (the token is already stored); under the **OAuth bridge cookie** it returns a REAL `access_token` (the exchange). `role` is the bare enum name ("CUSTOMER") rather than the authority ("ROLE_CUSTOMER") returned by verify — the client maps both (`roleToKind`).
-  - ⚠ **`role`/`startRoute` stay account-level and neutral even for a business owner** — verified live 2026-07-28: a login for an OWNER account returns `role: "CUSTOMER"`, `startRoute: "CLIENT_SEARCH"`, `all_roles: ["CUSTOMER"]`, WITH a populated `business` object (`member_role: "OWNER"`) and a matching `business_memberships` entry. The backend's business/role model lives separately from the account role (`business_member` table), so `role` never becomes `"OWNER"`/`"BUSINESS_OWNER"` on login. The client derives `AuthUser.kind` from `session.business.memberRole` (`toAuthUser`), NOT from `session.role` — `roleToKind(session.role)` would always resolve to `"customer"` for a real business owner and hide the Dashboard nav link (`canAccessDashboard`). `businessMemberships` (plural) is not yet consumed; today's UI only surfaces the single active `business` context.
-- **AuthUserResponse**: userId, displayName (**nullable** — registration accepts an empty name and the backend stores null), email, **phone** (nullable — reinstated on AppUser by backend commit `9a90f5c`, 2026-07-29; the earlier "removed in V8" note is stale), status
-- **AuthBusinessContextResponse**: businessId, businessName, branchId, branchName, membershipId, memberRole
-- **RoleOption**: userId, role, displayName
+**Google OAuth is now covered (closed 2026-07-30).** `OAuth2AuthSuccessHandler` appends
+`?registration=1` to the callback redirect exactly when the Google sign-in created a new
+account (`CustomOAuth2UserService`'s `registrationRequired` flag). `useOAuthCallback` reads
+`new URLSearchParams(window.location.search).get("registration") === "1"` after a
+successful token exchange and arms the modal from that — still real backend data, just
+carried as a query param instead of a session field, since the exchange itself only
+proxies `GET /session` and has no request body of its own to carry a flag in.
+
+- GET /session under a **Bearer** token returns `accessToken: null` (the token is already stored); under the **OAuth bridge cookie** it returns a REAL `access_token` (the exchange). `role` is the bare enum name ("CUSTOMER") rather than the authority ("ROLE_CUSTOMER") returned by verify — the client maps both (`roleToKind`).
+- ⚠ **`role`/`startRoute` stay account-level and neutral even for a business owner** — verified live 2026-07-28: a login for an OWNER account returns `role: "CUSTOMER"`, `startRoute: "CLIENT_SEARCH"`, `all_roles: ["CUSTOMER"]`, WITH a populated `business` object (`member_role: "OWNER"`) and a matching `business_memberships` entry. The backend's business/role model lives separately from the account role (`business_member` table), so `role` never becomes `"OWNER"`/`"BUSINESS_OWNER"` on login. The client derives `AuthUser.kind` from `session.business.memberRole` (`toAuthUser`), NOT from `session.role` — `roleToKind(session.role)` would always resolve to `"customer"` for a real business owner and hide the Dashboard nav link (`canAccessDashboard`). `businessMemberships` (plural) is not yet consumed; today's UI only surfaces the single active `business` context.
+- **AuthUserResponse**: userId, displayName (**nullable** — registration accepts an empty name and the backend stores null), email, **phone** (nullable — reinstated on AppUser by backend commit `9a90f5c`, 2026-07-29; now modelled client-side too)
+- **AuthBusinessContextResponse**: businessId, businessName, **businessCategoryId, businessCategoryName, businessScope** (nullable — modelled 2026-07-30), branchId, branchName, membershipId, memberRole
 - **LogoutResponse**: success
 - **Undocumented on the wire, confirmed live 2026-07-29** (present on `AuthSessionResponse`, not yet modelled by this client): `customerProfile: { isEnabled: boolean }`, `businessMemberships: AuthBusinessContextResponse[]` (plural — see the OWNER-login note above; `session.business` is the single active context, this is the full list), `pendingInvitationsCount: number`. Not consumed anywhere in V1 code; raised here so a future consumer doesn't have to re-discover them by curling the server.
 
@@ -198,11 +228,6 @@ CLIENT_SEARCH → `/app` · OWNER_BRANCHES → `/app/business` · BRANCH_WORKSPA
 - ACCOUNT_NOT_ACTIVE (403, login — blocked/deleted account) → "account is not active"
 - a failed verify (wrong/expired code: CHALLENGE_NOT_FOUND 404, CHALLENGE_EXPIRED / CHALLENGE_MAX_ATTEMPTS / CHALLENGE_INVALID_CODE 400) → "code invalid or expired"
 - otherwise → generic network error + a toast
-
-**Not an error code:** a 200 login response may instead carry
-`requiresRoleSelection` (multi-role account — NO user, NO token, NO startRoute).
-V1 surfaces it as a form-level error; `select-role` stays deferred (roadmap #7)
-and an empty session is never applied as a sign-in (P9.4).
 
 **Session restore:** `GET /session` failing with 401/403 means the backend
 rejected the token → it is cleared. A network failure or 5xx says nothing about

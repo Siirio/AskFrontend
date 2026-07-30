@@ -67,3 +67,23 @@ export function exchangeOAuthSession(): Promise<AuthSessionResponse> {
 export function logout(): Promise<{ success?: boolean }> {
   return httpClient.post<{ success?: boolean }>(`${BASE}/logout`);
 }
+
+export type AcceptRegistrationLegalRequest = {
+  documentCodes: string[];
+  locale?: string;
+};
+
+/**
+ * Record legal-document acceptance for a fresh registration (Bearer,
+ * `kz.ask.legal.api.LegalController#acceptRegistration`). Lives here rather
+ * than in its own module because `legal` has no slice of its own — it is
+ * consumed directly by whichever slice completes a registration (identity
+ * feature index). Full path used directly since it sits outside `/api/v1/auth`.
+ */
+export function acceptRegistrationLegal(
+  body: AcceptRegistrationLegalRequest,
+): Promise<void> {
+  return httpClient.post<void>("/api/v1/legal/registration-acceptances", {
+    body,
+  });
+}

@@ -17,7 +17,8 @@ export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 export type AuthState = {
   status: AuthStatus;
   user: AuthUser | null;
-  /** A fresh signup's role choice (suggestRoleExpansion) is still unanswered.
+  /** A fresh signup's role choice is still unanswered (armed by a
+   *  REGISTER-purpose verify, or a Google OAuth callback's `?registration=1`).
    *  Mirrored to localStorage by hooks.ts so it survives navigation and
    *  reload; this store field is the render-facing copy. */
   pendingRoleSelection: boolean;
