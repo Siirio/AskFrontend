@@ -38,7 +38,9 @@ There are three distinct entry paths into the system. They are not three equal "
 | Business owner registration | Person creating a business | Self-registers | `POST /auth/business/register` |
 | Staff activation | Staff | Created by owner, activates via login | `POST /auth/login` → `POST /auth/change-temporary-password` |
 
-Customer registration does not send a legal-acceptance flag. After contact verification, role selection requires a dedicated `POST /api/v1/legal/registration-acceptances`: customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`.
+Customer registration does not send a legal-acceptance flag. After contact verification, role selection requires a dedicated `POST /api/v1/legal/registration-acceptances`: customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`. For a newly created Google identity, the backend callback adds `registration=1`; the frontend keeps that pending-registration state in session storage until this acceptance succeeds and does not depend on `AuthSessionResponse.requiresRoleSelection`.
+
+`POST /api/v1/auth/customer/register` returns `409 EMAIL_ALREADY_REGISTERED` when the normalized email belongs to an active identity. The frontend must keep the registration form open, state that the account already exists, and direct the user to the `Sign in` tab; it must not open the verification-code step.
 
 Staff members do NOT self-register. There is no `/auth/staff/register` or `/auth/manager/register`. Staff accounts are created by owners inside the business cabinet.
 

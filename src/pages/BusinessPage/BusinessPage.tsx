@@ -1418,6 +1418,14 @@ export function BusinessPage() {
                           {t("business.businessProfileDescription")}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        className="fcw-btn fcw-btn-secondary"
+                        onClick={() => navigate(buildRoute(ROUTES.storefront, { businessId }))}
+                      >
+                        <ExternalLink size={16} />
+                        {t("business.viewBusinessProfile")}
+                      </button>
                     </div>
                     <ProfileEditor
                       profile={profile}
