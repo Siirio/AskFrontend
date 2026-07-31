@@ -379,7 +379,9 @@
       "settlement": "Елді мекен",
       "selectSettlement": "Елді мекенді таңдаңыз",
       "searchSettlement": "Елді мекен іздеу",
-      "noMatches": "Ештеңе табылмады"
+      "noMatches": "Ештеңе табылмады",
+      "localitiesFailed": "Елді мекендер тізімін жүктеу мүмкін болмады.",
+      "retry": "Қайталау"
     }
   }
 }

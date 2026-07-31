@@ -379,7 +379,9 @@
       "settlement": "Settlement",
       "selectSettlement": "Select a settlement",
       "searchSettlement": "Search settlements",
-      "noMatches": "Nothing found"
+      "noMatches": "Nothing found",
+      "localitiesFailed": "Could not load the list of settlements.",
+      "retry": "Try again"
     }
   }
 }

@@ -2,6 +2,31 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-31 | **Code-review fixes on the D30 address cascade — one of them a real data
+defect.** (1) The cascade, the map pin and the street line are three descriptions of ONE
+location and only the first could be changed: picking a new region left the old coordinates
+and street attached, so a branch could be submitted claiming one oblast and pointing at
+another. Changing the place now clears the pin, street and search box — keyed on `kzPlaceKey`
+(ids only) so switching LANGUAGE, which re-emits the same place with re-rendered names, does
+not throw away a dropped pin. The modal's field order was inverted to match
+(name → cascade → search/map/street): with the map on top that reset would have destroyed
+work the seller had already done, and the new order is the order an address is written in.
+Containment is deliberately NOT verified — KATO has no geometry — but Nominatim searches are
+biased by the chosen place. (2) `loadLocalities` now REJECTS instead of resolving to an empty
+map: an empty chunk is indistinguishable from a district with no settlements, so a dropped
+chunk silently turned "we could not load them" into "there are none", and the address was
+reported complete at district precision with a question missing. The failure is now a state
+of its own with a retry beside the field. (3) `complete` is no longer emitted from the click
+handlers — it depends on the lazily-loaded chunk and on the locale, neither known at click
+time, so a district picked mid-flight was reported complete and a later language switch left
+the caller holding stale names. Derived value, ref-guarded emit effect. (4) Combobox: clear
+the blur timer on unmount (the cascade unmounts whole levels), and scroll the active option
+into view during keyboard navigation — these lists reach 373 rows. (5) Nominatim: 8 s
+deadline and `accept-language`. | src/shared/ui/{address-select,combobox}.tsx,
+src/shared/geo/kato/index.ts, src/business-cabinet/{api.ts,ui/BranchMapModal.tsx},
+shared/i18n/messages/*, e2e/business-register.spec.ts,
+features/business-cabinet/{contracts,ux-ui-flow}.md
+
 2026-07-31 | **KATO address cascade ported in as a shared control (D30).** Adapted from another
 project's Vue/PrimeVue `AddressSelect`. Three judgement calls, all recorded in D30: `shared/geo/`
 opened for reference data (KATO names oblasts and settlements, no domain concept — the §5 litmus

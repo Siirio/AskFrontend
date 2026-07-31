@@ -96,13 +96,55 @@ export type GeocodeResult = { label: string; lat: number; lng: number };
 
 const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
 
-/** Free-text address search for the map picker's search box. */
+/**
+ * Nominatim is a free public service with no uptime promise — an unbounded
+ * `fetch` against it can leave the search box spinning until the tab is closed.
+ * Both calls below therefore carry their own deadline, combined with whatever
+ * `signal` the caller already passes (the debounce's abort), so the FIRST of
+ * the two to fire wins and neither cancels the other's bookkeeping.
+ */
+const NOMINATIM_TIMEOUT_MS = 8000;
+
+function withDeadline(signal: AbortSignal | undefined): {
+  signal: AbortSignal;
+  release: () => void;
+} {
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new DOMException("Timeout", "TimeoutError")),
+    NOMINATIM_TIMEOUT_MS,
+  );
+  const forward = () => controller.abort(signal?.reason);
+  if (signal?.aborted) forward();
+  else signal?.addEventListener("abort", forward, { once: true });
+  return {
+    signal: controller.signal,
+    release: () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", forward);
+    },
+  };
+}
+
+/**
+ * Free-text address search for the map picker's search box.
+ *
+ * `accept-language` matters more than it looks: the branch's registry levels
+ * are rendered in the reader's language (KATO ru/kk), so a result labelled in
+ * OSM's default would put two languages in one address. Nominatim honours the
+ * parameter per request, which is exactly the granularity we need — the app
+ * locale is switchable at runtime (D18).
+ */
 export async function searchAddress(
   query: string,
+  locale: string,
   signal?: AbortSignal,
 ): Promise<GeocodeResult[]> {
-  const url = `${NOMINATIM_BASE}/search?format=jsonv2&limit=5&countrycodes=kz&q=${encodeURIComponent(query)}`;
-  const response = await fetch(url, { signal });
+  const deadline = withDeadline(signal);
+  const url = `${NOMINATIM_BASE}/search?format=jsonv2&limit=5&countrycodes=kz&accept-language=${encodeURIComponent(locale)}&q=${encodeURIComponent(query)}`;
+  const response = await fetch(url, { signal: deadline.signal }).finally(
+    deadline.release,
+  );
   if (!response.ok) return [];
   const results: { display_name: string; lat: string; lon: string }[] =
     await response.json();
@@ -127,14 +169,22 @@ export async function searchAddress(
  * Falls back to `display_name` when OSM has no road for the pin — a rural point
  * often does not. The field stays editable either way (item 5: the seller has
  * the last word on what the address text says).
+ *
+ * `accept-language` is passed for the same reason as in `searchAddress`: this
+ * string is concatenated with KATO's ru/kk names, and a road name in a third
+ * language would be visible in the final address.
  */
 export async function reverseGeocode(
   lat: number,
   lng: number,
+  locale: string,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  const url = `${NOMINATIM_BASE}/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
-  const response = await fetch(url, { signal });
+  const deadline = withDeadline(signal);
+  const url = `${NOMINATIM_BASE}/reverse?format=jsonv2&addressdetails=1&accept-language=${encodeURIComponent(locale)}&lat=${lat}&lon=${lng}`;
+  const response = await fetch(url, { signal: deadline.signal }).finally(
+    deadline.release,
+  );
   if (!response.ok) return null;
   const result: {
     display_name?: string;

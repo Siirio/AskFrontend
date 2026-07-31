@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -80,6 +80,27 @@ export function Combobox<T>({
   const [query, setQuery] = useState<string | null>(null);
   const [active, setActive] = useState(-1);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // The blur timer outlives the component otherwise: the cascade UNMOUNTS whole
+  // levels when a parent level changes (picking a new region drops the district
+  // field), and a pending timer would then call setState on a gone component.
+  useEffect(
+    () => () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+    },
+    [],
+  );
+
+  // Keyboard navigation must move the VIEWPORT too, not just the highlight —
+  // these lists run to 373 settlements under one district, so arrowing down
+  // otherwise walks an active row that is no longer on screen. `block: "nearest"`
+  // scrolls the minimum needed, so a mouse-driven hover never yanks the list.
+  useEffect(() => {
+    if (active < 0) return;
+    const row = listRef.current?.children[active];
+    if (row instanceof HTMLElement) row.scrollIntoView({ block: "nearest" });
+  }, [active]);
 
   const selectedKey = value == null ? null : getKey(value);
 
@@ -186,6 +207,7 @@ export function Combobox<T>({
 
       {listShown ? (
         <ul
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-label={listLabel}

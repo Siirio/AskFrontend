@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import {
   districtLocalities,
+  EMPTY_LOCALITY_CHUNK,
   getDistricts,
   getRegions,
   isRepublicanCity,
@@ -13,6 +21,7 @@ import {
   orderForDisplay,
   regionLocalities,
   type KatoItem,
+  type LocalityChunk,
 } from "@/shared/geo/kato";
 import { Combobox } from "@/shared/ui/combobox";
 
@@ -49,6 +58,15 @@ import { Combobox } from "@/shared/ui/combobox";
  * know about (§5) — the slice that owns the endpoint composes, via
  * `formatKzAddress` or by reading the parts.
  *
+ * The value is DERIVED and emitted from an effect rather than pushed from each
+ * handler (corrected 2026-07-31). It has to be: `complete` depends on the
+ * lazily-loaded locality chunk, and the display names depend on the active
+ * locale — neither of which is known at the moment a level is clicked. Emitting
+ * from handlers meant a district picked while its chunk was still in flight was
+ * reported complete (there were "no" settlements yet), and switching language
+ * afterwards left the caller holding names in the old one. A ref-guarded effect
+ * re-emits on exactly those transitions and on nothing else.
+ *
  * ── NOT REHYDRATABLE (stated, not hidden) ──────────────────────────────────
  * The cascade owns its selection state and emits outward; it does not
  * reconstruct itself from a previously emitted value. Doing so would mean
@@ -61,6 +79,17 @@ import { Combobox } from "@/shared/ui/combobox";
 /** Which level of the cascade a merged oblast-level option came from. */
 type OblastPick =
   { kind: "district"; item: KatoItem } | { kind: "locality"; item: KatoItem };
+
+/**
+ * `error` is a state of its own and not a synonym for `ready` with nothing in
+ * it — an empty chunk and a chunk that failed to arrive mean opposite things
+ * for whether a settlement still has to be asked for.
+ */
+type ChunkState =
+  | { status: "none" }
+  | { status: "loading" }
+  | { status: "ready"; chunk: LocalityChunk }
+  | { status: "error" };
 
 export type KzPlace = {
   regionId: number;
@@ -77,6 +106,10 @@ export type KzPlace = {
    * The cascade is as specific as the registry allows for this branch — there
    * is no further question to ask. Callers gate a street field on this rather
    * than re-deriving "did they finish", which would need the locality chunk.
+   *
+   * False while a locality chunk is still loading: until it lands we do not
+   * know whether a settlement is owed, and answering "yes, done" early is how
+   * a half-specified address gets submitted.
    */
   complete: boolean;
 };
@@ -92,6 +125,13 @@ export function formatKzAddress(place: KzPlace, street?: string): string {
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part))
     .join(", ");
+}
+
+/** Identity of a place, for change detection — ids only, so a locale switch
+ *  (which rewrites every name) is not mistaken for a different place. */
+export function kzPlaceKey(place: KzPlace | null): string {
+  if (!place) return "none";
+  return `${place.regionId}/${place.districtId}/${place.localityId}`;
 }
 
 export function AddressSelect({
@@ -113,34 +153,36 @@ export function AddressSelect({
   /** Oblast path: the settlement under a chosen district. */
   const [settlement, setSettlement] = useState<KatoItem | null>(null);
 
-  const [chunk, setChunk] = useState<Record<string, KatoItem[]>>({});
-  const [chunkLoading, setChunkLoading] = useState(false);
+  const [chunkState, setChunkState] = useState<ChunkState>({ status: "none" });
+  /** Bumped by the retry button to re-run the load effect for the same region. */
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const regions = useMemo(() => getRegions(), []);
+  const regions = getRegions();
   const republican = isRepublicanCity(region?.id);
+  const chunk =
+    chunkState.status === "ready" ? chunkState.chunk : EMPTY_LOCALITY_CHUNK;
 
   // One locality chunk per region, fetched when the region is answered. The
   // `active` guard makes a stale response harmless: switching region twice
   // quickly must not let the first chunk land on top of the second.
   useEffect(() => {
     if (!region || isRepublicanCity(region.id)) {
-      setChunk({});
-      setChunkLoading(false);
+      setChunkState({ status: "none" });
       return;
     }
     let active = true;
-    setChunkLoading(true);
+    setChunkState({ status: "loading" });
     loadLocalities(region.id)
       .then((loaded) => {
-        if (active) setChunk(loaded);
+        if (active) setChunkState({ status: "ready", chunk: loaded });
       })
-      .finally(() => {
-        if (active) setChunkLoading(false);
+      .catch(() => {
+        if (active) setChunkState({ status: "error" });
       });
     return () => {
       active = false;
     };
-  }, [region]);
+  }, [region, reloadToken]);
 
   // ── Option lists ──────────────────────────────────────────────────────────
 
@@ -187,50 +229,54 @@ export function AddressSelect({
   const showCityDistrict = republican;
   const showOblastPick = Boolean(region) && !republican;
   const showSettlement = showOblastPick && settlementOptions.length > 0;
+  const chunkFailed = chunkState.status === "error";
 
-  // ── Emit ──────────────────────────────────────────────────────────────────
+  // ── The emitted value, derived ────────────────────────────────────────────
 
-  /**
-   * Build the outward value from an explicit next state. Pure, and deliberately
-   * not derived in an effect: every handler resets the levels below it, and an
-   * effect chain would emit each stale intermediate combination on the way down.
-   */
-  const compose = (next: {
-    region: KatoItem | null;
-    oblastPick: OblastPick | null;
-    cityDistrict: KatoItem | null;
-    settlement: KatoItem | null;
-  }): KzPlace | null => {
-    if (!next.region) return null;
-    const regionName = katoName(next.region, locale);
+  const place = useMemo<KzPlace | null>(() => {
+    if (!region) return null;
+    const regionName = katoName(region, locale);
 
     let districtItem: KatoItem | null = null;
     let localityItem: KatoItem | null = null;
     let complete = false;
 
-    if (isRepublicanCity(next.region.id)) {
-      districtItem = next.cityDistrict;
+    if (isRepublicanCity(region.id)) {
+      districtItem = cityDistrict;
       // A republican city is already a precise place — the city district
       // sharpens it but is not required for the address to make sense.
       complete = true;
-    } else if (next.oblastPick?.kind === "locality") {
-      localityItem = next.oblastPick.item;
+    } else if (oblastPick?.kind === "locality") {
+      localityItem = oblastPick.item;
       // An oblast-level city IS the answer; nothing narrower exists for it.
       complete = true;
-    } else if (next.oblastPick?.kind === "district") {
-      districtItem = next.oblastPick.item;
-      localityItem = next.settlement;
-      // A district with settlements must name one; a district with none is as
-      // specific as the registry gets.
-      const under = districtLocalities(chunk, next.oblastPick.item.id);
-      complete = under.length === 0 || next.settlement != null;
+    } else if (oblastPick?.kind === "district") {
+      districtItem = oblastPick.item;
+      localityItem = settlement;
+      if (chunkState.status === "ready") {
+        // A district with settlements must name one; a district with none is as
+        // specific as the registry gets.
+        complete =
+          districtLocalities(chunkState.chunk, oblastPick.item.id).length ===
+            0 || settlement != null;
+      } else if (chunkState.status === "error") {
+        // Degraded on purpose: the settlement list cannot be shown, so the
+        // district is the most specific answer available. The failure is
+        // SURFACED next to the field (below) rather than swallowed — blocking
+        // the seller entirely over a chunk that will not load is the worse of
+        // the two failures, but pretending nothing happened is not an option.
+        complete = true;
+      } else {
+        // Still loading: we do not yet know whether a settlement is owed.
+        complete = false;
+      }
     }
 
     const districtName = districtItem ? katoName(districtItem, locale) : null;
     const localityName = localityItem ? katoName(localityItem, locale) : null;
 
     return {
-      regionId: next.region.id,
+      regionId: region.id,
       regionName,
       districtId: districtItem?.id ?? null,
       districtName,
@@ -240,54 +286,39 @@ export function AddressSelect({
       placeName: localityName ?? districtName ?? regionName,
       complete,
     };
-  };
+  }, [region, oblastPick, cityDistrict, settlement, chunkState, locale]);
 
-  const pickRegion = (item: KatoItem) => {
+  // `onChange` is not required to be memoized by the caller, so it is read
+  // through a ref — otherwise an inline arrow would re-fire this effect on
+  // every parent render and emit in a loop.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const lastEmitted = useRef<string | null>(null);
+  useEffect(() => {
+    // Compare the whole value, not just the place key: a locale switch changes
+    // every NAME while the ids stay put, and the caller is holding those names.
+    const signature = JSON.stringify(place);
+    if (signature === lastEmitted.current) return;
+    lastEmitted.current = signature;
+    onChangeRef.current(place);
+  }, [place]);
+
+  // ── Handlers — each resets the levels BELOW it ────────────────────────────
+
+  const pickRegion = useCallback((item: KatoItem) => {
     setRegion(item);
     setOblastPick(null);
     setCityDistrict(null);
     setSettlement(null);
-    onChange(
-      compose({
-        region: item,
-        oblastPick: null,
-        cityDistrict: null,
-        settlement: null,
-      }),
-    );
-  };
+  }, []);
 
-  const pickCityDistrict = (item: KatoItem) => {
-    setCityDistrict(item);
-    onChange(
-      compose({
-        region,
-        oblastPick: null,
-        cityDistrict: item,
-        settlement: null,
-      }),
-    );
-  };
-
-  const pickOblast = (pick: OblastPick) => {
+  const pickOblast = useCallback((pick: OblastPick) => {
     setOblastPick(pick);
     setSettlement(null);
-    onChange(
-      compose({
-        region,
-        oblastPick: pick,
-        cityDistrict: null,
-        settlement: null,
-      }),
-    );
-  };
-
-  const pickSettlement = (item: KatoItem) => {
-    setSettlement(item);
-    onChange(
-      compose({ region, oblastPick, cityDistrict: null, settlement: item }),
-    );
-  };
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -314,8 +345,8 @@ export function AddressSelect({
           searchPlaceholder={t("address.searchRegion")}
           emptyLabel={t("address.noMatches")}
           listLabel={t("address.region")}
-          testId="address-region"
           disabled={disabled}
+          testId="address-region"
           onChange={pickRegion}
         />
       </div>
@@ -333,9 +364,9 @@ export function AddressSelect({
             searchPlaceholder={t("address.searchCityDistrict")}
             emptyLabel={t("address.noMatches")}
             listLabel={t("address.cityDistrict")}
-            testId="address-city-district"
             disabled={disabled}
-            onChange={pickCityDistrict}
+            testId="address-city-district"
+            onChange={setCityDistrict}
           />
         </div>
       ) : null}
@@ -356,11 +387,26 @@ export function AddressSelect({
             searchPlaceholder={t("address.searchDistrictOrCity")}
             emptyLabel={t("address.noMatches")}
             listLabel={t("address.districtOrCity")}
-            testId="address-oblast"
             disabled={disabled}
-            loading={chunkLoading}
+            loading={chunkState.status === "loading"}
+            testId="address-oblast"
             onChange={pickOblast}
           />
+          {chunkFailed ? (
+            <p
+              role="status"
+              className="flex flex-wrap items-center gap-2 ps-1 text-sm text-foreground-muted"
+            >
+              {t("address.localitiesFailed")}
+              <button
+                type="button"
+                className="rounded-sm font-semibold text-accent underline underline-offset-2 focus-ring"
+                onClick={() => setReloadToken((token) => token + 1)}
+              >
+                {t("address.retry")}
+              </button>
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -377,9 +423,9 @@ export function AddressSelect({
             searchPlaceholder={t("address.searchSettlement")}
             emptyLabel={t("address.noMatches")}
             listLabel={t("address.settlement")}
-            testId="address-settlement"
             disabled={disabled}
-            onChange={pickSettlement}
+            testId="address-settlement"
+            onChange={setSettlement}
           />
         </div>
       ) : null}

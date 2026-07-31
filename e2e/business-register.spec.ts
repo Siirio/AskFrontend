@@ -434,6 +434,17 @@ test("PickUp available: Yes opens the branch map picker, and drafted branches tr
   await expect(page.getByTestId("branch-map")).toBeVisible();
 
   await page.locator("#branch-name").fill("Aigul Flowers — Abay Ave");
+
+  // The KATO cascade (D30) comes FIRST — the map and the street line describe a
+  // point inside the chosen place, so neither is rendered until the place is
+  // settled. Almaty is a city of REPUBLICAN significance, so the place is
+  // complete at the first level, which also keeps this test off the
+  // lazily-imported locality chunk an oblast would pull.
+  await expect(page.getByTestId("branch-map")).toHaveCount(0);
+  await page.getByTestId("address-region").fill("Алматы");
+  await page.getByTestId("address-region-option").first().click();
+  await expect(page.getByTestId("branch-map")).toBeVisible();
+
   // Wait for Leaflet itself to mount (next/dynamic, ssr:false) before
   // clicking — the container exists immediately, but its click handler only
   // attaches once `.leaflet-container` renders inside it.
@@ -442,14 +453,6 @@ test("PickUp available: Yes opens the branch map picker, and drafted branches tr
   // the test to fill directly — deterministic, no dependency on Nominatim.
   await page.getByTestId("branch-map").click({ position: { x: 150, y: 120 } });
 
-  // The KATO cascade (D30). Almaty is a city of REPUBLICAN significance, so the
-  // place is complete at the first level — which is also what keeps this test
-  // off the lazily-imported locality chunk an oblast would pull.
-  await page.getByTestId("address-region").fill("Алматы");
-  await page.getByTestId("address-region-option").first().click();
-  // The street line only exists once the cascade is complete — asserting that
-  // is the point, not incidental setup.
-  await expect(page.locator("#branch-address")).toBeVisible();
   await page.locator("#branch-address").fill("Абай даңғылы 10");
   await page
     .locator("#branch-address-details")
@@ -492,4 +495,49 @@ test("PickUp available: Yes opens the branch map picker, and drafted branches tr
   ).pickup_branches[0];
   expect(typeof branch.latitude).toBe("number");
   expect(typeof branch.longitude).toBe("number");
+});
+
+test("changing the registry place clears the pin and street it belonged to", async ({
+  page,
+}) => {
+  // Found by review 2026-07-31: the cascade, the map pin and the street line
+  // are three descriptions of ONE location, and only the first was resettable.
+  // A seller could pick Almaty, drop a pin, then switch to Astana and submit a
+  // branch whose address said Astana and whose coordinates said Almaty --
+  // silently, because handleAdd only checked that each field was non-empty.
+  await seedCustomerBecomingSeller(page);
+  await stubMapNetwork(page);
+  await page
+    .context()
+    .addCookies([
+      { name: "ask.locale", value: "kk", url: "http://localhost:3000" },
+    ]);
+
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await fillKzIp(page);
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-YES").click();
+
+  await page.locator("#branch-name").fill("Aigul Flowers");
+  await page.getByTestId("address-region").fill("Алматы");
+  await page.getByTestId("address-region-option").first().click();
+
+  await page.getByTestId("branch-map").locator(".leaflet-container").waitFor();
+  await page.getByTestId("branch-map").click({ position: { x: 150, y: 120 } });
+  await page.locator("#branch-address").fill("Абай даңғылы 10");
+  await expect(page.locator("#branch-address")).toHaveValue("Абай даңғылы 10");
+
+  // Move the branch to a different city. Everything narrower than the place
+  // described the old one, so it must be gone.
+  await page.getByTestId("address-region").fill("Астана");
+  await page.getByTestId("address-region-option").first().click();
+  await expect(page.locator("#branch-address")).toHaveValue("");
+
+  // ...and the branch cannot be added on the strength of the old pin alone.
+  await page.getByTestId("branch-modal-add").click();
+  await expect(
+    page.getByRole("dialog").getByText("Aigul Flowers", { exact: true }),
+  ).toHaveCount(0);
 });

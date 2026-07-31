@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Search } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import {
   AddressSelect,
   formatKzAddress,
+  kzPlaceKey,
   type KzPlace,
 } from "@/shared/ui/address-select";
 import { Button } from "@/shared/ui/button";
@@ -71,6 +72,7 @@ export function BranchMapModal({
   onRemove: (draftId: string) => void;
 }) {
   const t = useTranslations("businessCabinet");
+  const locale = useLocale();
 
   const [name, setName] = useState("");
   const [place, setPlace] = useState<KzPlace | null>(null);
@@ -81,6 +83,9 @@ export function BranchMapModal({
   // (see its header) — a key is the sanctioned way to reset that, and it beats
   // growing a `value` prop that only this one caller would ever set.
   const [placeKey, setPlaceKey] = useState(0);
+  /** Identity of the last place seen, so a locale switch (same ids, new names)
+   *  is not mistaken for the seller moving the branch. */
+  const placeKeyRef = useRef<string>(kzPlaceKey(null));
   const [position, setPosition] = useState<{
     lat: number;
     lng: number;
@@ -101,9 +106,14 @@ export function BranchMapModal({
       return;
     }
     const controller = new AbortController();
+    // Bias the search to the place the seller already picked. It does not make
+    // an out-of-place pin impossible — nothing here can, since KATO carries no
+    // geometry to test containment against — but it stops "Абая 10" from
+    // offering an Abay street in a different oblast as the first hit.
+    const scoped = place ? `${trimmed}, ${place.placeName}` : trimmed;
     debounceRef.current = setTimeout(() => {
       api
-        .searchAddress(trimmed, controller.signal)
+        .searchAddress(scoped, locale, controller.signal)
         .then(setSuggestions)
         .catch(() => setSuggestions([]));
     }, SEARCH_DEBOUNCE_MS);
@@ -111,13 +121,13 @@ export function BranchMapModal({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       controller.abort();
     };
-  }, [searchQuery]);
+  }, [searchQuery, place, locale]);
 
   const pick = (lat: number, lng: number) => {
     setPosition({ lat, lng });
     setFormError(null);
     api
-      .reverseGeocode(lat, lng)
+      .reverseGeocode(lat, lng, locale)
       .then((label) => {
         if (label) setAddress(label);
       })
@@ -127,9 +137,36 @@ export function BranchMapModal({
       });
   };
 
+  /**
+   * Changing the registry place invalidates everything narrower than it — the
+   * pin, the street line and the search box all describe a location INSIDE the
+   * old place (found by review 2026-07-31: picking a new region left the old
+   * coordinates and street attached, so a branch could be submitted claiming
+   * one oblast and pointing at another).
+   *
+   * Keyed on `kzPlaceKey` — ids only — so switching the app language, which
+   * re-emits the same place with re-rendered names, does NOT throw away a pin
+   * the seller already dropped.
+   */
+  const handlePlaceChange = (next: KzPlace | null) => {
+    const key = kzPlaceKey(next);
+    // A ref, not the `place` state read inside a setState updater: an updater
+    // must stay pure (React may invoke it twice), and this comparison has to
+    // drive four sibling resets.
+    if (key !== placeKeyRef.current) {
+      placeKeyRef.current = key;
+      setPosition(null);
+      setAddress("");
+      setSearchQuery("");
+      setSuggestions([]);
+    }
+    setPlace(next);
+  };
+
   const resetDraft = () => {
     setName("");
     setPlace(null);
+    placeKeyRef.current = kzPlaceKey(null);
     setPlaceKey((k) => k + 1);
     setAddress("");
     setAddressDetails("");
@@ -174,60 +211,6 @@ export function BranchMapModal({
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div className="relative">
-            <div className="relative">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 inset-s-3 my-auto size-4 text-foreground-subtle"
-              />
-              <Input
-                className="ps-9"
-                placeholder={t("branchModal.searchPlaceholder")}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setSearchOpen(true);
-                }}
-                onFocus={() => setSearchOpen(true)}
-                onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
-              />
-            </div>
-            {searchOpen && suggestions.length > 0 ? (
-              <ul className="neu-card absolute inset-x-0 top-full z-20 mt-2 max-h-48 overflow-y-auto p-1.5">
-                {suggestions.map((s, i) => (
-                  <li key={`${s.lat}-${s.lng}-${i}`}>
-                    <button
-                      type="button"
-                      className="neu-menu-item flex w-full cursor-pointer items-start gap-2 px-3 py-2.5 text-start text-sm font-medium"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        pick(s.lat, s.lng);
-                        setSearchQuery(s.label);
-                        setSuggestions([]);
-                        setSearchOpen(false);
-                      }}
-                    >
-                      <MapPin
-                        aria-hidden="true"
-                        className="mt-0.5 size-3.5 shrink-0 text-accent"
-                      />
-                      {s.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-
-          <div className="h-64 w-full sm:h-80" data-testid="branch-map">
-            {open ? (
-              <BranchMapCanvas position={position} onPick={pick} />
-            ) : null}
-          </div>
-          <p className="text-xs text-foreground-subtle">
-            {t("branchModal.mapHint")}
-          </p>
-
           <Field label={t("branchModal.fields.name")} htmlFor="branch-name">
             <Input
               id="branch-name"
@@ -238,24 +221,84 @@ export function BranchMapModal({
             />
           </Field>
 
-          <AddressSelect key={placeKey} onChange={setPlace} />
+          <AddressSelect key={placeKey} onChange={handlePlaceChange} />
 
-          {/* The street line opens only once the cascade is as specific as the
-              registry allows — asking for a house number before the settlement
-              is known invites an address that reads fine and locates nothing. */}
+          {/* Everything below describes a point INSIDE the chosen place, so
+              nothing below is asked until the place is settled — and changing
+              the place clears all of it (handlePlaceChange). Ordering the form
+              this way is what makes that reset harmless: widest question first,
+              exactly the order the address itself is written in. Before this,
+              the map sat on top and a seller who pinned first lost the pin the
+              moment they answered the cascade. */}
           {place?.complete ? (
-            <Field
-              label={t("branchModal.fields.address")}
-              htmlFor="branch-address"
-            >
-              <Input
-                id="branch-address"
-                autoComplete="off"
-                value={address}
-                placeholder={t("branchModal.placeholders.address")}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-            </Field>
+            <>
+              <div className="relative">
+                <div className="relative">
+                  <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 inset-s-3 my-auto size-4 text-foreground-subtle"
+                  />
+                  <Input
+                    className="ps-9"
+                    placeholder={t("branchModal.searchPlaceholder")}
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setSearchOpen(true);
+                    }}
+                    onFocus={() => setSearchOpen(true)}
+                    onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
+                  />
+                </div>
+                {searchOpen && suggestions.length > 0 ? (
+                  <ul className="neu-card absolute inset-x-0 top-full z-20 mt-2 max-h-48 overflow-y-auto p-1.5">
+                    {suggestions.map((s, i) => (
+                      <li key={`${s.lat}-${s.lng}-${i}`}>
+                        <button
+                          type="button"
+                          className="neu-menu-item flex w-full cursor-pointer items-start gap-2 px-3 py-2.5 text-start text-sm font-medium"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            pick(s.lat, s.lng);
+                            setSearchQuery(s.label);
+                            setSuggestions([]);
+                            setSearchOpen(false);
+                          }}
+                        >
+                          <MapPin
+                            aria-hidden="true"
+                            className="mt-0.5 size-3.5 shrink-0 text-accent"
+                          />
+                          {s.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+
+              <div className="h-64 w-full sm:h-80" data-testid="branch-map">
+                {open ? (
+                  <BranchMapCanvas position={position} onPick={pick} />
+                ) : null}
+              </div>
+              <p className="text-xs text-foreground-subtle">
+                {t("branchModal.mapHint")}
+              </p>
+
+              <Field
+                label={t("branchModal.fields.address")}
+                htmlFor="branch-address"
+              >
+                <Input
+                  id="branch-address"
+                  autoComplete="off"
+                  value={address}
+                  placeholder={t("branchModal.placeholders.address")}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+              </Field>
+            </>
           ) : null}
 
           <Field

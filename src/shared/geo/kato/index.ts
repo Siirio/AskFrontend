@@ -71,9 +71,9 @@ export function getDistricts(regionId: number): KatoItem[] {
 
 /** A region's locality chunk: `region_{id}` → the oblast's own localities,
  *  `{districtId}` → the localities under that district. */
-type LocalityChunk = Record<string, KatoItem[]>;
+export type LocalityChunk = Record<string, KatoItem[]>;
 
-const EMPTY_CHUNK: LocalityChunk = {};
+export const EMPTY_LOCALITY_CHUNK: LocalityChunk = {};
 
 /** Resolved chunks, keyed by region. Module scope is safe here in a way a store
  *  never is (Rendering & State locks): this is immutable reference data with no
@@ -86,23 +86,31 @@ const chunkCache = new Map<number, Promise<LocalityChunk>>();
  * never at all for a republican city — the 1.1 MB of localities is the reason
  * this is async rather than a static import (see the build script's header).
  *
- * A failed chunk resolves to an empty map rather than throwing: a missing
- * settlement list must degrade to "the district is as specific as we can be",
- * not take down the form the seller is filling in.
+ * **It REJECTS on failure, deliberately.** An earlier version resolved to an
+ * empty map so the form could not break; that was worse than the failure it hid.
+ * An empty chunk is indistinguishable from a district that genuinely has no
+ * settlements, so a dropped chunk silently turned "we could not load the
+ * settlements" into "there are none to ask about" — and the caller then reported
+ * the address as complete at district precision without anyone knowing a
+ * question had gone missing. Callers must decide what a failure means and say so
+ * on screen; only they can (P9.4).
+ *
+ * The cache entry is evicted on rejection so a retry re-imports rather than
+ * replaying the failure for the rest of the session.
  */
 export function loadLocalities(regionId: number): Promise<LocalityChunk> {
-  if (isRepublicanCity(regionId)) return Promise.resolve(EMPTY_CHUNK);
+  if (isRepublicanCity(regionId)) return Promise.resolve(EMPTY_LOCALITY_CHUNK);
   const cached = chunkCache.get(regionId);
   if (cached) return cached;
 
-  const pending = import(`./localities/${regionId}.json`)
-    .then((module) => (module.default ?? module) as LocalityChunk)
-    .catch(() => {
-      // Evict, so a transient failure can be retried by the next selection
-      // instead of caching the empty answer for the rest of the session.
-      chunkCache.delete(regionId);
-      return EMPTY_CHUNK;
-    });
+  const pending = import(`./localities/${regionId}.json`).then(
+    (module) => (module.default ?? module) as LocalityChunk,
+  );
+  // Attached so a rejection is never "unhandled" just because no caller has
+  // subscribed yet; the returned promise still rejects for the caller.
+  pending.catch(() => {
+    if (chunkCache.get(regionId) === pending) chunkCache.delete(regionId);
+  });
   chunkCache.set(regionId, pending);
   return pending;
 }

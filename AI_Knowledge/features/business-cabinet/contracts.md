@@ -189,6 +189,13 @@ reverse-geocoding a dropped pin. Kept in this slice's `api.ts` anyway (`searchAd
 `reverseGeocode`) so the "components never call fetch directly" rule still has exactly one home,
 even though this is not a backend contract and is not versioned with it.
 
+**Both calls carry an 8 s deadline and `accept-language` (2026-07-31, review).** Nominatim
+is a free service with no uptime promise, so an unbounded `fetch` can leave the search box
+spinning until the tab closes; the deadline is combined with the caller's own abort signal so
+whichever fires first wins. `accept-language` is passed per request (the app locale is
+switchable at runtime, D18) because these strings are concatenated with KATO's ru/kk names —
+a road name in OSM's default language would put two languages in one address.
+
 **Narrowed 2026-07-31 (with `AddressSelect`, D30).** `reverseGeocode` now requests
 `addressdetails=1` and returns the **street line only** (`address.road` + `address.house_number`),
 falling back to `display_name` when OSM has no road for the pin — common for a rural point. It
