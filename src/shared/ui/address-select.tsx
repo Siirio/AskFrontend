@@ -144,6 +144,9 @@ export function AddressSelect({
   const t = useTranslations("common");
   const locale = useLocale();
   const fieldId = useId();
+  /** Owns the oblast field's live region — referenced by the combobox's
+   *  aria-describedby when the locality chunk fails. */
+  const oblastStatusId = `${fieldId}-oblast-status`;
 
   const [region, setRegion] = useState<KatoItem | null>(null);
   /** Oblast path: the merged district-or-city choice. */
@@ -389,12 +392,26 @@ export function AddressSelect({
             listLabel={t("address.districtOrCity")}
             disabled={disabled}
             loading={chunkState.status === "loading"}
+            describedBy={chunkFailed ? oblastStatusId : undefined}
             testId="address-oblast"
             onChange={pickOblast}
           />
+          {/* Announcement and display are split on purpose, because one element
+              cannot do both reliably. The live region is ALWAYS mounted and only
+              its TEXT changes — a `role="status"` node inserted at the same
+              moment it gains content is routinely missed, and `display: none`
+              until it has content has the same defect, so it is `sr-only`
+              (present, laid out, just not painted) rather than conditionally
+              rendered. The visible message is NOT a live region: it renders only
+              on failure, and reaches assistive tech through the combobox's
+              aria-describedby, so a reader arriving at the field afterwards is
+              still told why the settlement question is absent. */}
+          <span className="sr-only" role="status" aria-live="polite">
+            {chunkFailed ? t("address.localitiesFailed") : ""}
+          </span>
           {chunkFailed ? (
             <p
-              role="status"
+              id={oblastStatusId}
               className="flex flex-wrap items-center gap-2 ps-1 text-sm text-foreground-muted"
             >
               {t("address.localitiesFailed")}

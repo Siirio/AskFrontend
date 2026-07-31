@@ -151,6 +151,24 @@ async function advanceToDeliveryStep(page: Page) {
   ).toBeVisible();
 }
 
+/**
+ * Pin the platform locale (D19) before the first navigation, so the SERVER
+ * render already sees it.
+ *
+ * The origin comes from the project's own `baseURL` rather than a literal:
+ * `addCookies` needs an absolute URL, and hardcoding one silently drops the
+ * cookie the moment the harness runs anywhere else (a different port when 3000
+ * is taken, or a deployed preview) — the test would then not fail, it would
+ * quietly assert against the default locale instead.
+ */
+async function pinLocale(page: Page, locale: string) {
+  const { baseURL } = test.info().project.use;
+  if (!baseURL) throw new Error("playwright.config.ts must define a baseURL");
+  await page
+    .context()
+    .addCookies([{ name: "ask.locale", value: locale, url: baseURL }]);
+}
+
 /** Confirms step 5's agreement checkbox and submits — the shared tail of every
  *  successful-registration test regardless of how many steps preceded it. */
 async function confirmAndSubmit(page: Page) {
@@ -416,11 +434,7 @@ test("PickUp available: Yes opens the branch map picker, and drafted branches tr
   // Pin the locale: the branch address now carries KATO registry names (D30),
   // and those are language-dependent. `kk` is the product default, so this
   // pins what the assertion below already assumed rather than changing it.
-  await page
-    .context()
-    .addCookies([
-      { name: "ask.locale", value: "kk", url: "http://localhost:3000" },
-    ]);
+  await pinLocale(page, "kk");
 
   await page.goto("/app/business/register");
   await fillIdentity(page);
@@ -507,11 +521,7 @@ test("changing the registry place clears the pin and street it belonged to", asy
   // silently, because handleAdd only checked that each field was non-empty.
   await seedCustomerBecomingSeller(page);
   await stubMapNetwork(page);
-  await page
-    .context()
-    .addCookies([
-      { name: "ask.locale", value: "kk", url: "http://localhost:3000" },
-    ]);
+  await pinLocale(page, "kk");
 
   await page.goto("/app/business/register");
   await fillIdentity(page);
@@ -536,7 +546,11 @@ test("changing the registry place clears the pin and street it belonged to", asy
   await expect(page.locator("#branch-address")).toHaveValue("");
 
   // ...and the branch cannot be added on the strength of the old pin alone.
+  // Assert the REASON, not just the absence: "no branch was drafted" is also
+  // what a broken selector, a crashed modal or a renamed testid would produce,
+  // so an absence-only assertion passes for all the wrong reasons too.
   await page.getByTestId("branch-modal-add").click();
+  await expect(page.getByTestId("branch-modal-error")).toBeVisible();
   await expect(
     page.getByRole("dialog").getByText("Aigul Flowers", { exact: true }),
   ).toHaveCount(0);

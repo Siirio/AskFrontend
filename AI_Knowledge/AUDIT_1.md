@@ -231,6 +231,17 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
 - [ ] **D-3 — `AUDIT_0.md` Finding 2's trigger fired** (see A5) and the file was
   never revisited.
 
+- [ ] **D-6 — `e2e/search.spec.ts` hardcodes `http://localhost:3000`** in its
+  `addCookies` locale pin *(found 2026-07-31 by review of the same pattern in
+  `business-register.spec.ts`, which was fixed there).* `addCookies` needs an
+  absolute URL, and a literal one is silently dropped the moment the harness runs
+  on another origin — a different port when 3000 is taken, or a preview deploy.
+  The test then does not fail; it quietly asserts against the default locale.
+  `business-register.spec.ts` now has a `pinLocale` helper reading
+  `test.info().project.use.baseURL`; lift it to a shared e2e helper and use it
+  here too. Left out of the D30 commits only because `search.spec.ts` is also in
+  D-5's unformatted set, so touching it drags a reformat into an unrelated diff.
+
 - [ ] **D-5 — `npm run format:check` is RED on this branch, on 11 pre-existing
   files** *(found 2026-07-31; unrelated to that day's change, which is clean).*
   With the exact declared Prettier (3.9.5) these do not match their committed

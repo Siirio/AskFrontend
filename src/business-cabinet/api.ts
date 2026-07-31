@@ -100,30 +100,20 @@ const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
  * Nominatim is a free public service with no uptime promise — an unbounded
  * `fetch` against it can leave the search box spinning until the tab is closed.
  * Both calls below therefore carry their own deadline, combined with whatever
- * `signal` the caller already passes (the debounce's abort), so the FIRST of
- * the two to fire wins and neither cancels the other's bookkeeping.
+ * `signal` the caller already passes (the debounce's abort), so the first of
+ * the two to fire wins.
+ *
+ * The deadline deliberately covers the BODY read as well as the headers. A
+ * hand-rolled combiner that was released when `fetch` resolved (the first
+ * revision of this) left `response.json()` unbounded — and a stalled body is
+ * exactly the failure mode a slow public service produces. `AbortSignal.any`
+ * keeps one signal live across both awaits and disposes of its own timer.
  */
 const NOMINATIM_TIMEOUT_MS = 8000;
 
-function withDeadline(signal: AbortSignal | undefined): {
-  signal: AbortSignal;
-  release: () => void;
-} {
-  const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(new DOMException("Timeout", "TimeoutError")),
-    NOMINATIM_TIMEOUT_MS,
-  );
-  const forward = () => controller.abort(signal?.reason);
-  if (signal?.aborted) forward();
-  else signal?.addEventListener("abort", forward, { once: true });
-  return {
-    signal: controller.signal,
-    release: () => {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", forward);
-    },
-  };
+function withDeadline(signal: AbortSignal | undefined): AbortSignal {
+  const deadline = AbortSignal.timeout(NOMINATIM_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, deadline]) : deadline;
 }
 
 /**
@@ -140,11 +130,8 @@ export async function searchAddress(
   locale: string,
   signal?: AbortSignal,
 ): Promise<GeocodeResult[]> {
-  const deadline = withDeadline(signal);
   const url = `${NOMINATIM_BASE}/search?format=jsonv2&limit=5&countrycodes=kz&accept-language=${encodeURIComponent(locale)}&q=${encodeURIComponent(query)}`;
-  const response = await fetch(url, { signal: deadline.signal }).finally(
-    deadline.release,
-  );
+  const response = await fetch(url, { signal: withDeadline(signal) });
   if (!response.ok) return [];
   const results: { display_name: string; lat: string; lon: string }[] =
     await response.json();
@@ -180,11 +167,8 @@ export async function reverseGeocode(
   locale: string,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  const deadline = withDeadline(signal);
   const url = `${NOMINATIM_BASE}/reverse?format=jsonv2&addressdetails=1&accept-language=${encodeURIComponent(locale)}&lat=${lat}&lon=${lng}`;
-  const response = await fetch(url, { signal: deadline.signal }).finally(
-    deadline.release,
-  );
+  const response = await fetch(url, { signal: withDeadline(signal) });
   if (!response.ok) return null;
   const result: {
     display_name?: string;

@@ -22,10 +22,11 @@ time, so a district picked mid-flight was reported complete and a later language
 the caller holding stale names. Derived value, ref-guarded emit effect. (4) Combobox: clear
 the blur timer on unmount (the cascade unmounts whole levels), and scroll the active option
 into view during keyboard navigation — these lists reach 373 rows. (5) Nominatim: 8 s
-deadline and `accept-language`. | src/shared/ui/{address-select,combobox}.tsx,
-src/shared/geo/kato/index.ts, src/business-cabinet/{api.ts,ui/BranchMapModal.tsx},
-shared/i18n/messages/*, e2e/business-register.spec.ts,
-features/business-cabinet/{contracts,ux-ui-flow}.md
+deadline and `accept-language`. | src/shared/ui/address-select.tsx,
+src/shared/ui/combobox.tsx, src/shared/geo/kato/index.ts, src/business-cabinet/api.ts,
+src/business-cabinet/ui/BranchMapModal.tsx, src/shared/i18n/messages/{ru,kk,en}.json,
+e2e/business-register.spec.ts, features/business-cabinet/contracts.md,
+features/business-cabinet/ux-ui-flow.md
 
 2026-07-31 | **KATO address cascade ported in as a shared control (D30).** Adapted from another
 project's Vue/PrimeVue `AddressSelect`. Three judgement calls, all recorded in D30: `shared/geo/`
@@ -45,9 +46,11 @@ one language. `reverseGeocode` narrowed to road + house number for the same reas
 exists: OSM's `display_name` would repeat three levels the seller already answered, in a
 transliteration that need not match theirs. Composed into the ONE `address` string
 `CreateBranchRequest` has — no invented DTO field (P9.4); `cityId` remains unsent (AUDIT_1 B3) |
-scripts/build-kato.mjs, src/shared/geo/kato/*, src/shared/ui/{address-select,combobox}.tsx,
-src/business-cabinet/{api.ts,ui/BranchMapModal.tsx}, shared/i18n/messages/*, ARCHITECTURE §2+D30,
-features/business-cabinet/{contracts,ux-ui-flow}.md
+scripts/build-kato.mjs, src/shared/geo/kato/ (index.ts + generated regions/districts/localities
+JSON), src/shared/ui/address-select.tsx, src/shared/ui/combobox.tsx, src/business-cabinet/api.ts,
+src/business-cabinet/ui/BranchMapModal.tsx, src/shared/i18n/messages/{ru,kk,en}.json,
+e2e/business-register.spec.ts, .prettierignore, ARCHITECTURE_PATTERN_FRONTEND.md §2 + §11 D30,
+features/business-cabinet/contracts.md, features/business-cabinet/ux-ui-flow.md
 
 2026-07-30 | Closed a batch of auth/identity gaps found by re-auditing against backend `dev@2e06cbe`
 (4 commits ahead of the previous audit's `9a90f5c`): removed `requiresRoleSelection`/`availableRoles`/

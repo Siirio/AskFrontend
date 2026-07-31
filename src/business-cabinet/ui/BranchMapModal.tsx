@@ -316,7 +316,11 @@ export function BranchMapModal({
           </Field>
 
           {formError ? (
-            <p role="alert" className="text-sm font-medium text-destructive">
+            <p
+              role="alert"
+              data-testid="branch-modal-error"
+              className="text-sm font-medium text-destructive"
+            >
               {formError}
             </p>
           ) : null}
