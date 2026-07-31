@@ -94,7 +94,7 @@ export function ProductsTab(props: ProductsTabProps) {
             <button
               className="fcw-btn fcw-btn-primary"
               onClick={handleCreateProduct}
-              disabled={!productForm.name.trim() || (!productForm.categoryId && !productForm.categoryLabel.trim()) || !productForm.deepLink.trim()}
+              disabled={!productForm.name.trim() || (!productForm.categoryId && !productForm.categoryLabel.trim())}
             >
               <Check size={16} />{t("business.product.add")}
             </button>
@@ -125,9 +125,9 @@ export function ProductsTab(props: ProductsTabProps) {
               </div>
             </div>
             <div className="ask-editor-field ask-editor-field--wide">
-              <label className="ask-editor-required">{t("business.product.deepLink")}</label>
-              <input className="fcw-input" type="url" required value={productForm.deepLink} onChange={event => setProductForm(form => ({ ...form, deepLink: event.target.value }))} placeholder={t("business.product.deepLinkPlaceholder")} />
-              <span className="ask-editor-hint">{t("business.product.deepLinkRequiredHint")}</span>
+              <label>{t("business.product.deepLink")}</label>
+              <input className="fcw-input" type="url" value={productForm.deepLink} onChange={event => setProductForm(form => ({ ...form, deepLink: event.target.value }))} placeholder={t("business.product.deepLinkPlaceholder")} />
+              <span className="ask-editor-hint">{t("business.product.deepLinkHint")}</span>
             </div>
           </div>
         </EditorSection>

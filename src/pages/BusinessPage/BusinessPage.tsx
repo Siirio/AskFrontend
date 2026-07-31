@@ -643,16 +643,12 @@ export function BusinessPage() {
       toast.show(t("business.toast.selectCategory"), "error");
       return;
     }
-    if (!productForm.deepLink.trim()) {
-      toast.show(t("business.toast.productLinkRequired"), "error");
-      return;
-    }
     try {
       const created = await createProduct(businessId, {
         branchId: selectedBranchId || undefined,
         name: productForm.name,
         description: productForm.description,
-        deepLink: productForm.deepLink.trim(),
+        deepLink: productForm.deepLink.trim() || undefined,
         price: productForm.price !== "" ? Number(productForm.price) : undefined,
         categoryId: catId,
         categoryName: catLabel || undefined,
@@ -677,7 +673,7 @@ export function BusinessPage() {
       await updateProduct(editProduct.productId, {
         name: productForm.name || undefined,
         description: productForm.description,
-        deepLink: productForm.deepLink,
+        deepLink: productForm.deepLink.trim() || undefined,
         price: productForm.price !== "" ? Number(productForm.price) : undefined,
         categoryId: productForm.categoryId || undefined,
         categoryName: productForm.categoryLabel.trim() || undefined,
