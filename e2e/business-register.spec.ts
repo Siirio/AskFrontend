@@ -221,7 +221,7 @@ test("registering a business (KZ_IP, step 4 skipped) opens the cabinet", async (
   });
 });
 
-test("picking \"Order catalog import from Ask\" on step 2 submits catalogSetupMode for real", async ({
+test('picking "Order catalog import from Ask" on step 2 submits catalogSetupMode for real', async ({
   page,
 }) => {
   // D29 (2026-07-29): the card went from disabled/decorative to a real,
@@ -396,27 +396,24 @@ test("an existing seller is sent to the cabinet instead of registering twice", a
   expect(posted).toBe(false);
 });
 
-test("PickUp available: Yes opens the branch map picker, and a drafted branch is created after the business", async ({
+test("PickUp available: Yes opens the branch map picker, and drafted branches travel INLINE with the business", async ({
   page,
 }) => {
-  await seedCustomerBecomingSeller(page);
+  // This test used to stub `POST /businesses/*/branches` and assert it was
+  // called. The client abandoned that shape on 2026-07-29 (commit 41c7506,
+  // against backend `9a90f5c`): drafted branches are now `pickupBranches` on
+  // the onboarding body, created in ONE transaction with the business. The
+  // spec was not updated in that commit, so it has been asserting a request
+  // that can no longer happen — `branchBusinessId` could only ever be null.
+  //
+  // Same lesson as the e2e-stub lock, one level up: a stub proves nothing if it
+  // answers a call the code does not make. A submit-shape change updates its
+  // spec in the same commit, exactly as docs do.
+  let onboardingBody: Record<string, unknown> | null = null;
+  await seedCustomerBecomingSeller(page, (body) => {
+    onboardingBody = body;
+  });
   await stubMapNetwork(page);
-
-  let branchBody: Record<string, unknown> | null = null;
-  let branchBusinessId: string | null = null;
-  await page.route(
-    "**/api/v1/businesses/*/branches",
-    async (route) => {
-      branchBusinessId = new URL(route.request().url()).pathname
-        .split("/")
-        .at(-2)!;
-      branchBody = route.request().postDataJSON();
-      await route.fulfill({
-        status: 201,
-        json: { id: "br1", business_id: "b1", ...branchBody },
-      });
-    },
-  );
 
   await page.goto("/app/business/register");
   await fillIdentity(page);
@@ -433,15 +430,10 @@ test("PickUp available: Yes opens the branch map picker, and a drafted branch is
   // Wait for Leaflet itself to mount (next/dynamic, ssr:false) before
   // clicking — the container exists immediately, but its click handler only
   // attaches once `.leaflet-container` renders inside it.
-  await page
-    .getByTestId("branch-map")
-    .locator(".leaflet-container")
-    .waitFor();
+  await page.getByTestId("branch-map").locator(".leaflet-container").waitFor();
   // Reverse-geocode is stubbed to fail, so the address field stays empty for
   // the test to fill directly — deterministic, no dependency on Nominatim.
-  await page
-    .getByTestId("branch-map")
-    .click({ position: { x: 150, y: 120 } });
+  await page.getByTestId("branch-map").click({ position: { x: 150, y: 120 } });
   await page.locator("#branch-address").fill("Abay Ave 10, Almaty");
   await page
     .locator("#branch-address-details")
@@ -462,10 +454,24 @@ test("PickUp available: Yes opens the branch map picker, and a drafted branch is
   await confirmAndSubmit(page);
 
   await expect(page).toHaveURL(/\/app\/business$/);
-  expect(branchBusinessId).toBe("b1");
-  expect(branchBody).toMatchObject({
-    name: "Aigul Flowers — Abay Ave",
-    address: "Abay Ave 10, Almaty",
-    address_details: "2nd floor, entrance from the courtyard",
+  expect(onboardingBody).toMatchObject({
+    pickup_available: true,
+    pickup_branches: [
+      {
+        name: "Aigul Flowers — Abay Ave",
+        address: "Abay Ave 10, Almaty",
+        address_details: "2nd floor, entrance from the courtyard",
+        pickup_available: true,
+      },
+    ],
   });
+  // Coordinates are @NotNull on CreateBranchRequest — the map click is what
+  // supplies them, and a branch that lost them would 400 at the backend.
+  const branch = (
+    onboardingBody as unknown as {
+      pickup_branches: { latitude: number; longitude: number }[];
+    }
+  ).pickup_branches[0];
+  expect(typeof branch.latitude).toBe("number");
+  expect(typeof branch.longitude).toBe("number");
 });
