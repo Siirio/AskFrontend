@@ -189,5 +189,21 @@ reverse-geocoding a dropped pin. Kept in this slice's `api.ts` anyway (`searchAd
 `reverseGeocode`) so the "components never call fetch directly" rule still has exactly one home,
 even though this is not a backend contract and is not versioned with it.
 
+**Narrowed 2026-07-31 (with `AddressSelect`, D30).** `reverseGeocode` now requests
+`addressdetails=1` and returns the **street line only** (`address.road` + `address.house_number`),
+falling back to `display_name` when OSM has no road for the pin — common for a rural point. It
+used to return the whole `display_name`. The reason is the KATO cascade: the branch's oblast,
+district and settlement now come from the state registry, so `"10, Абая көшесі, Алматы,
+Қазақстан"` would repeat three levels the seller has already answered, in a transliteration that
+need not even match theirs. The seller still edits the field freely.
+
+**Where the composed address goes.** `CreateBranchRequest` has ONE `address` string and no
+`country`/`state`/`region` fields (verified against `kz.ask.business.branch.api.dto`), so the
+registry levels and the street line are joined into that one string by `formatKzAddress` —
+widest first. No DTO field is invented (P9.4). ⚠ `cityId` is still **not** sent (AUDIT_1 B3);
+`GET /api/v1/cities/resolve?name=` (`CityService.findByName`) is the endpoint that would turn
+`KzPlace.placeName` into the required UUID — that is the next step for this flow, not part of
+the D30 change.
+
 ## Not built yet
 **Company Profile** has no endpoint set — the vision marks it "coming in a future update". Ship the placeholder, not a screen.

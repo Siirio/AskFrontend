@@ -318,7 +318,7 @@
       "removeBranch": "Убрать {name}",
       "done": "Готово",
       "errors": {
-        "incomplete": "Укажите название филиала, адрес и точку на карте."
+        "incomplete": "Укажите название филиала, местоположение, адрес и точку на карте."
       }
     },
     "review": {
@@ -365,6 +365,21 @@
     "language": {
       "label": "Язык"
     },
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "address": {
+      "region": "Область или город",
+      "selectRegion": "Выберите область или город",
+      "searchRegion": "Поиск области или города",
+      "cityDistrict": "Район города",
+      "selectCityDistrict": "Выберите район",
+      "searchCityDistrict": "Поиск района",
+      "districtOrCity": "Район или город",
+      "selectDistrictOrCity": "Выберите район или город",
+      "searchDistrictOrCity": "Поиск района или города",
+      "settlement": "Населённый пункт",
+      "selectSettlement": "Выберите населённый пункт",
+      "searchSettlement": "Поиск населённого пункта",
+      "noMatches": "Ничего не найдено"
+    }
   }
 }

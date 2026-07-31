@@ -318,7 +318,7 @@
       "removeBranch": "Remove {name}",
       "done": "Done",
       "errors": {
-        "incomplete": "Give the branch a name, an address, and a location on the map."
+        "incomplete": "Give the branch a name, a location, an address and a point on the map."
       }
     },
     "review": {
@@ -365,6 +365,21 @@
     "language": {
       "label": "Language"
     },
-    "close": "Close"
+    "close": "Close",
+    "address": {
+      "region": "Region or city",
+      "selectRegion": "Select a region or city",
+      "searchRegion": "Search regions and cities",
+      "cityDistrict": "City district",
+      "selectCityDistrict": "Select a district",
+      "searchCityDistrict": "Search districts",
+      "districtOrCity": "District or city",
+      "selectDistrictOrCity": "Select a district or city",
+      "searchDistrictOrCity": "Search districts and cities",
+      "settlement": "Settlement",
+      "selectSettlement": "Select a settlement",
+      "searchSettlement": "Search settlements",
+      "noMatches": "Nothing found"
+    }
   }
 }

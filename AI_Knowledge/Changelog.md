@@ -2,6 +2,28 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-07-31 | **KATO address cascade ported in as a shared control (D30).** Adapted from another
+project's Vue/PrimeVue `AddressSelect`. Three judgement calls, all recorded in D30: `shared/geo/`
+opened for reference data (KATO names oblasts and settlements, no domain concept — the §5 litmus
+test, same tenancy as `i18n/messages`); the 1.9 MB export split by `scripts/build-kato.mjs` into
+24 KB eager + 17 lazily-imported locality chunks, so 1.1 MB of settlements never enters a
+registration form's bundle; and **Kazakhstan only** — the port's worldwide country select was
+dropped rather than carried, because `REGISTRATION_COUNTRY_CODE` is fixed to KZ and
+`BusinessLegalForm` is KZ-specific, making a country picker a one-answer dead control (project
+lock) and its `country-state-city` dependency dead weight (a second market is **G4**). Two
+deviations from the port, both to fix real defects rather than taste: the free-text street input
+was taken OUT of the control (bundling it made the component half-controlled the moment a caller
+also wrote that string — which `BranchMapModal` does, from the map pin), and the city-first
+ordering of the merged district/city list moved to render time because `localeCompare` orders
+Kazakh's ә/ғ/қ/ң/ө/ұ/ү/һ/і differently from Russian, so a build-time order can only be right for
+one language. `reverseGeocode` narrowed to road + house number for the same reason the cascade
+exists: OSM's `display_name` would repeat three levels the seller already answered, in a
+transliteration that need not match theirs. Composed into the ONE `address` string
+`CreateBranchRequest` has — no invented DTO field (P9.4); `cityId` remains unsent (AUDIT_1 B3) |
+scripts/build-kato.mjs, src/shared/geo/kato/*, src/shared/ui/{address-select,combobox}.tsx,
+src/business-cabinet/{api.ts,ui/BranchMapModal.tsx}, shared/i18n/messages/*, ARCHITECTURE §2+D30,
+features/business-cabinet/{contracts,ux-ui-flow}.md
+
 2026-07-30 | Closed a batch of auth/identity gaps found by re-auditing against backend `dev@2e06cbe`
 (4 commits ahead of the previous audit's `9a90f5c`): removed `requiresRoleSelection`/`availableRoles`/
 `RoleOption`/`suggestRoleExpansion` (the backend deleted the concept outright); armed the Google

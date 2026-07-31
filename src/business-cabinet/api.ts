@@ -113,17 +113,35 @@ export async function searchAddress(
   }));
 }
 
-/** Reverse-geocode a dropped/dragged pin into a human-readable address —
- *  prefills the branch form's address field, which stays editable (item 5:
- *  the seller has the last word on what the address text says). */
+/**
+ * Reverse-geocode a dropped/dragged pin into the STREET LINE of the branch
+ * form — house number and road only, never the full display name.
+ *
+ * The narrowing arrived with `AddressSelect` (2026-07-31): the branch's region,
+ * district and settlement now come from the KATO registry, so Nominatim's
+ * `display_name` ("10, Абая көшесі, Алматы, Қазақстан") would repeat three
+ * levels the seller has already answered, in a transliteration that need not
+ * even match. `addressdetails=1` returns the parts separately, so the street
+ * field gets the one part the cascade cannot supply.
+ *
+ * Falls back to `display_name` when OSM has no road for the pin — a rural point
+ * often does not. The field stays editable either way (item 5: the seller has
+ * the last word on what the address text says).
+ */
 export async function reverseGeocode(
   lat: number,
   lng: number,
   signal?: AbortSignal,
 ): Promise<string | null> {
-  const url = `${NOMINATIM_BASE}/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+  const url = `${NOMINATIM_BASE}/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lng}`;
   const response = await fetch(url, { signal });
   if (!response.ok) return null;
-  const result: { display_name?: string } = await response.json();
-  return result.display_name ?? null;
+  const result: {
+    display_name?: string;
+    address?: { road?: string; house_number?: string };
+  } = await response.json();
+  const road = result.address?.road?.trim();
+  if (!road) return result.display_name ?? null;
+  const houseNumber = result.address?.house_number?.trim();
+  return houseNumber ? `${road} ${houseNumber}` : road;
 }

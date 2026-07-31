@@ -318,7 +318,7 @@
       "removeBranch": "{name} алып тастау",
       "done": "Дайын",
       "errors": {
-        "incomplete": "Филиалдың атауын, мекенжайын және картадағы орнын көрсетіңіз."
+        "incomplete": "Филиал атауын, орналасқан жерін, мекенжайын және картадағы нүктені көрсетіңіз."
       }
     },
     "review": {
@@ -365,6 +365,21 @@
     "language": {
       "label": "Тіл"
     },
-    "close": "Жабу"
+    "close": "Жабу",
+    "address": {
+      "region": "Облыс немесе қала",
+      "selectRegion": "Облысты немесе қаланы таңдаңыз",
+      "searchRegion": "Облыс немесе қала іздеу",
+      "cityDistrict": "Қала ауданы",
+      "selectCityDistrict": "Ауданды таңдаңыз",
+      "searchCityDistrict": "Аудан іздеу",
+      "districtOrCity": "Аудан немесе қала",
+      "selectDistrictOrCity": "Ауданды немесе қаланы таңдаңыз",
+      "searchDistrictOrCity": "Аудан немесе қала іздеу",
+      "settlement": "Елді мекен",
+      "selectSettlement": "Елді мекенді таңдаңыз",
+      "searchSettlement": "Елді мекен іздеу",
+      "noMatches": "Ештеңе табылмады"
+    }
   }
 }

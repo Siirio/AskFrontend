@@ -5,6 +5,11 @@ import { MapPin, Search } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 
+import {
+  AddressSelect,
+  formatKzAddress,
+  type KzPlace,
+} from "@/shared/ui/address-select";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
@@ -40,6 +45,15 @@ const SEARCH_DEBOUNCE_MS = 350;
  * point, so the seller must give customers somewhere to go, while the map
  * pin supplies the coordinates the address text alone cannot guarantee.
  *
+ * **The address is now answered twice, on purpose (2026-07-31).** The KATO
+ * cascade (`@/shared/ui/address-select`) answers WHICH PLACE — oblast,
+ * district, settlement — from the state registry, and the street field answers
+ * where in it. They are not redundant: OSM's free text is whatever a volunteer
+ * typed, in whichever language and transliteration, while KATO is the registry
+ * the seller's own documents use. `CreateBranchRequest` has exactly one
+ * `address` string and no administrative fields, so the two are composed into
+ * that one line by `formatKzAddress` — no invented DTO field (P9.4, Data Lock).
+ *
  * Stays open across multiple "Add Branch" clicks — a seller with three
  * locations should not reopen the modal three times.
  */
@@ -59,8 +73,14 @@ export function BranchMapModal({
   const t = useTranslations("businessCabinet");
 
   const [name, setName] = useState("");
+  const [place, setPlace] = useState<KzPlace | null>(null);
   const [address, setAddress] = useState("");
   const [addressDetails, setAddressDetails] = useState("");
+  // Remounts AddressSelect after a successful add, so the cascade clears with
+  // the rest of the draft. The control owns its selection state deliberately
+  // (see its header) — a key is the sanctioned way to reset that, and it beats
+  // growing a `value` prop that only this one caller would ever set.
+  const [placeKey, setPlaceKey] = useState(0);
   const [position, setPosition] = useState<{
     lat: number;
     lng: number;
@@ -109,6 +129,8 @@ export function BranchMapModal({
 
   const resetDraft = () => {
     setName("");
+    setPlace(null);
+    setPlaceKey((k) => k + 1);
     setAddress("");
     setAddressDetails("");
     setPosition(null);
@@ -117,13 +139,15 @@ export function BranchMapModal({
   };
 
   const handleAdd = () => {
-    if (!name.trim() || !position || !address.trim()) {
+    if (!name.trim() || !position || !place?.complete || !address.trim()) {
       setFormError(t("branchModal.errors.incomplete"));
       return;
     }
     onAdd({
       name: name.trim(),
-      address: address.trim(),
+      // ONE `address` string is all `CreateBranchRequest` has — the registry
+      // levels and the street line are composed into it, widest first.
+      address: formatKzAddress(place, address),
       addressDetails: addressDetails.trim(),
       latitude: position.lat,
       longitude: position.lng,
@@ -214,18 +238,25 @@ export function BranchMapModal({
             />
           </Field>
 
-          <Field
-            label={t("branchModal.fields.address")}
-            htmlFor="branch-address"
-          >
-            <Input
-              id="branch-address"
-              autoComplete="off"
-              value={address}
-              placeholder={t("branchModal.placeholders.address")}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-          </Field>
+          <AddressSelect key={placeKey} onChange={setPlace} />
+
+          {/* The street line opens only once the cascade is as specific as the
+              registry allows — asking for a house number before the settlement
+              is known invites an address that reads fine and locates nothing. */}
+          {place?.complete ? (
+            <Field
+              label={t("branchModal.fields.address")}
+              htmlFor="branch-address"
+            >
+              <Input
+                id="branch-address"
+                autoComplete="off"
+                value={address}
+                placeholder={t("branchModal.placeholders.address")}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </Field>
+          ) : null}
 
           <Field
             label={t("branchModal.fields.addressDetails")}

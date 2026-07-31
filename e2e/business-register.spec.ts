@@ -399,21 +399,28 @@ test("an existing seller is sent to the cabinet instead of registering twice", a
 test("PickUp available: Yes opens the branch map picker, and drafted branches travel INLINE with the business", async ({
   page,
 }) => {
-  // This test used to stub `POST /businesses/*/branches` and assert it was
-  // called. The client abandoned that shape on 2026-07-29 (commit 41c7506,
-  // against backend `9a90f5c`): drafted branches are now `pickupBranches` on
-  // the onboarding body, created in ONE transaction with the business. The
-  // spec was not updated in that commit, so it has been asserting a request
-  // that can no longer happen — `branchBusinessId` could only ever be null.
-  //
-  // Same lesson as the e2e-stub lock, one level up: a stub proves nothing if it
-  // answers a call the code does not make. A submit-shape change updates its
-  // spec in the same commit, exactly as docs do.
+  // Corrected 2026-07-31. This test used to stub `POST /businesses/*/branches`
+  // and assert it was called — a shape the client abandoned on 2026-07-29
+  // (commit 41c7506, backend `9a90f5c`: branches are `pickupBranches` on the
+  // onboarding body, committed in ONE transaction). The spec was not updated in
+  // that commit, so it had been asserting a request that can no longer happen.
+  // It now reads the onboarding body itself, which is where the branch actually
+  // is — the same lesson as the e2e-stub lock, one level up: a test may only
+  // assert the call the code makes.
   let onboardingBody: Record<string, unknown> | null = null;
   await seedCustomerBecomingSeller(page, (body) => {
     onboardingBody = body;
   });
   await stubMapNetwork(page);
+
+  // Pin the locale: the branch address now carries KATO registry names (D30),
+  // and those are language-dependent. `kk` is the product default, so this
+  // pins what the assertion below already assumed rather than changing it.
+  await page
+    .context()
+    .addCookies([
+      { name: "ask.locale", value: "kk", url: "http://localhost:3000" },
+    ]);
 
   await page.goto("/app/business/register");
   await fillIdentity(page);
@@ -434,7 +441,16 @@ test("PickUp available: Yes opens the branch map picker, and drafted branches tr
   // Reverse-geocode is stubbed to fail, so the address field stays empty for
   // the test to fill directly — deterministic, no dependency on Nominatim.
   await page.getByTestId("branch-map").click({ position: { x: 150, y: 120 } });
-  await page.locator("#branch-address").fill("Abay Ave 10, Almaty");
+
+  // The KATO cascade (D30). Almaty is a city of REPUBLICAN significance, so the
+  // place is complete at the first level — which is also what keeps this test
+  // off the lazily-imported locality chunk an oblast would pull.
+  await page.getByTestId("address-region").fill("Алматы");
+  await page.getByTestId("address-region-option").first().click();
+  // The street line only exists once the cascade is complete — asserting that
+  // is the point, not incidental setup.
+  await expect(page.locator("#branch-address")).toBeVisible();
+  await page.locator("#branch-address").fill("Абай даңғылы 10");
   await page
     .locator("#branch-address-details")
     .fill("2nd floor, entrance from the courtyard");
@@ -459,7 +475,9 @@ test("PickUp available: Yes opens the branch map picker, and drafted branches tr
     pickup_branches: [
       {
         name: "Aigul Flowers — Abay Ave",
-        address: "Abay Ave 10, Almaty",
+        // Registry level + street line, composed widest-first into the ONE
+        // `address` string CreateBranchRequest has (formatKzAddress, D30).
+        address: "Алматы қ., Абай даңғылы 10",
         address_details: "2nd floor, entrance from the courtyard",
         pickup_available: true,
       },
