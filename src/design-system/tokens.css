@@ -72,8 +72,13 @@
  * (blocked, CSP, error), because with JS the pre-paint script always writes
  * the attribute before first paint. Without it, an OS-dark visitor with
  * scripts off read the whole product in light. Same status as the pre-paint
- * script's inline theme logic: a comment-bound duplicate — CHANGE THE TWO
- * DARK BLOCKS TOGETHER.
+ * script's inline theme logic: a sanctioned duplicate — CHANGE THE TWO DARK
+ * BLOCKS TOGETHER.
+ *
+ * §note — 2026-08-01 (review finding): that instruction is no longer the only
+ * thing holding the two in step. `scripts/check-tokens.mjs` diffs them token by
+ * token on every build, so drift fails the build instead of waiting to be found
+ * by a visitor with scripts blocked — the one audience that can see it.
  */
 
 :root {
@@ -220,7 +225,8 @@
  * pre-paint script never ran (scripts blocked/failed): with JS the attribute
  * exists before first paint, so this block is unreachable and the attribute
  * selector stays the one live mechanism. KEEP THE VALUES IDENTICAL TO
- * `:root[data-theme="dark"]` — change the two blocks together.
+ * `:root[data-theme="dark"]` — change the two blocks together;
+ * `scripts/check-tokens.mjs` fails the build if they drift.
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
@@ -386,6 +392,12 @@
  * token changes — do not eyeball it, and do not trust a contrast checker fed a
  * hex you rounded by hand.
  *
+ * Each row is measured in BOTH themes, so 13 rows are 26 measured pairs. The
+ * pairing each label denotes is written executably in `scripts/check-tokens.mjs`
+ * (`PAIRS`), which recomputes every number below on each build — two labels here
+ * are ambiguous in prose ("…/ foreground" means `--accent-foreground`, the ink
+ * that actually sits on that fill, not the page's `--foreground`).
+ *
  *                                    LIGHT      DARK      floor
  *   accent / accent-foreground       4.67:1     6.30:1    4.5  (AA text)
  *   accent:hover / foreground        5.62:1     7.84:1    4.5
@@ -401,5 +413,13 @@
  *   success / its foreground         5.18:1     8.39:1    4.5
  *   warning / its foreground         8.56:1    10.13:1    4.5
  *
- * All 31 measured pairs pass. All values are inside the sRGB gamut.
+ * All 26 measured pairs pass. All values are inside the sRGB gamut.
+ *
+ * §note — 2026-08-01 (review finding): this line read "All 31 measured pairs"
+ * from the day the table was written (f91b558) against 13 rows that can only be
+ * 26. No pair was missing and no number was wrong — all 26 recompute exactly —
+ * but a count nobody could reconcile with the table is the same defect the
+ * measurement lock exists to prevent: a contrast claim that was not computed.
+ * It is now computed, by `scripts/check-tokens.mjs` on every build, which
+ * derives the count from the table rather than trusting this sentence.
  */
