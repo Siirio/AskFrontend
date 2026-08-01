@@ -482,8 +482,20 @@ checked in the first pass — `startRoute` was taken on trust.
   `test.info().project.use.baseURL`; lift it to a shared e2e helper and use it
   here too. Left out of the D30 commits only because `search.spec.ts` is also in
   D-5's unformatted set, so touching it drags a reformat into an unrelated diff.
+  **→ The stated blocker is GONE (D-5 fixed by `5b5a955`), so this is now a
+  3-line lift with no coupling. Still open.**
+  **→ CONFIRMED IN THE WILD 2026-08-02, exactly as predicted.** The suite was
+  driven on **port 3100** (a production build, because a dev server owned :3000 —
+  see N10 in `AUDIT_2.md`). That is precisely this entry's "a different port when
+  3000 is taken" scenario: the cookie was set for the `:3000` origin and the page
+  under test was `:3100`, so the locale pin silently did nothing — **and all
+  `search.spec.ts` tests passed anyway, 108/108.** The prediction was that it
+  "does not fail; it quietly asserts against the default locale", and that is
+  what happened. The pin is currently a no-op that no assertion depends on, which
+  is strictly worse than no pin: it reads as coverage. Fix the helper AND check
+  whether any assertion was ever meant to depend on it.
 
-- [ ] **D-5 — `npm run format:check` is RED on this branch, on 11 pre-existing
+- [x] **D-5 — `npm run format:check` is RED on this branch, on 11 pre-existing
   files** *(found 2026-07-31; unrelated to that day's change, which is clean).*
   With the exact declared Prettier (3.9.5) these do not match their committed
   form: `e2e/{mock-backend.mjs,search.spec.ts}`, `app/app/(main)/catalog/page.tsx`,
@@ -497,6 +509,21 @@ checked in the first pass — `startRoute` was taken on trust.
   feature diff, where it would bury the real change. Consider pinning `prettier`
   and `prettier-plugin-tailwindcss` exactly, since a caret range on a formatter
   makes "formatted" a moving target.
+  **→ FIXED 2026-08-01 by `5b5a955`** ("style(repo): apply prettier to the 10
+  files it had drifted on") — the dedicated `style:` commit this entry asked
+  for, folded into no feature diff. **Re-verified 2026-08-02: `npm run
+  format:check` is clean repo-wide.** Two details worth keeping. (1) The entry
+  says **11** files; the fix touched **10** — `business-cabinet/hooks.ts` is
+  listed here and absent there, having come clean via a later commit that
+  reformatted it anyway. (2) **The box stayed `[ ]` for a full day after the fix
+  landed**, so this entry read as a live CI failure while CI was green — the
+  third item in this file to do that, after D-7 and A7. That is the whole
+  argument for the header stamp above: the box is not the status.
+  **Still open, and deliberately not folded in here:** the entry's own last
+  sentence — pin `prettier` and `prettier-plugin-tailwindcss` exactly. A caret
+  range on a formatter makes "formatted" a moving target, and nothing stops this
+  from recurring on the next minor release. Carried to `AUDIT_2.md` rather than
+  closed silently with the reformat.
 
 - [x] **D-4 — RESOLVED 2026-08-01 (D31), by deletion rather than relocation.**
   Was: *"3081 lines across 27 `*_old.tsx` files live inside `src/`, so they

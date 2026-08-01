@@ -12,18 +12,39 @@ Everything marked open below was re-checked against source on 2026-08-01, not
 recalled. `npm run build` green end to end; e2e **104/104** on `chromium` and
 `mobile-chromium` against `next build && next start`.
 
-**Re-verified 2026-08-01 (second pass, frontend `1ca4532` — docs-only since
-`83549fa`, so no code moved).** Every open item above and below was re-read
-against the same backend commit. **All still open; none had silently closed.**
-Newly confirmed from source this pass: `CityController` (no params on `listAll`,
-`name` required on `resolve`) · `CityDto {id, name}` · `SearchCardResponse`
-carrying `hasActiveOffer`/`latitude`/`longitude` · `SellerOnboardingRequest`
-carrying `phone`/`corporateEmail` · `CreateBranchRequest` carrying
+## The audit SNAPSHOT (2026-08-01/02) — what the pass found, before any fix
+
+*(Kept separate from current status on purpose. This paragraph is a photograph;
+the checkboxes below are the live state and have moved since. Read a `[x]` as
+authoritative and this paragraph as history — never the reverse.)*
+
+Re-verified at frontend `1ca4532` (docs-only since `83549fa`, so no code had
+moved) against backend `dev` `cdc47dc`. Every carried item was re-read from
+source. **At snapshot time all were open; none had silently closed.** Newly
+confirmed from source: `CityController` (no params on `listAll`, `name` required
+on `resolve`) · `CityDto {id, name}` · `SearchCardResponse` carrying
+`hasActiveOffer`/`latitude`/`longitude` · `SellerOnboardingRequest` carrying
+`phone`/`corporateEmail` · `CreateBranchRequest` carrying
 `timeZoneId`/`weeklyHours`/`specialHours` · `toOnboardingRequest` omitting
-`cityId` · `resolveCity()` still called from nowhere. The pass added **N8**
-(below), refined **N1** to an exact site list, and confirmed **N2**. i18n parity
-re-counted programmatically: **256/256/256** across ru/kk/en, zero missing, zero
-extra (AUDIT_1's "240/240" is simply an older count, not a defect).
+`cityId` · `resolveCity()` still called from nowhere. The pass ADDED **N8**,
+**N9** and **N10**, refined **N1** to an exact site list, and confirmed **N2**.
+i18n parity re-counted programmatically: **256/256/256** across ru/kk/en, zero
+missing, zero extra (AUDIT_1's "240/240" is an older count, not a defect).
+
+## Current status — as of 2026-08-02, frontend `b5138b9`
+
+**Closed since the snapshot:** **N9** only (commit `8e41a30` — both auth routes
+`noindex`, the false `/app/*` crawlability premise corrected in three places, two
+e2e assertions added). With it, `auth` meets all 8 DONE criteria.
+
+**Everything else on this page is OPEN**, including N8 and N10, which were found
+by this pass and not acted on. Verification state of the tree at `b5138b9`:
+`npm run build` green end to end (lint → boundary fixtures → token drift → tsc →
+next build → rendering contract); `format:check` clean repo-wide; e2e
+**108/108** on `chromium` and `mobile-chromium` against a real
+`next build && next start`. **That e2e figure required working around N10** — a
+dev server owned `:3000`, so the run was driven on `:3100`; a plain
+`npm run test:e2e` would have tested the dev server instead.
 
 **How to use this file:** same rule as AUDIT_1 and the Changelog — when an item
 is fixed, mark it `[x]` with the date and what the change did. Do NOT delete it.
@@ -154,11 +175,27 @@ Full text in `AUDIT_1.md`; this is the queue view.
   `specialHours` absent from `model.ts`. Build with the Branches tab (#6) — the
   backend never populates `openingSummary` either, so there is no payoff before.
 - [ ] **B7 — `createBranch()` is dead code** (`api.ts:75`), waiting on #6.
+- [ ] **D-5 residual — `prettier` and `prettier-plugin-tailwindcss` are still on
+  caret ranges.** The reformat (`5b5a955`) closed the drift; it did not close the
+  CAUSE, which is D-5's own last sentence: a `^` range on a FORMATTER makes
+  "formatted" a moving target, and CI gates `format:check` (D15). The next minor
+  release of either package can turn the build red on files nobody touched —
+  which is exactly how the original 10-file drift appeared. Pin both exactly.
+  Carried here so closing D-5 in `AUDIT_1.md` does not retire the finding that
+  records it.
 - [ ] **D-6 — `e2e/search.spec.ts:41` hardcodes `http://localhost:3000`** in its
   `addCookies` locale pin; silently dropped on any other origin, and the test
   then passes while asserting the default locale. **Its stated blocker is gone**
   (D-5 is fixed), so this is now a 3-line change: lift `pinLocale` out of
   `business-register.spec.ts:169` into a shared e2e helper.
+  **CONFIRMED IN THE WILD 2026-08-02:** the suite was driven on `:3100` (N10's
+  workaround), which IS this finding's "a different port when 3000 is taken"
+  case. The cookie was set for the `:3000` origin, the page under test was
+  `:3100`, the pin silently did nothing — **and every `search.spec.ts` test
+  passed anyway.** The prediction was "it does not fail; it quietly asserts
+  against the default locale", and that is what happened. A pin no assertion
+  depends on is worse than no pin: it reads as coverage. Fix the helper AND
+  check whether any assertion was ever meant to depend on it.
 
 ---
 
