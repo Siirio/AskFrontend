@@ -141,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (data: {
     email: string;
     password: string;
+    passwordConfirmation: string;
     displayName: string;
     locale: string;
   }) => {
@@ -151,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data.displayName || data.email,
         data.email,
         data.password,
+        data.passwordConfirmation,
         data.locale,
       );
       setChallenge(result);

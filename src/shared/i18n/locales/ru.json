@@ -300,6 +300,11 @@
   "auth.label.password": "Пароль",
   "auth.label.name": "Имя",
   "auth.label.code": "Код из письма",
+  "auth.label.passwordConfirmation": "Подтвердите пароль",
+  "auth.password.strengthLow": "Слабый — используйте буквы, цифры и символы",
+  "auth.password.strengthMedium": "Средний — достаточно",
+  "auth.password.strengthStrong": "Надёжный",
+  "auth.password.mismatch": "Пароли не совпадают",
   "auth.placeholder.name": "Ваше имя",
   "auth.placeholder.code": "000000",
   "auth.button.login": "Войти",
@@ -1306,7 +1311,7 @@
   ,"category.autocomplete.noMatch": "Нет подходящих категорий"
   ,"category.autocomplete.createCustom": "Сохранить свою категорию «{{value}}»"
   ,"business.product.deepLink": "Ссылка на товар"
-  ,"business.product.deepLinkPlaceholder": "Ссылка на карточку товара или диплинк"
+  ,"business.product.deepLinkPlaceholder": "Ссылка на kaspi, Ozon, Wildberries, пост в Instagram, карточку Telegram"
   ,"business.product.tags": "Теги"
   ,"business.product.tagsPlaceholder": "Через запятую"
   ,"business.product.enabled": "Товар активен"
@@ -1402,7 +1407,7 @@
   ,"business.product.editorDescription": "Добавьте основную информацию. Описание и характеристики можно заполнить при необходимости."
   ,"business.product.mainDetails": "Основная информация"
   ,"business.product.mainDetailsDescription": "Эти данные помогают пользователю понять предложение и перейти к покупке."
-  ,"business.product.deepLinkRequiredHint": "Укажите прямую ссылку на страницу товара, где пользователь сможет посмотреть детали или оформить заказ."
+  ,"business.product.deepLinkHint": "Например: страница на kaspi.kz, Ozon, Wildberries, пост в Instagram или карточка в Telegram-канале. Необязательно."
   ,"business.product.additionalDescription": "Описание, теги и характеристики для более точного поиска."
   ,"business.service.editorDescription": "Сначала укажите, что вы делаете и как формируется услуга."
   ,"business.service.mainDetails": "Основная информация"

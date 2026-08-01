@@ -300,6 +300,11 @@
   "auth.label.password": "Password",
   "auth.label.name": "Name",
   "auth.label.code": "Code from email",
+  "auth.label.passwordConfirmation": "Confirm password",
+  "auth.password.strengthLow": "Weak — use letters, digits, and symbols",
+  "auth.password.strengthMedium": "Medium — good enough",
+  "auth.password.strengthStrong": "Strong",
+  "auth.password.mismatch": "Passwords do not match",
   "auth.placeholder.name": "Your name",
   "auth.placeholder.code": "000000",
   "auth.button.login": "Sign in",
@@ -1299,7 +1304,7 @@
   ,"category.autocomplete.noMatch": "No matching categories"
   ,"category.autocomplete.createCustom": "Save custom category “{{value}}”"
   ,"business.product.deepLink": "Product link"
-  ,"business.product.deepLinkPlaceholder": "Product page URL or deep link"
+  ,"business.product.deepLinkPlaceholder": "Link to kaspi, Ozon, Wildberries, Instagram post, or Telegram card"
   ,"business.product.tags": "Tags"
   ,"business.product.tagsPlaceholder": "Comma separated"
   ,"business.product.enabled": "Product is active"
@@ -1394,7 +1399,7 @@
   ,"business.product.editorDescription": "Add the essential information first. Description and attributes are optional."
   ,"business.product.mainDetails": "Main information"
   ,"business.product.mainDetailsDescription": "These details help customers understand the offer and continue to purchase."
-  ,"business.product.deepLinkRequiredHint": "Provide a direct product page where customers can view details or place an order."
+  ,"business.product.deepLinkHint": "For example: a page on kaspi.kz, Ozon, Wildberries, an Instagram post, or a Telegram channel card. Optional."
   ,"business.product.additionalDescription": "Description, tags, and attributes for more accurate search."
   ,"business.service.editorDescription": "Start with what you provide and how the service is delivered."
   ,"business.service.mainDetails": "Main information"

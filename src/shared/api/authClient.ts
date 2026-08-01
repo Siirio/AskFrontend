@@ -60,6 +60,7 @@ export function registerCustomer(
   displayName: string,
   email: string,
   password: string,
+  passwordConfirmation: string,
   locale: string,
 ) {
   return apiRequest<AuthChallenge>("/api/v1/auth/customer/register", {
@@ -68,7 +69,7 @@ export function registerCustomer(
       displayName,
       email,
       password,
-      passwordConfirmation: password,
+      passwordConfirmation,
       countryCode: "KZ",
       locale,
       isRememberMe: true,
