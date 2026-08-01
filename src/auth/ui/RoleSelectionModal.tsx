@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Store } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -15,9 +15,7 @@ import {
   DialogTitle,
 } from "@/shared/ui/dialog";
 import { Spinner } from "@/shared/ui/spinner";
-import { toast } from "@/shared/ui/sonner";
 
-import * as api from "../api";
 import { useRoleSelection } from "../hooks";
 
 /** Document codes the backend requires per role choice (identity contracts.md,
@@ -25,7 +23,6 @@ import { useRoleSelection } from "../hooks";
  *  "business" only starts seller onboarding (routes to business/register);
  *  that flow's own completion is where SELLER_TERMS/PERSONAL_DATA_CONSENT
  *  belongs (business-cabinet, not this slice). */
-const CUSTOMER_LEGAL_DOCUMENT_CODES = ["USER_TERMS", "PRIVACY_POLICY"];
 
 /**
  * The role-choosing modal (PRODUCT_VISION UF 1), shown over /app after a fresh
@@ -136,7 +133,6 @@ function RoleCard({
 
 export function RoleSelectionModal() {
   const t = useTranslations("auth");
-  const locale = useLocale();
   const router = useRouter();
   const { open, resolve } = useRoleSelection();
   const [choice, setChoice] = useState<RoleChoice>("customer");
@@ -152,24 +148,13 @@ export function RoleSelectionModal() {
     cardRefs.current[role]?.focus();
   };
 
-  const confirm = async () => {
+  // Records NO legal consent — that moved to `useVerifyStep` on 2026-08-01.
+  // Doing it here bound the record to a ROLE ANSWER, which dropped it entirely
+  // for anyone choosing "business" and, worse, wrote it for first-time GOOGLE
+  // sign-ups, who are never shown an agreement checkbox (P9.4). The consent
+  // belongs to registration; this modal only asks what you came to do.
+  const confirm = () => {
     setPending(true);
-    // Only the customer answer records legal consent here — choosing
-    // "business" only starts seller onboarding, which records its own
-    // SELLER_TERMS/PERSONAL_DATA_CONSENT acceptance at completion.
-    if (choice === "customer") {
-      try {
-        await api.acceptRegistrationLegal({
-          documentCodes: CUSTOMER_LEGAL_DOCUMENT_CODES,
-          locale,
-        });
-      } catch {
-        // Best-effort: the modal has no dismissal affordance, so blocking
-        // navigation on a network hiccup traps the user worse than a missed
-        // consent record. Surface it and move on.
-        toast.error(t("errors.network"));
-      }
-    }
     resolve();
     router.push(ROLE_TARGET[choice]);
   };

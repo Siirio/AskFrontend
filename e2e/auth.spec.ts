@@ -233,6 +233,14 @@ test("sign-up → verify → the role modal over /app → continue searching", a
   );
   expect(token).toBe("test-token-abc");
 
+  // Consent is recorded at VERIFY, and asserting it HERE — with the modal still
+  // open and unanswered — is the whole point (2026-08-01). It used to fire from
+  // the modal's "Continue", so this same assertion at the END of the test passed
+  // either way and could not tell the two apart.
+  expect(legalAcceptanceBody).toMatchObject({
+    document_codes: ["USER_TERMS", "PRIVACY_POLICY"],
+  });
+
   // Search is the mission: the customer card is preselected.
   await expect(page.getByTestId("role-card-customer")).toHaveAttribute(
     "aria-checked",
@@ -245,10 +253,6 @@ test("sign-up → verify → the role modal over /app → continue searching", a
     localStorage.getItem("ask.roleSelectionPending"),
   );
   expect(pending).toBeNull();
-  // The customer answer records legal consent with the customer document set.
-  expect(legalAcceptanceBody).toMatchObject({
-    document_codes: ["USER_TERMS", "PRIVACY_POLICY"],
-  });
 });
 
 test("the role modal cannot be dismissed and survives a reload until answered", async ({
@@ -298,12 +302,18 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
   await page.route("**/api/v1/auth/verify", (route) =>
     route.fulfill({ status: 200, json: SESSION_SUGGEST }),
   );
-  // The "business" answer only starts seller onboarding — it must NOT record
-  // legal consent itself (that belongs to the onboarding wizard's own
-  // completion, business-cabinet). A call here would be a failure.
-  let legalAcceptanceCalled = false;
+  // Registration consent is recorded at VERIFY, for EVERY sign-up, whichever
+  // role is answered afterwards (moved there 2026-08-01). This test used to
+  // assert the call never happened at all, because the old implementation fired
+  // it from the modal's customer branch only — so choosing "business" recorded
+  // nothing, ever. Exactly ONE call is expected, before the modal is answered.
+  //
+  // What must still NOT happen is a SECOND call on the "business" answer:
+  // SELLER_TERMS / PERSONAL_DATA_CONSENT belong to the onboarding wizard's own
+  // completion (business-cabinet), not to this modal.
+  let legalAcceptanceCount = 0;
   await page.route("**/api/v1/legal/registration-acceptances", (route) => {
-    legalAcceptanceCalled = true;
+    legalAcceptanceCount += 1;
     return route.fulfill({ status: 204 });
   });
 
@@ -322,6 +332,8 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
   await expect(page).toHaveURL(/\/app$/);
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  // Already recorded — at verify, before any role was chosen.
+  expect(legalAcceptanceCount).toBe(1);
 
   // No dismissal: no close button, ESC ignored, outside click ignored.
   await expect(dialog.locator('[data-slot="dialog-close"]')).toHaveCount(0);
@@ -351,7 +363,8 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
     localStorage.getItem("ask.roleSelectionPending"),
   );
   expect(pending).toBeNull();
-  expect(legalAcceptanceCalled).toBe(false);
+  // Still one: answering "I'm selling" adds no consent record of its own.
+  expect(legalAcceptanceCount).toBe(1);
 });
 
 test("Google OAuth first-signup arms the role modal via ?registration=1", async ({

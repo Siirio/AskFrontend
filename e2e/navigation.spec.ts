@@ -36,7 +36,12 @@ const SELLER_SESSION = {
   access_token: null,
   token_type: "Bearer",
   role: "BUSINESS_OWNER",
-  start_route: "OWNER_BRANCHES",
+  // `CLIENT_SEARCH` is the ONLY value the backend can emit: both
+  // AuthProcessor.resolveStartRoute() and LoginProcessor.resolveStartRoute()
+  // are no-arg methods returning that constant, for every account including a
+  // business owner. This stub said "OWNER_BRANCHES" until 2026-08-01, which no
+  // backend path produces — the e2e-stub lock, in the exact shape it names.
+  start_route: "CLIENT_SEARCH",
   user: {
     user_id: "33333333-3333-3333-3333-333333333333",
     display_name: "Seller Boss",

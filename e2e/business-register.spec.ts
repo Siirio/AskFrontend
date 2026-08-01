@@ -48,7 +48,12 @@ const SELLER_SESSION = {
   access_token: null,
   token_type: "Bearer",
   role: "BUSINESS_OWNER",
-  start_route: "OWNER_BRANCHES",
+  // `CLIENT_SEARCH` is the ONLY value the backend can emit: both
+  // AuthProcessor.resolveStartRoute() and LoginProcessor.resolveStartRoute()
+  // are no-arg methods returning that constant, for every account including a
+  // business owner. This stub said "OWNER_BRANCHES" until 2026-08-01, which no
+  // backend path produces — the e2e-stub lock, in the exact shape it names.
+  start_route: "CLIENT_SEARCH",
   user: CUSTOMER,
   business: {
     business_id: "b1",
@@ -443,9 +448,13 @@ test("PickUp available: Yes opens the branch map picker, and drafted branches tr
   await advanceToDeliveryStep(page);
   await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
 
-  // Answering Yes opens the map modal automatically (RegisterStepDelivery).
+  // Answering Yes opens the branch modal automatically (RegisterStepDelivery).
+  // Assert the DIALOG, not the map: since the 2026-07-31 reorder the map is not
+  // rendered until the KATO place is settled, so a `branch-map` assertion here
+  // contradicts the `toHaveCount(0)` one a few lines below. Both were present
+  // for a while — the stale one is why this spec was failing.
   await page.getByTestId("business-pickup-YES").click();
-  await expect(page.getByTestId("branch-map")).toBeVisible();
+  await expect(page.getByRole("dialog")).toBeVisible();
 
   await page.locator("#branch-name").fill("Aigul Flowers — Abay Ave");
 

@@ -11,15 +11,42 @@
 
 // ── Request DTOs ────────────────────────────────────────────────────────────
 
-/** POST /api/v1/auth/customer/register. `password` is 8–128 chars; the backend
- *  asserts `password === passwordConfirmation` and `acceptedUserAgreement`. */
+/**
+ * POST /api/v1/auth/customer/register. `password` is 8–128 chars; the backend
+ * asserts `password === passwordConfirmation` (`@AssertTrue passwordsMatch`).
+ *
+ * **`acceptedUserAgreement` was REMOVED from this type on 2026-08-01.** It is not
+ * a field on `CustomerRegisterRequest` — Spring ignores unknown JSON properties,
+ * so it had been posted and silently discarded since the backend dropped it. The
+ * checkbox stays on the form as a client-side gate (P9.4 — no sign-up passes
+ * without agreeing); the actual consent RECORD is written after verify, against
+ * `POST /legal/registration-acceptances` (see hooks.ts `useVerifyStep`).
+ *
+ * `countryCode` and `locale` default to "KZ"/"ru" server-side. Sending the real
+ * locale matters: it is stored on the account and the default would mark every
+ * Kazakh- and English-speaking sign-up as Russian, in a product whose own default
+ * locale is `kk`.
+ */
 export type CustomerRegisterRequest = {
   displayName?: string;
   email: string;
   password: string;
   passwordConfirmation: string;
-  acceptedUserAgreement: boolean;
+  countryCode: string;
+  locale: string;
 };
+
+/**
+ * The country every ASK account is registered in today.
+ *
+ * `business-cabinet` declares its own copy for seller onboarding. That is a
+ * deliberate duplicate, not an oversight: R6 forbids `auth` — the foundation
+ * slice — from importing any slice, so it cannot read that one, and promoting a
+ * two-character country code to `shared/` would put a business fact in the
+ * toolbox (§5). Same value, two owners, and they are free to diverge the day
+ * customer sign-up and seller registration stop sharing a market (gate G4).
+ */
+export const REGISTRATION_COUNTRY_CODE = "KZ";
 
 /** POST /api/v1/auth/login — unified password login (all roles). Returns a
  *  session directly, or a 2FA challenge (requiresTwoFactor + verificationId
@@ -95,14 +122,51 @@ export type AuthBusinessContextResponse = {
   memberRole: string;
 };
 
-/** The full session contract. Only a subset is consumed by the V1 customer path
- *  (see api.ts); the password-login fields — requiresTwoFactor,
- *  isActivationRequired — are modelled for completeness and consumed when the
- *  seller/staff paths land (roadmap #7). */
+/** `AuthCustomerProfileResponse` — whether the customer surface is enabled. */
+export type AuthCustomerProfileResponse = { isEnabled?: boolean };
+
+/** `AuthBusinessMembershipResponse` — ONE of the user's business memberships.
+ *  `business` above is the single ACTIVE context; this is the full list. */
+export type AuthBusinessMembershipResponse = {
+  membershipId: string;
+  businessId: string;
+  businessName: string;
+  role: string;
+  branchIds: string[];
+};
+
+/** `AuthPlatformMembershipResponse` — staff/admin membership. Platform roles
+ *  have no V1 surface (P9.1); modelled so the contract is complete, not built on. */
+export type AuthPlatformMembershipResponse = {
+  role?: string;
+  permissions?: string[];
+};
+
+/**
+ * The full session contract — and as of 2026-08-01 it is actually full.
+ *
+ * This type is a MIRROR of `AuthSessionResponse` on the wire, deliberately, and
+ * P8.3 permits the unconsumed fields: a contract you only half-model is one you
+ * cannot check a response against. It had drifted into claiming completeness
+ * while missing five fields — `expiresIn` plus the four the backend's
+ * `SessionCapabilitiesProcessor` populates on every response.
+ *
+ * Consumed in V1: `accessToken`, `role`, `startRoute`, `user`, `business`,
+ * `requiresTwoFactor`, `verificationId`. Everything else is contract surface
+ * awaiting the seller/staff paths (roadmap #7) or a security-settings screen
+ * that does not exist yet — do not build UI on a field just because it is here
+ * (P9.1).
+ */
 export type AuthSessionResponse = {
+  /** ⚠ NOT null on a Bearer `GET /session` — see `api.ts getSession`. The
+   *  backend re-issues a token on every session read. */
   accessToken?: string | null;
   tokenType?: string;
+  /** Absolute expiry. `expiresIn` is the same instant as a duration; the
+   *  backend sends BOTH and this client currently reads neither. */
   expiresAt?: string;
+  /** Token lifetime in SECONDS, recomputed per response. */
+  expiresIn?: number;
   isRemembered?: boolean;
   isActivationRequired?: boolean;
   role?: string;
@@ -117,6 +181,10 @@ export type AuthSessionResponse = {
   isTwoFactorEnabled?: boolean;
   /** The 2FA challenge id — same master/dev split as VerifyCodeRequest above. */
   verificationId?: string;
+  customerProfile?: AuthCustomerProfileResponse;
+  businessMemberships?: AuthBusinessMembershipResponse[];
+  platformMembership?: AuthPlatformMembershipResponse;
+  pendingInvitationsCount?: number;
 };
 
 // ── View model ──────────────────────────────────────────────────────────────
@@ -167,19 +235,40 @@ export function canAccessDashboard(user: AuthUser | null): boolean {
 // ── Mappers (pure, P5.1) ────────────────────────────────────────────────────
 
 /**
- * Map a role string to a view-model kind. Matches by substring since the
- * backend uses different casings/forms across values ("ROLE_BUSINESS_OWNER",
- * "OWNER", "BUSINESS_WORKER").
+ * Map a business membership role to a view-model kind.
  *
- * Platform admin roles have no V1 surface (P9.1), so they never legitimately
- * reach this UI; an unrecognised role falls back to the least-privileged
- * customer view.
+ * EXACT matching against the backend's own enum
+ * (`kz.ask.identity.authorization.domain.enums.Role`), tolerating the `ROLE_`
+ * authority prefix that verify returns and `GET /session` does not. It used to
+ * substring-match — `value.includes("OWNER")` — which is loose in both
+ * directions: it would classify a hypothetical `DISOWNED` as a business role,
+ * and it hid the fact that the unknown case is a real decision rather than a
+ * fallthrough.
+ *
+ * `null` means "this is not a role we know how to render". The caller decides
+ * what to do with that; it is deliberately NOT collapsed to `customer` here,
+ * because those two answers mean different things and only one of them is a
+ * mismatch worth reporting.
+ *
+ * The platform roles (`SUPER_ADMIN`, `ADMIN`, `MODERATOR`) are in the SAME Java
+ * enum that types `BusinessMember.role`, so nothing on the wire prevents one
+ * appearing here. They have no V1 surface (P9.1) and are intentionally absent
+ * from this map — they are unknown to this UI, which is the honest answer.
  */
-export function roleToKind(role: string | undefined): AuthUserKind {
-  const value = role ?? "";
-  if (value.includes("WORKER")) return "staff";
-  if (value.includes("OWNER") || value.includes("MANAGER")) return "business";
-  return "customer";
+const KIND_BY_MEMBER_ROLE: Record<string, AuthUserKind> = {
+  OWNER: "business",
+  MANAGER: "business",
+  WORKER: "staff",
+  CUSTOMER: "customer",
+};
+
+export function roleToKind(role: string | undefined): AuthUserKind | null {
+  if (!role) return null;
+  const normalized = role
+    .trim()
+    .toUpperCase()
+    .replace(/^ROLE_/, "");
+  return KIND_BY_MEMBER_ROLE[normalized] ?? null;
 }
 
 function toBusinessContext(
@@ -224,11 +313,35 @@ export function toAuthUser(session: AuthSessionResponse): AuthUser | null {
 
   if (session.business) {
     const kind = roleToKind(session.business.memberRole);
-    if (kind !== "customer") {
+    if (kind === "business" || kind === "staff") {
       return { kind, ...base, business: toBusinessContext(session.business) };
     }
+    // kind === null → a membership role this client does not understand, or
+    // "customer" → a membership that grants nothing. Both fall through to the
+    // least-privileged view, which is the safe default; the FIRST of the two is
+    // a contract mismatch and callers can detect it with `hasUnknownMemberRole`
+    // rather than having to re-derive it (P9.4).
   }
   return { kind: "customer", ...base };
+}
+
+/**
+ * True when the session carries a business context whose `memberRole` this
+ * client cannot map — the session stays usable (degraded to `customer`), but
+ * the person would be missing every business capability they actually hold.
+ *
+ * **Nothing reports this today, deliberately.** The backend's business-group
+ * roles are exactly OWNER / MANAGER / WORKER and all three map, so the condition
+ * cannot currently fire; wiring an alert for it would be building ahead of need
+ * (P8.2). This exists so that IF a fourth role ever ships, the condition is
+ * already nameable and testable rather than an accident of string matching —
+ * surfacing it is then a few lines in a client component (`model.ts` is pure and
+ * DOM-free per D5, so the message cannot live here).
+ */
+export function hasUnknownMemberRole(session: AuthSessionResponse): boolean {
+  const business = session.business;
+  if (!business) return false;
+  return roleToKind(business.memberRole) === null;
 }
 
 // ── Password strength (pure, P5.1) ──────────────────────────────────────────
@@ -277,7 +390,23 @@ export function passwordStrength(value: string): PasswordStrength {
   return { score, level };
 }
 
-/** Map the backend's startRoute to a client route path. */
+/**
+ * Map the backend's `startRoute` to a client route path.
+ *
+ * ⚠ **`OWNER_BRANCHES` and `BRANCH_WORKSPACE` are currently UNREACHABLE.** Both
+ * `AuthProcessor.resolveStartRoute()` and `LoginProcessor.resolveStartRoute()`
+ * are no-arg methods returning the constant `"CLIENT_SEARCH"`, so login, verify
+ * and `GET /session` route every account — business owners included — to `/app`.
+ *
+ * They are KEPT rather than deleted: this map is the client's half of a contract
+ * the backend can restore without a frontend change, and deleting the branches
+ * would silently turn a restored `OWNER_BRANCHES` into the `/app` default. An
+ * owner landing on `/app` at sign-in is not a defect — the nav's Dashboard link
+ * is the way in — but do NOT build on these branches while they are unreachable:
+ * `business-cabinet` used to take its post-REGISTRATION route from here and sent
+ * every new seller to Home as a result. It now uses
+ * `SellerOnboardingResponse.startRoute` (2026-08-01).
+ */
 export function startRouteToPath(
   startRoute: string | undefined | null,
 ): string {

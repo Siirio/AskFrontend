@@ -16,6 +16,7 @@ import * as api from "./api";
 import {
   EMPTY_ONBOARDING_VALUES,
   hasOnboardingErrors,
+  onboardingStartRouteToPath,
   ONBOARDING_STEP_COUNT,
   stepIsSkippable,
   toOnboardingRequest,
@@ -132,8 +133,15 @@ export type OnboardingResult = { targetPath: string };
  * until the client re-reads the session, `canAccessDashboard` still answers
  * false and `RequireDashboardAccess` bounces the person straight out of the
  * cabinet they just created — which is precisely the silent dead end this route
- * exists to remove. The refreshed session's `startRoute` decides where to land
- * (auth's lock: the backend owns the post-login route), never a hardcoded path.
+ * exists to remove.
+ *
+ * Where to LAND comes from the onboarding response, not from the refreshed
+ * session (corrected 2026-08-01). Auth's lock still holds — the backend owns the
+ * post-login route and this client never hardcodes one — but `GET /session`
+ * stopped carrying an answer: `resolveStartRoute()` returns the constant
+ * `"CLIENT_SEARCH"`, so following it sent every new seller to Home.
+ * `SellerOnboardingResponse.startRoute` is the backend value that still means
+ * something (`onboardingStartRouteToPath`).
  */
 export function useSellerOnboarding() {
   const t = useTranslations("businessCabinet");
@@ -276,10 +284,7 @@ export function useSellerOnboarding() {
   const addBranch = useCallback((branch: Omit<DraftBranch, "draftId">) => {
     setValues((v) => ({
       ...v,
-      branches: [
-        ...v.branches,
-        { ...branch, draftId: crypto.randomUUID() },
-      ],
+      branches: [...v.branches, { ...branch, draftId: crypto.randomUUID() }],
     }));
   }, []);
 
@@ -348,22 +353,30 @@ export function useSellerOnboarding() {
       // `toOnboardingRequest`) — business, membership, profile, verification,
       // and every branch commit in ONE transaction, so there is no follow-up
       // per-branch call to fail independently here.
-      await api.onboardSeller(
+      const response = await api.onboardSeller(
         toOnboardingRequest(values, api.REGISTRATION_COUNTRY_CODE),
       );
       submitted.current = true;
 
-      // A failure to re-read the session is NOT a failed registration, so it
-      // must not be reported as one: fall through to the cabinet and let
-      // RequireDashboardAccess and the next session restore settle it, rather
-      // than inviting a duplicate submit.
-      let targetPath = "/app/business";
+      // Re-read the session so the role change reaches the guard and the nav.
+      // A failure here is NOT a failed registration and must not be reported as
+      // one — RequireDashboardAccess and the next session restore settle it,
+      // and reporting it would invite a duplicate submit.
       try {
-        targetPath = await refreshSession();
+        await refreshSession();
       } catch {
-        // keep the fallback
+        // deliberately ignored — see above
       }
-      setResult({ targetPath });
+
+      // The ROUTE comes from the onboarding response, not from the refreshed
+      // session (2026-08-01). `GET /session` answers `CLIENT_SEARCH` for every
+      // account, so taking the route from there sent every newly-registered
+      // seller to Home — and only the FAILURE path reached the cabinet, because
+      // `/app/business` was the fallback. This response is the one place on the
+      // wire that knows where a new seller belongs.
+      setResult({
+        targetPath: onboardingStartRouteToPath(response.startRoute),
+      });
     } catch (e) {
       const message = describeError(e, t, "errors.network");
       setFormError(message);

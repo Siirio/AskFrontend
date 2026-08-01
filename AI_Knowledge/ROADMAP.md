@@ -106,10 +106,13 @@ Slices 6–8 are one product surface but three slices: the cabinet **composes**,
 registration returns 201 and the consent is silently discarded. Nothing in the UI reveals it.
 This is a legal artefact, not decoration: the checkbox links to Terms/Privacy and gates the form.
 
-- [ ] After a successful `verify` (the point where a Bearer token first exists), call
-      `POST /api/v1/legal/registration-acceptances` with the codes the form actually presented —
-      `USER_TERMS` + `PRIVACY_POLICY` — plus `countryCode` and the active `locale`.
-      Drop `acceptedUserAgreement` from the register body; it is a field the backend does not have.
+- [x] **DONE 2026-08-01.** After a successful `verify` (the point where a Bearer token first
+      exists), `useVerifyStep` calls `POST /api/v1/legal/registration-acceptances` with the codes
+      the form actually presented — `USER_TERMS` + `PRIVACY_POLICY` — plus the active `locale`.
+      `acceptedUserAgreement` is gone from the register body; `countryCode`/`locale` are now sent
+      there instead. An interim implementation had put the call in `RoleSelectionModal`, which
+      recorded nothing for the "business" answer and recorded consent for Google sign-ups that
+      are shown no agreement — see `features/auth/contracts.md`.
 - [ ] **Do not invent the document set.** `GET /api/v1/legal/documents` is in the backend's public
       allowlist but has **no controller**, so the client cannot discover which documents/versions
       are active. Send only the two codes the form visibly links to, and raise the missing endpoint
@@ -122,7 +125,8 @@ This is a legal artefact, not decoration: the checkbox links to Terms/Privacy an
 
 Both gates that parked this are now cleared: Google login is in `PRODUCT_VISION.md` UF 1 and the `Email-only auth` lock is reversed. Google OAuth is now **required** on the Log in and Sign up pages. Docs are written (auth `contracts.md` / `ux-ui-flow.md` / `README.md` / `locks.md`); implementation is pending.
 
-- [ ] **Frontend:** `src/app/oauth/callback/page.tsx` (transient exchange page) + a "Continue with Google" secondary button on `LoginForm` and `RegisterForm` + a per-request `credentials` option on `httpClient`. The callback reuses `applySessionTo` → `startRoute` (identical to verify/login; `suggestRoleExpansion` arms the role modal). i18n `auth.oauth.*` in ru/kk/en. Optional `NEXT_PUBLIC_OAUTH_ENABLED` flag so the button never renders dead.
+- [x] **Frontend — SHIPPED (verified 2026-08-01, driven end to end against a real Google
+  account).** `src/app/oauth/callback/page.tsx` (transient exchange page) + a "Continue with Google" secondary button on `LoginForm` and `RegisterForm` + a per-request `credentials` option on `httpClient`. The callback reuses `applySessionTo` → `startRoute` (identical to verify/login; `suggestRoleExpansion` arms the role modal). i18n `auth.oauth.*` in ru/kk/en. Optional `NEXT_PUBLIC_OAUTH_ENABLED` flag so the button never renders dead.
 - [x] **Backend delivered (2026-07-19, Final Major Update):** `GET /api/v1/auth/session` now exchanges the `ASK_SESSION` bridge cookie for the HS256 JWT (+ `expires_in`) and clears the cookie — exactly the option-2 hand-off. **Frontend is fully unblocked**; the whole item can be built now.
 
 Depends on: Phase 0.

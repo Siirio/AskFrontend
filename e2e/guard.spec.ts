@@ -31,7 +31,12 @@ const SELLER_SESSION = {
   access_token: null,
   token_type: "Bearer",
   role: "BUSINESS_OWNER",
-  start_route: "OWNER_BRANCHES",
+  // `CLIENT_SEARCH` is the ONLY value the backend can emit: both
+  // AuthProcessor.resolveStartRoute() and LoginProcessor.resolveStartRoute()
+  // are no-arg methods returning that constant, for every account including a
+  // business owner. This stub said "OWNER_BRANCHES" until 2026-08-01, which no
+  // backend path produces — the e2e-stub lock, in the exact shape it names.
+  start_route: "CLIENT_SEARCH",
   user: {
     user_id: "33333333-3333-3333-3333-333333333333",
     display_name: "Seller Boss",
@@ -87,8 +92,12 @@ test("rule 1: a customer-only session is redirected away from the Dashboard", as
 }) => {
   await seedSession(page, CUSTOMER_SESSION);
   await page.goto("/app/business");
-  // The customer cannot open the cabinet — bounced to Home.
-  await expect(page).toHaveURL(/\/app$/);
+  // The customer cannot open the cabinet — bounced to seller REGISTRATION, the
+  // guard's own sibling route, not to Home. D27 (2026-07-28) changed the target
+  // for exactly this visitor: Home left a would-be seller with no next step.
+  // This assertion still read `/app$` and had been failing since; the identical
+  // staleness was fixed in business-register.spec.ts at the time and missed here.
+  await expect(page).toHaveURL(/\/app\/business\/register$/);
 });
 
 test("rule 1: a seller session opens the Dashboard", async ({ page }) => {

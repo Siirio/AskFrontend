@@ -72,7 +72,7 @@ boundary, so slice code only ever sees camelCase.
 | POST | /api/v1/auth/customer/register | No | Sign up (customer) → 201 AuthChallengeResponse |
 | POST | /api/v1/auth/verify | No | 6-digit code confirming a **registration** → AuthSessionResponse |
 | POST | /api/v1/auth/login | No | **Log in — email + password** → AuthSessionResponse (or a 2FA challenge) |
-| GET | /api/v1/auth/session | Bearer | Session restore on app load (accessToken comes back null) |
+| GET | /api/v1/auth/session | Bearer | Session restore on app load — returns a **freshly-issued** `access_token` + `expires_in` every call (see below) |
 | POST | /api/v1/auth/logout | Bearer | Sign out (the action lives here; surface is the profile card, UF 2.3) |
 
 Sign up verifies the email with a 6-digit code; **log in is email + password**
@@ -82,12 +82,31 @@ Sign up verifies the email with a 6-digit code; **log in is email + password**
 ## Legal consent (customer path — 2026-07-30)
 
 `POST /api/v1/legal/registration-acceptances` (Bearer, `LegalController#acceptRegistration`)
-records consent once the session exists. Called from `RoleSelectionModal.confirm()`
-(auth/ui) **only when the customer card is answered** — `documentCodes: ["USER_TERMS",
-"PRIVACY_POLICY"]`, `locale` from `useLocale()`. Best-effort: a failure toasts
-`errors.network` but still resolves the modal and navigates, since the modal has no
-dismissal affordance and trapping the user on a network hiccup is worse than a missed
-consent record.
+records consent once the session exists.
+
+> ### ⚠ MOVED 2026-08-01 — it now fires from `useVerifyStep`, not the role modal
+>
+> It used to be called from `RoleSelectionModal.confirm()` **only when the customer card was
+> answered**. That location caused two defects at once:
+>
+> 1. **Choosing "business" dropped the consent permanently.** Seller onboarding records
+>    `SELLER_TERMS`/`PERSONAL_DATA_CONSENT`, never these two — so nobody who picked "business"
+>    ever had their Terms/Privacy acceptance recorded, anywhere.
+> 2. **Google sign-ups had consent recorded for text they were never shown.** The modal also
+>    opens for a first-time OAuth sign-up (`?registration=1`), and that flow presents no
+>    agreement checkbox at all. This file already warned that sending codes for unseen documents
+>    would be "a worse defect than the one being fixed" (P9.4) — and it was happening.
+>
+> The consent belongs to REGISTRATION, not to a role answer. It now fires from
+> `useVerifyStep` immediately after a successful `verify` whose challenge `purpose === "REGISTER"`
+> — the first moment a Bearer token exists, and the email sign-up is the only path that shows
+> the checkbox. `documentCodes: ["USER_TERMS", "PRIVACY_POLICY"]`, `locale` from `useLocale()`.
+> Still best-effort: a failure toasts `errors.network` and the flow continues, because stranding
+> someone on the verify screen with a valid account is worse than a missed record.
+>
+> **Still open, raised not faked:** a Google sign-up records NO registration consent, because it
+> is shown no agreement. That is a product/UX gap (the OAuth buttons need consent copy), not
+> something this client may paper over.
 
 **The "business" answer does NOT call this endpoint here.** Choosing "business" only
 starts seller onboarding (routes to `/app/business/register`); per the backend's identity
@@ -97,11 +116,13 @@ flagged here so it isn't lost: whoever finishes the seller onboarding wizard nee
 the equivalent `acceptRegistrationLegal({ documentCodes: ["SELLER_TERMS",
 "PERSONAL_DATA_CONSENT"] })` call at the wizard's completion step.
 
-`CustomerRegisterRequest` still has no `acceptedUserAgreement` field on `dev` (only
-`countryCode`/`locale`, defaulted "KZ"/"ru") — the register form's checkbox posts a field
-the backend silently drops. The checkbox stays (client-side validation gate, P9.4 — never
-lets a sign-up through without agreeing), but the actual consent record now comes from the
-call above, not from that POST body.
+`CustomerRegisterRequest` has no `acceptedUserAgreement` field on `dev` (only
+`countryCode`/`locale`, defaulted "KZ"/"ru"). **Fixed 2026-08-01:** the client no longer posts
+it — the field was being sent and silently dropped by Jackson. The checkbox stays as a
+client-side gate (P9.4 — no sign-up passes without agreeing); the consent RECORD comes from the
+call above. The same change started sending `countryCode` and `locale` for real, so an account
+is no longer stamped with the backend's `"ru"` default in a product whose own default locale
+is `kk`.
 
 ## Endpoints deferred (backend exists; built with the seller/staff paths, roadmap #7)
 
@@ -181,7 +202,8 @@ business OWNER. There is no account *export* (the backend removed it). Documente
 ## Response DTOs
 
 - **AuthChallengeResponse** (Java: `VerificationResponse`): **`verificationId`**, role, **`purpose`** (`VerificationPurpose` — `LOGIN` · `REGISTER` · `EMAIL_CHANGE`; set from `challenge.getPurpose().name()`), channel, maskedDestination, expiresAt, **code?** (populated ONLY in backend verification test-mode; prod omits it and emails the code)
-- **AuthSessionResponse**: accessToken, tokenType, **expiresIn** (`expires_in`, token lifetime in seconds — added 2026-07-19), expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business? (AuthBusinessContextResponse), allRoles? (string[]), requiresTwoFactor?, **isTwoFactorEnabled** (sent on every response, added by the backend 2026-07-30 — not yet consumed anywhere, no security-settings screen exists in V1), **`verificationId?`** (the 2FA challenge id — renamed)
+- **AuthSessionResponse** (fully modelled client-side since 2026-08-01, including the four
+  `SessionCapabilitiesProcessor` fields below): accessToken, tokenType, **expiresIn** (`expires_in`, token lifetime in seconds — added 2026-07-19), expiresAt, isRemembered, isActivationRequired, role, startRoute, user (AuthUserResponse), business? (AuthBusinessContextResponse), allRoles? (string[]), requiresTwoFactor?, **isTwoFactorEnabled** (sent on every response, added by the backend 2026-07-30 — not yet consumed anywhere, no security-settings screen exists in V1), **`verificationId?`** (the 2FA challenge id — renamed)
 
 ### Role modal trigger (corrected 2026-07-27, OAuth closed 2026-07-30)
 
@@ -201,12 +223,27 @@ successful token exchange and arms the modal from that — still real backend da
 carried as a query param instead of a session field, since the exchange itself only
 proxies `GET /session` and has no request body of its own to carry a flag in.
 
-- GET /session under a **Bearer** token returns `accessToken: null` (the token is already stored); under the **OAuth bridge cookie** it returns a REAL `access_token` (the exchange). `role` is the bare enum name ("CUSTOMER") rather than the authority ("ROLE_CUSTOMER") returned by verify — the client maps both (`roleToKind`).
+- ⚠ **CORRECTED 2026-08-01 — GET /session ALWAYS returns a real `access_token`.** This file
+  said it "returns `accessToken: null` (the token is already stored)"; that is not what the code
+  does. `AuthProcessor.currentSession` calls `jwtTokenService.issue(...)` and sets `expires_in`
+  on every response, Bearer or bridge cookie alike. Since `applySessionTo` stores any token it
+  receives, **every session restore rolls the token forward** — an undesigned but benign rolling
+  refresh. Nothing reads `expires_in` yet. The OAuth bridge is therefore no longer the *only*
+  call that returns a token; it is only the one that also CLEARS the cookie. `role` is the bare enum name ("CUSTOMER") rather than the authority ("ROLE_CUSTOMER") returned by verify — the client maps both (`roleToKind`).
 - ⚠ **`role`/`startRoute` stay account-level and neutral even for a business owner** — verified live 2026-07-28: a login for an OWNER account returns `role: "CUSTOMER"`, `startRoute: "CLIENT_SEARCH"`, `all_roles: ["CUSTOMER"]`, WITH a populated `business` object (`member_role: "OWNER"`) and a matching `business_memberships` entry. The backend's business/role model lives separately from the account role (`business_member` table), so `role` never becomes `"OWNER"`/`"BUSINESS_OWNER"` on login. The client derives `AuthUser.kind` from `session.business.memberRole` (`toAuthUser`), NOT from `session.role` — `roleToKind(session.role)` would always resolve to `"customer"` for a real business owner and hide the Dashboard nav link (`canAccessDashboard`). `businessMemberships` (plural) is not yet consumed; today's UI only surfaces the single active `business` context.
 - **AuthUserResponse**: userId, displayName (**nullable** — registration accepts an empty name and the backend stores null), email, **phone** (nullable — reinstated on AppUser by backend commit `9a90f5c`, 2026-07-29; now modelled client-side too)
 - **AuthBusinessContextResponse**: businessId, businessName, **businessCategoryId, businessCategoryName, businessScope** (nullable — modelled 2026-07-30), branchId, branchName, membershipId, memberRole
 - **LogoutResponse**: success
-- **Undocumented on the wire, confirmed live 2026-07-29** (present on `AuthSessionResponse`, not yet modelled by this client): `customerProfile: { isEnabled: boolean }`, `businessMemberships: AuthBusinessContextResponse[]` (plural — see the OWNER-login note above; `session.business` is the single active context, this is the full list), `pendingInvitationsCount: number`. Not consumed anywhere in V1 code; raised here so a future consumer doesn't have to re-discover them by curling the server.
+- **Populated on every response by `SessionCapabilitiesProcessor`; MODELLED since 2026-08-01**
+  (they were previously listed here as "not yet modelled", and `platformMembership` was missing
+  from this file entirely):
+  `customerProfile: { isEnabled }` ·
+  `businessMemberships: { membershipId, businessId, businessName, role, branchIds }[]` (plural —
+  `session.business` is the single ACTIVE context, this is the full list; note the shape is
+  `AuthBusinessMembershipResponse`, NOT `AuthBusinessContextResponse` as this file used to say) ·
+  `platformMembership: { role, permissions }` (platform roles have no V1 surface, P9.1) ·
+  `pendingInvitationsCount: number`. None is consumed in V1 — they are modelled so the contract
+  can be checked against a response, not so UI can be built on them.
 
 ### `allRoles` semantics (backend commit `9a90f5c`, 2026-07-29)
 
@@ -220,6 +257,21 @@ this array (unchanged from before — this just confirms the shape in writing).
 ## startRoute → route
 
 CLIENT_SEARCH → `/app` · OWNER_BRANCHES → `/app/business` · BRANCH_WORKSPACE → `/app/business`
+
+> **2026-08-01 — `CLIENT_SEARCH` is the only value login/verify/session emit.**
+> `AuthProcessor.resolveStartRoute()` and `LoginProcessor.resolveStartRoute()` are no-arg methods
+> that `return "CLIENT_SEARCH";`, so the two business values above are unreachable from those
+> endpoints. `startRouteToPath` keeps them so a future backend change needs no client edit.
+>
+> **This is not a defect and is not tracked as one.** Nothing in PRODUCT_VISION requires an owner
+> to land on the cabinet at sign-in, and the nav's Dashboard link (gated on
+> `business.memberRole`, unaffected by this) is the way in.
+>
+> What DID matter: `business-cabinet` took its post-REGISTRATION route from the refreshed
+> session, so a seller was sent to Home seconds after creating a business — and the correct
+> `/app/business` fallback only survived when the refresh THREW. It now routes from
+> `SellerOnboardingResponse.startRoute` (`BUSINESS_CABINET` / `MANAGED_IMPORT`), which is the
+> value that actually varies. Fixed 2026-08-01.
 
 ## Errors surfaced (via ApiError.errorCode / status)
 

@@ -44,7 +44,19 @@ export function verifyCode(
   return httpClient.post<AuthSessionResponse>(`${BASE}/verify`, { body });
 }
 
-/** Restore the session for the stored Bearer token (accessToken comes back null). */
+/**
+ * Restore the session for the stored Bearer token.
+ *
+ * **It returns a REAL, freshly-issued token — not null** (corrected 2026-08-01;
+ * this comment claimed null, and so did contracts.md). `AuthProcessor.currentSession`
+ * calls `jwtTokenService.issue(...)` and sets `expiresIn` on EVERY response.
+ *
+ * Consequence worth knowing before changing anything here: `applySessionTo`
+ * stores whatever token comes back, so every session restore silently rolls the
+ * token forward. That is benign — arguably desirable — but it was never a
+ * decision, and it means the app's token lifetime is "last restore + session
+ * TTL", not "issued at login". Nothing reads `expiresIn` yet.
+ */
 export function getSession(): Promise<AuthSessionResponse> {
   return httpClient.get<AuthSessionResponse>(`${BASE}/session`);
 }

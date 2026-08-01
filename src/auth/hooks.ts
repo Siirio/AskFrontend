@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 import { useStore } from "zustand";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { ApiError } from "@/shared/api/apiError";
 import { storage } from "@/shared/api/storage";
@@ -28,6 +28,7 @@ import { toast } from "@/shared/ui/sonner";
 
 import * as api from "./api";
 import {
+  REGISTRATION_COUNTRY_CODE,
   startRouteToPath,
   toAuthUser,
   type AuthSessionResponse,
@@ -124,9 +125,7 @@ export function useAuth(): Auth {
 }
 
 /**
- * Re-read the session from the backend and apply it, returning where the
- * refreshed session says to land (`startRoute`, the backend's authority per the
- * slice lock).
+ * Re-read the session from the backend and apply it.
  *
  * This exists for ONE event: something outside auth changed the user's role
  * SERVER-side, and the client's copy is now stale. Seller onboarding is the
@@ -138,17 +137,28 @@ export function useAuth(): Auth {
  * auth's to own (R6): a slice that patched the store itself would be inventing
  * a role the backend never confirmed (P9.4). Failure is the caller's to handle
  * — the store keeps the session it already had.
+ *
+ * **Returns void as of 2026-08-01; it used to return a route.** `GET /session`
+ * answers `startRoute: "CLIENT_SEARCH"` for every account — both
+ * `AuthProcessor.resolveStartRoute()` and `LoginProcessor.resolveStartRoute()`
+ * are no-arg methods returning that constant — so the route it handed back was
+ * always `/app`, including for the seller who had just created a business. The
+ * one caller was using it to route, and silently sent every new seller to Home;
+ * worse, its `/app/business` fallback only survived when THIS call threw, so the
+ * failure path routed correctly and the success path did not. Returning a value
+ * that is always the same is worse than returning none, so it returns none, and
+ * the caller takes its route from the response that actually knows
+ * (`SellerOnboardingResponse.startRoute`). Login-time routing is unchanged and
+ * still reads `startRoute` — see `startRouteToPath`.
  */
-export function useRefreshSession(): () => Promise<string> {
+export function useRefreshSession(): () => Promise<void> {
   const applySession = useApplySession();
   return useCallback(async () => {
     const session = await api.getSession();
     // applySession CLEARS the session when the response carries no user — a
-    // token that stopped being valid mid-flow. startRouteToPath then falls back
-    // to /app, where RequireAuth takes over. A seller route is never fabricated
-    // out of a dead session (P9.4).
+    // token that stopped being valid mid-flow. A seller route is never
+    // fabricated out of a dead session (P9.4); RequireAuth takes over.
     applySession(session);
-    return startRouteToPath(session.startRoute);
   }, [applySession]);
 }
 
@@ -299,6 +309,17 @@ export type Challenge = {
  */
 const ROLE_EXPANSION_PURPOSE = "REGISTER";
 
+/**
+ * The documents the sign-up form visibly links to from its agreement checkbox —
+ * and therefore the ONLY codes this client may record consent for. Sending a
+ * code for text the user was never shown would be a worse defect than the
+ * missing record it fixes (backend legal contract, P9.4).
+ *
+ * `SELLER_TERMS` / `PERSONAL_DATA_CONSENT` deliberately are NOT here: they
+ * belong to seller onboarding's own completion step, which presents them.
+ */
+const REGISTRATION_LEGAL_DOCUMENT_CODES = ["USER_TERMS", "PRIVACY_POLICY"];
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_RE = /^\d{6}$/;
 
@@ -343,6 +364,7 @@ export function useVerifyStep(verificationId: string, purpose?: string) {
   const store = useAuthStoreApi();
   const applySession = useApplySession();
   const t = useTranslations("auth");
+  const locale = useLocale();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -377,6 +399,30 @@ export function useVerifyStep(verificationId: string, purpose?: string) {
         // signing in never re-opens a choice the person already made.
         if (purpose === ROLE_EXPANSION_PURPOSE) {
           persistPendingRoleSelection(store, true);
+          // Record the registration consent HERE — the first moment a Bearer
+          // token exists, and the moment the agreement was actually given
+          // (moved from RoleSelectionModal 2026-08-01, closing two defects).
+          //
+          // The modal recorded it only on the CUSTOMER answer, so anyone who
+          // chose "business" had their consent silently dropped for good — the
+          // seller flow records SELLER_TERMS, never these two. And the modal
+          // also opens for a first-time GOOGLE sign-up, which never presents an
+          // agreement checkbox at all, so it was recording consent for
+          // documents that person was never shown (P9.4). Both disappear by
+          // binding the record to the email REGISTER challenge instead of to a
+          // role answer: this consent belongs to registration, not to the role.
+          //
+          // Best-effort and awaited-but-not-gating: a failed record must not
+          // strand someone on the verify screen with a valid account. It is
+          // surfaced rather than swallowed.
+          try {
+            await api.acceptRegistrationLegal({
+              documentCodes: REGISTRATION_LEGAL_DOCUMENT_CODES,
+              locale,
+            });
+          } catch {
+            toast.error(t("errors.network"));
+          }
         }
         setResult({ targetPath: startRouteToPath(session.startRoute) });
       } catch (e) {
@@ -407,6 +453,7 @@ type RegisterErrors = Partial<Record<keyof RegisterValues, string>>;
  *  field state + validation is one responsibility). */
 export function useRegisterFlow() {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const [values, setValues] = useState<RegisterValues>({
     displayName: "",
     email: "",
@@ -458,7 +505,12 @@ export function useRegisterFlow() {
         email: values.email.trim(),
         password: values.password,
         passwordConfirmation: values.passwordConfirmation,
-        acceptedUserAgreement: values.acceptedUserAgreement,
+        // Sent so the account is not stamped with the backend's "ru" default —
+        // the product's own default locale is `kk`. `acceptedUserAgreement` is
+        // deliberately NOT sent: the field does not exist on the DTO, and the
+        // consent is recorded properly after verify (see useVerifyStep).
+        countryCode: REGISTRATION_COUNTRY_CODE,
+        locale,
       });
       setChallenge({
         verificationId: c.verificationId,

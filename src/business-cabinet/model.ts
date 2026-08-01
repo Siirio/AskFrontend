@@ -84,12 +84,40 @@ export type SellerOnboardingRequest = {
 export type SellerOnboardingResponse = {
   businessId: string;
   catalogSetupMode: CatalogSetupMode;
-  /** "BUSINESS_CABINET" | "MANAGED_IMPORT". Deliberately NOT consumed: the
-   *  client re-reads GET /auth/session after onboarding and follows THAT
-   *  startRoute, because the session is the authority on where a role lands
-   *  (auth slice lock) and it is the value that is now stale. */
+  /**
+   * "BUSINESS_CABINET" | "MANAGED_IMPORT" — set from the submitted
+   * `catalogSetupMode` (`SellerOnboardingProcessor`).
+   *
+   * **NOW CONSUMED (2026-08-01) — this doc used to say "deliberately NOT
+   * consumed".** The old reasoning was that `GET /auth/session` is the authority
+   * on where a role lands. That premise is void: `AuthProcessor.resolveStartRoute()`
+   * is a no-arg method returning the constant `"CLIENT_SEARCH"`, so the session
+   * routes every account to Home, including the seller who has just created a
+   * business. This field is the ONLY place on the wire where the real answer
+   * exists, so it is what routes now. The session is still re-read — the role
+   * change has to reach the guard and the nav — its route is just no longer used.
+   */
   startRoute?: string;
 };
+
+/**
+ * Where to land after onboarding, from the backend's own answer.
+ *
+ * Both values map to the cabinet today: the managed-import follow-up screen does
+ * not exist yet (roadmap #8), and sending someone to a route that renders
+ * nothing is the dead end the "a reachable control must DO something" lock
+ * forbids. Mapping is kept explicit anyway so the day that screen lands, this is
+ * the one line that changes — and an unknown future value falls back to the
+ * cabinet rather than to a guess.
+ */
+export function onboardingStartRouteToPath(startRoute?: string): string {
+  switch (startRoute) {
+    case "MANAGED_IMPORT":
+    case "BUSINESS_CABINET":
+    default:
+      return "/app/business";
+  }
+}
 
 /** Mirrors `kz.ask.business.branch.api.dto.CreateBranchRequest` exactly —
  *  `latitude`/`longitude` are `@NotNull` on the backend, so the map picker in
