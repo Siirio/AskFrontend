@@ -87,13 +87,31 @@ function blockBody(pattern, name) {
   process.exit(1);
 }
 
-// Alpha-bearing tokens (the shadow colours) are skipped: they composite against
-// whatever is beneath them, so a fixed pair is not a thing they have.
+/**
+ * Every oklch() token in a block, alpha included. `A` defaults to 1.
+ *
+ * Alpha-bearing tokens (the shadows, --overlay) have no fixed contrast pair —
+ * they composite against whatever is beneath them, so no ratio can be computed
+ * and none is documented. That is a statement about the CONTRAST table only.
+ * They are still real declarations that can drift between the two dark blocks,
+ * so they must be parsed: an earlier version of this regex demanded exactly
+ * three numbers, which silently dropped `oklch(0 0 0 / 0.45)` from a check whose
+ * own output claims to compare "token by token". Drifting a shadow alpha in the
+ * no-JS block passed as PROVEN (found in review, 2026-08-01) — a false green in
+ * exactly the blind spot this script exists to cover.
+ */
 function parseTokens(body) {
   const out = {};
-  const re = /(--[\w-]+)\s*:\s*oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/g;
+  const re =
+    /(--[\w-]+)\s*:\s*oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*(?:\/\s*([\d.]+)\s*)?\)/g;
   let m;
-  while ((m = re.exec(body))) out[m[1]] = { L: +m[2], C: +m[3], H: +m[4] };
+  while ((m = re.exec(body)))
+    out[m[1]] = {
+      L: +m[2],
+      C: +m[3],
+      H: +m[4],
+      A: m[5] === undefined ? 1 : +m[5],
+    };
   return out;
 }
 
@@ -113,6 +131,17 @@ function rgbOf(palette, token, themeName) {
     console.error(`Token ${token} is missing from the ${themeName} palette.`);
     process.exit(1);
   }
+  // A translucent token has no contrast ratio of its own — it takes one from
+  // whatever it is composited over. Refuse rather than measure it as if opaque,
+  // which would produce a confident number that is simply wrong.
+  if (value.A !== 1) {
+    console.error(
+      `Token ${token} carries alpha (${value.A}) and cannot be one side of a ` +
+        `documented pair — compositing is not modelled here. Measure the ` +
+        `composited result by hand, or pair the opaque token instead.`,
+    );
+    process.exit(1);
+  }
   return oklchToLinearRgb(value);
 }
 
@@ -126,26 +155,36 @@ function rgbOf(palette, token, themeName) {
  * `bg` may be an array: the pair is then measured against the WORST of them,
  * which is what "hardest bg" means for subtle text that lands on all three
  * surfaces.
+ *
+ * Keys are matched on COLLAPSED whitespace (see `key()`), so the runs of spaces
+ * that align the table's columns are cosmetic here, as they are in the table.
+ * Keying on the raw label coupled semantic identity to column alignment: adding
+ * or removing one padding space made a row "unknown to this script" and the same
+ * row "absent from the table" simultaneously — two alarming errors for a
+ * reformat that changed no meaning (found in review, 2026-08-01).
  */
+const key = (label) => label.trim().replace(/\s+/g, " ");
 const SURFACES = ["--surface", "--surface-raised", "--surface-sunken"];
-const PAIRS = new Map([
-  ["accent / accent-foreground", ["--accent", "--accent-foreground"]],
-  ["accent:hover / foreground", ["--accent-hover", "--accent-foreground"]],
-  ["accent:active / foreground", ["--accent-active", "--accent-foreground"]],
-  ["accent vs surface   [the ring]", ["--accent", "--surface"]],
-  ["accent vs raised    [on a card]", ["--accent", "--surface-raised"]],
-  ["foreground / surface", ["--foreground", "--surface"]],
-  ["foreground-muted / surface", ["--foreground-muted", "--surface"]],
-  ["foreground-subtle / hardest bg", ["--foreground-subtle", SURFACES]],
-  ["offer-foreground / offer tint", ["--offer-foreground", "--offer"]],
-  ["offer tint vs raised [visible]", ["--offer", "--surface-raised"]],
+const PAIRS = new Map(
   [
-    "destructive / its foreground",
-    ["--destructive", "--destructive-foreground"],
-  ],
-  ["success / its foreground", ["--success", "--success-foreground"]],
-  ["warning / its foreground", ["--warning", "--warning-foreground"]],
-]);
+    ["accent / accent-foreground", ["--accent", "--accent-foreground"]],
+    ["accent:hover / foreground", ["--accent-hover", "--accent-foreground"]],
+    ["accent:active / foreground", ["--accent-active", "--accent-foreground"]],
+    ["accent vs surface [the ring]", ["--accent", "--surface"]],
+    ["accent vs raised [on a card]", ["--accent", "--surface-raised"]],
+    ["foreground / surface", ["--foreground", "--surface"]],
+    ["foreground-muted / surface", ["--foreground-muted", "--surface"]],
+    ["foreground-subtle / hardest bg", ["--foreground-subtle", SURFACES]],
+    ["offer-foreground / offer tint", ["--offer-foreground", "--offer"]],
+    ["offer tint vs raised [visible]", ["--offer", "--surface-raised"]],
+    [
+      "destructive / its foreground",
+      ["--destructive", "--destructive-foreground"],
+    ],
+    ["success / its foreground", ["--success", "--success-foreground"]],
+    ["warning / its foreground", ["--warning", "--warning-foreground"]],
+  ].map(([label, pair]) => [key(label), pair]),
+);
 
 // ── parse the documented table out of the file's own comment ────────────────
 // The table is the claim under test; nothing here is duplicated from it.
@@ -154,7 +193,8 @@ const documented = [];
 let row;
 while ((row = ROW_RE.exec(css)))
   documented.push({
-    label: row[1].trimEnd(),
+    label: row[1].trimEnd(), // as written, for messages
+    key: key(row[1]), // whitespace-collapsed, for matching
     light: +row[2],
     dark: +row[3],
     floor: row[4] === "—" ? null : +row[4],
@@ -167,11 +207,9 @@ const fail = (...lines) => {
 };
 
 // ── 1. the table describes every pair, and only pairs we can compute ────────
-const documentedLabels = documented.map((r) => r.label);
-const unknown = documentedLabels.filter((l) => !PAIRS.has(l));
-const unclaimed = [...PAIRS.keys()].filter(
-  (l) => !documentedLabels.includes(l),
-);
+const documentedKeys = documented.map((r) => r.key);
+const unknown = documented.filter((r) => !PAIRS.has(r.key)).map((r) => r.label);
+const unclaimed = [...PAIRS.keys()].filter((k) => !documentedKeys.includes(k));
 const tableComplete = unknown.length === 0 && unclaimed.length === 0;
 console.log(
   `${tableComplete ? "PROVEN" : "BROKEN"}  the WCAG table and this script cover the same pairs`,
@@ -193,7 +231,7 @@ if (!tableComplete) {
 let mismatched = 0;
 let belowFloor = 0;
 for (const entry of documented) {
-  const pair = PAIRS.get(entry.label);
+  const pair = PAIRS.get(entry.key);
   if (!pair) continue;
   const [fg, bg] = pair;
   for (const theme of ["light", "dark"]) {
@@ -257,10 +295,13 @@ if (outOfGamut.length)
 // ── 5. the no-JS fallback still mirrors the dark block ──────────────────────
 const darkKeys = Object.keys(palettes.dark).sort();
 const noJsKeys = Object.keys(noJsDark).sort();
+// Alpha is compared alongside L/C/H — the shadow tokens differ from their
+// siblings ONLY in alpha, so omitting it would exempt them from the very check
+// whose headline says "token by token".
 const drifted = darkKeys
   .filter((k) => noJsKeys.includes(k))
   .filter((k) =>
-    ["L", "C", "H"].some((c) => palettes.dark[k][c] !== noJsDark[k][c]),
+    ["L", "C", "H", "A"].some((c) => palettes.dark[k][c] !== noJsDark[k][c]),
   );
 const missing = darkKeys.filter((k) => !noJsKeys.includes(k));
 const extra = noJsKeys.filter((k) => !darkKeys.includes(k));
@@ -272,13 +313,14 @@ if (!mirrored) {
   if (missing.length)
     fail(`absent from the no-JS block: ${missing.join(", ")}`);
   if (extra.length) fail(`only in the no-JS block: ${extra.join(", ")}`);
+  // Print alpha whenever EITHER side has it, so a pure-alpha drift does not
+  // render as two identical-looking values.
+  const show = (v, other) =>
+    `oklch(${v.L} ${v.C} ${v.H}${v.A !== 1 || other.A !== 1 ? ` / ${v.A}` : ""})`;
   for (const k of drifted) {
     const d = palettes.dark[k];
     const n = noJsDark[k];
-    fail(
-      `${k} — dark says oklch(${d.L} ${d.C} ${d.H}), ` +
-        `no-JS says oklch(${n.L} ${n.C} ${n.H})`,
-    );
+    fail(`${k} — dark says ${show(d, n)}, no-JS says ${show(n, d)}`);
   }
   fail(
     "the two dark blocks are one palette written twice (header §note",
