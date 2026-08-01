@@ -434,7 +434,14 @@ test("both auth pages state the Google consent, because either can register", as
     await page.goto(path);
     const consent = page.getByTestId("oauth-consent");
     await expect(consent).toBeVisible();
-    await expect(consent.getByRole("link", { name: /.+/ })).toHaveCount(2);
+
+    // Assert the DESTINATIONS, not just that two links exist. Consent is only
+    // meaningful if it points at the documents it names, and the codes sent to
+    // /legal/registration-acceptances are USER_TERMS + PRIVACY_POLICY — these
+    // two routes are what the user was shown for them. Counting links would
+    // still pass if both pointed at the same page, or at neither.
+    await expect(consent.locator('a[href="/terms"]')).toHaveCount(1);
+    await expect(consent.locator('a[href="/privacy"]')).toHaveCount(1);
   }
 });
 

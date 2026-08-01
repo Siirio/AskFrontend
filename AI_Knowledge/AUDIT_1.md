@@ -205,7 +205,9 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
 
 ## 🟡 auth — shipped and solid; the gaps are contract-edge and legal
 
-- [x] **A1 — Legal consent has a hole.** `POST /legal/registration-acceptances`
+- [ ] **A1 — Legal consent has a hole.** *(Coverage half closed 2026-08-01;
+  PERSISTENCE half re-opened the same day — see the bottom of this entry.)*
+  `POST /legal/registration-acceptances`
   fires **only** from `RoleSelectionModal.confirm()` on the *customer* answer.
   Choosing "business" writes no consent record at all (B4 means the wizard writes
   none either). The call is also best-effort by design — a network failure toasts
@@ -228,6 +230,26 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   closed.** What remains is not auth's: the placeholder Terms/Privacy bodies
   (launch item 11) — live consent against placeholder text is still the thing
   that must not ship.
+  **→ RE-OPENED 2026-08-01 (review). "Fully closed" was wrong — one of A1's two
+  original halves was never addressed.** This entry's own opening text says it:
+  *"The call is also best-effort by design — a network failure toasts and
+  proceeds — so registration can complete with no record."* The COVERAGE half is
+  genuinely closed (every registration path now records, and only documents the
+  user was shown). The **PERSISTENCE** half is untouched: a failed
+  `POST /legal/registration-acceptances` toasts and the account exists anyway,
+  with no retry, no queue, and no second attempt on the next session. For a
+  legal artefact that is a real gap, not a nicety, and closing the item while it
+  stood would have retired the finding that records it.
+  **Narrowed the same day:** the OAuth path was fire-and-forget (`void`) on the
+  argument that a transient redirect page has nothing to hold — but the redirect
+  is exactly what the write was racing. It is now `await`ed like the verify step,
+  so on both paths the call has completed or toasted before the user leaves the
+  screen. That removes the race; it does not make the write durable.
+  **Still open, and it is a PRODUCT decision, not a patch:** what should happen
+  when the consent write fails? Blocking registration strands someone with a
+  valid account; silently proceeding is where we are. A retry with backoff, or a
+  replay on the next authenticated session, are the plausible answers — none
+  should be engineered before someone decides which risk is acceptable.
 
 - [x] **A2 — `locale` and `countryCode` are never sent on register.** Both are on
   `CustomerRegisterRequest` with server defaults `"ru"` / `"KZ"`. A Kazakh- or

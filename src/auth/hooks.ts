@@ -238,7 +238,7 @@ export function useOAuthCallback(): OAuthCallbackState {
       oauthExchange = exchange;
     }
     exchange
-      .then((session) => {
+      .then(async (session) => {
         if (!active || generation !== oauthGeneration) return;
         // The exchange must yield a real Bearer session; a token-less response
         // is a failed sign-in, never applied as an empty success (P9.4).
@@ -260,12 +260,16 @@ export function useOAuthCallback(): OAuthCallbackState {
           // to text the person was never shown, which is why it did not exist
           // and the gap was raised instead of faked (P9.4).
           //
-          // Not awaited: unlike the verify screen, this page is a transient
-          // redirect with nothing to hold. `recordRegistrationConsent` never
-          // rejects (it toasts), so a floating promise cannot surface as an
-          // unhandled rejection, and the navigation must not wait on a
-          // best-effort legal write.
-          void recordRegistrationConsent(locale, t);
+          // AWAITED, like the verify step (corrected 2026-08-01 review). It was
+          // fire-and-forget on the argument that a transient redirect page has
+          // nothing to hold — but the redirect is what this `await` gates, and a
+          // legal record must not race the navigation that ends its page. The
+          // cost is the spinner already on screen staying a moment longer; the
+          // benefit is that the write is either done or has toasted before the
+          // user leaves. `recordRegistrationConsent` still never rejects, so
+          // this cannot strand a valid account on the callback screen.
+          await recordRegistrationConsent(locale, t);
+          if (!active || generation !== oauthGeneration) return;
         }
         setState({ status: "done", targetPath: POST_AUTH_PATH });
       })
