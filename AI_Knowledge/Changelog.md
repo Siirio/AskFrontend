@@ -2,6 +2,18 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-08-01 | Fixed a skin-portal race that only Google OAuth's first-signup path could
+trigger: `useSkinPortalContainer`'s `useState` lazy initializer runs during React's render
+phase, before the commit that creates `#ask-skin-root` touches the real DOM, so a portaled
+Dialog that mounts ALREADY OPEN in that same commit (the role modal, armed before a
+client-side navigation into `/app` from `/oauth/callback` — a route outside
+`app/app/layout.tsx` entirely) always found nothing and rendered with no backdrop and no
+card background. The email/password path never showed it because its auth pages already sit
+inside `app/app/layout.tsx`, so the wrapper predates the modal opening. Added a
+`useLayoutEffect` re-check, which runs after DOM mutations commit but before paint, so it
+reliably finds a sibling/ancestor created in the same commit with no visible flash. Caught
+driving a real Google sign-up end-to-end, not by reading the code | src/shared/ui/skin-portal.ts
+
 2026-07-31 | **Code-review fixes on the D30 address cascade — one of them a real data
 defect.** (1) The cascade, the map pin and the street line are three descriptions of ONE
 location and only the first could be changed: picking a new region left the old coordinates

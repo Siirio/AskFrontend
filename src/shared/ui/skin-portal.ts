@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 /**
  * Where Radix should portal its overlays so they inherit the platform skin.
@@ -36,17 +36,42 @@ import { useState } from "react";
  * overlay in the product silently re-anchors.
  *
  * Returns `undefined` before mount and on the server, which is exactly Radix's
- * default (portal to `<body>`); the lazy initializer means that on the client
- * the element is found during the first render, so an overlay that is open on
- * mount never flashes unstyled.
+ * default (portal to `<body>`); the lazy initializer resolves the common case
+ * instantly (the wrapper already exists from an earlier commit — e.g. the
+ * email/password auth pages already sit inside `app/app/layout.tsx`, so it
+ * predates any dialog opening on top of them).
+ *
+ * THE CASE THE INITIALIZER ALONE MISSES: a route OUTSIDE `app/app/layout.tsx`
+ * (Google OAuth's `/oauth/callback`, on the ROOT layout only) that arms the
+ * role modal and then client-navigates into `/app` for the first time in the
+ * session. There, `#ask-skin-root` and the open dialog mount in the SAME
+ * commit — the lazy initializer runs during React's RENDER phase, before that
+ * commit has touched the real DOM, so it always finds nothing. Caught
+ * 2026-08-01 driving a real Google sign-up: the modal rendered with no
+ * backdrop and no card background, exactly the failure this hook exists to
+ * prevent, just from the one direction that doesn't warm the DOM first.
+ *
+ * The `useLayoutEffect` re-check fixes it: layout effects run after the
+ * commit's DOM mutations are applied but before the browser paints, so it
+ * always sees a sibling/ancestor created in that same commit. The resulting
+ * state update is flushed synchronously in that same pre-paint window, so
+ * there is still no visible flash — the property the original comment
+ * described, now true for both directions instead of only the warmed one.
  */
 export const SKIN_ROOT_ID = "ask-skin-root";
 
 export function useSkinPortalContainer(): HTMLElement | undefined {
-  const [container] = useState<HTMLElement | null>(() =>
+  const [container, setContainer] = useState<HTMLElement | null>(() =>
     typeof document === "undefined"
       ? null
       : document.getElementById(SKIN_ROOT_ID),
   );
+
+  useLayoutEffect(() => {
+    if (container) return;
+    const found = document.getElementById(SKIN_ROOT_ID);
+    if (found) setContainer(found);
+  }, [container]);
+
   return container ?? undefined;
 }
