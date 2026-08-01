@@ -9,6 +9,14 @@ import { expect, test, type Page } from "@playwright/test";
  * customer and seller — plus the account (profile-card) dropdown from
  * PRODUCT_VISION UF 2.3.
  *
+ * THE NAV IS TWO DIFFERENT COMPONENTS, not one that reflows, and every spec here
+ * runs in both viewports (chromium + mobile-chromium). Desktop: a sticky top bar
+ * carrying brand mark + destinations + an account DropdownMenu. Phone: no top bar
+ * at all — destinations in a fixed bottom bar, account behind a floating burger
+ * opening a Sheet (owner decision 2026-07-28). So the brand mark and `role=menu`
+ * exist ONLY on desktop. Assertions that differ branch on `isPhone()` and assert
+ * the shape that viewport is SUPPOSED to have, never whichever one rendered.
+ *
  * The backend is STUBBED with page.route (the harness runs the production build,
  * no live backend). A session is seeded by writing the Bearer token before load
  * (addInitScript) and answering GET /session; stub bodies speak the backend's
@@ -77,6 +85,18 @@ async function shoot(page: Page, name: string) {
   }
 }
 
+/**
+ * The one viewport check in this file (P6.1 — decided once, not per test). The
+ * query MUST stay identical to `lib/useIsMobile.ts`, which is what the component
+ * actually branches on; a spec asking a different question than the code would
+ * pass or fail for reasons unrelated to the layout it claims to cover.
+ */
+async function isPhone(page: Page) {
+  return page.evaluate(
+    () => window.matchMedia("(max-width: 639px)").matches, // === lib/useIsMobile
+  );
+}
+
 test("signed out: /app redirects to login and shows no nav (rules 2 + 4)", async ({
   page,
 }) => {
@@ -98,8 +118,16 @@ test("customer session: home + chats show, the seller dashboard does not", async
   await seedSession(page, CUSTOMER_SESSION);
   await page.goto("/app");
   const nav = page.getByRole("navigation");
-  // The mark and the Home link both point home.
-  await expect(nav.locator('a[href="/app"]')).toHaveCount(2);
+  // Two shapes, asserted per viewport rather than adapted to (see the fly-out
+  // note below for why). DESKTOP: a sticky top bar where the brand mark AND the
+  // Home destination both point home — 2 links. PHONE: there is no top bar at
+  // all (owner decision 2026-07-28, NavigationMenu §isMobile) — destinations
+  // move to a bottom bar and the mark has nowhere to live, so Home is the only
+  // one. A phone build that grew a second `/app` link would mean the top bar
+  // came back, which is the regression this count exists to catch.
+  await expect(nav.locator('a[href="/app"]')).toHaveCount(
+    (await isPhone(page)) ? 1 : 2,
+  );
   await expect(nav.locator('a[href="/app/chats"]')).toBeVisible();
   await expect(nav.locator('a[href="/app/business"]')).toHaveCount(0);
   await expect(page.getByTestId("user-menu-trigger")).toBeVisible();
@@ -122,9 +150,15 @@ test("the account menu opens the profile card: settings, legal links, sign out",
   await page.goto("/app");
   await page.getByTestId("user-menu-trigger").click();
 
-  const menu = page.getByRole("menu");
-  await expect(menu).toBeVisible();
-  await expect(menu.locator('a[href="/app/profile"]')).toBeVisible(); // Settings
+  // The account entry point resolves to a different WIDGET per viewport, not
+  // just a different layout: a Radix DropdownMenu on desktop (role=menu) and a
+  // Sheet — the same Radix Dialog underneath — behind the burger on phones
+  // (role=dialog). Asserted per viewport for the same reason as the fly-out
+  // below: shipping the desktop dropdown to a phone must fail here.
+  const isMobile = await isPhone(page);
+  const panel = isMobile ? page.getByRole("dialog") : page.getByRole("menu");
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('a[href="/app/profile"]')).toBeVisible(); // Settings
   await expect(page.getByTestId("user-menu-logout")).toBeVisible();
   await shoot(page, "nav-menu-open-light");
 
@@ -133,9 +167,6 @@ test("the account menu opens the profile card: settings, legal links, sign out",
   // Assert the layout MATCHES the viewport — don't just adapt to whatever
   // rendered — so a mobile build that wrongly shipped the desktop fly-out fails.
   const subTrigger = page.getByTestId("user-menu-learn-more");
-  const isMobile = await page.evaluate(
-    () => window.matchMedia("(max-width: 639px)").matches,
-  );
   if (isMobile) {
     await expect(subTrigger).toHaveCount(0); // flat inline group, no fly-out
   } else {
@@ -160,7 +191,10 @@ test("the account menu renders in dark theme", async ({ page }) => {
     document.documentElement.setAttribute("data-theme", "dark"),
   );
   await page.getByTestId("user-menu-trigger").click();
-  await expect(page.getByRole("menu")).toBeVisible();
+  // Same per-viewport widget split as the light-theme test above.
+  await expect(
+    (await isPhone(page)) ? page.getByRole("dialog") : page.getByRole("menu"),
+  ).toBeVisible();
   await shoot(page, "nav-menu-open-dark");
 });
 
