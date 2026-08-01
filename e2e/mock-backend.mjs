@@ -135,7 +135,8 @@ const server = createServer(async (req, res) => {
   }
 
   if (url.pathname === "/__last-sort") {
-    const sort = lastSortByQuery.get(url.searchParams.get("query") ?? "") ?? null;
+    const sort =
+      lastSortByQuery.get(url.searchParams.get("query") ?? "") ?? null;
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ sort }));
     return;

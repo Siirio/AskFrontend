@@ -65,7 +65,7 @@ export async function ResultCard({
             ) : null}
           </div>
           {offerLabel ? (
-            <span className="rounded-xs bg-offer px-2 py-1 text-xs font-bold tabular-nums text-offer-foreground">
+            <span className="rounded-xs bg-offer px-2 py-1 text-xs font-bold text-offer-foreground tabular-nums">
               {offerLabel}
             </span>
           ) : null}
@@ -106,7 +106,7 @@ export async function ResultCard({
 
         <div className="flex items-center justify-between gap-2">
           {card.price !== null ? (
-            <span className="text-lg font-semibold tabular-nums text-foreground">
+            <span className="text-lg font-semibold text-foreground tabular-nums">
               {card.price} {card.currency}
             </span>
           ) : (
@@ -124,9 +124,7 @@ export async function ResultCard({
           <p className="text-xs text-warning">{card.availabilityWarning}</p>
         ) : null}
         {card.availability === "UNAVAILABLE" ? (
-          <p className="text-xs text-destructive">
-            {t("card.unavailable")}
-          </p>
+          <p className="text-xs text-destructive">{t("card.unavailable")}</p>
         ) : null}
 
         {(card.branchName || card.branchCity) && (
@@ -139,7 +137,10 @@ export async function ResultCard({
   );
 }
 
-type Translate = (key: string, values?: Record<string, string | number>) => string;
+type Translate = (
+  key: string,
+  values?: Record<string, string | number>,
+) => string;
 
 /** Real value only (slice lock) — this function is never called with null.
  *  The unit is a translated string (P9.3's "every user-facing string is an

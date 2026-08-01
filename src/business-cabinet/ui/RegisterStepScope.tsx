@@ -98,7 +98,7 @@ export function RegisterStepScope({
                 // title wrapped to two lines, pushing the dot outside the
                 // card's own corner instead of sitting beside it. `pe-7`
                 // reserves the room for it so title text never runs under it.
-                className="neu-card relative flex flex-col gap-2 px-4 py-4 pe-7 text-start transition-shadow focus-ring"
+                className="neu-card relative flex flex-col gap-2 px-4 py-4 pe-7 text-start focus-ring transition-shadow"
               >
                 <span
                   aria-hidden="true"

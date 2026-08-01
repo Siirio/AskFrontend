@@ -12,7 +12,10 @@ import { Input } from "@/shared/ui/input";
 
 import type { SearchMode } from "../model";
 
-const MODE_ICON: Record<SearchMode, React.ComponentType<{ className?: string }>> = {
+const MODE_ICON: Record<
+  SearchMode,
+  React.ComponentType<{ className?: string }>
+> = {
   ITEM: Package,
   SERVICE: Briefcase,
 };
@@ -126,11 +129,7 @@ export function SearchForm() {
   };
 
   return (
-    <form
-      ref={scope}
-      onSubmit={submit}
-      className="flex w-full flex-col gap-6"
-    >
+    <form ref={scope} onSubmit={submit} className="flex w-full flex-col gap-6">
       {/* The search bar's own elevated stage (.neu-search-bar) — a raised
           card housing the carved-in input and the one saturated action, so
           the whole control reads as a destination, not a stray text field.

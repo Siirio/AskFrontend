@@ -71,7 +71,9 @@ export async function CatalogPage({
             {t("errors.searchFailed")}
           </p>
           <Button asChild>
-            <a href={`/app/catalog?${new URLSearchParams(stripUndefined(params)).toString()}`}>
+            <a
+              href={`/app/catalog?${new URLSearchParams(stripUndefined(params)).toString()}`}
+            >
               {t("errors.retry")}
             </a>
           </Button>
@@ -118,9 +120,7 @@ export async function CatalogPage({
   );
 }
 
-function stripUndefined(
-  params: CatalogSearchParams,
-): Record<string, string> {
+function stripUndefined(params: CatalogSearchParams): Record<string, string> {
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) result[key] = value;

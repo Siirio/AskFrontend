@@ -44,9 +44,7 @@ export default async function CatalogRoute({
 
   try {
     const response = await search(toSearchRequest(params, locale));
-    return (
-      <CatalogPage locale={locale} params={params} response={response} />
-    );
+    return <CatalogPage locale={locale} params={params} response={response} />;
   } catch {
     return <CatalogPage locale={locale} params={params} error />;
   }

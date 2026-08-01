@@ -45,15 +45,17 @@ export function RegisterStepReview({
 }) {
   const t = useTranslations("businessCabinet");
   const needsVerification = legalFormNeedsVerification(values.legalForm);
-  const linkCount = Object.values(values.links).filter((v) => v?.trim())
-    .length;
+  const linkCount = Object.values(values.links).filter((v) => v?.trim()).length;
 
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-foreground-muted">{t("review.intro")}</p>
 
       <div className="neu-card flex flex-col px-4 py-2">
-        <ReviewRow label={t("fields.businessName")} value={values.businessName} />
+        <ReviewRow
+          label={t("fields.businessName")}
+          value={values.businessName}
+        />
         <ReviewRow
           label={t("fields.category")}
           value={values.categoryLabel || t("review.notSet")}
@@ -64,9 +66,11 @@ export function RegisterStepReview({
         />
         <ReviewRow
           label={t("fields.catalogSetup")}
-          value={t(`catalogSetup.${
-            values.catalogSetupMode === "MANUAL" ? "manual" : "managedImport"
-          }.title`)}
+          value={t(
+            `catalogSetup.${
+              values.catalogSetupMode === "MANUAL" ? "manual" : "managedImport"
+            }.title`,
+          )}
         />
         <ReviewRow
           label={t("fields.legalForm")}

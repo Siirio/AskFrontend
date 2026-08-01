@@ -35,9 +35,11 @@ async function seedSession(page: Page) {
   // The default locale is kk (shared/i18n/locales.ts) — pin the server-read
   // `ask.locale` cookie (D19) to `en` so assertions read stable English
   // strings instead of juggling three languages of text matchers.
-  await page.context().addCookies([
-    { name: "ask.locale", value: "en", url: "http://localhost:3000" },
-  ]);
+  await page
+    .context()
+    .addCookies([
+      { name: "ask.locale", value: "en", url: "http://localhost:3000" },
+    ]);
 }
 
 test("Home renders the query input and the mode toggle, and submitting navigates to Catalog", async ({
@@ -70,9 +72,7 @@ test("Home refuses to submit an empty query, and never navigates", async ({
 
   await page.getByRole("button", { name: "Search" }).click();
 
-  await expect(
-    page.getByText("Enter what you're looking for."),
-  ).toBeVisible();
+  await expect(page.getByText("Enter what you're looking for.")).toBeVisible();
   await expect(page).toHaveURL(/\/app$/);
 });
 
@@ -99,9 +99,7 @@ test("Catalog Page renders sectioned results with the ALTERNATIVE reason", async
   await page.goto("/app/catalog?query=roses-sections&mode=ITEM");
 
   await expect(page.getByText("Aigul Flowers").first()).toBeVisible();
-  await expect(
-    page.getByText(/relaxed constraints: max_price/i),
-  ).toBeVisible();
+  await expect(page.getByText(/relaxed constraints: max_price/i)).toBeVisible();
 });
 
 test("the sort control updates the URL and re-fetches with the new sort", async ({
@@ -133,9 +131,7 @@ test("an empty result set renders the empty state, not a dead end", async ({
   await expect(
     page.getByText("Did you mean roses or rose plants?"),
   ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "rose plants" }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "rose plants" })).toBeVisible();
 });
 
 test("a search failure renders the error state with a retry", async ({

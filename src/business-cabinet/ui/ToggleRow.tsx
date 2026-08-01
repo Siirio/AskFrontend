@@ -50,7 +50,7 @@ export function ToggleRow({
       data-testid={testId}
       onClick={() => onToggle(!checked)}
       className={cn(
-        "neu-row flex w-full min-h-16 items-center gap-3.5 px-4 py-3.5 text-start focus-ring",
+        "neu-row flex min-h-16 w-full items-center gap-3.5 px-4 py-3.5 text-start focus-ring",
       )}
     >
       <span
@@ -66,9 +66,7 @@ export function ToggleRow({
       <span className="flex flex-1 flex-col gap-0.5">
         <span className="text-sm font-semibold text-foreground">{label}</span>
         {description ? (
-          <span className="text-xs text-foreground-subtle">
-            {description}
-          </span>
+          <span className="text-xs text-foreground-subtle">{description}</span>
         ) : null}
       </span>
 

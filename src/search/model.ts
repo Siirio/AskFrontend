@@ -200,9 +200,7 @@ export type CatalogSearchParams = {
  *  collapse a repeated param to its first occurrence, matching how a browser
  *  URL naturally reads (last-write-wins on a form navigation, never an array
  *  a slice control would ever produce). */
-function firstValue(
-  value: string | string[] | undefined,
-): string | undefined {
+function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
