@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Search, Building2 } from "lucide-react";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useMotion } from "../../app/providers/MotionProvider";
+import { isValidEmail, getPasswordStrength, type PasswordStrength } from "../../shared/utils/validation";
 import { getGoogleOAuthUrl } from "../../shared/api/authClient";
 import { acceptLegalDocuments } from "../../shared/api/legalClient";
 import { Input } from "../../shared/ui/Input/Input";
@@ -25,6 +26,38 @@ const ROLE_DOCUMENTS: Record<RegistrationRole, Array<{ code: string; href: strin
   ],
 };
 
+const STRENGTH_COLORS: Record<PasswordStrength, string> = {
+  low: "var(--fcw-color-error)",
+  medium: "#f59e0b",
+  strong: "#10b981",
+};
+
+function PasswordStrengthMeter({ strength }: { strength: PasswordStrength }) {
+  const { t } = useTranslation();
+  const bars = { low: 1, medium: 2, strong: 3 }[strength];
+  return (
+    <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
+      <div className="fcw-flex" style={{ gap: "0.25rem" }}>
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              height: "4px",
+              borderRadius: "2px",
+              background: i < bars ? STRENGTH_COLORS[strength] : "var(--fcw-color-border)",
+              transition: "background 0.2s",
+            }}
+          />
+        ))}
+      </div>
+      <span className="fcw-body-xs" style={{ color: STRENGTH_COLORS[strength] }}>
+        {t(`auth.password.strength${strength.charAt(0).toUpperCase() + strength.slice(1)}`)}
+      </span>
+    </div>
+  );
+}
+
 export function AuthPage() {
   const { t, i18n } = useTranslation();
   const { state, actions } = useAuth();
@@ -34,12 +67,18 @@ export function AuthPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [code, setCode] = useState("");
   const [registrationRole, setRegistrationRole] = useState<RegistrationRole | null>(null);
   const [acceptedRoleDocuments, setAcceptedRoleDocuments] = useState(false);
   const [roleChoiceBusy, setRoleChoiceBusy] = useState(false);
   const [roleChoiceError, setRoleChoiceError] = useState("");
+
+  const passwordStrength = getPasswordStrength(password);
+  const passwordsMatch = password === passwordConfirmation;
+  const isRegisterDisabled = state.mode === "register"
+    && (passwordStrength === "low" || !passwordsMatch);
 
   if (!state.sessionReady) {
     return <Loading />;
@@ -79,6 +118,7 @@ export function AuthPage() {
     await actions.register({
       email,
       password,
+      passwordConfirmation,
       displayName,
       locale: i18n.resolvedLanguage ?? "ru",
     });
@@ -418,13 +458,32 @@ export function AuthPage() {
               autoComplete={state.mode === "login" ? "current-password" : "new-password"}
             />
             {state.mode === "register" && (
-              <Input
-                label={t("auth.label.name")}
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                placeholder={t("auth.placeholder.name")}
-                required
-              />
+              <>
+                {password.length > 0 && (
+                  <PasswordStrengthMeter strength={passwordStrength} />
+                )}
+                <Input
+                  label={t("auth.label.passwordConfirmation")}
+                  type="password"
+                  value={passwordConfirmation}
+                  onChange={e => setPasswordConfirmation(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="new-password"
+                />
+                {passwordConfirmation.length > 0 && !passwordsMatch && (
+                  <span className="fcw-body-xs" style={{ color: "var(--fcw-color-error)" }}>
+                    {t("auth.password.mismatch")}
+                  </span>
+                )}
+                <Input
+                  label={t("auth.label.name")}
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  placeholder={t("auth.placeholder.name")}
+                  required
+                />
+              </>
             )}
 
             {state.error && (
@@ -436,7 +495,7 @@ export function AuthPage() {
             <button
               type="submit"
               className="fcw-btn fcw-btn-primary fcw-btn-full fcw-btn-lg"
-              disabled={state.busy}
+              disabled={state.busy || isRegisterDisabled}
               style={{ marginTop: "0.5rem" }}
             >
               {state.busy ? "..." : state.mode === "login" ? t("auth.button.login") : t("auth.button.register")}

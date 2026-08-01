@@ -36,8 +36,18 @@ export function isValidContactValue(channel: ContactChannel, value: string): boo
   return digitCount >= 8 && digitCount <= 15;
 }
 
-export function isStrongPassword(password: string): { valid: boolean; reason?: "tooShort" | "weak" } {
-  if (password.length < 8) return { valid: false, reason: "tooShort" };
-  if (!/[a-zA-Zа-яА-Я]/.test(password) || !/[0-9]/.test(password)) return { valid: false, reason: "weak" };
-  return { valid: true };
+export type PasswordStrength = "low" | "medium" | "strong";
+
+export function getPasswordStrength(password: string): PasswordStrength {
+  if (!password) return "low";
+
+  const classes = 0
+    + (/[a-zа-я]/.test(password) ? 1 : 0)
+    + (/[A-ZА-Я]/.test(password) ? 1 : 0)
+    + (/[0-9]/.test(password) ? 1 : 0)
+    + (/[^a-zA-Zа-яА-Я0-9]/.test(password) ? 1 : 0);
+
+  if (password.length < 8 || classes < 2) return "low";
+  if (classes >= 3) return "strong";
+  return "medium";
 }
