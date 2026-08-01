@@ -23,6 +23,14 @@ item is fixed, mark it `[x]` with the date and the commit's effect; do NOT
 delete it. The record is the point. When every item is resolved, fold the
 summary into `Changelog.md` and retire this file.
 
+> **⚠ 2026-08-01 — the WORK QUEUE moved to `AUDIT_2.md`. Start there.**
+> This file remains the historical record of the 2026-07-31 pass and its
+> corrections, several of which matter (A7 was a misdiagnosis; B1's own
+> correction note is stale; D-5, D-7 and A7 were all found already-green when
+> re-run). `AUDIT_2.md` carries every still-open item, the findings this file
+> does not have, and the owner decisions that gate them. **An unchecked box in
+> here is not evidence — re-verify against source before acting on it.**
+
 ---
 
 ## Slice status
@@ -245,11 +253,24 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   is exactly what the write was racing. It is now `await`ed like the verify step,
   so on both paths the call has completed or toasted before the user leaves the
   screen. That removes the race; it does not make the write durable.
-  **Still open, and it is a PRODUCT decision, not a patch:** what should happen
-  when the consent write fails? Blocking registration strands someone with a
-  valid account; silently proceeding is where we are. A retry with backoff, or a
-  replay on the next authenticated session, are the plausible answers — none
-  should be engineered before someone decides which risk is acceptable.
+  **ANSWERED 2026-08-01 (owner): a CONSENT GATE, not client-side retry.** Users
+  with no acceptance on record get a blocking modal over the platform until they
+  accept — so a write lost to a network error simply means the gate opens again
+  on the next load, and the person accepts then. This is the better shape than
+  anything the client could have retried: the BACKEND's record is the source of
+  truth, the failure mode is self-healing, and nothing has to be queued or
+  replayed locally (no client-side legal state to go stale, P5.2/D5). Best-effort
+  writing is therefore CORRECT as designed, not a gap to engineer around.
+  **BLOCKED on a backend read that does not exist — verified 2026-08-01 against
+  `dev` `cdc47dc`.** `kz/ask/legal/api/LegalController` exposes
+  `POST /acceptances` and `POST /registration-acceptances` and **no GET at all**;
+  `AuthSessionResponse` carries no consent field either. The data is there
+  (`LegalAcceptance`, `LegalAcceptanceRepository`) — it is simply never exposed,
+  so the client cannot tell who to gate. Raised in ROADMAP § *Cross-Repo
+  Dependencies*. **Also needed before building:** a PRODUCT_VISION entry, since
+  a blocking modal is a new screen and the product lock admits no exemption
+  (P9.1) — the owner's append, same pattern as Google OAuth (2026-07-19) and the
+  search mode toggle (2026-07-28).
 
 - [x] **A2 — `locale` and `countryCode` are never sent on register.** Both are on
   `CustomerRegisterRequest` with server defaults `"ru"` / `"KZ"`. A Kazakh- or
