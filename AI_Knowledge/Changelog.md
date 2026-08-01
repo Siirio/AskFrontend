@@ -2,6 +2,64 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-08-01 | **AUDIT_0 retired — every item resolved or consciously accepted; the file is folded
+here per its own rule.** Its full record: **Finding 1 (D6 static-landing lock violated)** —
+fixed 2026-07-18 with `setRequestLocale(defaultLocale)` at both static entry points, and guarded
+permanently by `scripts/check-rendering.mjs`, still a mandatory stage of `npm run build`
+(re-verified 2026-08-01), so a dropped locale seed fails the build instead of silently reverting.
+**Finding 2 (`toAuthUser` silently degrades a business session)** — RESOLVED 2026-08-01, though
+not as written: the 2026-07-28 rewrite had already made the described mechanism obsolete, and the
+real remaining risk was the opposite of a degrade — substring matching would have granted full
+business access to any role merely CONTAINING `OWNER` (`CO_OWNER`, `FORMER_OWNER`). Now exact
+enum matching, `null` for unknown, `hasUnknownMemberRole()` exported. No alert built: the backend
+emits only OWNER/MANAGER/WORKER so the case cannot fire (P8.2). **Finding 3
+(`INVALID_CREDENTIALS` mapped twice)** — ACCEPTED, no action, re-verified 2026-08-01: the inline
+branch also handles a bare `401`, which a code-keyed map cannot express, both live in one file,
+and the duplication cannot spread. **Finding 4 (unused `AuthSessionResponse` fields)** — RESOLVED
+2026-08-01 by COMPLETING the mirror rather than trimming it; the type called itself "the full
+session contract" while missing `expiresIn` and the four `SessionCapabilitiesProcessor` fields.
+**Finding 5 (Dialog's `max-w-[calc(100%-2rem)]` literal)** — ACCEPTED 2026-08-01, and the reason
+overturns the finding: `tokens_old.css` uses `@theme inline`, which compiles spacing to LITERAL
+values and resolves only colours through `var()`. There is therefore no runtime `--spacing`
+custom property to reference, and the "obvious" token swap would emit an invalid `calc()`, drop
+`max-width` entirely and make every modal full-bleed on mobile. The literal is the correct
+expression for this theme, not a shortcut; it is contained in one primitive and cannot
+propagate. | AI_Knowledge/AUDIT_0.md (deleted), src/auth/model.ts, src/shared/ui/dialog.tsx
+(unchanged, decision recorded), scripts/check-rendering.mjs
+
+2026-08-01 | **Auth audit closed out — nine findings, and the two sharpest were both
+"the code trusted a value the backend stopped producing".** (1) **Registration consent moved
+from `RoleSelectionModal` to `useVerifyStep`.** Binding it to a ROLE ANSWER meant anyone who
+chose "business" never had Terms/Privacy recorded at all (the seller flow records
+`SELLER_TERMS`, never those two), and — worse — the modal also opens for first-time GOOGLE
+sign-ups, which present no agreement checkbox, so the client was recording consent for text
+the person was never shown. The consent belongs to registration, not to a role. A Google
+sign-up now records NOTHING and that gap is raised, not faked (P9.4). (2) **`startRoute` is a
+hardcoded constant server-side** — `AuthProcessor.resolveStartRoute()` and
+`LoginProcessor.resolveStartRoute()` both `return "CLIENT_SEARCH"` — so the seller-onboarding
+flow, which routed off the refreshed session, sent every newly-registered seller to Home; its
+`/app/business` fallback only survived when the session refresh THREW, meaning the failure
+path routed correctly and the success path did not. Onboarding now routes from
+`SellerOnboardingResponse.startRoute`, the one value on the wire that still means something,
+and `useRefreshSession` returns `void` rather than a route that was always `/app`. Login-time
+routing was NOT changed and is not treated as a defect: nothing in PRODUCT_VISION says an owner
+lands on the cabinet at sign-in, and the nav's Dashboard link is the way in. (3) Register body: dropped
+`acceptedUserAgreement` (not a field on the DTO — silently discarded by Jackson) and started
+sending `countryCode`/`locale`, so accounts stop being stamped `"ru"` in a product whose
+default locale is `kk`. (4) `roleToKind` matches the backend enum EXACTLY instead of
+substring-matching — the old test would have granted full business access to any value merely
+CONTAINING `OWNER` (`CO_OWNER`, `FORMER_OWNER`), an escalation rather than a degrade — and
+returns `null` for an unrecognised role. No user-facing alert was added: the backend emits only
+OWNER/MANAGER/WORKER, so the case cannot fire, and building for it would be pre-building (P8.2). (5) `AuthSessionResponse` completed: it called itself "the full
+session contract" while missing `expiresIn` and the four `SessionCapabilitiesProcessor`
+fields. (6) `GET /session` returns a REAL freshly-issued token, not null as api.ts and
+contracts.md both claimed — which means every session restore silently rolls the token
+forward. Documented, not changed. (7) Four e2e stubs answered `start_route: "OWNER_BRANCHES"`,
+a value no backend path emits — the e2e-stub lock again. | src/auth/{model.ts,hooks.ts,api.ts},
+src/auth/ui/RoleSelectionModal.tsx, src/business-cabinet/{model.ts,hooks.ts},
+e2e/{business-register,guard,navigation,smoke}.spec.ts, features/auth/contracts.md,
+ROADMAP.md, AUDIT_0.md, AUDIT_1.md
+
 2026-08-01 | Fixed a skin-portal race that only Google OAuth's first-signup path could
 trigger: `useSkinPortalContainer`'s `useState` lazy initializer runs during React's render
 phase, before the commit that creates `#ask-skin-root` touches the real DOM, so a portaled

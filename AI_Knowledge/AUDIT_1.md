@@ -18,7 +18,7 @@ reconciliation of each consumed contract against the Java source
 commits landed since (`c5b8b21`, `70d00d3`, `2583755`) — all deploy/platform
 only, **no frontend impact**.
 
-**How to use this file:** same rule as `AUDIT_0.md` and the Changelog — when an
+**How to use this file:** same rule as the Changelog — when an
 item is fixed, mark it `[x]` with the date and the commit's effect; do NOT
 delete it. The record is the point. When every item is resolved, fold the
 summary into `Changelog.md` and retire this file.
@@ -98,12 +98,19 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
 
 ## 🟠 business-cabinet — registration works; everything after it does not
 
-- [ ] **B1 — Onboarding succeeds and lands the new seller on a placeholder.**
-  `hooks.ts` L360-366 → `refreshSession()` → `startRoute` `OWNER_BRANCHES` →
-  `/app/business` → the i18n `{t("placeholder")}` page. This is the same shape as
-  the D26 bug that produced the "a reachable control must DO something" lock, one
-  level up: the registration door now opens onto an empty room. Either build the
-  cabinet shell (roadmap #6) or say plainly on that page that it is not open yet.
+- [ ] **B1 — Onboarding succeeds and the cabinet behind it is a placeholder.**
+  `/app/business` renders the i18n `{t("placeholder")}` page. This is the same
+  shape as the D26 bug that produced the "a reachable control must DO something"
+  lock, one level up: the registration door opens onto an empty room. Either
+  build the cabinet shell (roadmap #6) or say plainly on that page that it is not
+  open yet.
+  **Corrected 2026-08-01 — this entry's own routing claim was wrong.** It read
+  "`refreshSession()` → `startRoute` `OWNER_BRANCHES` → `/app/business`". The
+  backend cannot emit `OWNER_BRANCHES`; `startRoute` is a hardcoded
+  `"CLIENT_SEARCH"` (see **A7**), so a new seller is actually sent to `/app`
+  (Home) and never reaches this placeholder on the happy path at all. The first
+  pass read that value off the e2e stub instead of the Java source — the same
+  mistake the e2e-stub lock names (see **A8**).
 
 - [ ] **B2 — `phone` and `corporateEmail` are never collected.** Both are on
   `SellerOnboardingRequest` and land *directly* on the business profile
@@ -181,55 +188,151 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
 
 ## 🟡 auth — shipped and solid; the gaps are contract-edge and legal
 
-- [ ] **A1 — Legal consent has a hole.** `POST /legal/registration-acceptances`
+- [x] **A1 — Legal consent has a hole.** `POST /legal/registration-acceptances`
   fires **only** from `RoleSelectionModal.confirm()` on the *customer* answer.
   Choosing "business" writes no consent record at all (B4 means the wizard writes
   none either). The call is also best-effort by design — a network failure toasts
   and proceeds — so registration can complete with no record. Combined with the
   placeholder Terms/Privacy copy (launch item 11), this is live exposure, not a
   to-do.
+  **→ **FIXED 2026-08-01.** Moved from `RoleSelectionModal.confirm()` to `useVerifyStep`, fired on a `purpose === "REGISTER"` challenge. Closes both halves: the "business" answer no longer loses the record, and Google sign-ups stop having consent recorded for an agreement they are never shown (the P9.4 defect the first pass missed). Still best-effort by design. **Residual, raised not faked:** a Google sign-up records NO consent, because it presents none — a UX gap, in contracts.md.**
 
-- [ ] **A2 — `locale` and `countryCode` are never sent on register.** Both are on
+- [x] **A2 — `locale` and `countryCode` are never sent on register.** Both are on
   `CustomerRegisterRequest` with server defaults `"ru"` / `"KZ"`. A Kazakh- or
   English-speaking sign-up is stored as `ru` — in a product whose **default**
   locale is `kk` (D18/D19). The app has a live locale at that moment; send it.
+  **→ **FIXED 2026-08-01.** `useRegisterFlow` sends both; `REGISTRATION_COUNTRY_CODE` is declared in `auth/model.ts` (auth cannot import business-cabinet's copy — R6).**
 
-- [ ] **A3 — `acceptedUserAgreement` is still in the register body.**
+- [x] **A3 — `acceptedUserAgreement` is still in the register body.**
   `hooks.ts` L461 sends a field `dev`'s `CustomerRegisterRequest` does not have;
   Jackson drops it silently. Documented in contracts.md, never cleaned up. The
   client-side gate should stay (P9.4); the wire field should go.
+  **→ **FIXED 2026-08-01.** Dropped from `CustomerRegisterRequest` and the call. The checkbox stays as a client-side gate.**
 
-- [ ] **A4 — `expiresIn` is not modelled.** `model.ts` L102-120 omits it although
+- [x] **A4 — `expiresIn` is not modelled.** `model.ts` L102-120 omits it although
   the backend sends `expires_in` on every session response and the OAuth bridge
   doc calls it out explicitly. The client has no idea when its JWT dies — expiry
   is discovered only by the next 401.
+  **→ **FIXED 2026-08-01** — modelled, alongside A6's four fields.**
 
-- [ ] **A5 — `AUDIT_0` Finding 2 is now reachable and unfixed.** `toAuthUser`
+- [x] **A5 — `AUDIT_0` Finding 2 is now reachable and unfixed.** `toAuthUser`
   (`model.ts` L225-231) silently degrades an unrecognised `memberRole` to
   `kind: "customer"` with no signal raised (P9.4). Its stated trigger was "slice
   #7, when business login goes live" — seller registration shipped 2026-07-27, so
-  the trigger has fired. Mark AUDIT_0's Finding 2 when this lands.
+  the trigger has fired. (AUDIT_0 was retired into `Changelog.md` on 2026-08-01;
+  its Finding 2 is recorded there as resolved.)
+  **→ CLOSED 2026-08-01.** `roleToKind` now matches the backend enum EXACTLY (tolerating the `ROLE_` prefix) instead of substring-matching, returns `null` for an unrecognised role instead of folding it into `customer`, and `hasUnknownMemberRole()` exports the condition. That was the real content: the old substring test would have granted full business access to any value merely CONTAINING `OWNER` (`CO_OWNER`, `FORMER_OWNER`) — an escalation, not just a degrade. **No user-facing alert was built, on purpose.** The backend's business-group roles are exactly OWNER/MANAGER/WORKER and all three map correctly, so the degrade cannot fire; wiring a toast for a case that needs a future enum change is building ahead of need (P8.2). Re-open if a fourth role ships.**
 
-- [ ] **A6 — Four session fields are unmodelled**, one undocumented anywhere:
+- [x] **A6 — Four session fields are unmodelled**, one undocumented anywhere:
   `customerProfile`, `businessMemberships`, `pendingInvitationsCount` (noted in
   contracts.md as "confirmed live, not modelled") and **`platformMembership`**,
-  which is on the Java DTO and in no frontend doc at all.
+  which is on the Java DTO and in no frontend doc at all. All four are populated
+  for real by `SessionCapabilitiesProcessor` (re-verified 2026-08-01).
+  **→ **FIXED 2026-08-01.** All four modelled with their real DTO shapes; `platformMembership` added to contracts.md, which had never mentioned it. Note `businessMemberships` is `AuthBusinessMembershipResponse[]`, not `AuthBusinessContextResponse[]` as contracts.md claimed.**
+
+### Re-audit 2026-08-01 — three findings the first pass MISSED
+
+Backend re-read at `dev` `cdc47dc`. A1–A6 above are all still open, unchanged.
+The Google OIDC fix (`cdc47dc`) needs **no client change**: `?registration=1` is
+appended by `OAuth2AuthSuccessHandler` exactly as before, the new
+`CustomOidcUserService` sets the same request attributes, and
+`resolveBusinessContext(user)` is user-based, so a Google-signed-in owner keeps
+their business context. The three below are pre-existing and were simply not
+checked in the first pass — `startRoute` was taken on trust.
+
+- [x] **A7 — `startRoute` is a HARDCODED CONSTANT; the backend no longer decides
+  the post-login route.** `AuthProcessor.resolveStartRoute()` and
+  `LoginProcessor.resolveStartRoute()` are both no-arg methods that
+  `return "CLIENT_SEARCH";`. Login, verify and `GET /session` therefore ALWAYS
+  answer `CLIENT_SEARCH`, for every account including a business owner.
+  Consequences, worst first:
+  1. **A newly-registered seller is sent to Home, not to their cabinet.**
+     `business-cabinet/hooks.ts` `submit` sets `targetPath = "/app/business"`,
+     then overwrites it with `await refreshSession()` → `startRouteToPath("CLIENT_SEARCH")`
+     → `/app`. The `/app/business` fallback only survives when `refreshSession`
+     THROWS — so the failure path routes correctly and the success path does not.
+  2. The client **deliberately ignores the one truthful value**.
+     `SellerOnboardingResponse.startRoute` is the only place the real answer
+     exists (`BUSINESS_CABINET` / `MANAGED_IMPORT`, set from `catalogSetupMode`),
+     and `business-cabinet/model.ts` documents it as "Deliberately NOT consumed"
+     in favour of re-reading the session — which is a constant.
+  3. `startRouteToPath`'s `OWNER_BRANCHES` / `BRANCH_WORKSPACE` branches are
+     unreachable; the auth lock "startRoute from the backend decides the
+     post-login route" is honoured by code the backend stopped feeding.
+  **Not a lockout:** `canAccessDashboard` reads `business.memberRole`, not
+  `startRoute`, so the nav's Dashboard link still appears and the cabinet is
+  still reachable. The defect is routing, not access.
+  **Fix is a product decision, not a patch:** either the backend resolves
+  `startRoute` from the user's memberships again, or the client stops pretending
+  it does and consumes `SellerOnboardingResponse.startRoute` at the one moment it
+  is meaningful. Raise it before choosing (cross-repo).
+  **→ **HALF-FIXED 2026-08-01.** The user-visible half is closed: onboarding now routes from `SellerOnboardingResponse.startRoute` via `onboardingStartRouteToPath`, so a new seller reaches the cabinet, and `useRefreshSession` returns `void` instead of a route that was always `/app`. **Still open (cross-repo):** login-time routing — an owner logging in lands on `/app`. They reach the cabinet via the nav, so it is not a lockout. Backend must decide whether `/session` resolves `startRoute` from memberships again.**
+
+- [x] **A8 — Four e2e stubs assert a `start_route` the backend cannot emit.**
+  `business-register.spec.ts` L51, `guard.spec.ts` L34, `navigation.spec.ts` L39
+  and `smoke.spec.ts` L18 all answer `start_route: "OWNER_BRANCHES"`. No backend
+  path produces that value (A7). `business-register.spec.ts` then asserts the
+  post-registration URL is `/app/business` — which passes against the stub and
+  would not against production. This is the **e2e-stub lock** again, in the exact
+  shape it was written for: a stub built from our own model can only prove the
+  client agrees with itself. Fix WITH A7, not before — the stub should encode
+  whatever the answer turns out to be.
+  **→ **FIXED 2026-08-01.** All four now answer `CLIENT_SEARCH`, each with a comment naming the two backend methods that prove it. `business-register`'s `/app/business` assertion still holds — it now comes from the onboarding stub, which is where the real value lives.**
+
+- [x] **A9 — `GET /session` returns a REAL access token, not null.**
+  `AuthProcessor.currentSession` calls `jwtTokenService.issue(...)` and sets
+  `expiresIn` on every response. `features/auth/contracts.md` says "accessToken
+  comes back null (the token is already stored)" and `auth/api.ts` repeats it in
+  `getSession`'s doc comment — both stale. Behaviourally this means
+  `applySessionTo` re-stores a freshly-issued token on every session restore: a
+  silent **rolling refresh** that nobody designed, documented, or tested. It is
+  benign today and possibly desirable, but it must be a decision rather than an
+  accident, and it makes **A4** (`expiresIn` unmodelled) load-bearing rather than
+  cosmetic — the backend is handing the client a real expiry it never reads.
+  **→ **FIXED 2026-08-01 (documentation).** Corrected in `api.ts getSession` and contracts.md; the rolling-refresh consequence is stated in both. No behaviour changed — storing the fresh token is fine, it just needed to be a known fact.**
 
 ---
 
 ## Doc drift — breaks "docs ship WITH the code"
 
-- [ ] **D-1 — `ROADMAP.md` L125 still shows Google OAuth as `[ ]` unbuilt.**
+- [x] **D-1 — `ROADMAP.md` L125 still shows Google OAuth as `[ ]` unbuilt.**
   `src/app/oauth/callback/page.tsx`, `auth/ui/OAuthCallbackPage.tsx`,
   `auth/ui/OAuthOptions.tsx`, `api.exchangeOAuthSession()` and
   `hooks.useOAuthCallback()` are all shipped and e2e-covered.
+  **→ FIXED 2026-08-01.**
 
-- [ ] **D-2 — `ROADMAP.md` L109-117 shows the registration-consent items as `[ ]`**
+- [x] **D-2 — `ROADMAP.md` L109-117 shows the registration-consent items as `[ ]`**
   while `features/auth/contracts.md` says built 2026-07-30. Two authorities
   disagree; reconcile (and note the A1 hole, which is what is actually left).
+  **→ FIXED 2026-08-01.**
 
-- [ ] **D-3 — `AUDIT_0.md` Finding 2's trigger fired** (see A5) and the file was
-  never revisited.
+- [x] **D-3 — `AUDIT_0.md` Finding 2's trigger fired** (see A5) and the file was
+  never revisited. **`AUDIT_0.md` has since been RETIRED (2026-08-01)** — all five
+  of its findings were resolved or consciously accepted, and its complete record
+  is folded into `Changelog.md` under that date, per the rule the file itself
+  carried. **Done 2026-08-01:** all four deferred findings re-verified
+  against `dev` `cdc47dc` and annotated in place (originals untouched, dated
+  corrections appended). All four are still open; every line number in that file
+  was stale, and TWO descriptions were wrong, not merely out of date —
+  Finding 2 described a mechanism the 2026-07-28 `toAuthUser` rewrite replaced,
+  and Finding 4 named three fields that have since been renamed or deleted.
+  Finding 1's regression guard (`verify:rendering`) was confirmed still wired
+  into `npm run build`. Finding 4 is now cross-linked to A4/A9 — it stopped being
+  YAGNI bookkeeping the moment `/session` began returning a live `expiresIn` the
+  client does not model.
+
+- [ ] **D-7 — three `navigation.spec.ts` tests fail on `mobile-chromium` only,
+  deterministically** *(found 2026-08-01 by running the suite; pre-existing, not
+  introduced by any recent change).* `:95` expects `getByRole("navigation")
+  .locator('a[href="/app"]')` to have count 2 and gets 1; `:118` and `:156` wait
+  for `getByRole("menu")` and time out. Both are desktop assumptions: on mobile
+  the nav renders a bottom bar rather than the top bar's duplicate home link,
+  and the account menu is a **Sheet**, not a Radix `DropdownMenu`, so no element
+  ever carries `role="menu"`. The mobile UI is not broken — the tests describe
+  the desktop one and run in both projects. Fix by asserting the mobile
+  affordances (`.neu-sheet-item`, the bottom-nav link) behind an `isMobile`
+  branch, or by scoping these three to `chromium`. Left alone here because it is
+  a navigation-chrome question, unrelated to the auth work this branch carries.
 
 - [ ] **D-6 — `e2e/search.spec.ts` hardcodes `http://localhost:3000`** in its
   `addCookies` locale pin *(found 2026-07-31 by review of the same pattern in
