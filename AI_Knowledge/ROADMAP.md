@@ -79,7 +79,7 @@ Goal: the V1 product from `PRODUCT_VISION.md`, one vertical slice at a time. Not
 | 8 | `services` | Services tab — mirrors Products, **no import**. Duplicated, never parameterized (D8, P6.3) | UF 3.1 · 3 |
 |   | — | **Seller path complete** | |
 | 9 | `app/(marketing)` | The landing at `/` — content only, static, SEO-first. Logged-in redirect to `/app/` via `ask.accessToken`, suppressed by `?from=app` (D6) | UF 1 |
-| 10 | — | SEO base: `sitemap.ts`, `robots.ts`, OG images. **Marketing + legal pages only** — D23 put every `/app/*` surface behind the auth gate, so none of them is crawlable | |
+| 10 | — | SEO base: `sitemap.ts`, `robots.ts`, OG images. **Marketing + legal pages only.** D23 puts every `/app/*` surface behind the auth gate **except `/app/auth/*`** — see the corrected note below; `robots.ts` must `Disallow: /app/`, not assume the gate does it | |
 | 11 | — | **Launch:** owner-authored legal copy replaces the Terms/Privacy/Cookies placeholders + each `noindex` removed (see Parked fixes — the register consent links depend on it) → e2e suite green → deploy (marketing `/` + platform `/app/*`, one app) | |
 
 Slices 6–8 are one product surface but three slices: the cabinet **composes**, it does not own other domains' data (R2, D8).
@@ -90,6 +90,21 @@ Slices 6–8 are one product surface but three slices: the cabinet **composes**,
 > `request` domain on 2026-07-21. Docs archived to `features/_archived/requests/`, which carries
 > the full rationale. **UF 3.1 item 1's "Requests" tab is unaffected** — the vision itself says
 > "these are all chats", and it is composed from `@/chats`.
+
+**Corrected 2026-08-02 — item 10's crawlability premise was FALSE, and it had
+already caused one defect.** The row used to read *"D23 put every `/app/*`
+surface behind the auth gate, so none of them is crawlable"*. `Locks.md` states
+the exception in the same breath as the rule: **`/app/auth/*` is the ONLY
+logged-out-reachable `/app` subtree.** Login and register are therefore fully
+crawlable, and they shipped with no `robots` tag — while
+`/app/business/register`, which RequireAuth makes unreachable, carried one
+justified by quoting this very sentence. The generalisation was applied where it
+did not hold and skipped where it did (AUDIT_2 **N9**, closed 2026-08-02).
+**What this means for item 10:** the auth pages now carry `robots:{index:false}`
+per-route, but `robots.ts` must still `Disallow: /app/` explicitly rather than
+trust the gate — a future logged-out-reachable page under `/app` (a public
+storefront, a shared link) would otherwise be indexed the day it lands, with
+nothing in the tree to stop it. Sitemap stays marketing + legal only.
 
 ### Parked fixes (2026-07-14 audit) — attach to the item that triggers them
 

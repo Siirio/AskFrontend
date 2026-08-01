@@ -30,6 +30,23 @@ summary into `Changelog.md` and retire this file.
 > re-run). `AUDIT_2.md` carries every still-open item, the findings this file
 > does not have, and the owner decisions that gate them. **An unchecked box in
 > here is not evidence — re-verify against source before acting on it.**
+>
+> **Re-verification stamp, 2026-08-01 (second pass, backend `dev` `cdc47dc`).**
+> Every unchecked box in this file was re-read against Java source. Three
+> outcomes, and the box alone tells you none of them:
+> - **STILL OPEN, confirmed from source — S1–S6, B1–B7, D-6.** None had quietly
+>   closed; no further misdiagnosis found among them.
+> - **Already FIXED, box never ticked — D-5** (`5b5a955`, per `AUDIT_2.md`).
+>   Exactly the staleness the paragraph above warns about. Do not read it as
+>   outstanding work.
+> - **DECIDED, not outstanding — A1.** Its coverage half is closed; the
+>   persistence half was answered by the owner (a consent GATE, so best-effort
+>   writing is correct as designed) and is deferred with the legals, blocked on
+>   N7's missing backend read. The unchecked box means "not yet built", not
+>   "not yet decided".
+>
+> The one substantive content change this pass is to **S5**, which understated
+> its own defect — see the annotation there, and **N8** in `AUDIT_2.md`.
 
 ---
 
@@ -96,6 +113,19 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   Unique-Offer lock is currently served by inferring the offer from a free-text
   badge instead of from the boolean the backend already sends. `latitude` /
   `longitude` are half of the parked map-area filter.
+  **Re-verified open 2026-08-01 (second pass) — all three still 0 hits in
+  `search/model.ts`. The inference is worse than "inferring", and the detail
+  matters: see N8 in `AUDIT_2.md`.** `separateBadges` (`model.ts:168-180`) does
+  not merely infer the offer from a badge — its `else` branch promotes **any
+  unrecognised token** to `offerLabel`, which `ResultCard.tsx:67` renders raw
+  inside `bg-offer`. That breaks the search slice lock ("an unrecognised badge
+  token is DROPPED, never rendered raw"), the project TINT IS INFORMATION lock
+  (a fake discount signal), and `model.ts:88`'s own comment, which already
+  claims the dropping behaviour. It is also an assignment, so the LAST unknown
+  wins — and `resolveBadges()` emits the real `activeOfferLabel` FIRST, so a
+  second unknown token silently overwrites the genuine offer. **Fix S5 and N8
+  as one change**; `hasActiveOffer` is what makes the tint honest and collapses
+  `separateBadges` to the map-and-filter it was documented as.
 
 - [ ] **S6 — Gate G1 is open and its 2026-07-29 scope question is undecided.** No
   filter/sort work should start until someone (not an agent inferring from backend
@@ -491,6 +521,18 @@ checked in the first pass — `startRoute` was taken on trust.
 
 - **i18n parity:** 240/240 keys across ru/kk/en; the 20 identical kk↔ru values are
   proper nouns and format strings.
+  **Re-counted 2026-08-01 (second pass): 256/256/256** — zero missing, zero
+  extra, in either direction. The figure moved because the app gained keys, not
+  because anything drifted; parity has held across every pass. Recorded so the
+  next reader does not treat 240 as a target and "fix" a file down to it.
+- **Search sort vocabulary** *(added 2026-08-01, second pass — checked because
+  the backend regex is wider than the client's list, which usually means drift.)*
+  `SearchRequest.sort` accepts `relevance|distance|price_asc|lowest_price`;
+  `SORT_OPTIONS` ships only the first three. **This is correct and deliberate**
+  — `model.ts:24` states that `lowest_price` has no PRODUCT_VISION entry and is
+  therefore never sent (P9.1). A narrower client than the wire allows is the
+  right direction for a product lock; noted so it is not "corrected" into a
+  defect.
 - **`POST /api/v1/search`** — every field, validator, and cross-field assert in
   `SearchRequest` / `SearchFilterRequest` matches `src/search/model.ts`. The
   `radiusMeters` ⇒ `userLocation` rule is mirrored correctly.

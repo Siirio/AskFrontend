@@ -15,6 +15,15 @@ Traces PRODUCT_VISION **UF 1** (Landing → Authorization → Home + Role Choosi
 `/app/auth` redirects to `/app/auth/login`. The two pages are separate routes
 (not a tab switcher), each with a cross-link to the other.
 
+**Both carry `robots: { index: false }` (2026-08-02).** They are the only `/app/*`
+pages a logged-out visitor — and therefore a crawler — can reach, so the auth
+gate cannot be their `noindex`; it has to be stated per-route. SEO surfaces are
+marketing + legal only (ROADMAP item 10), and an indexed "Log in — Ask" competes
+with the landing for the brand query. Asserted in `e2e/auth.spec.ts` so a silent
+removal fails the suite. They shipped without the tag until 2026-08-02 because
+the blanket claim "everything under `/app` is authenticated" was applied to the
+one subtree where it is untrue — AUDIT_2 **N9**.
+
 Layout: a `max-w-md` card centred in the viewport, sharing an `AuthShell` that
 holds ONE column — the ASK wordmark (`public/logo_horizontal.svg`), the heading +
 subtitle, the language switcher (ru/kk/en) + theme toggle (light/dark/system)

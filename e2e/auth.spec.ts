@@ -99,6 +99,24 @@ test("the auth pages have no app navigation", async ({ page }) => {
   await expect(page.getByRole("navigation")).toHaveCount(0);
 });
 
+/* These two pages are the ONLY `/app/*` surface a crawler can reach (the D23
+ * lock's one exception), so they are the only ones whose `noindex` has to be
+ * stated per-route rather than implied by the auth gate. The tag went missing
+ * once, because the "everything under /app is gated" reasoning was generalised
+ * over the subtree it does not cover (AUDIT_2 N9) — asserting it here is what
+ * makes a silent removal fail instead of shipping. */
+for (const path of ["/app/auth/login", "/app/auth/register"]) {
+  test(`${path} is noindex — it is crawlable, unlike the rest of /app`, async ({
+    page,
+  }) => {
+    await page.goto(path);
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+      "content",
+      /noindex/,
+    );
+  });
+}
+
 test("the cross-link goes from login to register", async ({ page }) => {
   await page.goto("/app/auth/login");
   // Keyed by href, not by translated copy (the ROADMAP parked-fix rule).

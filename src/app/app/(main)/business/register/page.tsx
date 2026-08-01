@@ -15,8 +15,13 @@ import { localeFromCookies } from "@/shared/i18n/serverLocale";
  * carrying RequireDashboardAccess. A customer must reach this page because they
  * are not a seller yet; see the note in `(cabinet)/layout.tsx`.
  *
- * `noindex` because the whole `/app/*` tree is authenticated — there is nothing
- * here for a crawler, and the route is not in the sitemap.
+ * `noindex` because THIS route sits inside `(main)`, so RequireAuth means a
+ * crawler never reaches it, and it is not in the sitemap. Stated per-route on
+ * purpose: this comment used to read "the whole `/app/*` tree is authenticated",
+ * which is false — `/app/auth/*` is logged-out-reachable by design (the D23
+ * lock's one exception), and generalising from here is what left the two auth
+ * routes without the tag until 2026-08-02. Placement is the access decision, so
+ * the crawlability reason is placement too — never a claim about `/app/*`.
  */
 export async function generateMetadata(): Promise<Metadata> {
   const locale = (await localeFromCookies()) ?? defaultLocale;

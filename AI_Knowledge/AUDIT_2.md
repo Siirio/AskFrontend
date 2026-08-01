@@ -12,6 +12,19 @@ Everything marked open below was re-checked against source on 2026-08-01, not
 recalled. `npm run build` green end to end; e2e **104/104** on `chromium` and
 `mobile-chromium` against `next build && next start`.
 
+**Re-verified 2026-08-01 (second pass, frontend `1ca4532` — docs-only since
+`83549fa`, so no code moved).** Every open item above and below was re-read
+against the same backend commit. **All still open; none had silently closed.**
+Newly confirmed from source this pass: `CityController` (no params on `listAll`,
+`name` required on `resolve`) · `CityDto {id, name}` · `SearchCardResponse`
+carrying `hasActiveOffer`/`latitude`/`longitude` · `SellerOnboardingRequest`
+carrying `phone`/`corporateEmail` · `CreateBranchRequest` carrying
+`timeZoneId`/`weeklyHours`/`specialHours` · `toOnboardingRequest` omitting
+`cityId` · `resolveCity()` still called from nowhere. The pass added **N8**
+(below), refined **N1** to an exact site list, and confirmed **N2**. i18n parity
+re-counted programmatically: **256/256/256** across ru/kk/en, zero missing, zero
+extra (AUDIT_1's "240/240" is simply an older count, not a defect).
+
 **How to use this file:** same rule as AUDIT_1 and the Changelog — when an item
 is fixed, mark it `[x]` with the date and what the change did. Do NOT delete it.
 When every item is resolved, fold the summary into `Changelog.md` and retire the
@@ -42,7 +55,7 @@ file.
 
 | Slice | Status | What exists |
 |---|---|---|
-| **auth** | ✅ **DONE** | Full anatomy; login / register / verify / Google OAuth + consent / guards / role modal. All of AUDIT_1 A1–A9 closed except A1's persistence half, which the owner deferred (below) |
+| **auth** | ✅ **DONE** | Full anatomy; login / register / verify / Google OAuth + consent / guards / role modal. All of AUDIT_1 A1–A9 closed except A1's persistence half, which the owner deferred (below). **All 8 DONE criteria pass as of 2026-08-02** — anatomy, thin routes + D7 split, zero hardcoded copy, the four states, docs, build/lint, 476-line e2e, and criterion 8 once **N9** closed. Two carve-outs remain DECIDED-not-missing, neither buildable here: A1's consent gate (blocked on N7 — the backend exposes no read) and the launch lock on placeholder legal copy (owner-authored, item 11) |
 | **search** | 🟡 **ALMOST** | Home + Catalog Page ship; 3 controls parked by G1; **the city filter is broken on the wire** (S1) |
 | **business-cabinet** | 🟠 **~25%** | Seller-registration wizard only. `/app/business` is still the i18n placeholder (B1) |
 | **catalog** | ⬜ **EMPTY** | Docs only. **Next up — roadmap #3** |
@@ -54,6 +67,28 @@ file.
 > target because the Product Card lives in the empty `catalog` slice, so
 > PRODUCT_VISION UF 2.1 steps 3–4 are unreachable. This is why `catalog` is next
 > and not `chats`.
+
+### What "EMPTY" means, precisely — and what unblocks each
+
+*(Added 2026-08-01, second pass. `src/{catalog,chats,profile,services}/` do not
+exist as directories at all — this is not a partially-built slice, it is zero
+lines. The route files that reference them are the i18n placeholder pages.)*
+
+**The finding here is the good news: none of the four is blocked on the
+backend.** Controllers verified present on `dev` `cdc47dc`:
+
+| Slice | Backend controller | Endpoints | Blocked? |
+|---|---|---|---|
+| `catalog` #3 | `offer/item/api/BusinessProductController` (+ `importing/api/ItemImportController`) | business-scoped, authenticated | **No — for the MODAL.** It ships from the search payload. Only the `/app/product/:id` deep link is blocked: no public item read exists (allowlist permits `/search`, `/cities`, `/categories`, `/businesses/*/business-profile`, `/businesses/*/drops`, `/business-media/files/*` — verified). **G3 parks one button, not the card** |
+| `chats` #4 | `chat/api/ChatController` | `POST /chat/conversations` · `GET /chat/conversations` · `GET` + `POST /chat/conversations/{id}/messages` · `POST /chat/conversations/{id}/read` · `POST /chat/support` (+ `BusinessChatController`, `ChatFileController`) | **No.** The full conversation surface exists |
+| `profile` #5 | `identity/api/ProfileController` | `GET /profile` · `PUT /profile` · `POST /profile/icon` | **No.** Read, update and avatar all present |
+| `services` #8 | `offer/service/api/BusinessServiceController` | business-scoped | **No.** Mirrors Products, no import (D8: duplicated, never parameterized) |
+
+So "what is left" for all four is **frontend work only**: the §3 anatomy, the
+thin route file, i18n keys under the slice namespace, the four mandatory states
+(P8.4/P9.3), the `features/{slice}/*` docs in the same commit, and an e2e
+smoke test — the eight DONE criteria in `ROADMAP.md`. No cross-repo raise is
+needed to start any of them.
 
 ---
 
@@ -147,6 +182,31 @@ Full text in `AUDIT_1.md`; this is the queue view.
   new numbering (`business-cabinet/api.ts:75`, `address-select.tsx:75`,
   `features/catalog/contracts.md:46,79`). Hand-check each. `src/auth/*` and
   `AccountMenu.tsx` are already corrected.
+
+  **Hand-check DONE for `src/` 2026-08-01 (second pass) — 18 sites, 9 wrong.**
+  The remaining 29 sites are in `AI_Knowledge/features/` and are NOT yet
+  checked. The `src/` half is now a mechanical edit, no judgement left:
+
+  | Site | Says | Should say |
+  |---|---|---|
+  | `app/app/(main)/business/(cabinet)/layout.tsx:26` | `#7` | `#6` |
+  | `app/app/(main)/business/(cabinet)/page.tsx:6` | `#7` | `#6` |
+  | `app/app/(main)/profile/page.tsx:6` | `#6` | `#5` |
+  | `business-cabinet/api.ts:12` | `#7–#9` | `#6–#8` |
+  | `business-cabinet/index.ts:7` | `#7–#9` | `#6–#8` |
+  | `business-cabinet/model.ts:30` | `#8` | `#7` |
+  | `business-cabinet/model.ts:179` | `#8` | `#7` |
+  | `business-cabinet/ui/BusinessRegisterPage.tsx:72` | `#8` | `#7` |
+  | `business-cabinet/ui/RegisterStepScope.tsx:38` | `#8` | `#7` |
+
+  **Verified already-correct — do not touch:** `chats/page.tsx:6` (`#4`),
+  `product/[id]/page.tsx:6` (`#3`), `AccountMenu.tsx:65` (`#5`),
+  `auth/api.ts:12` (`#6`), `auth/model.ts:157` (`#6`),
+  `business-cabinet/api.ts:75` (`#6`), `business-cabinet/model.ts:104` (`#7`),
+  `search/ui/ResultCard.tsx:16` (`#3`), `shared/ui/address-select.tsx:75`
+  (`#6`). *(That is 9 correct to 9 wrong in `src/` — which is exactly why the
+  find-and-replace warning is load-bearing: a blind pass would corrupt half the
+  sites it touched.)*
 - [ ] **N2 — `features/catalog/README.md:3` cites two backend folders that do not
   exist:** `../Ask_Backend/AI_Knowledge/features/catalog/` and `.../import/`. The
   backend's folders are `business, identity, item, messaging, offers, platform,
@@ -161,6 +221,99 @@ Full text in `AUDIT_1.md`; this is the queue view.
   nothing else in the product and the adjacent comment ("the skin's 16px radius")
   asserts something false. P9.2 + the magic-values lock, which forecloses the
   excuse verbatim.
+- [ ] **N8 — `separateBadges` does the OPPOSITE of the lock it implements, and
+  the failure wears the Unique-Offer tint.** *(Found 2026-08-01, second pass.
+  Highest-severity item on this list that is not gate-blocked.)*
+  `search/model.ts:168-180`:
+
+  ```ts
+  const key = BADGE_I18N_KEYS[badge];
+  if (key) badgeKeys.push(key);
+  else offerLabel = badge;          // ← unknown token, rendered RAW
+  ```
+
+  Three things are wrong with that `else`, and each breaks something written
+  down:
+
+  1. **The slice lock says the opposite.** `features/search/locks.md`: *"A badge
+     token the client does not recognise is DROPPED, never rendered raw … the
+     backend emits hardcoded English (`official channel`, `complete card`,
+     `pickup`); rendering an unknown token raw ships English into a ru/kk
+     product the first time backend adds one."* The code does not drop it — it
+     promotes it. `model.ts:88`'s own comment (*"map through BADGE_I18N_KEYS,
+     **drop unknown**"*) describes behaviour the function three sections below
+     does not have. The lock, the comment and the code were each read as
+     evidence for the other two.
+  2. **It renders in `bg-offer`.** `ResultCard.tsx:67-70` puts `offerLabel` in
+     the offer tint. The project lock **TINT IS INFORMATION** reserves that
+     register for a Unique Offer, so the first badge token the backend adds
+     ships as a **fake discount signal** — in English — on every card that
+     earns it. Worse than the raw-English defect the slice lock anticipated,
+     because a reader cannot tell it is wrong.
+  3. **`offerLabel = badge` is an assignment, so the LAST unknown wins** — and
+     `StructuredSearchProcessor.resolveBadges()` (L413-427) adds the real
+     `activeOfferLabel` **first**, before the three known tokens. Two unknowns
+     on one card therefore *overwrite the genuine offer label* with the
+     spurious one, silently. The one case the field exists for is the case that
+     loses.
+
+  **Fix WITH S5, not separately — they are one change.** `hasActiveOffer` is the
+  boolean the backend already sends and the honest source for the tint; once the
+  tint reads that, `separateBadges` collapses to a map-and-filter that drops
+  unknowns, which is what both the lock and the comment already claim it does.
+  Add an e2e stub case with an unknown badge token (built from
+  `resolveBadges()`, per the e2e-stub lock) — nothing in the suite covers this
+  today, which is why it survived two audits.
+
+- [x] **N9 — the auth pages are the ONLY crawlable `/app/*` surface, and they
+  are the ones with no `noindex` — while a gated page has one.** *(Found
+  2026-08-01, second pass, checking `auth` against DONE criterion 8 — the
+  criterion everyone skipped because the roadmap says it does not apply.)*
+
+  | Route | Reachable logged-out? | `robots` |
+  |---|---|---|
+  | `/app/auth/login` | **YES** (D23 lock: the ONE exception) | *(none)* |
+  | `/app/auth/register` | **YES** (same) | *(none)* |
+  | `/app/business/register` | No — behind `RequireAuth` | `index: false` |
+
+  Both auth routes ship `generateMetadata` with a title and **no `robots`**;
+  `src/app/layout.tsx` sets no global one; there is no `robots.ts` and no
+  `sitemap.ts` (roadmap item 10). So nothing suppresses them.
+
+  **The interesting part is the reasoning, not the tag.** ROADMAP item 10 says
+  *"Marketing + legal pages only — D23 put every `/app/*` surface behind the
+  auth gate, so none of them is crawlable"*, and
+  `business/register/page.tsx:18` repeats it verbatim to justify its own
+  `noindex`: *"the whole `/app/*` tree is authenticated — there is nothing here
+  for a crawler."* That sentence is **false for exactly one subtree**, and
+  `Locks.md` states the exception explicitly: *"`/app/auth/*` is the ONLY
+  logged-out-reachable `/app` subtree."* The generalisation got applied to the
+  page it does not cover and skipped on the pages it does — so the gated route
+  is protected and the open one is not.
+
+  Low severity on its own (an indexed login page is thin content, not a leak —
+  no authenticated data is exposed). Recorded because it is the **only** DONE
+  criterion `auth` does not satisfy, and because the false premise is what will
+  route item 10 wrong when someone finally writes `robots.ts`/`sitemap.ts`.
+  **Fix:** add `robots: { index: false }` to both auth routes, and correct the
+  premise in ROADMAP item 10 and in `business/register/page.tsx:18` — the
+  reason that route is not crawlable is `RequireAuth`, not a blanket claim
+  about `/app/*`.
+  **→ CLOSED 2026-08-02.** Both auth routes now return
+  `robots: { index: false }`, each stating WHY per-route (the D23 exception)
+  rather than inheriting a claim about the tree. **The three doc fixes were the
+  point, not the tag:** `business/register/page.tsx` no longer justifies its own
+  `noindex` with the false sentence — placement is the access decision, so
+  placement is the crawlability reason too; ROADMAP item 10 carries a dated
+  correction; `features/auth/ux-ui-flow.md` records the metadata with the
+  reasoning. **`robots.ts` is still owed by item 10 and must `Disallow: /app/`
+  explicitly** — per-route tags protect only the two pages that exist today, and
+  the next logged-out-reachable `/app` page would ship indexed. Guarded by two
+  `e2e/auth.spec.ts` assertions, in the repo's habit of giving a lock teeth
+  (`design-system.spec.ts`, `verify:rendering`): the failure is silent, so a
+  removal has to fail the suite rather than the launch. **With this, `auth` meets
+  all 8 DONE criteria.**
+
 - [ ] **N4 — B1 has two siblings on the CUSTOMER path.** `/app/chats` and
   `/app/profile` render the identical bare placeholder, and **Chats is a
   permanent nav destination for every user** while Settings is one tap inside the
