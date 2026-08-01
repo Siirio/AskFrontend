@@ -314,6 +314,42 @@ Full text in `AUDIT_1.md`; this is the queue view.
   removal has to fail the suite rather than the launch. **With this, `auth` meets
   all 8 DONE criteria.**
 
+- [ ] **N10 — a local `npm run test:e2e` silently tests the DEV server, which
+  the harness config's own header forbids.** *(Found 2026-08-02 by running the
+  suite — not by reading it. Empirical, and it would not have shown up in any
+  code review.)*
+
+  `playwright.config.ts` opens with *"drives the PRODUCTION build — `next build
+  && next start` — never the dev server, so what passes here is what ships."*
+  Both `webServer` entries then set **`reuseExistingServer: !process.env.CI`**.
+  So locally, if anything already listens on `:3000`, Playwright reuses it and
+  never builds. On this machine `npm run dev` was running, and it was identified
+  as a dev server from its markup (a `next-devtools` chunk plus unminified
+  `node_modules_next_dist_compiled_*` turbopack chunk names). **A plain
+  `npm run test:e2e` would have reported 108/108 against the dev server** — a
+  green suite that proves nothing about what ships. Exactly the class the
+  e2e-stub lock names, one level up: not a stub agreeing with the client, but a
+  RUNTIME agreeing with the developer's machine. Dev and prod differ in
+  prerendering, metadata generation, minification and error overlays — and
+  metadata is precisely what N9's new assertions check.
+
+  **CI is unaffected** (`CI=true` → `reuseExistingServer: false`), which is why
+  this has survived: the signal is green everywhere it is watched.
+
+  **Second half, found the same way:** running `next build` while a dev server
+  holds the same `.next` fails with *"Invariant: Expected workStore to be
+  initialized"* prerendering `/app/business/register`. It is pure concurrency —
+  the identical build is green standalone — but it means a dedicated PORT alone
+  does not fix this; the two processes also share `distDir`.
+
+  **Fix (recommend the loud guard at minimum):** a `globalSetup` that fetches
+  the baseURL and FAILS if the response carries dev-only markers, so the run
+  stops instead of lying. A fuller fix moves the harness to its own port **and**
+  its own `distDir` so `npm run dev` and `npm run test:e2e` can coexist. Until
+  either lands, the workaround is documented here: **stop the dev server before
+  running e2e locally**, or drive a production build on another port (what this
+  audit did — a throwaway config, deleted after the run).
+
 - [ ] **N4 — B1 has two siblings on the CUSTOMER path.** `/app/chats` and
   `/app/profile` render the identical bare placeholder, and **Chats is a
   permanent nav destination for every user** while Settings is one tap inside the
@@ -385,21 +421,81 @@ endpoint.
 
 ---
 
-## Suggested order
+## Execution plan — everything remaining, ordered (2026-08-02)
 
-1. **S1–S4 + S5** — a shipped feature that cannot work; one commit, no gate.
-2. **N2 + N1** — 20 minutes, and both mislead the agent who builds #3 next.
-3. **N4 (+ B1)** — three honest placeholder pages; a seller can complete
-   registration today and land on a bare stub.
-4. **B2 + B3** — two missing fields that silently cripple every business
-   onboarded. Verify the city-table overlap while S1 has the context loaded.
-5. **`catalog` #3 — the Product Card modal.** The customer path works end to end
-   from here. Ships from the search payload; `/app/product/:id` stays deferred
-   (no public item read); G3 parks the one button.
-6. Then `chats` #4 → `profile` #5 → `business-cabinet` #6 (with B4, B6, B7).
-7. **N3, D-6, N5a–N5d, N6** — housekeeping, attach to any commit that touches
-   the area.
+The ordering principle, stated once so it can be argued with rather than
+guessed at: **dispatch anything with external latency first, then repair what
+is shipped and broken, then correct the docs that would misinform the next
+build, then build.** Waves 1–3 are all unblocked today; waves 4+ are the
+roadmap proper.
 
-**Legals last** (owner, 2026-08-01): the consent gate, B4, and launch item 11's
-owner-authored Terms/Privacy copy land together at the end, once N7's backend
-read exists.
+### Wave 0 — dispatch, ~30 min, zero code. Do this FIRST, always
+
+Nothing here is work; it is unblocking. Each has days of latency, and every one
+currently blocks something downstream. Sending them costs half an hour and
+converts dead time into parallel time.
+
+| Send to | What | Unblocks |
+|---|---|---|
+| Owner | **G1 scope question** — option 1, 2 or 3 | Search's last 3 controls. Option 1 rewrites `SortControl`/`FilterPanel` + the slice lock; option 2 is additive. The cost difference is why an agent must not pick |
+| Owner | **G3** — what "Proceed to Purchase" does | One button on the Product Card (the card ships either way) |
+| Owner | **PRODUCT_VISION entry for the consent gate** | The blocking modal; a new screen needs a vision append (P9.1) |
+| Owner | **Terms / Privacy / Cookies copy** (launch item 11) | The launch lock. Longest lead time of anything on this list — it is writing, not code |
+| Backend | **N7** — expose who has accepted what; prefer a session field over a `GET` | The consent gate entirely |
+| Backend | **N5a–N5d, N6** — archive `request/`, fix the stale lock, document `legal`, make `features/README.md` an index | Every agent that follows CLAUDE.md's "read the backend contracts first" rule |
+| Backend | The three G1 params · a public item read · populate `openingSummary` · stable badge TOKENS · deploy-domain CORS · redeploy `:2020` from `dev` | Already in ROADMAP § *Cross-Repo Dependencies*; re-send as one message rather than seven |
+
+### Wave 1 — repair what is shipped and broken (1–2 commits, no gate)
+
+- **S1–S4 + S5 + N8** — the city filter cannot work, and the offer tint renders
+  unknown badge tokens raw. One context, one area of `search/model.ts`. Split
+  into two commits only if the diff argues for it.
+- While `/cities` is loaded, **verify the KATO↔`city`-table name overlap** that
+  B3 needs. Same endpoint family; verifying it twice is waste.
+
+### Wave 2 — cheap correctness, before it misinforms the next build
+
+- **N2 + N1** — ~20 min. Both mislead whoever builds `catalog` next; N2 sends
+  them to two backend folders that do not exist.
+- **N4 + B1** — three honest placeholder pages via `EmptyState`. A seller can
+  complete registration TODAY and land on a bare `<h1>`.
+- **N10** — at minimum the loud `globalSetup` guard, so a local run stops
+  instead of lying. Cheap, and everything after this wave is verified by e2e.
+- **D-6, N3** — 3 lines and 1 line. Attach to any commit touching the area.
+
+### Wave 3 — data completeness (unblocked, high silent cost)
+
+- **B2 + B3** — every business onboarded through this UI ships a card with no
+  contact channels and no city. Both are silent: nothing errors, the data is
+  simply absent forever. B2 also starves G3.
+- **B5** — the Nominatim rate-limit and silent-failure halves.
+
+### Wave 4 — the customer path, end to end (the mission)
+
+**`catalog` #3 → `chats` #4 → `profile` #5.** None is backend-blocked (see the
+readiness table above). `catalog` first because result cards have no click
+target until it lands, so UF 2.1 steps 3–4 are unreachable — that, not slice
+numbering, is why it precedes `chats`.
+
+### Wave 5 — the seller path
+
+**`business-cabinet` #6** (carrying **B6, B7**) **→ `catalog` seller pass #7 →
+`services` #8.** B6 and B7 have no payoff before the Branches tab exists, which
+is exactly why they waited.
+
+### Wave 6 — public surface
+
+**`app/(marketing)` #9 → SEO #10.** Item 10's `robots.ts` **must**
+`Disallow: /app/` explicitly rather than trust the auth gate — see the dated
+correction in `ROADMAP.md`; per-route `noindex` covers only the pages that
+exist today (N9).
+
+### Wave 7 — legals and launch
+
+The consent gate + **B4** + item 11's copy, together, once N7 lands. Owner's
+sequencing (2026-08-01): legals ship last, after everything else.
+
+**The one thing that can reorder all of this:** G1's answer. If the owner picks
+option 1, search gains real client-side state and `SortControl`/`FilterPanel`
+are rewritten — worth doing before `catalog` #3 embeds against them, not after.
+Every other wave is independent of every gate.
