@@ -82,7 +82,7 @@ The accent orange is the only high-chroma fill in the entire product, and it mar
 
 So on a result card: the button is the **only** saturated object. The `−30%` chip is a quiet warm tile (`bg-offer` / `text-offer-foreground`, chroma 0.032 against the accent's 0.161) whose weight comes from **bold tabular numerals**, not colour — and it is a rectangle (`rounded-xs`), never a pill, because pills and starbursts are marketplace sticker language. They cannot compete, because they are not in the same register.
 
-An offer is never accent-coloured. The accent never marks a fact. Every marketplace on earth screams its discounts in red; ASK states them. Full reasoning: `src/design-system/tokens_old.css`.
+An offer is never accent-coloured. The accent never marks a fact. Every marketplace on earth screams its discounts in red; ASK states them. Full reasoning: `src/design-system/tokens.css`.
 
 ## 4. shadcn is SCAFFOLDING, never a design source (D12 — zero tolerance)
 

@@ -1,9 +1,14 @@
 /*
- * ASK — Design Tokens (was `tokens.css`, renamed 2026-07-27 by owner directive).
+ * ASK — Design Tokens.
  * ---------------------------------------------------------------------------
- * §note — 2026-07-27, THE RENAME. The product's visual direction moved to
- * ORANGE NEUMORPHISM (`design-system/neumorphism.css`, D25). This file was NOT
- * retired: it is still loaded, and it still does two live jobs.
+ * §note — 2026-08-01 (D31), THE RENAME BACK. This file was called `tokens_old.css`
+ * between 2026-07-27 and 2026-08-01, when the D25 neumorphism pass renamed every
+ * superseded file `*_old`. That name was always WRONG here and it cost time: the
+ * file never stopped being loaded, and `_old` reads as "safe to delete" to every
+ * human and agent that meets it — one audit item (AUDIT_1 D-4) existed purely to
+ * warn the next reader not to believe the filename. Deleting the genuine archive
+ * removed the reason to keep the misnomer. The name now states what is true:
+ * this is the live token source, and it does two live jobs.
  *
  *   1. It owns the `@theme inline` block — the ONE Tailwind theme for the repo.
  *      Breakpoints, the type scale, radii, shadow geometry, motion curves and
@@ -14,7 +19,7 @@
  *      deliberately NOT part of the neumorphism pass (owner directive: the
  *      landing gets its own direction later).
  *
- * HOW THE NEW SKIN LAYERS ON TOP. `@theme inline` inlines LITERAL values for
+ * HOW THE PLATFORM SKIN LAYERS ON TOP. `@theme inline` inlines LITERAL values for
  * radii/shadow geometry but resolves colours through `var(--token)`. That
  * asymmetry is what the new skin exploits: `neumorphism.css` redefines the
  * colour PRIMITIVES below inside a `.neu-skin` scope, so every colour utility

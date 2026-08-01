@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 // not the values: a token may be retuned freely, but the body must keep rendering
 // on the surface token, dark must keep redefining it, and the webfont must keep
 // covering ₸ and Kazakh. The VALUES are proven separately by the OKLCH→WCAG
-// contrast computation recorded at the bottom of design-system/tokens_old.css.
+// contrast computation recorded at the bottom of design-system/tokens.css.
 
 /** The real face, not the metric-matched fallback next/font appends after it. */
 const primaryFamily = (fontVar: string) => fontVar.split(",")[0].trim();

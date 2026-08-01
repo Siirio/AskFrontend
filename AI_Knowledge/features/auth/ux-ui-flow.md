@@ -188,9 +188,10 @@ the skin changed a control's behaviour rather than just its surface.
   skin has no vocabulary for. The Google button's `outline` variant resolves to the plain RAISED
   button: there is no bordered variant to be quiet with, so quiet means unsaturated, and the
   email submit keeps the one accent fill.
-- **The retired skin is preserved** as `auth/ui/*_old.tsx` — a restorable set (each `_old` file
-  imports its `_old` siblings), not loose backups. Do not edit them and do not keep them in step
-  with the live files.
+- **The retired skin is preserved in git history only** — the `auth/ui/*_old.tsx` archive was
+  DELETED 2026-08-01 (D31, owner directive). Restoring it is a `git revert` of the D25 commit,
+  never a file copy: `globals.css` removed the `focus-ring-field` utility those files depend on,
+  so the revert is the only form that brings the skin back working.
 
 ## States (mandatory even though the vision doesn't draw them — P8.4/P9.3)
 

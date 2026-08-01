@@ -1,7 +1,7 @@
 /*
  * Global styles entry. Tailwind v4 on the design-system tokens (D3).
  * The tokens are the visual source; this file only wires them to the document.
- * Nothing here may introduce a value — every value lives in tokens_old.css / neumorphism.css (P9.2)
+ * Nothing here may introduce a value — every value lives in tokens.css / neumorphism.css (P9.2)
  * — with ONE stated exception: the focus signature's geometry (the 2px ring /
  * 2px offset / 3px halo below). It is the signature itself, defined once
  * beside the two utilities that ARE it (P6.1), never repeated anywhere else;
@@ -9,15 +9,15 @@
  */
 /*
  * The two design-system files are read TOGETHER (see either file's header):
- *   tokens_old.css   — the one `@theme inline` Tailwind theme (breakpoints,
+ *   tokens.css       — the one `@theme inline` Tailwind theme (breakpoints,
  *                      type, radius/shadow geometry, motion, colour mapping),
  *                      and the live palette for the marketing landing at `/`.
  *   neumorphism.css  — the platform's colour VALUES and depth language (D25),
  *                      scoped to `.neu-skin`, which app/app/layout.tsx applies.
- * Order matters: neumorphism.css overrides primitives declared by tokens_old.
+ * Order matters: neumorphism.css overrides primitives declared by tokens.css.
  */
 @import "tailwindcss";
-@import "../design-system/tokens_old.css";
+@import "../design-system/tokens.css";
 @import "../design-system/neumorphism.css";
 
 /*
@@ -54,17 +54,15 @@
  * third, consumerless focus treatment around "in case the landing wants it"
  * would be exactly the speculative code P8.1 forbids.
  *
- * CONSEQUENCE, stated so it is not discovered the hard way: `input_old.tsx` and
- * `select_old.tsx` still reference `focus-ring-field`, so those archived files
- * would render focus-less if dropped back in as-is. That is correct and
- * expected — the `*_old` set is a READING archive of the retired skin, and
- * restoring it is a git operation (the utility comes back with the revert), not
- * a file swap. Do not re-add the utility here to make a copy-paste work.
+ * §note — 2026-08-01 (D31): the `*_old` archive that still referenced
+ * `focus-ring-field` was DELETED (owner directive). The retired skin now lives
+ * only in git history, where restoring it is a revert — and the utility comes
+ * back with it. Do not re-add the utility here to make an old copy-paste work.
  */
 
 @layer base {
   /* `color-scheme` (which keeps native UI — scrollbars, form controls, the
-   * caret — in step with the theme) is set per-theme in design-system/tokens_old.css
+   * caret — in step with the theme) is set per-theme in design-system/tokens.css
    * (`:root` = light, `:root[data-theme="dark"]` = dark), so it follows the
    * data-theme attribute the pre-paint script resolves, not the OS directly. */
 

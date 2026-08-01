@@ -3,13 +3,22 @@
  * ===========================================================================
  * Promoted 2026-07-27 from `app/demo/neumor.css`, the /demo design lab (D24),
  * by owner directive: the skin explored there is now the product direction for
- * EVERY surface except the marketing landing at `/`, which keeps the old
+ * EVERY surface except the marketing landing at `/`, which keeps the tokens.css
  * palette until it receives its own direction.
  *
- * ── HOW THIS FILE AND tokens_old.css DIVIDE THE WORK ───────────────────────
+ * §note — 2026-08-01 (D31): `/demo` and its `.neu-lab` copy were DELETED (owner
+ * directive), so this file is now the ONLY neumorphic source in the repo. The
+ * lab's remaining job was to hold the unmeasured upstream specimen for
+ * comparison; that comparison is recorded below (the three darkenings) and in
+ * the verification table at the bottom, which is the durable form of it. Where
+ * this header says "the lab" or "the /demo port", read it as history — the
+ * upstream is neumorui (`rukonpro/neumorui`), reachable from git history at
+ * `src/app/demo/neumor.css`, not from a live route.
+ *
+ * ── HOW THIS FILE AND tokens.css DIVIDE THE WORK ───────────────────────
  * They are read TOGETHER; neither is complete alone.
  *
- *   tokens_old.css owns the `@theme inline` block — the one Tailwind theme.
+ *   tokens.css owns the `@theme inline` block — the one Tailwind theme.
  *     Breakpoints, type scale, radius/shadow GEOMETRY, motion curves, and the
  *     colour-utility MAPPING all live there.
  *   this file owns the platform's colour VALUES and its depth LANGUAGE.
@@ -32,8 +41,7 @@
  * so it covers every /app/* surface including auth. Placement IS status, the
  * same way the `(main)` route group is the auth gate line: a page inside the
  * platform shell is neumorphic by construction, and the landing cannot become
- * neumorphic by accident. /demo keeps its own `.neu-lab` copy — it is the
- * reference specimen and must stay independent of what the product does next.
+ * neumorphic by accident.
  *
  * ── WHAT CHANGED FROM THE /demo PORT, AND WHY ──────────────────────────────
  * The lab was a faithful recolour of neumorui and was never contrast-tested.
@@ -113,7 +121,7 @@
   --neu-focus-glow: 0 0 0 3px var(--neu-accent-glow);
   --neu-gradient-primary: linear-gradient(145deg, #ff8f5c, #c1440e);
 
-  /* ── the semantic primitives tokens_old.css maps every colour utility to ── */
+  /* ── the semantic primitives tokens.css maps every colour utility to ── */
   --surface: var(--neu-bg);
   --surface-raised: var(--neu-bg);
   --surface-sunken: #ece5d9;
@@ -211,7 +219,7 @@
 
 /*
  * NO-JS FALLBACK — the sanctioned duplicate of the dark block above, matching
- * the identical arrangement in tokens_old.css (its §note 2026-07-18).
+ * the identical arrangement in tokens.css (its §note 2026-07-18).
  * `:root:not([data-theme])` is reachable ONLY when the pre-paint theme script
  * never ran (scripts blocked, CSP, error); with JS the attribute always exists
  * before first paint. KEEP THE VALUES IDENTICAL — change the two blocks

@@ -360,11 +360,22 @@ checked in the first pass — `startRoute` was taken on trust.
   and `prettier-plugin-tailwindcss` exactly, since a caret range on a formatter
   makes "formatted" a moving target.
 
-- [ ] **D-4 — 3081 lines across 27 `*_old.tsx` files live inside `src/`**, so they
+- [x] **D-4 — RESOLVED 2026-08-01 (D31), by deletion rather than relocation.**
+  Was: *"3081 lines across 27 `*_old.tsx` files live inside `src/`, so they
   type-check, lint, and pollute every search on every build. The archive is
   deliberate (`globals.css` L57-62 explains it) — it just belongs outside `src/`.
-  Related trap for the next agent: **`design-system/tokens_old.css` is the ACTIVE
-  token source** despite its `_old` name (D13).
+  Related trap for the next agent: `design-system/tokens_old.css` is the ACTIVE
+  token source despite its `_old` name (D13)."*
+  The owner directed deletion, not a move: **26 `*_old.tsx` files** removed (the
+  count of 27 in the original finding included `tokens_old.css`, which is a CSS
+  file and was never part of the archive — the miscount is itself evidence of how
+  the `_old` suffix misled), plus `src/app/demo/` (the D24 lab, 4 files).
+  Relocating outside `src/` was considered and rejected: git already stores the
+  retired skin in the only form that restores coherently (`git revert`), whereas
+  the file set no longer even compiled as a drop-in — `globals.css` had removed
+  `focus-ring-field`, so `input_old`/`select_old` would render focus-less.
+  **The named trap is gone:** `tokens_old.css` → `tokens.css`, and every
+  reference in `src/`, `e2e/`, `AI_Knowledge/` and `.claude/skills/` follows it.
 
 ---
 
