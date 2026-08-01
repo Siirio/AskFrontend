@@ -14,11 +14,11 @@ import { RegisterForm } from "./RegisterForm";
 
 /**
  * The Sign up page (/app/auth/register). Name/email/password (+ confirm) + the
- * agreement → 6-digit code → session, landing on the backend's startRoute.
- * A fresh single-role signup arms the role-choosing modal (suggestRoleExpansion
- * → useVerifyStep persists the pending flag); the modal itself is hosted by
- * the platform `(main)` layout and appears OVER /app after the navigation —
- * this page no longer owns it.
+ * agreement → 6-digit code → session, landing on Home (`POST_AUTH_PATH`, UF 1
+ * step 3). A fresh signup arms the role-choosing modal — from `purpose ===
+ * "REGISTER"` on the challenge, which `useVerifyStep` turns into the pending
+ * flag; the modal itself is hosted by the platform `(main)` layout and appears
+ * OVER /app after the navigation, so this page no longer owns it.
  */
 export function RegisterPage() {
   const t = useTranslations("auth");

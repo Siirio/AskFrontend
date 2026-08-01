@@ -99,10 +99,20 @@ Staff & Invites above; prefer these for company-level people management.
 | `phone`, `corporateEmail` | — | Optional; not collected in V1 (no vision entry — P9.1) |
 
 **`SellerOnboardingResponse`**: `businessId`, `catalogSetupMode`, `startRoute`
-(`BUSINESS_CABINET` | `MANAGED_IMPORT`). **Its `startRoute` is deliberately not consumed** —
-the client re-reads `GET /api/v1/auth/session` after a 201 and follows THAT `startRoute`,
-because the session is the authority on where a role lands (auth slice lock) and it is the
-value that just went stale.
+(`BUSINESS_CABINET` | `MANAGED_IMPORT`). **`startRoute` is modelled and not consumed** — both
+values name the same destination today, so a completed registration goes to
+`POST_ONBOARDING_PATH` (`/app/business`, D26) as a constant.
+
+> **Corrected 2026-08-01 (owner), twice in one day.** This paragraph first said the route came
+> from re-reading `GET /auth/session` "because the session is the authority on where a role
+> lands (auth slice lock)" — which sent every new seller to Home, since the session answers
+> `CLIENT_SEARCH` for everyone. The interim fix routed from this response's `startRoute`
+> instead. That was right behaviourally and wrong in its reasoning: this field does not vary in
+> a way the client can act on. Both mappers are now deleted and both destinations are named
+> constants. The auth lock that framed routing as the backend's to own is RETIRED
+> (`features/auth/locks.md`); the real rule is that auth lands on Home (UF 1 step 3) and
+> onboarding lands on the cabinet (D26). Roadmap #7's managed-import scoping screen is when
+> `MANAGED_IMPORT` earns a branch of its own.
 
 **The role changes server-side.** A 201 promotes the caller from CUSTOMER to BUSINESS_OWNER.
 Until the session is re-read, `canAccessDashboard` still answers false and

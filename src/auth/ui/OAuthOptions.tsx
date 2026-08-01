@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { env } from "@/shared/config/env";
@@ -17,6 +18,19 @@ import { Button } from "@/shared/ui/button";
  * entry point, because OAuth must let the browser follow the redirect chain
  * through Google; it is a link, never an httpClient call. Hidden where OAuth is
  * not configured (env.oauthEnabled), so it never renders dead.
+ *
+ * **The consent line is a legal requirement, not decoration (added 2026-08-01,
+ * owner directive).** This button REGISTERS as well as signs in:
+ * `CustomOAuth2UserService` creates the account when the Google email is
+ * unknown (`registrationRequired = user == null`), and that is true from the
+ * LOGIN page too — which is why the copy renders on both, not only on Sign up.
+ * Until it existed, a Google sign-up accepted no agreement anywhere, so
+ * `useOAuthCallback` had nothing it could honestly record (the interim state was
+ * documented as an open gap in contracts.md rather than papered over, P9.4).
+ * It is passive consent — a statement of consequence, not a checkbox — because
+ * the action itself IS the agreement; a checkbox gating a link would be a second
+ * consent grammar for the same two documents. Same documents, same wording as
+ * `fields.agreement`, same routes: /terms and /privacy (D6, outside /app).
  */
 export function OAuthOptions() {
   const t = useTranslations("auth");
@@ -60,6 +74,34 @@ export function OAuthOptions() {
           {t("oauth.continueWithGoogle")}
         </a>
       </Button>
+      {/* Sits BELOW the button because it describes what pressing it means;
+          above, it would read as a condition to satisfy first — which is the
+          checkbox's grammar, not this one. Muted and small: legally load-bearing
+          but not the page's voice, and the two links carry the accent so they
+          are findable without competing with the submit above. */}
+      <p
+        data-testid="oauth-consent"
+        className="text-center text-xs text-foreground-muted"
+      >
+        {t.rich("oauth.consent", {
+          terms: (chunks) => (
+            <Link
+              href="/terms"
+              className="rounded-xs font-medium text-accent underline underline-offset-2 focus-ring transition-colors"
+            >
+              {chunks}
+            </Link>
+          ),
+          privacy: (chunks) => (
+            <Link
+              href="/privacy"
+              className="rounded-xs font-medium text-accent underline underline-offset-2 focus-ring transition-colors"
+            >
+              {chunks}
+            </Link>
+          ),
+        })}
+      </p>
     </div>
   );
 }

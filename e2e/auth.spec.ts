@@ -367,7 +367,7 @@ test("the role modal cannot be dismissed and survives a reload until answered", 
   expect(legalAcceptanceCount).toBe(1);
 });
 
-test("Google OAuth first-signup arms the role modal via ?registration=1", async ({
+test("Google OAuth first-signup arms the role modal AND records the consent (?registration=1)", async ({
   page,
 }) => {
   // OAuthCallbackPage's ONE call is exchangeOAuthSession() → GET /session
@@ -376,6 +376,11 @@ test("Google OAuth first-signup arms the role modal via ?registration=1", async 
   await page.route("**/api/v1/auth/session", (route) =>
     route.fulfill({ status: 200, json: SESSION_PLAIN }),
   );
+  let legalAcceptanceBody: unknown = null;
+  await page.route("**/api/v1/legal/registration-acceptances", (route) => {
+    legalAcceptanceBody = route.request().postDataJSON();
+    return route.fulfill({ status: 204, body: "" });
+  });
 
   await page.goto("/oauth/callback?registration=1");
 
@@ -385,19 +390,52 @@ test("Google OAuth first-signup arms the role modal via ?registration=1", async 
     localStorage.getItem("ask.roleSelectionPending"),
   );
   expect(pending).toBe("1");
+
+  // A Google sign-up creates the account (CustomOAuth2UserService:
+  // registrationRequired = user == null → createUser), so it accepts the same
+  // two documents an email sign-up does — legal for the client to record only
+  // because OAuthOptions shows the consent copy beside the button. The call is
+  // fire-and-forget on this transient page, so poll rather than assume it
+  // landed before the redirect.
+  await expect
+    .poll(() => legalAcceptanceBody)
+    .toMatchObject({ document_codes: ["USER_TERMS", "PRIVACY_POLICY"] });
 });
 
-test("a returning Google sign-in (no registration param) does not arm the role modal", async ({
+test("a returning Google sign-in (no registration param) arms nothing and records nothing", async ({
   page,
 }) => {
   await page.route("**/api/v1/auth/session", (route) =>
     route.fulfill({ status: 200, json: SESSION_PLAIN }),
   );
+  let legalAcceptanceCount = 0;
+  await page.route("**/api/v1/legal/registration-acceptances", (route) => {
+    legalAcceptanceCount += 1;
+    return route.fulfill({ status: 204, body: "" });
+  });
 
   await page.goto("/oauth/callback");
 
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  // Signing in is not registering — consent is recorded once, at registration.
+  expect(legalAcceptanceCount).toBe(0);
+});
+
+test("both auth pages state the Google consent, because either can register", async ({
+  page,
+}) => {
+  await stubNoRestore(page);
+
+  // The copy is NOT Sign-up-only: an unknown Google email creates an account
+  // from the Log-in page too (CustomOAuth2UserService), so the log-in button is
+  // a registration door and must carry the same agreement.
+  for (const path of ["/app/auth/login", "/app/auth/register"]) {
+    await page.goto(path);
+    const consent = page.getByTestId("oauth-consent");
+    await expect(consent).toBeVisible();
+    await expect(consent.getByRole("link", { name: /.+/ })).toHaveCount(2);
+  }
 });
 
 test("a wrong verification code shows an error and does not navigate", async ({

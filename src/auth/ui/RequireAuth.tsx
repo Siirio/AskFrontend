@@ -25,9 +25,10 @@ import { GuardFallback } from "./GuardFallback";
  *   does not return to the gated URL and loop).
  * - authenticated → render the page.
  *
- * Post-login the backend's startRoute decides where the user lands (not a
- * captured return URL) — the vision defines no deep-link-return, so none is
- * invented (P9.1, YAGNI).
+ * Post-login every session lands on Home (`POST_AUTH_PATH`, UF 1 step 3) — NOT a
+ * captured return URL. The vision defines no deep-link-return, so none is
+ * invented (P9.1, YAGNI): someone bounced from `/app/chats` signs in and arrives
+ * at Home, which is the destination the vision names for every role.
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { status } = useAuth();

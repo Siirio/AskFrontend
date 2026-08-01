@@ -28,8 +28,8 @@ import { toast } from "@/shared/ui/sonner";
 
 import * as api from "./api";
 import {
+  POST_AUTH_PATH,
   REGISTRATION_COUNTRY_CODE,
-  startRouteToPath,
   toAuthUser,
   type AuthSessionResponse,
   type AuthUser,
@@ -74,10 +74,17 @@ export function persistPendingRoleSelection(
 }
 
 /**
- * Persist a fresh session onto the store. Verify/login carry a token; GET
- * /session returns null (the token is already stored). Lives here rather than
- * in store.ts because it touches the storage helper (D5); shared by the flow
- * hooks and the provider's restore effect.
+ * Persist a fresh session onto the store. Lives here rather than in store.ts
+ * because it touches the storage helper (D5); shared by the flow hooks and the
+ * provider's restore effect.
+ *
+ * **Every source carries a real token, `GET /session` included** (corrected
+ * 2026-08-01 — this comment used to say `/session` returns null). It does not:
+ * `AuthProcessor.currentSession` calls `jwtTokenService.issue(...)` on every
+ * response. So the `accessToken` write below fires on each session RESTORE, not
+ * only at sign-in — a rolling token refresh nobody designed. Benign, arguably
+ * desirable, but it is a fact rather than an accident now; see `api.getSession`
+ * and features/auth/contracts.md.
  */
 export function applySessionTo(store: AuthStore, session: AuthSessionResponse) {
   if (session.accessToken) tokenStorage.set(session.accessToken);
@@ -138,18 +145,14 @@ export function useAuth(): Auth {
  * a role the backend never confirmed (P9.4). Failure is the caller's to handle
  * — the store keeps the session it already had.
  *
- * **Returns void as of 2026-08-01; it used to return a route.** `GET /session`
- * answers `startRoute: "CLIENT_SEARCH"` for every account — both
- * `AuthProcessor.resolveStartRoute()` and `LoginProcessor.resolveStartRoute()`
- * are no-arg methods returning that constant — so the route it handed back was
- * always `/app`, including for the seller who had just created a business. The
- * one caller was using it to route, and silently sent every new seller to Home;
- * worse, its `/app/business` fallback only survived when THIS call threw, so the
- * failure path routed correctly and the success path did not. Returning a value
- * that is always the same is worse than returning none, so it returns none, and
- * the caller takes its route from the response that actually knows
- * (`SellerOnboardingResponse.startRoute`). Login-time routing is unchanged and
- * still reads `startRoute` — see `startRouteToPath`.
+ * **Returns void as of 2026-08-01; it used to return a route.** Refreshing a
+ * session says nothing about where to go next — routing after onboarding is the
+ * CALLER's decision (`business-cabinet`'s `POST_ONBOARDING_PATH`), and routing
+ * after authentication is `POST_AUTH_PATH`. When this returned a route, the one
+ * caller used it, and every new seller was silently sent to Home; worse, its
+ * `/app/business` fallback only survived when THIS call threw, so the failure
+ * path routed correctly and the success path did not. A refresh that also
+ * answers "and now go here" is two responsibilities (P1.3); it is one now.
  */
 export function useRefreshSession(): () => Promise<void> {
   const applySession = useApplySession();
@@ -212,6 +215,7 @@ export function useOAuthCallback(): OAuthCallbackState {
   const store = useAuthStoreApi();
   const applySession = useApplySession();
   const t = useTranslations("auth");
+  const locale = useLocale();
   const [state, setState] = useState<OAuthCallbackState>({ status: "pending" });
 
   useEffect(() => {
@@ -248,11 +252,22 @@ export function useOAuthCallback(): OAuthCallbackState {
           "1";
         if (isFirstSignup) {
           persistPendingRoleSelection(store, true);
+          // A Google sign-up IS a registration — `CustomOAuth2UserService`
+          // creates the account when the email is unknown — so it accepts the
+          // same two documents an email sign-up does. Honest only because
+          // `OAuthOptions` now shows the consent copy beside the button
+          // (2026-08-01); before that this call would have recorded agreement
+          // to text the person was never shown, which is why it did not exist
+          // and the gap was raised instead of faked (P9.4).
+          //
+          // Not awaited: unlike the verify screen, this page is a transient
+          // redirect with nothing to hold. `recordRegistrationConsent` never
+          // rejects (it toasts), so a floating promise cannot surface as an
+          // unhandled rejection, and the navigation must not wait on a
+          // best-effort legal write.
+          void recordRegistrationConsent(locale, t);
         }
-        setState({
-          status: "done",
-          targetPath: startRouteToPath(session.startRoute),
-        });
+        setState({ status: "done", targetPath: POST_AUTH_PATH });
       })
       .catch(() => {
         if (!active || generation !== oauthGeneration) return;
@@ -262,7 +277,7 @@ export function useOAuthCallback(): OAuthCallbackState {
     return () => {
       active = false;
     };
-  }, [applySession, store, t]);
+  }, [applySession, store, t, locale]);
 
   return state;
 }
@@ -356,6 +371,33 @@ function describeError(
 }
 
 /**
+ * Record the registration consent — the ONE place that knows WHICH documents a
+ * registration accepts and how a failure is handled (P6.2).
+ *
+ * Two callers, both registration events: the email `REGISTER` verify challenge
+ * and a first-time Google sign-up (`?registration=1`). Neither passes a
+ * caller-type flag — the behaviour is identical, which is the whole reason it
+ * is one function (P6.3).
+ *
+ * Best-effort by design: a failed record must never strand someone who now has
+ * a valid account, so it is surfaced rather than thrown or swallowed. Only the
+ * two codes the user was actually SHOWN are sent — `GET /legal/documents` has
+ * no backend controller, so the active document set cannot be discovered, and
+ * sending codes for unseen text would be a worse defect than the one this
+ * closes (ROADMAP auth follow-up, P9.4).
+ */
+async function recordRegistrationConsent(locale: string, t: Translate) {
+  try {
+    await api.acceptRegistrationLegal({
+      documentCodes: REGISTRATION_LEGAL_DOCUMENT_CODES,
+      locale,
+    });
+  } catch {
+    toast.error(t("errors.network"));
+  }
+}
+
+/**
  * The shared verify step — the same for sign-up and log-in (same endpoint, same
  * validation, same outcome), so it lives in one place (P6.2), not behind a
  * caller-type flag (P6.3).
@@ -406,25 +448,16 @@ export function useVerifyStep(verificationId: string, purpose?: string) {
           // The modal recorded it only on the CUSTOMER answer, so anyone who
           // chose "business" had their consent silently dropped for good — the
           // seller flow records SELLER_TERMS, never these two. And the modal
-          // also opens for a first-time GOOGLE sign-up, which never presents an
-          // agreement checkbox at all, so it was recording consent for
+          // also opens for a first-time GOOGLE sign-up, which at the time
+          // presented no agreement at all, so it was recording consent for
           // documents that person was never shown (P9.4). Both disappear by
           // binding the record to the email REGISTER challenge instead of to a
           // role answer: this consent belongs to registration, not to the role.
-          //
-          // Best-effort and awaited-but-not-gating: a failed record must not
-          // strand someone on the verify screen with a valid account. It is
-          // surfaced rather than swallowed.
-          try {
-            await api.acceptRegistrationLegal({
-              documentCodes: REGISTRATION_LEGAL_DOCUMENT_CODES,
-              locale,
-            });
-          } catch {
-            toast.error(t("errors.network"));
-          }
+          // The Google path now presents its OWN consent copy and records from
+          // `useOAuthCallback` (2026-08-01) — same function, same documents.
+          await recordRegistrationConsent(locale, t);
         }
-        setResult({ targetPath: startRouteToPath(session.startRoute) });
+        setResult({ targetPath: POST_AUTH_PATH });
       } catch (e) {
         const message = describeError(e, t, "errors.codeInvalid");
         setError(message);
@@ -570,7 +603,7 @@ export function useLoginFlow() {
         });
       } else {
         applySession(session);
-        setResult({ targetPath: startRouteToPath(session.startRoute) });
+        setResult({ targetPath: POST_AUTH_PATH });
       }
     } catch (e) {
       const message =

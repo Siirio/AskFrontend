@@ -68,8 +68,9 @@ version of this doc described a two-call flow — `onboardSeller` then a loop of
 **Then the session is re-read.** A 201 promotes the account to BUSINESS_OWNER server-side;
 until `GET /auth/session` is re-read the client still thinks it is a customer and the guard
 bounces the new seller out of the cabinet they just created. `useRefreshSession()` (`@/auth`,
-added for this) is part of the flow, not a nicety, and the REFRESHED session's `startRoute`
-decides the landing — never a hardcoded path (auth's lock).
+added for this) is part of the flow, not a nicety. It refreshes the ROLE and nothing else — the
+landing is `POST_ONBOARDING_PATH` (`/app/business`, D26), decided here rather than read off the
+session, which answers Home for every account (see contracts.md).
 
 **Already a seller → straight to the cabinet.** The backend's own UX contract says so
 ("existing business members go to their cabinet instead of seeing another create-business
@@ -89,8 +90,10 @@ still manual creation, not the bulk IMPORT this doc's "Hard rules" forbids below
 submit is a transaction-boundary detail, not a bulk-upload mechanism.
 
 ## Entry — after registration
-Seller registration → the cabinet. `startRoute` (OWNER_BRANCHES / BRANCH_WORKSPACE) decides
-the landing tab — the client never hardcodes it.
+Seller registration → the cabinet (`POST_ONBOARDING_PATH` = `/app/business`, D26). The landing
+TAB is the cabinet's own default, decided when the shell is built (roadmap #6); `startRoute`
+never named a tab — `OWNER_BRANCHES` / `BRANCH_WORKSPACE` were auth-session values the vision
+says must never fire, and they were deleted 2026-08-01 (see auth `contracts.md`).
 
 ## Tabs (UF 3.1, in the vision's order)
 | # | Tab | Owner slice | Notes |

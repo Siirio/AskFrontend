@@ -179,10 +179,27 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   nowhere, waiting on roadmap #6. Documented as such; listed so the deferral is on
   record (P8.1/P8.3), not as loose debt.
 
-- [ ] **B8 — `model.ts` is 437 lines; `hooks.ts` is 399.** The slice lock caps
+- [x] **B8 — `model.ts` is 437 lines; `hooks.ts` is 399.** The slice lock caps
   cabinet files at ~400 and is scoped to `ui/`, so this is P1.1 rather than a lock
   break — but this screen is named *in the lock itself* as the historical dumping
   ground, and it is already over.
+  **→ RESOLVED 2026-08-01 (owner decision) — as NOT A FINDING, by making the rule
+  say what it means.** `DESIGN_PATTERNS_FRONTEND.md` gained **P1.1a**: the ~400
+  cap is about COMPONENT files; a slice's `api.ts`/`model.ts`/`hooks.ts` is a
+  module whose length tracks the DOMAIN's surface and is governed by P1.3 + P1.4
+  instead. Splitting them would also change the slice anatomy architecture §3
+  fixes on purpose. **The deciding evidence was this entry's own history:** it
+  was raised here, raised again by the 2026-08-01 audit (which found `auth/hooks.ts`
+  at 607 and `auth/model.ts` at 421 — both larger than the files named here, and
+  neither mentioned), and actioned NEITHER time, because every proposed fix was
+  worse than the finding. A rule that keeps producing unactioned findings trains
+  readers to skim the list. Taken deliberately BEFORE slices #3–#6 were written,
+  so four more slices inherit a settled shape.
+  **The real P1.1 break the same audit found was `app/_components/NavigationMenu.tsx`
+  at 523 lines — an actual component, and unmentioned in this file.** Split the
+  same day into `NavigationMenu` (188) + `AccountMenu` (290) + `useNavIndicator`
+  (93), with no rule change needed: `app/_components/` has no fixed anatomy,
+  which is exactly why it was the one that could just be fixed.
 
 ---
 
@@ -196,6 +213,21 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   placeholder Terms/Privacy copy (launch item 11), this is live exposure, not a
   to-do.
   **→ **FIXED 2026-08-01.** Moved from `RoleSelectionModal.confirm()` to `useVerifyStep`, fired on a `purpose === "REGISTER"` challenge. Closes both halves: the "business" answer no longer loses the record, and Google sign-ups stop having consent recorded for an agreement they are never shown (the P9.4 defect the first pass missed). Still best-effort by design. **Residual, raised not faked:** a Google sign-up records NO consent, because it presents none — a UX gap, in contracts.md.**
+  **→ RESIDUAL CLOSED 2026-08-01 (owner directive: "Google button gets consent
+  copy").** `OAuthOptions` now states the agreement beside the button — same two
+  documents, same `/terms` and `/privacy` links as the email checkbox — so
+  `useOAuthCallback` can record `USER_TERMS` + `PRIVACY_POLICY` on
+  `?registration=1`. Both paths call one `recordRegistrationConsent()` (P6.2),
+  no caller-type flag (P6.3). **The copy is on the LOG-IN page too**, which was
+  the non-obvious half: `CustomOAuth2UserService` does
+  `registrationRequired = user == null` → `identityService.createUser(...)`, so
+  Google sign-in on the Log-in page creates accounts, and copy under Sign up
+  alone would have left the busier door consenting to nothing. Passive consent,
+  not a checkbox — the click IS the agreement, and a checkbox gating a link
+  would be a second consent grammar for the same documents. **A1 is now fully
+  closed.** What remains is not auth's: the placeholder Terms/Privacy bodies
+  (launch item 11) — live consent against placeholder text is still the thing
+  that must not ship.
 
 - [x] **A2 — `locale` and `countryCode` are never sent on register.** Both are on
   `CustomerRegisterRequest` with server defaults `"ru"` / `"KZ"`. A Kazakh- or
@@ -267,6 +299,30 @@ checked in the first pass — `startRoute` was taken on trust.
   it does and consumes `SellerOnboardingResponse.startRoute` at the one moment it
   is meaningful. Raise it before choosing (cross-repo).
   **→ **HALF-FIXED 2026-08-01.** The user-visible half is closed: onboarding now routes from `SellerOnboardingResponse.startRoute` via `onboardingStartRouteToPath`, so a new seller reaches the cabinet, and `useRefreshSession` returns `void` instead of a route that was always `/app`. **Still open (cross-repo):** login-time routing — an owner logging in lands on `/app`. They reach the cabinet via the nav, so it is not a lockout. Backend must decide whether `/session` resolves `startRoute` from memberships again.**
+  **→ CLOSED 2026-08-01 (owner) — AND THE DIAGNOSIS ABOVE WAS WRONG. Nothing is
+  open; nothing is cross-repo.** Everyone landing on Home after auth IS the
+  product decision: PRODUCT_VISION UF 1 step 3 reads
+  `Home + Role Choosing Modal`, for every role. `resolveStartRoute()` returning
+  the constant is the backend implementing that, not a resolver someone gutted.
+  This entry inferred a defect from the SHAPE of the code — a constant where a
+  resolver might have been — without checking the product authority first, which
+  is the inversion D9/P9.1 exist to prevent, and it then filed a cross-repo
+  dependency that does not exist. Both halves are moot: (1) login-time routing
+  was never broken; (2) `SellerOnboardingResponse.startRoute` is not "the one
+  truthful value" — its two values name the same destination, so consuming it
+  changed nothing behaviourally.
+  **What was actually left was client-side speculation, and it closed by
+  DELETION:** `startRouteToPath` (whose `OWNER_BRANCHES`/`BRANCH_WORKSPACE` arms
+  the vision says must never fire) and `onboardingStartRouteToPath` (a switch
+  whose three arms all returned `/app/business`) are gone, replaced by two named
+  constants — `POST_AUTH_PATH` = `/app` (auth `model.ts`) and
+  `POST_ONBOARDING_PATH` = `/app/business` (business-cabinet `model.ts`). The
+  auth lock that made the resolver look owed to us is RETIRED
+  (`features/auth/locks.md`), replaced by the destination stated as a rule.
+  **No behaviour changed on any path** — every route was already correct. What
+  changed is that the code stops implying a backend gap: the surviving branches
+  read as *"the backend is missing something"* to every reader, and had already
+  misled one audit pass. P8.2, P7.4.
 
 - [x] **A8 — Four e2e stubs assert a `start_route` the backend cannot emit.**
   `business-register.spec.ts` L51, `guard.spec.ts` L34, `navigation.spec.ts` L39
@@ -278,6 +334,7 @@ checked in the first pass — `startRoute` was taken on trust.
   client agrees with itself. Fix WITH A7, not before — the stub should encode
   whatever the answer turns out to be.
   **→ **FIXED 2026-08-01.** All four now answer `CLIENT_SEARCH`, each with a comment naming the two backend methods that prove it. `business-register`'s `/app/business` assertion still holds — it now comes from the onboarding stub, which is where the real value lives.**
+  **→ Amended 2026-08-01 with A7's correction.** The stub VALUES are right and unchanged; their justification was not. `CLIENT_SEARCH` is what the backend emits because the vision says every role starts at Home (UF 1 step 3) — not merely because "no backend path produces `OWNER_BRANCHES`", which describes the symptom and invites someone to "fix" the backend. Comments reworded. The client no longer branches on `start_route` at all, so these stubs now assert a field nothing reads; they stay because the field IS on the wire and a stub that omits it stops mirroring the DTO (this lock).
 
 - [x] **A9 — `GET /session` returns a REAL access token, not null.**
   `AuthProcessor.currentSession` calls `jwtTokenService.issue(...)` and sets
@@ -321,7 +378,7 @@ checked in the first pass — `startRoute` was taken on trust.
   YAGNI bookkeeping the moment `/session` began returning a live `expiresIn` the
   client does not model.
 
-- [ ] **D-7 — three `navigation.spec.ts` tests fail on `mobile-chromium` only,
+- [x] **D-7 — three `navigation.spec.ts` tests fail on `mobile-chromium` only,
   deterministically** *(found 2026-08-01 by running the suite; pre-existing, not
   introduced by any recent change).* `:95` expects `getByRole("navigation")
   .locator('a[href="/app"]')` to have count 2 and gets 1; `:118` and `:156` wait
@@ -333,6 +390,14 @@ checked in the first pass — `startRoute` was taken on trust.
   affordances (`.neu-sheet-item`, the bottom-nav link) behind an `isMobile`
   branch, or by scoping these three to `chromium`. Left alone here because it is
   a navigation-chrome question, unrelated to the auth work this branch carries.
+  **→ FIXED 2026-08-01 by commit `c322331`** ("assert the nav per viewport
+  instead of the desktop shape") — the first of the two suggested fixes: an
+  `isPhone(page)` branch asserting the Sheet (`getByRole("dialog")`) and the
+  bottom-nav link on mobile, the DropdownMenu (`getByRole("menu")`) on desktop.
+  Re-verified after the 2026-08-01 NavigationMenu split: **6/6 on `chromium`
+  AND 6/6 on `mobile-chromium`.** This item stayed `[ ]` after it was already
+  green — the same staleness as **D-5**, and the reason to re-run before
+  trusting any unchecked box in this file.
 
 - [ ] **D-6 — `e2e/search.spec.ts` hardcodes `http://localhost:3000`** in its
   `addCookies` locale pin *(found 2026-07-31 by review of the same pattern in

@@ -16,8 +16,8 @@ import * as api from "./api";
 import {
   EMPTY_ONBOARDING_VALUES,
   hasOnboardingErrors,
-  onboardingStartRouteToPath,
   ONBOARDING_STEP_COUNT,
+  POST_ONBOARDING_PATH,
   stepIsSkippable,
   toOnboardingRequest,
   validateOnboarding,
@@ -135,13 +135,13 @@ export type OnboardingResult = { targetPath: string };
  * cabinet they just created — which is precisely the silent dead end this route
  * exists to remove.
  *
- * Where to LAND comes from the onboarding response, not from the refreshed
- * session (corrected 2026-08-01). Auth's lock still holds — the backend owns the
- * post-login route and this client never hardcodes one — but `GET /session`
- * stopped carrying an answer: `resolveStartRoute()` returns the constant
- * `"CLIENT_SEARCH"`, so following it sent every new seller to Home.
- * `SellerOnboardingResponse.startRoute` is the backend value that still means
- * something (`onboardingStartRouteToPath`).
+ * Where to LAND is `POST_ONBOARDING_PATH` — the cabinet (D26). It does NOT come
+ * from the refreshed session: authentication always lands on Home (UF 1 step 3,
+ * auth's `POST_AUTH_PATH`), and completing onboarding is the one flow that
+ * deliberately goes elsewhere. Routing off the session here is the bug that
+ * shipped — it sent every new seller to Home, and the `/app/business` fallback
+ * only survived when the refresh THREW, so the failure path routed correctly and
+ * the success path did not.
  */
 export function useSellerOnboarding() {
   const t = useTranslations("businessCabinet");
@@ -353,7 +353,7 @@ export function useSellerOnboarding() {
       // `toOnboardingRequest`) — business, membership, profile, verification,
       // and every branch commit in ONE transaction, so there is no follow-up
       // per-branch call to fail independently here.
-      const response = await api.onboardSeller(
+      await api.onboardSeller(
         toOnboardingRequest(values, api.REGISTRATION_COUNTRY_CODE),
       );
       submitted.current = true;
@@ -368,15 +368,9 @@ export function useSellerOnboarding() {
         // deliberately ignored — see above
       }
 
-      // The ROUTE comes from the onboarding response, not from the refreshed
-      // session (2026-08-01). `GET /session` answers `CLIENT_SEARCH` for every
-      // account, so taking the route from there sent every newly-registered
-      // seller to Home — and only the FAILURE path reached the cabinet, because
-      // `/app/business` was the fallback. This response is the one place on the
-      // wire that knows where a new seller belongs.
-      setResult({
-        targetPath: onboardingStartRouteToPath(response.startRoute),
-      });
+      // A completed registration lands in the cabinet (D26), never on the route
+      // the refreshed session carries — see the hook's doc comment.
+      setResult({ targetPath: POST_ONBOARDING_PATH });
     } catch (e) {
       const message = describeError(e, t, "errors.network");
       setFormError(message);

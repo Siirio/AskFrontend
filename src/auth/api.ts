@@ -9,7 +9,8 @@
  *
  * V1 customer path: register (email + code), password login (/auth/login),
  * verify, session, logout. /auth/select-role and business/staff registration
- * exist in the backend but are deferred to the seller/staff paths (roadmap #7).
+ * exist in the backend but are deferred to the seller/staff paths (roadmap #6,
+ * the business cabinet).
  */
 import { httpClient } from "@/shared/api/httpClient";
 

@@ -44,11 +44,14 @@ const SELLER_SESSION = {
   access_token: null,
   token_type: "Bearer",
   role: "BUSINESS_OWNER",
-  // `CLIENT_SEARCH` is the ONLY value the backend can emit: both
+  // `CLIENT_SEARCH` for every account, business owners included — because
+  // PRODUCT_VISION UF 1 step 3 lands every role on Home, and both
   // AuthProcessor.resolveStartRoute() and LoginProcessor.resolveStartRoute()
-  // are no-arg methods returning that constant, for every account including a
-  // business owner. This stub said "OWNER_BRANCHES" until 2026-08-01, which no
-  // backend path produces — the e2e-stub lock, in the exact shape it names.
+  // implement exactly that as a constant. This stub said "OWNER_BRANCHES" until
+  // 2026-08-01, a value no backend path produces — the e2e-stub lock, in the
+  // exact shape it names. The client no longer branches on this field at all
+  // (auth `POST_AUTH_PATH`); it stays here because it IS on the DTO, and a stub
+  // that drops a live field stops mirroring the contract it claims to cover.
   start_route: "CLIENT_SEARCH",
   user: {
     user_id: "33333333-3333-3333-3333-333333333333",

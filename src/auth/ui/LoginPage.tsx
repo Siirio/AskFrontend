@@ -13,9 +13,10 @@ import { AuthShell } from "./AuthShell";
 import { LoginForm } from "./LoginForm";
 
 /**
- * The Log in page (/app/auth/login). Email → 6-digit code → session, landing on
- * the backend's startRoute. Log-in never triggers role expansion (that is only
- * for a fresh sign-up), so there is no modal here.
+ * The Log in page (/app/auth/login). Email + password → session, landing on Home
+ * (`POST_AUTH_PATH`, UF 1 step 3); a 2FA-enabled account runs the shared 6-digit
+ * verify step first. Log-in never triggers role expansion (that is only for a
+ * fresh sign-up), so there is no modal here.
  */
 export function LoginPage() {
   const t = useTranslations("auth");

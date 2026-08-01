@@ -104,9 +104,22 @@ records consent once the session exists.
 > Still best-effort: a failure toasts `errors.network` and the flow continues, because stranding
 > someone on the verify screen with a valid account is worse than a missed record.
 >
-> **Still open, raised not faked:** a Google sign-up records NO registration consent, because it
-> is shown no agreement. That is a product/UX gap (the OAuth buttons need consent copy), not
-> something this client may paper over.
+> **CLOSED 2026-08-01 (owner directive) — the OAuth buttons got consent copy, so the record
+> became honest to write.** `OAuthOptions` now renders a consent line beside the Google button
+> naming the same two documents and linking the same `/terms` and `/privacy` routes, and
+> `useOAuthCallback` records `USER_TERMS` + `PRIVACY_POLICY` when the callback carries
+> `?registration=1`. Both call the one `recordRegistrationConsent()` (P6.2) — same documents,
+> same best-effort semantics, no caller-type flag (P6.3).
+>
+> **The copy is on the LOGIN page too, and that is the load-bearing detail.** Google sign-in
+> registers: `CustomOAuth2UserService` does `registrationRequired = user == null` and then
+> `identityService.createUser(...)`, so an unknown email creates an account from the Log-in
+> page exactly as from Sign up. Putting the copy only under Sign up would have left the more
+> common entry point consenting to nothing.
+>
+> It is PASSIVE consent (a statement of consequence), not a checkbox: the click itself is the
+> agreement, and a checkbox gating a link would be a second consent grammar for the same two
+> documents. The email form keeps its checkbox, which gates a form it can actually block.
 
 **The "business" answer does NOT call this endpoint here.** Choosing "business" only
 starts seller onboarding (routes to `/app/business/register`); per the backend's identity
@@ -254,24 +267,31 @@ context. It is informational only; context-specific authorization still comes
 from `business`/`businessMemberships`/`platformMembership`, never from scanning
 this array (unchanged from before — this just confirms the shape in writing).
 
-## startRoute → route
+## startRoute — received, not consumed
 
-CLIENT_SEARCH → `/app` · OWNER_BRANCHES → `/app/business` · BRANCH_WORKSPACE → `/app/business`
+`startRoute` is on `AuthSessionResponse` and is modelled, because it is on the wire. **Nothing
+branches on it.** Every authenticated entry — login, verify, the OAuth callback — goes to
+`POST_AUTH_PATH` (`/app`, auth `model.ts`).
 
-> **2026-08-01 — `CLIENT_SEARCH` is the only value login/verify/session emit.**
+> **2026-08-01 (owner) — corrected, reversing what this section said the same day.**
 > `AuthProcessor.resolveStartRoute()` and `LoginProcessor.resolveStartRoute()` are no-arg methods
-> that `return "CLIENT_SEARCH";`, so the two business values above are unreachable from those
-> endpoints. `startRouteToPath` keeps them so a future backend change needs no client edit.
+> that `return "CLIENT_SEARCH";` for every account. That is **the backend implementing
+> PRODUCT_VISION UF 1 step 3** ("Home + Role Choosing Modal", stated for every role) — not a
+> resolver that lost its inputs.
 >
-> **This is not a defect and is not tracked as one.** Nothing in PRODUCT_VISION requires an owner
-> to land on the cabinet at sign-in, and the nav's Dashboard link (gated on
-> `business.memberRole`, unaffected by this) is the way in.
+> This section previously listed `OWNER_BRANCHES → /app/business` and
+> `BRANCH_WORKSPACE → /app/business` as live mappings kept "so a future backend change needs no
+> client edit". Both were deleted with `startRouteToPath`: values the vision says must never fire
+> are not a contract to hold open (P8.2), and holding them open read to every subsequent reader as
+> *the backend is missing something* — it produced AUDIT_1's A7, which filed a cross-repo
+> dependency that does not exist.
 >
-> What DID matter: `business-cabinet` took its post-REGISTRATION route from the refreshed
-> session, so a seller was sent to Home seconds after creating a business — and the correct
-> `/app/business` fallback only survived when the refresh THREW. It now routes from
-> `SellerOnboardingResponse.startRoute` (`BUSINESS_CABINET` / `MANAGED_IMPORT`), which is the
-> value that actually varies. Fixed 2026-08-01.
+> The seller path is a separate rule, not an exception: completing onboarding lands on
+> `/app/business` (D26, business-cabinet's `POST_ONBOARDING_PATH`). `SellerOnboardingResponse`
+> also carries a `startRoute`, and it is likewise not consumed — both of its values
+> (`BUSINESS_CABINET`, `MANAGED_IMPORT`) name the same destination today, because the
+> managed-import scoping screen is roadmap #7. When that screen ships with its own route, the
+> branch is written then.
 
 ## Errors surfaced (via ApiError.errorCode / status)
 

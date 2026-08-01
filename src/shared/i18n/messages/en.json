@@ -164,6 +164,7 @@
     "oauth": {
       "or": "or",
       "continueWithGoogle": "Continue with Google",
+      "consent": "By continuing with Google, you agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
       "signingIn": "Signing you in…",
       "failed": "Google sign-in didn't work. Please try again.",
       "backToLogin": "Back to log in"

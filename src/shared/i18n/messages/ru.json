@@ -164,6 +164,7 @@
     "oauth": {
       "or": "или",
       "continueWithGoogle": "Продолжить с Google",
+      "consent": "Продолжая через Google, вы принимаете <terms>Условия использования</terms> и <privacy>Политику конфиденциальности</privacy>.",
       "signingIn": "Выполняется вход…",
       "failed": "Не удалось войти через Google. Попробуйте ещё раз.",
       "backToLogin": "Вернуться ко входу"

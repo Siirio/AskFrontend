@@ -85,13 +85,13 @@ placeholder — the legal copy is the owner's to write, never invented here (P9.
 1. Landing (`/`) → Authorization Page.
 2. **Log in:** email + password → `POST /auth/login` → session directly (or, if the account has 2FA, a challenge → the 6-digit verify step). No email code on log-in.
    **Sign up:** name, email, password (+ confirm), accept agreement → `customer/register` issues a challenge → 6-digit code → `verify` creates the account. (Name is REQUIRED in the form even though the DTO marks it optional: `app_user.display_name` is NOT NULL in the backend schema, so a nameless registration always fails at verify — proven live 2026-07-17, raised with backend; relax when they fix it.)
-3. On verify success the session (token) is stored, the page navigates to the backend's **`startRoute`** (`startRouteToPath`), and:
+3. On verify success the session (token) is stored, the page navigates to **Home** (`POST_AUTH_PATH` = `/app` — UF 1 step 3, every role), and:
    - if the challenge's `purpose` was **`REGISTER`** → the **Role Choosing Modal** opens OVER `/app`. It has NO close button, ignores ESC and outside clicks, and survives navigation and reload (the pending flag lives in localStorage + the auth store) — the ONLY way out is answering: a role card (customer preselected — search is the mission) + one accent Continue. Customer → `/app`; business → **`/app/business/register`**.
    - **Fixed 2026-07-27, two faults, both blocking.** (a) The trigger was `suggestRoleExpansion` alone, a field the backend declared and never assigned — so the modal could not open on any account. (b) `verify` was being sent `auth_challenge_id` after the backend renamed it `verification_id`, so registration 400'd before the modal was even reachable. See `contracts.md`. A 2FA log-in runs this same verify step and carries no purpose, so signing in never re-opens an answered choice.
    - **The business answer used to be a no-op.** It routed to `/app/business`, where `RequireDashboardAccess` bounced the fresh customer who had just chosen it. It now routes to seller registration (`@/business-cabinet`), which is what makes the account a seller — PRODUCT_VISION UF 3.1, "the seller is redirected to the business registration page".
    - **Legal consent (2026-07-30):** answering **customer** also calls `POST /api/v1/legal/registration-acceptances` (`documentCodes: ["USER_TERMS","PRIVACY_POLICY"]`) before navigating — best-effort, a failure toasts but does not block (see `contracts.md` "Legal consent"). Answering **business** does not call it here; that document set (`SELLER_TERMS`/`PERSONAL_DATA_CONSENT`) belongs to the seller-onboarding wizard's own completion (`business-cabinet`, not yet built).
    - The pending flag is dropped when the session ends (sign-out, or the backend rejecting the token).
-4. Role decides the surface: customer → Home/search (UF 2.x); business owner → business registration then the cabinet (UF 3.1). `startRoute` from the backend is the authority for where the session lands.
+4. Role decides the surface AFTER Home, not instead of it: every session lands on Home (UF 1 step 3), and the modal's business answer is what carries someone onward to registration → the cabinet (UF 3.1). A returning owner reaches the cabinet from the nav's Dashboard link. Nothing per-account is resolved from `startRoute` — see `contracts.md` § *startRoute — received, not consumed*.
 
 **Placement:** the vision draws the modal over Home (`/app`), and it renders
 there — but `RoleSelectionModal` (exported from `@/auth`) is mounted by the
@@ -125,8 +125,15 @@ to the backend callback, which creates a revocable server session, writes the si
 transient page (the backend shipped this exchange 2026-07-19):
 
 1. exchanges the cookie for a Bearer token — one `exchangeOAuthSession()` call (`GET /session` with `credentials:'include'`); the backend returns the HS256 JWT (`access_token`/`expires_in`) and clears `ASK_SESSION` — then applies it via the existing `applySessionTo()`. A token-less response is surfaced as an error, never applied as an empty sign-in (P9.4). The exchange runs at most once (the cookie is single-use);
-2. redirects to the backend's `startRoute` (`startRouteToPath`), exactly like verify/login;
-3. if the callback URL carries `?registration=1` (a first-time Google signup — `OAuth2AuthSuccessHandler`, backend 2026-07-30), arms the persistent Role Choosing Modal the same way the verify step does. (Before 2026-07-30 this read a `suggestRoleExpansion` session field the backend never populated, so a Google-first account never got the modal at all — see `contracts.md`.)
+2. redirects to Home (`POST_AUTH_PATH`), exactly like verify/login;
+3. if the callback URL carries `?registration=1` (a first-time Google signup — `OAuth2AuthSuccessHandler`, backend 2026-07-30), arms the persistent Role Choosing Modal the same way the verify step does, **and records the registration consent** (`USER_TERMS` + `PRIVACY_POLICY`, the same `recordRegistrationConsent()` the verify step calls). (Before 2026-07-30 this read a `suggestRoleExpansion` session field the backend never populated, so a Google-first account never got the modal at all — see `contracts.md`.)
+
+**Consent on the Google button (2026-08-01).** Both auth pages state the agreement beside the
+Google button — passive copy (`auth.oauth.consent`), same two documents and the same `/terms`
+and `/privacy` links as the email form's checkbox. It is on **both** pages because Google
+sign-in also REGISTERS: the backend creates the account when the email is unknown, so the
+Log-in page's button is a sign-up door too. Until this copy existed, a Google sign-up accepted
+nothing anywhere, and the client deliberately recorded nothing rather than fake it (P9.4).
 
 **Callback states (P8.4/P9.3).**
 

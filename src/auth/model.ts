@@ -151,9 +151,11 @@ export type AuthPlatformMembershipResponse = {
  * while missing five fields — `expiresIn` plus the four the backend's
  * `SessionCapabilitiesProcessor` populates on every response.
  *
- * Consumed in V1: `accessToken`, `role`, `startRoute`, `user`, `business`,
- * `requiresTwoFactor`, `verificationId`. Everything else is contract surface
- * awaiting the seller/staff paths (roadmap #7) or a security-settings screen
+ * Consumed in V1: `accessToken`, `role`, `user`, `business`,
+ * `requiresTwoFactor`, `verificationId`. (`startRoute` is modelled but NOT
+ * consumed — every session lands on `POST_AUTH_PATH`.) Everything else is
+ * contract surface awaiting the seller/staff paths (roadmap #6, the business
+ * cabinet) or a security-settings screen
  * that does not exist yet — do not build UI on a field just because it is here
  * (P9.1).
  */
@@ -391,31 +393,25 @@ export function passwordStrength(value: string): PasswordStrength {
 }
 
 /**
- * Map the backend's `startRoute` to a client route path.
+ * Where a session lands after authentication: **Home, always** — login, verify
+ * and the OAuth callback alike. This is PRODUCT_VISION UF 1 step 3 ("Home +
+ * Role Choosing Modal"), not a fallback: every role starts at the search entry,
+ * and a seller reaches the cabinet from the nav's Dashboard link (gated by
+ * `canAccessDashboard`, below).
  *
- * ⚠ **`OWNER_BRANCHES` and `BRANCH_WORKSPACE` are currently UNREACHABLE.** Both
+ * A constant rather than a mapper, corrected 2026-08-01. This used to be
+ * `startRouteToPath(session.startRoute)`, a switch with `OWNER_BRANCHES` /
+ * `BRANCH_WORKSPACE` branches the backend cannot emit —
  * `AuthProcessor.resolveStartRoute()` and `LoginProcessor.resolveStartRoute()`
- * are no-arg methods returning the constant `"CLIENT_SEARCH"`, so login, verify
- * and `GET /session` route every account — business owners included — to `/app`.
+ * both `return "CLIENT_SEARCH"`. Those branches were read as a backend gap and
+ * kept "until the contract is restored"; they were never a gap. The backend is
+ * implementing the vision. Branching on a field with one value only made the
+ * design look uncertain — and cost an audit pass that filed a cross-repo
+ * dependency which does not exist. `startRoute` stays on `AuthSessionResponse`
+ * (it is on the wire), but nothing branches on it.
  *
- * They are KEPT rather than deleted: this map is the client's half of a contract
- * the backend can restore without a frontend change, and deleting the branches
- * would silently turn a restored `OWNER_BRANCHES` into the `/app` default. An
- * owner landing on `/app` at sign-in is not a defect — the nav's Dashboard link
- * is the way in — but do NOT build on these branches while they are unreachable:
- * `business-cabinet` used to take its post-REGISTRATION route from here and sent
- * every new seller to Home as a result. It now uses
- * `SellerOnboardingResponse.startRoute` (2026-08-01).
+ * Registration is the one flow that lands elsewhere, and it is not this rule:
+ * completing seller onboarding goes to the cabinet (D26 — see
+ * `business-cabinet`'s `POST_ONBOARDING_PATH`).
  */
-export function startRouteToPath(
-  startRoute: string | undefined | null,
-): string {
-  switch (startRoute) {
-    case "OWNER_BRANCHES":
-    case "BRANCH_WORKSPACE":
-      return "/app/business";
-    case "CLIENT_SEARCH":
-    default:
-      return "/app";
-  }
-}
+export const POST_AUTH_PATH = "/app";

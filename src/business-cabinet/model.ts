@@ -86,38 +86,29 @@ export type SellerOnboardingResponse = {
   catalogSetupMode: CatalogSetupMode;
   /**
    * "BUSINESS_CABINET" | "MANAGED_IMPORT" — set from the submitted
-   * `catalogSetupMode` (`SellerOnboardingProcessor`).
-   *
-   * **NOW CONSUMED (2026-08-01) — this doc used to say "deliberately NOT
-   * consumed".** The old reasoning was that `GET /auth/session` is the authority
-   * on where a role lands. That premise is void: `AuthProcessor.resolveStartRoute()`
-   * is a no-arg method returning the constant `"CLIENT_SEARCH"`, so the session
-   * routes every account to Home, including the seller who has just created a
-   * business. This field is the ONLY place on the wire where the real answer
-   * exists, so it is what routes now. The session is still re-read — the role
-   * change has to reach the guard and the nav — its route is just no longer used.
+   * `catalogSetupMode` (`SellerOnboardingProcessor`). Modelled because it is on
+   * the wire; **nothing branches on it**, because both values mean the same
+   * destination today (see `POST_ONBOARDING_PATH`).
    */
   startRoute?: string;
 };
 
 /**
- * Where to land after onboarding, from the backend's own answer.
+ * Where a new seller lands once onboarding succeeds: the cabinet (D26 — the
+ * register → land-in-cabinet loop).
  *
- * Both values map to the cabinet today: the managed-import follow-up screen does
- * not exist yet (roadmap #8), and sending someone to a route that renders
- * nothing is the dead end the "a reachable control must DO something" lock
- * forbids. Mapping is kept explicit anyway so the day that screen lands, this is
- * the one line that changes — and an unknown future value falls back to the
- * cabinet rather than to a guess.
+ * A constant rather than a mapper, corrected 2026-08-01. This was a switch over
+ * `SellerOnboardingResponse.startRoute` whose `MANAGED_IMPORT`,
+ * `BUSINESS_CABINET` and `default` arms all returned this same string — a
+ * decision with one answer, kept explicit "so the day the other screen lands
+ * this is the one line that changes". That day is roadmap #7 (the managed-import
+ * scoping screen), and writing the branch then costs exactly as much as it does
+ * now, minus the years of reading a switch that cannot switch (P8.1, P7.4).
+ *
+ * NOT the same rule as auth's `POST_AUTH_PATH` (= Home, UF 1 step 3). This is
+ * the one flow that deliberately lands elsewhere.
  */
-export function onboardingStartRouteToPath(startRoute?: string): string {
-  switch (startRoute) {
-    case "MANAGED_IMPORT":
-    case "BUSINESS_CABINET":
-    default:
-      return "/app/business";
-  }
-}
+export const POST_ONBOARDING_PATH = "/app/business";
 
 /** Mirrors `kz.ask.business.branch.api.dto.CreateBranchRequest` exactly —
  *  `latitude`/`longitude` are `@NotNull` on the backend, so the map picker in
