@@ -91,6 +91,7 @@ assume two sections exist.
 | `brandColor` | Always populated (backend falls back to a default) |
 | `brandLogoUrl` | Nullable |
 | `title`, `summary`, `categoryLabel` | |
+| `images` | `CatalogImageResponse[]` = `{ id, url }` — ordered, **at most three, first is primary**, `[]` when none (`toCard()` defaults to `List.of()`, so never null). Server-generated ASK-managed media; a client never submits an external media URL. **Landed 2026-08-02 (`b02105a`). Modelled, NOT rendered** — see § *Catalog images* |
 | `price`, `currency` | `price` nullable — render nothing when absent, never "0" |
 | `businessProfile` | `{ logoUrl, coverUrl, description, number, email, instagramUrl, telegramUrl, websiteUrl }` |
 | `availability` | `UNKNOWN` \| `AVAILABLE` \| `UNAVAILABLE` |
@@ -139,11 +140,43 @@ raw English inside the offer tint.)*
 nothing yet — the map-area filter that wants them is parked behind G1 — but a field we receive
 is modelled honestly rather than discovered later.
 
+## Catalog images — on the wire 2026-08-02, deliberately NOT rendered
+
+Backend `b02105a` added `images` to `SearchCardResponse` and, in the same commit, rewrote its
+own § *Result presentation*. Both are recorded here; **neither is built**, and the reason is
+the product lock, not oversight.
+
+**What the backend now describes** (`Ask_Backend/AI_Knowledge/features/search/README.md`):
+each result row carries *"its primary catalog image, a compact business avatar/name"*; on
+desktop *"hover previews the full Item/Service image gallery and details in the right panel"*,
+on mobile *"row tap opens the same details as a modal"*; the business avatar and chat actions
+*"do not open result details"*; and *"match reasons remain response metadata but are not
+displayed."*
+
+**Why none of it ships yet.** `PRODUCT_VISION.md` contains **zero** mentions of an image, a
+photo or a gallery on a result card, and describes no hover-preview panel. Building any of it
+would be inventing UI, which the product lock forbids without exemption (P9.1, D31). Three of
+the four statements also *contradict* what we ship today, so they are not additive:
+
+| Backend says | We ship today | Conflict |
+|---|---|---|
+| Primary catalog image on the row | Two-layer card, no image | New UI — needs a vision entry |
+| Desktop hover → gallery in a right panel | Card modal is roadmap #3 (gate G3 parks one button) | A different Product Card interaction model |
+| Match reasons NOT displayed | `matchReasons` rendered as the intent signal | **Direct reversal** — the vision's core "why this matched" affordance |
+| Business avatar/chat do not open details | No click target exists yet | Compatible; constrains #3 |
+
+The data is modelled (`CatalogImage` in `model.ts`) because it is on the wire and the backend
+is the data authority — a field we receive is modelled honestly rather than discovered later,
+the same call made for `latitude`/`longitude`. **Rendering waits on an owner decision**, because
+the fourth row is a product reversal an agent must not infer from backend prose: the backend is
+the authority for DATA, the vision for INTENT (P9.4/D9). Raised as AUDIT_2 **N11** (the field)
+and **N12** (the presentation contract).
+
 ## Filter reference data
 | Method | Path | Auth | Used by |
 |--------|------|------|---------|
 | GET | /api/v1/cities | No | Location filter. **NO parameters** — `CityController.listAll()` returns the WHOLE table as `CityDto { id: UUID, name: String }`. The client fetches once and filters in memory |
-| GET | /api/v1/cities/resolve?**name**= | No | **Not consumed by `search`.** Resolves a NAME to `CityDto`; 404 `CITY_NOT_FOUND` on a miss. `business-cabinet` will use it for B3 (`cityId` on drafted branches) |
+| GET | /api/v1/cities/resolve?**name**= | No | **Not consumed by `search`, and NOT usable for B3 as intended.** Resolves a NAME to `CityDto`; 404 `CITY_NOT_FOUND` on a miss. The plan was for `business-cabinet` to resolve a KATO `placeName` here — **measured 2026-08-02: 0 of 11 954 KATO names match any of the 23 seeded city rows, in either language.** See `features/business-cabinet/contracts.md` § *B3* |
 | GET | /api/v1/categories?q=&type=ITEM\|SERVICE | No | Category filter. Flat — `{ suggestions: [{ categoryId, label, type, source }] }` |
 
 ## Retrieval behaviour (backend-owned — context, not a client control)

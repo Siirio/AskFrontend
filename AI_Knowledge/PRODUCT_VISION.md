@@ -105,6 +105,39 @@ The 4 key features of our platform:
 > other than the reason it was given. Routing demand to the brand's own surface is the
 > anti-marketplace reading of "purchase" — ASK never becomes the checkout (Design Locks).
 
+---
+
+> **Catalog images on the result card (added 2026-08-02 — owner directive; append-only change to
+> this CORE file).** A result card in the Catalog Page (UF 2.1 step 2) shows the item's or
+> service's **primary catalog image** when the seller has uploaded one. An item or service may
+> carry **up to three** images; the first is the primary one. The remaining images belong to the
+> **Product Card** (step 3), not to the row.
+>
+> A card with no image is a normal, first-class state, not a broken one — most listings will have
+> none until sellers upload, and the card must read as complete without it. The image is
+> presentation of the seller's own goods; it is **not** a trust signal, not a quality score, and
+> its presence or absence must never be rendered as a judgement about the business (Design Locks:
+> trust badges are metadata, never a rating).
+>
+> **Justification.** The backend shipped the capability on 2026-08-02 (`b02105a`):
+> `SearchCardResponse.images` is an ordered `{id, url}` list, capped at three by
+> `CatalogImageLayout.MAX_IMAGES`, with the first entry primary — confirmed directly by the
+> backend developer ("для услуг и товаров до 3 картинок загружать"). The images are ASK-managed
+> uploads, never client-supplied URLs, so they cannot become an uncontrolled external surface.
+> This append exists because the capability arrived with **no vision entry**, and the product lock
+> admits no exemption (P9.1, D31): the field was modelled on arrival — the backend is the data
+> authority — but nothing rendered it until this decision. Sellers cannot upload until the
+> Products and Services tabs ship (roadmap #7/#8), so the rendering work belongs to **slice #3**
+> and every gallery is empty before then.
+>
+> **What this append does NOT adopt.** The backend's own `features/search/README.md` describes a
+> fuller presentation in the same commit — a desktop hover-preview panel, a mobile detail modal,
+> and *"match reasons … are not displayed."* **Those are not adopted.** Match reasons stay
+> rendered: "why this matched" is the intent layer's core affordance and the thing that separates
+> ASK from a marketplace's ranking. The backend is the authority for DATA and this vision is the
+> authority for INTENT (D9, P9.4) — a README in the other repo is not where a product affordance
+> is removed. The conflict is raised back to the backend as a documentation question.
+
 #### UF 2.2 — The customer wants to find a chat
 
 ```text

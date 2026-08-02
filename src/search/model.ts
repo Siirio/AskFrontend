@@ -58,6 +58,18 @@ export type SearchFilterRequest = {
 
 // ── Response DTOs ────────────────────────────────────────────────────────────
 
+/**
+ * `CatalogImageResponse` — one ASK-managed catalog image (`kz.ask.offer.media`).
+ *
+ * Both fields are server-generated: `url` points at ASK's own media storage and
+ * a client NEVER submits an external media URL (backend `item/contracts.md`).
+ * The gallery holds at most three images and the FIRST is primary.
+ */
+export type CatalogImage = {
+  id: string;
+  url: string;
+};
+
 export type SearchCardResponse = {
   resultId: string;
   resultType: "ITEM" | "SERVICE";
@@ -67,6 +79,16 @@ export type SearchCardResponse = {
   brandLogoUrl: string | null;
   title: string;
   summary: string | null;
+  /** Ordered catalog gallery, first entry primary; `[]` when the seller
+   *  uploaded none. Landed on the wire 2026-08-02 (backend `b02105a`).
+   *  **Modelled, deliberately NOT rendered** — PRODUCT_VISION describes no
+   *  image on a result card, and inventing UI is forbidden (P9.1). The backend
+   *  ALSO shipped a result-presentation contract in the same commit (primary
+   *  image on the row, desktop hover-preview panel, mobile modal, match reasons
+   *  no longer displayed) that our `ux-ui-flow.md` does not describe. Both are
+   *  raised for an owner decision, not inferred — see `contracts.md`
+   *  § *Catalog images* and AUDIT_2 N11/N12. */
+  images: CatalogImage[];
   categoryLabel: string | null;
   price: number | null;
   currency: string | null;

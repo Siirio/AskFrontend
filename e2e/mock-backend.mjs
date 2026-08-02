@@ -40,6 +40,17 @@ function card(overrides = {}) {
     brand_logo_url: null,
     title: "Fresh rose bouquet",
     summary: "Hand-tied, delivered same day",
+    // From `SearchCardResponse.images` (`List<CatalogImageResponse>`, landed
+    // 2026-08-02 in `b02105a`): server-generated `{id, url}` pairs, at most
+    // three, first is primary. `toCard()` uses `images.getOrDefault(id,
+    // List.of())`, so the field is always present and `[]` when the seller
+    // uploaded none — never null. Stubbed even though no component reads it
+    // yet: a stub that omits a live field stops mirroring the DTO, which is
+    // the whole point of the e2e-stub lock.
+    images: [
+      { id: "img-1", url: "https://media.ask.test/items/rose-1.webp" },
+      { id: "img-2", url: "https://media.ask.test/items/rose-2.webp" },
+    ],
     category_label: "Flowers",
     price: 12000,
     currency: "KZT",
