@@ -13,9 +13,10 @@ import { useCitySuggestions } from "../hooks";
  * Same ARIA combobox shape as `business-cabinet/ui/CategoryField.tsx` —
  * duplicated per D8 (same LOOK, different owner/data: this hits `/cities` for
  * search's OWN location filter, not the seller-onboarding category picker).
- * Simpler than that one: `GET /cities` returns plain city names with no
- * identity to preserve, so free text IS the filter value — there is no
- * "picked vs. typed" distinction to track.
+ * Simpler than that one: `explicitFilters.city` is a `String` on the backend,
+ * so free text IS the filter value and there is no "picked vs. typed"
+ * distinction to track. `CityDto.id` is still used as the React key — it is
+ * the row's real identity, and two cities may share a name.
  */
 export function CityField({
   id,
@@ -39,7 +40,7 @@ export function CityField({
   const pick = (index: number) => {
     const suggestion = suggestions[index];
     if (!suggestion) return;
-    onChange(suggestion.city);
+    onChange(suggestion.name);
     setOpen(false);
     setActive(-1);
   };
@@ -100,7 +101,7 @@ export function CityField({
         >
           {suggestions.map((suggestion, index) => (
             <li
-              key={suggestion.city}
+              key={suggestion.id}
               id={`${listId}-${index}`}
               role="option"
               aria-selected={index === active}
@@ -113,7 +114,7 @@ export function CityField({
               }}
               onClick={() => pick(index)}
             >
-              {suggestion.city}
+              {suggestion.name}
             </li>
           ))}
         </ul>

@@ -47,8 +47,17 @@ function card(overrides = {}) {
     availability: "AVAILABLE",
     availability_warning: null,
     match_reasons: ["Matches your query for fresh flowers"],
-    badges: ["official channel", "-30%"],
+    // Order and companion flag copied from StructuredSearchProcessor:
+    // `resolveBadges()` adds `activeOfferLabel` FIRST, then the three known
+    // tokens, and `has_active_offer` is set from that same label
+    // (`activeOfferLabel != null && !isBlank()`). The stub used to put "-30%"
+    // second with no flag at all, which could only ever prove the client
+    // agrees with itself (the e2e-stub lock).
+    badges: ["-30%", "official channel"],
+    has_active_offer: true,
     distance_meters: 3400,
+    latitude: 43.238949,
+    longitude: 76.889709,
     branch_name: "Main branch",
     branch_address: "Abay 10",
     branch_city: "Almaty",
@@ -100,9 +109,43 @@ const lastSortByQuery = new Map();
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
+  // CORS, added 2026-08-02 with the /cities stub. Every earlier route was
+  // called SERVER-side (the Catalog Page fetches during SSR, D7), which needs
+  // no CORS at all — so the first BROWSER-side call to this server, the city
+  // combobox, was simply blocked and the list silently stayed empty. The real
+  // backend does configure CORS (`ask.cors.allowed-origins`, and the deploy
+  // domain is still an open cross-repo item), so mirroring it here is faithful
+  // rather than a convenience.
+  res.setHeader("Access-Control-Allow-Origin", req.headers.origin ?? "*");
+  res.setHeader("Access-Control-Allow-Headers", "authorization,content-type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   if (url.pathname === "/healthz") {
     res.writeHead(200);
     res.end("ok");
+    return;
+  }
+
+  // `CityController.listAll()` — GET /api/v1/cities. Built from CityDto
+  // {id, name} (the e2e-stub lock): it takes NO parameters and returns the
+  // whole table, which is why the client fetches once and filters in memory.
+  // Any `?q=` the client might send is deliberately ignored here, exactly as
+  // the controller ignores it — a stub that honoured a param the backend does
+  // not have would hide the very defect this replaced (AUDIT_1 S1/S4).
+  if (url.pathname === "/api/v1/cities" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify([
+        { id: "c1111111-1111-1111-1111-111111111111", name: "Almaty" },
+        { id: "c2222222-2222-2222-2222-222222222222", name: "Astana" },
+        { id: "c3333333-3333-3333-3333-333333333333", name: "Shymkent" },
+      ]),
+    );
     return;
   }
 
@@ -124,6 +167,61 @@ const server = createServer(async (req, res) => {
             sections: [],
             ambiguity: "Did you mean roses or rose plants?",
             suggestions: ["rose plants", "rose bouquets"],
+          }),
+        ),
+      );
+      return;
+    }
+    // An offer PLUS a token the client does not know. `resolveBadges()` puts
+    // `activeOfferLabel` first, so "verified" is a badge the backend could add
+    // tomorrow — it must be dropped, not promoted to the offer label and shown
+    // raw in the offer tint (AUDIT_2 N8).
+    if (rawQuery === "roses-badges") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          sectionsResponse(rawQuery, {
+            sections: [
+              {
+                type: "exact",
+                kind: "EXACT",
+                title: "Exact matches",
+                relaxed_constraints: null,
+                reason: null,
+                cards: [
+                  card({
+                    badges: ["-30%", "official channel", "verified"],
+                    has_active_offer: true,
+                  }),
+                ],
+              },
+            ],
+          }),
+        ),
+      );
+      return;
+    }
+    // No offer at all, and an unmapped token. Nothing may wear the offer tint.
+    if (rawQuery === "roses-nooffer") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          sectionsResponse(rawQuery, {
+            sections: [
+              {
+                type: "exact",
+                kind: "EXACT",
+                title: "Exact matches",
+                relaxed_constraints: null,
+                reason: null,
+                cards: [
+                  card({
+                    badges: ["surprise", "pickup"],
+                    has_active_offer: false,
+                  }),
+                ],
+              },
+            ],
           }),
         ),
       );

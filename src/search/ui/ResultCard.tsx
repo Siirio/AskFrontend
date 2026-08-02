@@ -30,7 +30,12 @@ export async function ResultCard({
   locale: string;
 }) {
   const t = await getTranslations({ locale, namespace: "search" });
-  const { badgeKeys, offerLabel } = separateBadges(card.badges);
+  // `hasActiveOffer` decides the offer tint — never a guess from badge text
+  // (TINT IS INFORMATION lock; AUDIT_2 N8).
+  const { badgeKeys, offerLabel } = separateBadges(
+    card.badges,
+    card.hasActiveOffer,
+  );
 
   return (
     <Card className="gap-3 py-4">

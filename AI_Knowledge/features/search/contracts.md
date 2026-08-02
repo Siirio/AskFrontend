@@ -125,11 +125,25 @@ a deliberate, owner-approved narrowing of slice DONE-criterion #3.
 An unknown badge token is dropped, not rendered raw — a new backend badge must be added
 here deliberately.
 
+**`badges[0]` is the OFFER LABEL, not a token, whenever `hasActiveOffer` is true.**
+`resolveBadges()` adds `activeOfferLabel` before the three known tokens, and
+`hasActiveOffer` is computed from that same value in the same call — so the flag is the
+authority for the Unique-Offer tint and the position of the label is a guarantee, not an
+ordering guess. Split them with `separateBadges(badges, hasActiveOffer)`; never infer the
+offer from badge text. *(Corrected 2026-08-02, AUDIT_2 N8 — the client used to treat any
+unrecognised token as the offer label, which would have rendered the next backend badge as
+raw English inside the offer tint.)*
+
+**Three fields corrected on `SearchCardResponse` the same day (AUDIT_1 S5):** `hasActiveOffer`,
+`latitude` and `longitude` are on the wire and are now modelled. The coordinates are read by
+nothing yet — the map-area filter that wants them is parked behind G1 — but a field we receive
+is modelled honestly rather than discovered later.
+
 ## Filter reference data
 | Method | Path | Auth | Used by |
 |--------|------|------|---------|
-| GET | /api/v1/cities | No | Location filter (search by city) |
-| GET | /api/v1/cities/resolve | No | Resolve a city from coordinates |
+| GET | /api/v1/cities | No | Location filter. **NO parameters** — `CityController.listAll()` returns the WHOLE table as `CityDto { id: UUID, name: String }`. The client fetches once and filters in memory |
+| GET | /api/v1/cities/resolve?**name**= | No | **Not consumed by `search`.** Resolves a NAME to `CityDto`; 404 `CITY_NOT_FOUND` on a miss. `business-cabinet` will use it for B3 (`cityId` on drafted branches) |
 | GET | /api/v1/categories?q=&type=ITEM\|SERVICE | No | Category filter. Flat — `{ suggestions: [{ categoryId, label, type, source }] }` |
 
 ## Retrieval behaviour (backend-owned — context, not a client control)

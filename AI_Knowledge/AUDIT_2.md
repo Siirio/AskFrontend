@@ -53,9 +53,11 @@ silently. Trust the commit hash, not the heading — and if `HEAD` is not
   `globalSetup` now **fails** the run when the harness is attached to a dev
   server. **N1's `AI_Knowledge/` half (29 sites) is still open.**
 
-**Everything else on this page is OPEN**, including **N8** and the corrected
-**N3** — see its entry: acting on N3 as written would have made the toast
-inconsistent rather than consistent.
+- **S1–S4, S5, N8** — the 2026-08-02 search pass (see their entries).
+
+**Everything else on this page is OPEN**, including the corrected **N3** — see
+its entry: acting on N3 as written would have made the toast inconsistent
+rather than consistent.
 
 **What was actually run, at `b5138b9`:** `npm run build` green end to end (lint →
 boundary fixtures → token drift → tsc → next build → rendering contract);
@@ -112,7 +114,7 @@ file.
 | Slice | Status | What exists |
 |---|---|---|
 | **auth** | ✅ **DONE** | Full anatomy; login / register / verify / Google OAuth + consent / guards / role modal. All of AUDIT_1 A1–A9 closed except A1's persistence half, which the owner deferred (below). **All 8 DONE criteria pass as of 2026-08-02** — anatomy, thin routes + D7 split, zero hardcoded copy, the four states, docs, build/lint, 476-line e2e, and criterion 8 once **N9** closed. Two carve-outs remain DECIDED-not-missing, neither buildable here: A1's consent gate (blocked on N7 — the backend exposes no read) and the launch lock on placeholder legal copy (owner-authored, item 11) |
-| **search** | 🟡 **ALMOST** | Home + Catalog Page ship; 3 controls parked by G1; **the city filter is broken on the wire** (S1) |
+| **search** | 🟡 **ALMOST** | Home + Catalog Page ship; the city filter WORKS as of 2026-08-02 (S1–S4) and the offer tint reads `hasActiveOffer` (S5/N8). What is left is not a defect: the 3 controls parked by G1, now waiting on server params, plus infinite scroll blocked by `MAX_CANDIDATES` |
 | **business-cabinet** | 🟠 **~25%** | Seller-registration wizard only. `/app/business` is still the i18n placeholder (B1) |
 | **catalog** | ⬜ **EMPTY** | Docs only. **Next up — roadmap #3** |
 | **chats** | ⬜ **EMPTY** | Docs only; `/app/chats` is a nav destination rendering a bare placeholder (N4) |
@@ -169,7 +171,7 @@ blocker in N7.
 
 Full text in `AUDIT_1.md`; this is the queue view.
 
-- [ ] **S1–S4 — the city filter cannot work.** `CityController.listAll()` takes
+- [x] **S1–S4 — the city filter cannot work.** `CityController.listAll()` takes
   no params and returns `CityDto {id, name}`; `resolve` requires `name`, not
   `lat`/`lng`. `search/model.ts:129-135` invents `CitySuggestion {city}` and
   `CityResolveResponse {city}`; `CityField.tsx` renders blank rows with
@@ -178,7 +180,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   coordinates". No e2e touches `/cities`. **One commit: read `CityDto`, fix the
   field, delete or rewire `resolveCity`, correct contracts.md, add a stub built
   from the Java DTO.**
-- [ ] **S5 — three `SearchCardResponse` fields are unmodelled:** `hasActiveOffer`,
+- [x] **S5 — three `SearchCardResponse` fields are unmodelled:** `hasActiveOffer`,
   `latitude`, `longitude` (0 hits in `search/model.ts`). `hasActiveOffer` is
   load-bearing — the TINT IS INFORMATION lock is currently served by inferring
   the offer from a free-text badge instead of the boolean the backend sends.
@@ -325,7 +327,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   `platform-ui-design` and browser verification (the UI work loop), not a
   one-line edit. **Deliberately NOT bundled into the 2026-08-02 housekeeping
   commit** for that reason.
-- [ ] **N8 — `separateBadges` does the OPPOSITE of the lock it implements, and
+- [x] **N8 — `separateBadges` does the OPPOSITE of the lock it implements, and
   the failure wears the Unique-Offer tint.** *(Found 2026-08-01, second pass.
   Highest-severity item on this list that is not gate-blocked.)*
   `search/model.ts:168-180`:

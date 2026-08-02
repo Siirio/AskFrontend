@@ -85,9 +85,21 @@ export type SearchCardResponse = {
   availabilityWarning: string | null;
   /** Server-localized "why this matched" prose — safe to render as-is. */
   matchReasons: string[];
-  /** Hardcoded-English tokens — map through BADGE_I18N_KEYS, drop unknown. */
+  /** Hardcoded-English tokens — map through BADGE_I18N_KEYS, drop unknown.
+   *  When `hasActiveOffer` is true the FIRST entry is the offer LABEL, not a
+   *  token: `resolveBadges()` adds `activeOfferLabel` before the three known
+   *  tokens. Always separate them with `separateBadges`, never by guessing. */
   badges: string[];
+  /** The authority for the Unique-Offer tint (TINT IS INFORMATION lock).
+   *  Backend: `hasActiveOffer = activeOfferLabel != null && !isBlank()`, and
+   *  that same label is `badges[0]` — the two are derived from ONE value in
+   *  one call, so "true" guarantees `badges[0]` is the label. */
+  hasActiveOffer: boolean | null;
   distanceMeters: number | null;
+  /** Branch coordinates. Modelled because they are ON the wire; nothing reads
+   *  them yet — the map-area filter that wants them is parked behind G1. */
+  latitude: number | null;
+  longitude: number | null;
   branchName: string | null;
   branchAddress: string | null;
   branchCity: string | null;
@@ -126,12 +138,21 @@ export type SearchResponse = {
   suggestions: string[];
 };
 
+/**
+ * `CityDto` — the WHOLE shape `GET /api/v1/cities` returns (`{id, name}`).
+ *
+ * Corrected 2026-08-02 (AUDIT_1 S1). This was `{ city: string }`, a shape that
+ * exists nowhere on the backend: every option row rendered blank, every React
+ * key was `undefined`, and picking one set the filter to `undefined`. Invented
+ * client-side, which is precisely what the Data Lock forbids.
+ *
+ * `id` is unused today — the filter travels as a NAME (`explicitFilters.city`
+ * is a `String`). It is modelled because it is what the endpoint returns, and
+ * it is the stable React key.
+ */
 export type CitySuggestion = {
-  city: string;
-};
-
-export type CityResolveResponse = {
-  city: string | null;
+  id: string;
+  name: string;
 };
 
 // ── Badges — closed token set (slice lock) ──────────────────────────────────
@@ -150,32 +171,47 @@ const BADGE_I18N_KEYS: Record<string, string> = {
   pickup: "badges.pickup",
 };
 
-/** Map a card's raw badge tokens to i18n keys, dropping anything unrecognised. */
-export function knownBadgeKeys(badges: string[]): string[] {
-  return badges
-    .map((badge) => BADGE_I18N_KEYS[badge])
-    .filter((key): key is string => Boolean(key));
-}
+// `knownBadgeKeys()` was deleted 2026-08-02: exported, called from nowhere
+// (P8.1), and once `separateBadges` below did its own map-and-drop it was a
+// second implementation of one concern (P6.1). The mapping lives in exactly
+// one function now.
 
 /**
- * Split a card's raw `badges[]` into the closed token set (mapped to i18n
- * keys) and the one free-text offer label the business supplies (passed
- * through as data, never mapped through i18n — contracts.md). The token
- * spellings live in `BADGE_I18N_KEYS` alone (P6.2) — this is the one place
- * that decides "known token vs. offer label", so a UI component never needs
- * its own copy of the token set.
+ * Split a card's raw `badges[]` into the closed token set (mapped to i18n keys)
+ * and the free-text offer label, using `hasActiveOffer` as the authority.
+ *
+ * **Rewritten 2026-08-02 (AUDIT_2 N8) — the previous version inverted the slice
+ * lock it claimed to implement.** It treated any UNRECOGNISED token as the
+ * offer label (`else offerLabel = badge`), so the first badge the backend ever
+ * added would have rendered raw English inside `bg-offer` — a fake discount
+ * signal, breaking both "an unrecognised badge is DROPPED" and TINT IS
+ * INFORMATION. It was an assignment too, so with two unknowns the LAST won,
+ * silently overwriting the genuine label that `resolveBadges()` puts first.
+ *
+ * The offer label is passed through as data, never through i18n (contracts.md):
+ * it is the business's own words. The token spellings live in
+ * `BADGE_I18N_KEYS` alone (P6.2), so no component carries its own copy.
  */
-export function separateBadges(badges: string[]): {
+export function separateBadges(
+  badges: string[],
+  hasActiveOffer: boolean | null,
+): {
   badgeKeys: string[];
   offerLabel: string | null;
 } {
-  const badgeKeys: string[] = [];
-  let offerLabel: string | null = null;
-  for (const badge of badges) {
-    const key = BADGE_I18N_KEYS[badge];
-    if (key) badgeKeys.push(key);
-    else offerLabel = badge;
-  }
+  // `hasActiveOffer` is the AUTHORITY, and `badges[0]` is where the label sits
+  // when it is true — both come from `activeOfferLabel` inside one call to
+  // `resolveBadges()`, so this is a guarantee rather than an ordering guess.
+  const offerLabel = hasActiveOffer === true ? (badges[0] ?? null) : null;
+  const tokens = offerLabel === null ? badges : badges.slice(1);
+
+  // Unknown token → DROPPED (slice lock). It is the backend's hardcoded English
+  // and this is a ru/kk product, so rendering it raw ships English; the badge
+  // set is closed on purpose and a new one waits for an i18n key.
+  const badgeKeys = tokens
+    .map((token) => BADGE_I18N_KEYS[token])
+    .filter((key): key is string => key !== undefined);
+
   return { badgeKeys, offerLabel };
 }
 

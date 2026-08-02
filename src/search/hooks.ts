@@ -10,7 +10,7 @@
  * for it, and therefore no `store.ts`: the URL is the one source of truth for
  * query/mode/sort/filters, so nothing here needs to outlive one render.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import * as api from "./api";
@@ -21,7 +21,9 @@ import type { CatalogSearchParams, CitySuggestion } from "./model";
 /** Below this the suggestion list is noise — same floor as business-cabinet's
  *  category combobox (P6.2 — one convention for "too short to search yet"). */
 const MIN_QUERY_LENGTH = 2;
-const DEBOUNCE_MS = 250;
+// `DEBOUNCE_MS` went with the per-keystroke request (2026-08-02, AUDIT_1 S1):
+// the list is fetched once and filtered in memory, so there is no longer a
+// request for a keystroke to debounce.
 
 export type CitySuggestions = {
   suggestions: CitySuggestion[];
@@ -40,38 +42,52 @@ export type CitySuggestions = {
  * suggestion outage degrades to "type the city yourself", not a dead end.
  */
 export function useCitySuggestions(query: string): CitySuggestions {
-  const [suggestions, setSuggestions] = useState<CitySuggestion[]>([]);
+  const [cities, setCities] = useState<CitySuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const requested = useRef(false);
 
+  const trimmed = query.trim();
+  const ready = trimmed.length >= MIN_QUERY_LENGTH;
+
+  // ONE fetch for the whole table, and only once the field is actually being
+  // used. `GET /cities` has no query parameter (CityController.listAll), so
+  // there is nothing a keystroke could narrow server-side — re-requesting per
+  // keystroke would re-download every city to show a subset of it. Reference
+  // data, cached for the page's life; the search slice's "never filter
+  // client-side" lock is about RESULTS, not about a picker's own option list.
   useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed.length < MIN_QUERY_LENGTH) {
-      setSuggestions([]);
-      setLoading(false);
-      return;
-    }
+    if (!ready || requested.current) return;
+    requested.current = true;
 
     const controller = new AbortController();
     setLoading(true);
-    const timer = setTimeout(() => {
-      api
-        .getCities(trimmed, controller.signal)
-        .then((result) => {
-          if (!controller.signal.aborted) setSuggestions(result);
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) setSuggestions([]);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    }, DEBOUNCE_MS);
+    api
+      .getCities(controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setCities(result);
+      })
+      .catch(() => {
+        // The field still accepts free text, so an outage degrades to "type
+        // the city yourself" rather than a dead end. Allow a later retry.
+        if (!controller.signal.aborted) {
+          requested.current = false;
+          setCities([]);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
 
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query]);
+    return () => controller.abort();
+  }, [ready]);
+
+  const suggestions = useMemo(() => {
+    if (!ready) return [];
+    const needle = trimmed.toLocaleLowerCase();
+    return cities.filter((city) =>
+      city.name.toLocaleLowerCase().includes(needle),
+    );
+  }, [cities, ready, trimmed]);
 
   return { suggestions, loading };
 }

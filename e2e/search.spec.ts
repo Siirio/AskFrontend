@@ -120,6 +120,56 @@ test("the sort control updates the URL and re-fetches with the new sort", async 
     .toBe("distance");
 });
 
+test("the offer tint comes from has_active_offer, and an unknown badge is DROPPED", async ({
+  page,
+}) => {
+  await seedSession(page);
+  // Driven through the MOCK BACKEND, not page.route: the Catalog Page fetches
+  // its results SERVER-SIDE (D7), so the browser never issues this request and
+  // page.route could not see it. `roses-badges` returns an offer label, a known
+  // token, and one token the client does not recognise.
+  await page.goto("/app/catalog?query=roses-badges&mode=ITEM");
+
+  // The label the business supplied renders as data, in the offer tint.
+  await expect(page.getByText("-30%").first()).toBeVisible();
+  // A known token renders through i18n...
+  await expect(page.getByText("Official channel").first()).toBeVisible();
+  // ...and an unrecognised one is dropped, NEVER shown raw. Before AUDIT_2 N8
+  // "verified" would have replaced "-30%" as the offer label and rendered as
+  // English inside bg-offer — a fake discount signal.
+  await expect(page.getByText("verified")).toHaveCount(0);
+});
+
+test("no offer flag means no offer tint, even with an unmapped badge", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses-nooffer&mode=ITEM");
+
+  await expect(page.getByText("Pickup").first()).toBeVisible();
+  await expect(page.getByText("surprise")).toHaveCount(0);
+});
+
+test("the city filter lists real cities from GET /cities and picks one", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses&mode=ITEM");
+
+  // `GET /cities` takes no parameters and answers CityDto {id, name}. Before
+  // AUDIT_1 S1 the client read `.city`, so every row rendered blank and
+  // picking one set the filter to `undefined`.
+  // Keyed by the field's accessible name (its <Field label>), not by position.
+  const city = page.getByRole("combobox", { name: "City" });
+  await city.fill("Al");
+
+  const option = page.getByRole("option", { name: "Almaty" });
+  await expect(option).toBeVisible();
+  await option.click();
+
+  await expect(city).toHaveValue("Almaty");
+});
+
 test("an empty result set renders the empty state, not a dead end", async ({
   page,
 }) => {

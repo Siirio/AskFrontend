@@ -11,12 +11,7 @@
  */
 import { httpClient } from "@/shared/api/httpClient";
 
-import type {
-  CityResolveResponse,
-  CitySuggestion,
-  SearchRequest,
-  SearchResponse,
-} from "./model";
+import type { CitySuggestion, SearchRequest, SearchResponse } from "./model";
 
 const SEARCH_BASE = "/api/v1/search";
 
@@ -25,26 +20,24 @@ export function search(request: SearchRequest): Promise<SearchResponse> {
   return httpClient.post<SearchResponse>(SEARCH_BASE, { body: request });
 }
 
-/** City suggestions for the location filter's combobox (public). */
-export function getCities(
-  query: string,
-  signal?: AbortSignal,
-): Promise<CitySuggestion[]> {
-  return httpClient.get<CitySuggestion[]>("/api/v1/cities", {
-    query: { q: query },
-    signal,
-  });
-}
-
-/** Resolve a city from coordinates (public) — used once a location fix is
- *  granted, so the radius filter can show which city it is centred on. */
-export function resolveCity(
-  lat: number,
-  lng: number,
-  signal?: AbortSignal,
-): Promise<CityResolveResponse> {
-  return httpClient.get<CityResolveResponse>("/api/v1/cities/resolve", {
-    query: { lat, lng },
-    signal,
-  });
+/**
+ * The FULL city list for the location filter's combobox (public).
+ *
+ * `CityController.listAll()` takes **no parameters** and returns every row as
+ * `CityDto {id, name}` — so there is nothing to send and nothing to page. The
+ * caller filters locally; see `useCitySuggestions`.
+ *
+ * Corrected 2026-08-02 (AUDIT_1 S1): this used to send `?q=<typed>`, which the
+ * controller ignores. Every keystroke therefore pulled the entire city table
+ * and then rendered it as blank rows, because the response was read as
+ * `{ city }` — a shape that exists nowhere on the backend.
+ *
+ * `resolveCity()` was DELETED in the same change. It sent `?lat=&lng=` to
+ * `GET /cities/resolve`, whose `@RequestParam String name` is required, so it
+ * would have 400'd — and it was exported but called from nowhere (P8.1). The
+ * real endpoint resolves a NAME to a city id; `business-cabinet` will add that
+ * call when B3 gives it a caller, rather than keeping a broken one warm here.
+ */
+export function getCities(signal?: AbortSignal): Promise<CitySuggestion[]> {
+  return httpClient.get<CitySuggestion[]>("/api/v1/cities", { signal });
 }
