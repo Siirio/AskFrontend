@@ -12,7 +12,20 @@ Traces PRODUCT_VISION **UF 2.1** steps 3–4 (customer) and **UF 3.1** item 2 (s
 
 ## Customer flow (UF 2.1)
 1. A result on the Catalog Page is selected → the **Product Card opens as a modal** with all product information.
-2. The card offers **"Proceed to Purchase"** and a **chat button**.
+2. The card offers **"Proceed to Purchase"** and a **chat button**. They are different actions —
+   chat is "ask a question", Proceed is "I intend to buy" (G3, resolved 2026-08-02):
+   - **Deeplinks present** → the button opens the seller's public purchase/booking destination.
+   - **More than one** → a **modal to choose where to buy**. Deliberate: a brand selling in
+     several places must not have that collapsed into one channel we picked for them.
+   - **None** → the in-app chat opens with an **editable draft** pre-filled ("Здравствуйте! Хочу
+     приобрести товар «…»…", or the booking wording for a service). **Never auto-sent** — the
+     customer edits and sends it.
+   - **Never** built from `kaspiUrl`/`ozonUrl`/`wildberriesUrl`: those live on
+     `BusinessVerification` as proof the business is real, and are not customer deeplinks.
+   - **Blocked on backend** — `deepLink` is a single `String` on `Item`, absent from `Service`,
+     and missing from the search projection, so the card cannot see it yet (ROADMAP cross-repo).
+     Until it lands, the button is **omitted**, not disabled: a reachable control must DO
+     something (project lock).
 3. The chat modal can open straight away from the card — no intermediate page (UF 2.1 step 4).
 4. A direct visit or a search-engine crawl to `/app/product/:id` renders the same card as a full server-rendered page (D10).
 

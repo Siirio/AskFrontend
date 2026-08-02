@@ -186,11 +186,41 @@ Do NOT build these early. Recorded so today's decisions don't block them.
 
 | Gate | Question | Parks (everything else in that slice still ships) | Status |
 |---|---|---|---|
-| **G1** | **Search sort & filter contract — NARROWED 2026-07-28** (re-read against `dev` `ee542d9`). The vision (§4) wants sorts relevance / distance / cost / unique-offers and filters price / companies / location (100 km · city · map area). `POST /api/v1/search` supports sorts `relevance` · `distance` · `price_asc`, and `explicitFilters` for `minPrice`/`maxPrice`, `city`, `category`, `country`, `openNow`, **and `radiusMeters` (1–100 000)**. **The 100 km radius is DELIVERED** — that control leaves the parked list. **Still missing:** a Unique-Offers sort, a Companies filter, and a map-area (bbox) filter. The lock still forbids faking any of these by re-sorting a loaded page client-side. **OPEN QUESTION added 2026-07-29 (backend commit `9a90f5c`, not yet resolved — see below).** | Three controls: the Unique-Offers sort tab, the Companies filter, and map-area. **Ships now:** Home, the search form + mode toggle, the Catalog Page, sectioned results, result cards, the relevance/distance/cost sorts, and price/city/category **+ the 100 km radius** filters. | **PARTIAL — three left, scope question open (below)** |
+| **G1** | **Search sort & filter contract — NARROWED 2026-07-28** (re-read against `dev` `ee542d9`). The vision (§4) wants sorts relevance / distance / cost / unique-offers and filters price / companies / location (100 km · city · map area). `POST /api/v1/search` supports sorts `relevance` · `distance` · `price_asc`, and `explicitFilters` for `minPrice`/`maxPrice`, `city`, `category`, `country`, `openNow`, **and `radiusMeters` (1–100 000)**. **The 100 km radius is DELIVERED** — that control leaves the parked list. **Still missing:** a Unique-Offers sort, a Companies filter, and a map-area (bbox) filter. The lock still forbids faking any of these by re-sorting a loaded page client-side. **OPEN QUESTION added 2026-07-29 (backend commit `9a90f5c`, not yet resolved — see below).** | Three controls: the Unique-Offers sort tab, the Companies filter, and map-area. **Ships now:** Home, the search form + mode toggle, the Catalog Page, sectioned results, result cards, the relevance/distance/cost sorts, and price/city/category **+ the 100 km radius** filters. | **SCOPE RESOLVED 2026-08-02 (owner): server-side always + infinite scroll — see below.** The three controls stay parked, but their nature changed: they now REQUIRE real server params (a client-side layer is forbidden), and infinite scroll is additionally blocked by `MAX_CANDIDATES = 200` |
 | **G1b** | **Search `mode` — RESOLVED 2026-07-28 (owner).** `mode` is `@NotNull` and `SearchScope` admits only `ITEM`/`SERVICE`; there is no "search everything", so something must choose. | Nothing. The search form gets a **goods/services toggle**, appended to PRODUCT_VISION UF 2.1 with justification. The `No product/service scope toggle` slice lock was retired the same day — its premise (a unified endpoint where the AI infers intent) no longer exists. | **CLOSED** |
 | **G2** | **Company Profile scope.** The vision marks it "coming in a future update"; no backend endpoints exist. | Nothing. The placeholder IS the spec — ship it and move on. Re-open when the vision describes a screen. | Open, not blocking |
-| **G3** | **What does "Proceed to Purchase" do? — RE-OPENED 2026-07-28: its candidate is DEAD.** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. The standing answer was the backend's `contact` module (`contactActionId` privacy pattern) — **that module was DELETED 2026-07-21**, and `contactActions` is gone from `SearchCardResponse`. No contact-action concept remains anywhere on the wire. What survives on the card is `businessProfile.{number, email, websiteUrl, instagramUrl, telegramUrl}` — the business's **public** channels, NOT a privacy-preserving handle. Routing the button there exposes real contact details, which is a product decision, not a fallback an agent may choose. | One button's click handler. **Ships anyway:** the whole Product Card — every field, the modal, and the chat button. | **OPEN — needs a FRESH answer; the old candidate no longer exists** |
+| **G3** | **What does "Proceed to Purchase" do? — RE-OPENED 2026-07-28: its candidate is DEAD.** The vision puts the button on the Product Card, but we are explicitly NOT a marketplace and there is no checkout. The standing answer was the backend's `contact` module (`contactActionId` privacy pattern) — **that module was DELETED 2026-07-21**, and `contactActions` is gone from `SearchCardResponse`. No contact-action concept remains anywhere on the wire. What survives on the card is `businessProfile.{number, email, websiteUrl, instagramUrl, telegramUrl}` — the business's **public** channels, NOT a privacy-preserving handle. Routing the button there exposes real contact details, which is a product decision, not a fallback an agent may choose. | One button's click handler. **Ships anyway:** the whole Product Card — every field, the modal, and the chat button. | **RESOLVED 2026-08-02 (owner), appended to PRODUCT_VISION UF 2.1.** Seller-supplied public **deeplinks** → a modal to choose where to buy when there is more than one → in-app chat with an editable, never-auto-sent draft when there are none. Verification links are NEVER reused as a customer deeplink. **Now blocked on backend, not on product:** `deepLink` must become a collection, `Service` has no such field at all, and the search projection does not carry it |
 | **G4** | World-wide domain/brand choice (ask.kz is KZ-branded) | Nothing before Phase 4 | Open, not urgent |
+
+### G1 — RESOLVED 2026-08-02 (owner): server-side always, plus infinite scroll
+
+**The answer is none of the three options below — it is stronger than option 2.** Filtering and
+sorting are performed by the SERVER across the whole catalogue, always; the client never refines
+only the cards it holds. Pagination is replaced by **infinite scroll** on phone and desktop:
+changing a filter or sort resets the list, re-queries the server, and scrolling appends the rest.
+Appended to `PRODUCT_VISION.md` §4 the same day with its justification.
+
+**Consequences, worst first:**
+
+1. **The three parked controls now REQUIRE server parameters.** Unique-Offers sort, Companies
+   filter and map-area (bbox) can no longer be delivered as a client-side refinement layer — the
+   decision forbids exactly that. This turns a "nice to have" into a hard cross-repo dependency.
+2. **`MAX_CANDIDATES = 200` makes "until they run out" impossible today.**
+   `StructuredSearchProcessor:49` caps ranking at 200 candidates for ANY page, and `page` is
+   `@Max(20)` besides — so infinite scroll hits a wall at roughly 200 results however many items
+   match. **This blocks the whole item.**
+3. **The backend's own lock now contradicts the owner.** `Ask_Backend/AI_Knowledge/features/search/locks.md`:
+   *"Results Filter & Sort V1 only reorders or removes cards from the currently loaded page."*
+   It must be retired. Note the backend already SHIPPED server-side filtering
+   (`SearchFilterRequest`: category, city, country, minPrice, maxPrice, openNow, radiusMeters,
+   with a cross-field assert) — the lock contradicted its own code before it contradicted us.
+4. **`search/` gains a `store.ts`.** Accumulated pages must outlive a render, which reverses
+   `hooks.ts`'s "nothing here needs to outlive one render" premise. Legitimate: the store holds
+   honest server pages, it does not refine them.
+
+Our own `features/search/locks.md` server-capability lock is **confirmed, not changed**.
+
+The original ambiguity, kept because it records why the question was asked:
 
 ### G1 — scope question added 2026-07-29, NOT decided (documented only, per owner instruction)
 
@@ -223,13 +253,21 @@ mean today's `hooks.ts` premise ("nothing here needs to outlive one render, no
 No implementation should start against this gate until someone (not an agent
 inferring from backend prose) picks one of the three.
 
+**→ Answered 2026-08-02 (see above). None of the three was chosen: the owner ruled
+server-side-always, which is stricter than option 2 and the opposite of option 1. Option 3's
+"raise it with backend" still happens — not to resolve OUR behaviour, which is now settled, but
+because the backend's lock and its own `SearchFilterRequest` disagree, and that is theirs to fix.**
+
 ## Cross-Repo Dependencies
 
 What the frontend needs FROM `../Ask_Backend` — tracked here because a missing piece blocks a phase, not because we own it.
 
 | Need | For | Status |
 |---|---|---|
-| Unique-Offers sort, Companies filter, and a map-area (bbox) filter on `POST /api/v1/search` | G1 → the last three Catalog Page controls | **Radius DELIVERED 2026-07-27** as `radiusMeters` (1–100 000) — the vision's 100 km filter is now buildable. These three remain |
+| **Raise `MAX_CANDIDATES` (currently 200) and the `page` `@Max(20)` ceiling** | **Infinite scroll (G1).** `StructuredSearchProcessor:49` caps ranking at 200 candidates for ANY page: `candidateLimit = min(200, max((page+1)*pageSize*3, pageSize*3))`. At the default `pageSize` of 20 the scroll dies around page 10 — **~200 results maximum per query, however many items match** | **RAISED 2026-08-02 — BLOCKS G1 ENTIRELY.** The owner's rule is "scroll until the goods or services run out"; today they run out at 200 because of the ranking window, not because the catalogue ended. Needs a deep-paging strategy, not just a bigger constant |
+| **Retire the `Results Filter & Sort V1` lock** | G1 | **RAISED 2026-08-02.** `Ask_Backend/AI_Knowledge/features/search/locks.md` says refinement "only reorders or removes cards from the currently loaded page". The owner ruled the opposite on 2026-08-02 (PRODUCT_VISION §4). Note it also contradicts the backend's OWN code: `SearchFilterRequest` already implements server-side `category`/`city`/`country`/`minPrice`/`maxPrice`/`openNow`/`radiusMeters` with a cross-field assert |
+| **`deepLink` as a COLLECTION on Item, plus the same field on Service, plus both in the search projection** | **G3 — the "Proceed to Purchase" button.** Three separate gaps: (1) `Item.deepLink` exists but is a single `@Size(max=2048) String` — the owner approved MULTIPLE deeplinks with a chooser modal, so it needs to be a list of label+URL pairs (e.g. `KASPI`/`OZON`/`WEBSITE` + url), or the modal renders bare URLs; (2) **`Service` has no `deepLink` at all** — 0 hits in `offer/service`; (3) `SearchDocument` does not carry it, so it never reaches `SearchCardResponse` and the Product Card cannot see it | **RAISED 2026-08-02 — (3) BLOCKS G3 ENTIRELY.** Also to confirm: are deeplinks per ITEM or per BRANCH? The owner chat raised "the same goods in several places" and left it open. **Explicitly out of scope:** `kaspiUrl`/`ozonUrl`/`wildberriesUrl` from onboarding — `SellerOnboardingProcessor:64` writes those to `BusinessVerification` as proof the business is real, and reusing verification data as a shopping link is forbidden by the vision append |
+| Unique-Offers sort, Companies filter, and a map-area (bbox) filter on `POST /api/v1/search` | G1 → the last three Catalog Page controls | **Radius DELIVERED 2026-07-27** as `radiusMeters` (1–100 000) — the vision's 100 km filter is now buildable. These three remain, and **as of 2026-08-02 they are a HARD dependency, not a preference**: the owner ruled all filtering/sorting server-side, so a client-side refinement layer is no longer an available fallback |
 | **A public item/service read — `GET /api/v1/items/{id}` (or equivalent)** | **Slice #3's `/app/product/:id` deep link.** There is NO public item endpoint on `dev`: the security allowlist permits only `/search`, `/cities`, `/categories`, `/businesses/*/business-profile`, `/businesses/*/drops`, `/business-media/files/*`. `/api/v1/businesses/{id}/items` is authenticated AND business-scoped — a list endpoint, unusable as a detail read. The Product Card modal ships from the search payload; the deep link cannot | **RAISED 2026-07-28 — blocks the `/app/product/:id` half of D10 only; the modal ships** |
 | **Populate `openingSummary` on `SearchCardResponse`, or remove the field** | An open/closed indicator on result cards | **RAISED 2026-07-28.** Declared on the DTO but never assigned in `StructuredSearchProcessor.toCard()` — always null. (`BranchResponse` populates it correctly; the search card does not.) Same failure shape as `suggestRoleExpansion` |
 | **Return badge TOKENS, not English prose** — `badges[]` currently emits literal `"official channel"`, `"complete card"`, `"pickup"` | Result-card badges in ru/kk | **RAISED 2026-07-28 — not blocking.** The client maps the three known tokens to i18n keys and drops unknown ones (slice lock), so nothing ships in English. A stable token contract would make that mapping safe against a silent backend addition |

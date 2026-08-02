@@ -140,8 +140,8 @@ needed to start any of them.
 
 | What | Where | Blocks |
 |---|---|---|
-| **G1 scope question** — pick option 1, 2 or 3 | `ROADMAP.md` § *G1 — scope question* | Finishing search's last 3 controls. Option 1 means rewriting `SortControl`/`FilterPanel` and the slice lock; option 2 is additive |
-| **G3** — what "Proceed to Purchase" does | `ROADMAP.md` gate table | One button on the Product Card. The whole card ships regardless |
+| ~~**G1 scope question**~~ | — | **ANSWERED 2026-08-02 (owner): server-side always + infinite scroll.** Stricter than option 2, the opposite of option 1; our slice lock is reaffirmed, not rewritten. **No longer owner-blocked — now BACKEND-blocked**, and harder than before: `MAX_CANDIDATES = 200` caps any query at ~200 results, and the three parked controls now REQUIRE server params because a client-side layer is forbidden |
+| ~~**G3** — what "Proceed to Purchase" does~~ | — | **ANSWERED 2026-08-02 (owner): deeplinks → chooser modal when several → in-app chat with an editable, never-auto-sent draft when none.** Verification links are never reused. **Now BACKEND-blocked:** `deepLink` is a single `String` on `Item`, absent from `Service`, and missing from the search projection |
 | **PRODUCT_VISION entry for the consent gate** | `PRODUCT_VISION.md` | Building the blocking consent modal. A new screen needs a vision append (P9.1); the lock has admitted no exemption since D31 |
 
 **A1's persistence half — decided, and deliberately deferred.** Owner
@@ -512,8 +512,11 @@ converts dead time into parallel time.
 
 | Send to | What | Unblocks |
 |---|---|---|
-| Owner | **G1 scope question** — option 1, 2 or 3 | Search's last 3 controls. Option 1 rewrites `SortControl`/`FilterPanel` + the slice lock; option 2 is additive. The cost difference is why an agent must not pick |
-| Owner | **G3** — what "Proceed to Purchase" does | One button on the Product Card (the card ships either way) |
+| ~~Owner~~ | ~~**G1 scope question**~~ | ✅ **DONE 2026-08-02** — server-side always + infinite scroll. Re-dispatch as a BACKEND item (rows below) |
+| ~~Owner~~ | ~~**G3** — "Proceed to Purchase"~~ | ✅ **DONE 2026-08-02** — deeplinks → modal → chat draft. Re-dispatch as a BACKEND item (rows below) |
+| **Backend** | **`MAX_CANDIDATES = 200` + `page @Max(20)`** — deep paging | **NEW, blocks G1 entirely.** Infinite scroll dies at ~200 results regardless of catalogue size |
+| **Backend** | **Retire the `Results Filter & Sort V1` lock** | **NEW.** It contradicts the owner AND the backend's own `SearchFilterRequest` |
+| **Backend** | **`deepLink`: collection on `Item`, add to `Service`, carry in the search projection** | **NEW, blocks G3 entirely.** Also open: per-item or per-branch? |
 | Owner | **PRODUCT_VISION entry for the consent gate** | The blocking modal; a new screen needs a vision append (P9.1) |
 | Owner | **Terms / Privacy / Cookies copy** (launch item 11) | The launch lock. Longest lead time of anything on this list — it is writing, not code |
 | Backend | **N7** — expose who has accepted what; prefer a session field over a `GET` | The consent gate entirely |

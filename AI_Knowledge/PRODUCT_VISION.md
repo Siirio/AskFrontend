@@ -68,6 +68,37 @@ The 4 key features of our platform:
 >
 > The toggle is the ONLY search-form control. Sorting and filtering stay on the Catalog Page (§4).
 
+---
+
+> **"Proceed to Purchase" — what the button does (added 2026-08-02 — owner directive; append-only
+> change to this CORE file).** UF 2.1 step 3 gives the Product Card a "Proceed to Purchase" button
+> **and** a separate chat button. They are not the same action:
+>
+> 1. **If the item or service has seller-supplied public deeplinks, the button opens them.** A
+>    deeplink is a destination the seller published **for customers** — a purchase page on their
+>    own site or a marketplace for goods, an online booking/reservation page for services.
+> 2. **Where there is more than one, the button opens a modal and the customer chooses where to
+>    buy.** This is deliberate and it is half the point of the product: ASK routes demand to the
+>    brand, and a brand that sells in several places should not have that collapsed into one
+>    channel we picked for them.
+> 3. **Where there is none, the button opens the in-app chat with the seller**, pre-filling an
+>    editable draft ("Здравствуйте! Хочу приобрести товар «…». Подскажите, пожалуйста, как оформить
+>    заказ?", and the booking equivalent for a service). **The message is never sent
+>    automatically** — the customer edits and sends it. That is what keeps this distinct from the
+>    chat button beside it: chat is "ask a question", this is "I intend to buy".
+>
+> **Links the seller supplied for VERIFICATION or moderation are never used as a customer
+> deeplink.** A deeplink is its own public field on the item or service.
+>
+> **Justification.** The button's original answer was the backend's `contact` module and its
+> `contactActionId` privacy pattern; that module was deleted 2026-07-21 and no contact-action
+> concept remains on the wire. This replaces it rather than reviving it. The rule against reusing
+> verification links is not a style preference — `SellerOnboardingProcessor:64` writes
+> `kaspiUrl`/`ozonUrl`/`wildberriesUrl` to `BusinessVerification`, i.e. they were collected as
+> proof the business is real, and re-purposing them as shopping links would use data for something
+> other than the reason it was given. Routing demand to the brand's own surface is the
+> anti-marketplace reading of "purchase" — ASK never becomes the checkout (Design Locks).
+
 #### UF 2.2 — The customer wants to find a chat
 
 ```text
@@ -116,3 +147,28 @@ The 4 key features of our platform:
 | 1 | Price |
 | 2 | Companies |
 | 3 | Location (search within 100 km, search by city, search by map area) |
+
+---
+
+> **How results page, filter and sort (added 2026-08-02 — owner directive; append-only change to
+> this CORE file).** The tables above say WHICH controls exist. This says how they behave.
+>
+> 1. **Results load by infinite scroll, on phone and desktop alike.** There is no
+>    customer-visible pagination. Further results append as the customer scrolls, until the
+>    matching goods or services are exhausted.
+> 2. **Filtering and sorting are ALWAYS performed by the server, across the whole catalogue** —
+>    never across the cards already loaded.
+> 3. **Changing any filter or sort resets the list**: the current results are discarded, the new
+>    parameters go to the server, the server filters and sorts the entire catalogue, the client
+>    renders the first batch, and scrolling loads the rest.
+> 4. **The client never filters or sorts only the cards it happens to hold.**
+>
+> **Justification.** Refining a loaded page is indistinguishable from refining the catalogue on
+> screen, and it lies at exactly the moment it matters: filtering 20 loaded cards to "roses under
+> 5000 ₸" can show 3 results — or none in a city full of florists — while the catalogue holds
+> hundreds. For a product whose purpose is routing demand to businesses, silently hiding the
+> businesses that match is the worst available failure. This confirms the existing
+> `features/search/locks.md` rule ("sorting and filtering are server capabilities") rather than
+> changing it; what is new is infinite scroll replacing pagination, and the consequence that the
+> Unique-Offers sort, the Companies filter and the map-area filter now REQUIRE real server
+> parameters — they can no longer be delivered as a client-side refinement layer.
