@@ -62,6 +62,10 @@ export function StorefrontPage() {
     );
   }
 
+  const hasContacts = Boolean(
+    profile.number || profile.email || profile.instagramUrl || profile.telegramUrl || profile.websiteUrl,
+  );
+
   return (
     <main id="main-content" className="ask-storefront-page">
       <button type="button" className="ask-storefront-back" onClick={() => navigate(-1)}>
@@ -69,9 +73,9 @@ export function StorefrontPage() {
         Назад к поиску
       </button>
 
-      <div className="ask-storefront-layout">
-        <article className="ask-storefront-main">
-          <header className="ask-storefront-identity ask-surface">
+      <article className="ask-storefront-surface ask-surface">
+        <header className="ask-storefront-identity">
+          <div className="ask-storefront-identity__main">
             <div
               className="ask-storefront-logo"
               style={{
@@ -83,43 +87,77 @@ export function StorefrontPage() {
             </div>
             <div>
               <h1>{profile.businessName || "Бизнес"}</h1>
-              {profile.description && <p>{profile.description}</p>}
             </div>
-            <div className="ask-storefront-share">
-              <button
-                type="button"
-                aria-label="Поделиться"
-                onClick={() => navigator.share?.({ title: profile.businessName, url: window.location.href })}
-              >
-                <Share2 size={19} />
-              </button>
-            </div>
-          </header>
+          </div>
+          <button
+            type="button"
+            className="ask-storefront-share"
+            aria-label="Поделиться"
+            onClick={() => navigator.share?.({ title: profile.businessName, url: window.location.href })}
+          >
+            <Share2 size={19} />
+          </button>
+        </header>
 
-          <section
-            className="ask-storefront-cover ask-surface"
+        {profile.coverUrl && (
+          <div
+            className="ask-storefront-cover"
             style={{
               backgroundColor: profile.brandColor || undefined,
-              backgroundImage: profile.coverUrl ? `url(${profile.coverUrl})` : undefined,
+              backgroundImage: `url(${profile.coverUrl})`,
             }}
-          >
-            {!profile.coverUrl && (
-              <div>
-                <Store size={54} />
-                <span>{profile.businessName}</span>
-              </div>
-            )}
+          />
+        )}
+
+        {profile.description && (
+          <section className="ask-storefront-about">
+            <h2>О компании</h2>
+            <p>{profile.description}</p>
           </section>
+        )}
 
-          {profile.description && (
-            <section className="ask-storefront-about ask-surface">
-              <h2>О компании</h2>
-              <p>{profile.description}</p>
-            </section>
-          )}
-        </article>
+        {hasContacts && (
+          <section className="ask-storefront-contact">
+            <h2>Контакты</h2>
+            <div className="ask-storefront-contact__list">
+              {profile.number && (
+                <a href={`tel:${profile.number}`}>
+                  <Phone size={19} />
+                  <span><small>Телефон</small>{profile.number}</span>
+                </a>
+              )}
+              {profile.email && (
+                <a href={`mailto:${profile.email}`}>
+                  <Mail size={19} />
+                  <span><small>Email</small>{profile.email}</span>
+                </a>
+              )}
+              {profile.instagramUrl && (
+                <a href={profile.instagramUrl} target="_blank" rel="noreferrer">
+                  <Instagram size={19} />
+                  <span><small>Социальная сеть</small>Instagram</span>
+                  <ExternalLink size={14} />
+                </a>
+              )}
+              {profile.telegramUrl && (
+                <a href={profile.telegramUrl} target="_blank" rel="noreferrer">
+                  <MessageCircle size={19} />
+                  <span><small>Мессенджер</small>Telegram</span>
+                  <ExternalLink size={14} />
+                </a>
+              )}
+              {profile.websiteUrl && (
+                <a href={profile.websiteUrl} target="_blank" rel="noreferrer">
+                  <Globe size={19} />
+                  <span><small>Сайт</small>{profile.websiteUrl.replace(/^https?:\/\//, "")}</span>
+                  <ExternalLink size={14} />
+                </a>
+              )}
+            </div>
+          </section>
+        )}
 
-        <aside className="ask-storefront-contact">
+        <footer className="ask-storefront-actions">
           <button
             type="button"
             className="ask-primary-button"
@@ -138,48 +176,8 @@ export function StorefrontPage() {
             <MessageCircle size={19} />
             Написать в чат
           </button>
-
-          <section className="ask-surface">
-            <h2>Контакты</h2>
-            {profile.number && (
-              <a href={`tel:${profile.number}`}>
-                <Phone size={19} />
-                <span><small>Телефон</small>{profile.number}</span>
-              </a>
-            )}
-            {profile.email && (
-              <a href={`mailto:${profile.email}`}>
-                <Mail size={19} />
-                <span><small>Email</small>{profile.email}</span>
-              </a>
-            )}
-            {profile.instagramUrl && (
-              <a href={profile.instagramUrl} target="_blank" rel="noreferrer">
-                <Instagram size={19} />
-                <span><small>Социальная сеть</small>Instagram</span>
-                <ExternalLink size={14} />
-              </a>
-            )}
-            {profile.telegramUrl && (
-              <a href={profile.telegramUrl} target="_blank" rel="noreferrer">
-                <MessageCircle size={19} />
-                <span><small>Мессенджер</small>Telegram</span>
-                <ExternalLink size={14} />
-              </a>
-            )}
-            {profile.websiteUrl && (
-              <a href={profile.websiteUrl} target="_blank" rel="noreferrer">
-                <Globe size={19} />
-                <span><small>Сайт</small>{profile.websiteUrl.replace(/^https?:\/\//, "")}</span>
-                <ExternalLink size={14} />
-              </a>
-            )}
-            {!profile.number && !profile.email && !profile.instagramUrl && !profile.telegramUrl && !profile.websiteUrl && (
-              <p>Бизнес пока не добавил публичные контакты</p>
-            )}
-          </section>
-        </aside>
-      </div>
+        </footer>
+      </article>
     </main>
   );
 }

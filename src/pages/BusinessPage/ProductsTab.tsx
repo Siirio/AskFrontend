@@ -4,6 +4,8 @@ import { Loading } from "../../shared/ui/Loading/Loading";
 import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/CategoryAutocomplete";
 import { AttributesEditor } from "../../shared/ui/AttributesEditor/AttributesEditor";
 import { EditorDisclosure, EditorSection, EntityEditor } from "../../shared/ui/EntityEditor/EntityEditor";
+import { CatalogImagePicker } from "../../shared/ui/CatalogImagePicker/CatalogImagePicker";
+import { toCatalogImageDrafts } from "../../shared/lib/catalogImages";
 import type { ProductsTabProps } from "./types";
 
 export function ProductsTab(props: ProductsTabProps) {
@@ -102,6 +104,12 @@ export function ProductsTab(props: ProductsTabProps) {
         )}
       >
         <EditorSection title={t("business.product.mainDetails")} description={t("business.product.mainDetailsDescription")}>
+          <CatalogImagePicker
+            images={productForm.images}
+            onChange={images => setProductForm(form => ({ ...form, images }))}
+            label="Изображения товара"
+            hint="До 3 файлов. Первое изображение будет главным. Можно вставить через Ctrl+V."
+          />
           <div className="ask-editor-grid">
             <div className="ask-editor-field ask-editor-field--wide">
               <label className="ask-editor-required">{t("business.product.name")}</label>
@@ -172,6 +180,12 @@ export function ProductsTab(props: ProductsTabProps) {
                         <label className="fcw-label">{t("business.product.description")}</label>
                         <textarea className="fcw-textarea" maxLength={2000} rows={2} value={productForm.description} onChange={e => setProductForm(v => ({ ...v, description: e.target.value }))} placeholder={t("business.product.descriptionPlaceholder")} />
                       </div>
+                      <CatalogImagePicker
+                        images={productForm.images}
+                        onChange={images => setProductForm(form => ({ ...form, images }))}
+                        label="Изображения товара"
+                        hint="Перетащите изображения, чтобы изменить порядок."
+                      />
                       <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                         <label className="fcw-label">{t("business.product.category")}</label>
                         <CategoryAutocomplete value={productForm.categoryLabel} categoryId={productForm.categoryId || null} onChange={(label, categoryId) => setProductForm(value => ({ ...value, categoryLabel: label, categoryId: categoryId || "" }))} type="ITEM" />
@@ -222,7 +236,7 @@ export function ProductsTab(props: ProductsTabProps) {
                         <div className="fcw-flex" style={{ gap: "0.25rem" }}>
                           <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => {
                             setEditProduct(p);
-                            setProductForm({ name: p.name, description: p.description || "", deepLink: p.deepLink || "", price: p.price > 0 ? String(p.price) : "", categoryId: p.categoryId || "", categoryLabel: p.categoryLabel || "", tags: (p.tags || []).join(", "), attributesText: p.attributes ? JSON.stringify(p.attributes, null, 2) : "", isActive: p.isActive });
+                            setProductForm({ name: p.name, description: p.description || "", deepLink: p.deepLink || "", price: p.price > 0 ? String(p.price) : "", categoryId: p.categoryId || "", categoryLabel: p.categoryLabel || "", tags: (p.tags || []).join(", "), attributesText: p.attributes ? JSON.stringify(p.attributes, null, 2) : "", isActive: p.isActive, images: toCatalogImageDrafts(p.images) });
                             setShowProductForm(true);
                           }} aria-label={t("business.editAria")}>
                             <Edit3 size={14} />

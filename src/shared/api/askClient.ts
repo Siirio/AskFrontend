@@ -256,6 +256,35 @@ export function updateProduct(productId: string, data: { branchId?: string; cate
   return apiRequest<BusinessProductDto>(`/api/v1/items/${productId}`, { method: "PATCH", auth: true, body: data });
 }
 
+async function syncCatalogImages<T>(path: string, images: import("../lib/catalogImages").CatalogImageDraft[]) {
+  const form = new FormData();
+  let newIndex = 0;
+  images.forEach(image => {
+    if (image.file) {
+      form.append("files", image.file);
+      form.append("order", `new:${newIndex}`);
+      newIndex += 1;
+    } else if (image.persistedId) {
+      form.append("order", image.persistedId);
+    }
+  });
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: form,
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new ApiError(response.status, message, null);
+  }
+  return transformKeys(await response.json()) as T;
+}
+
+export function syncProductImages(productId: string, images: import("../lib/catalogImages").CatalogImageDraft[]) {
+  return syncCatalogImages<BusinessProductDto>(`/api/v1/items/${productId}/images`, images);
+}
+
 export function deleteProduct(productId: string) {
   return apiRequest<void>(`/api/v1/items/${productId}`, { method: "DELETE", auth: true });
 }
@@ -278,6 +307,10 @@ export function createService(businessId: string, data: { branchId?: string; cat
 
 export function updateService(businessId: string, serviceOfferingId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name?: string; description?: string; serviceMode?: "ON_DEMAND" | "SCHEDULED"; basePrice?: number; scheduleText?: string; isActive?: boolean; attributes?: Record<string, unknown> }) {
   return apiRequest<BusinessServiceDto>(`/api/v1/businesses/${businessId}/services/${serviceOfferingId}`, { method: "PATCH", auth: true, body: data });
+}
+
+export function syncServiceImages(businessId: string, serviceOfferingId: string, images: import("../lib/catalogImages").CatalogImageDraft[]) {
+  return syncCatalogImages<BusinessServiceDto>(`/api/v1/businesses/${businessId}/services/${serviceOfferingId}/images`, images);
 }
 
 export function listStaff(businessId: string, branchId: string) {

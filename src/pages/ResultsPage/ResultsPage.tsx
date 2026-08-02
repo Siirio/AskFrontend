@@ -91,6 +91,7 @@ function toMoney(value: number | null | undefined, currency?: string | null) {
 }
 
 type SearchResultCard = ResultCardData & {
+  images: NonNullable<ResultCardData["images"]>;
   priceValue?: number;
   distanceMeters?: number;
   latitude?: number;
@@ -123,7 +124,9 @@ function mapCard(card: SearchV2CardDto): SearchResultCard {
     location: card.branchAddress ?? card.branchName ?? undefined,
     city: card.branchCity ?? undefined,
     distance: card.distanceMeters ? `${(card.distanceMeters / 1000).toFixed(1)} км` : undefined,
-    imageUrl: card.brandLogoUrl ?? card.businessProfile?.logoUrl ?? undefined,
+    imageUrl: card.images?.[0]?.url,
+    images: card.images ?? [],
+    brandLogoUrl: card.brandLogoUrl ?? card.businessProfile?.logoUrl ?? undefined,
     brandName: card.businessName,
     brandColor: card.brandColor ?? undefined,
     businessId: card.businessId,
@@ -165,6 +168,7 @@ export function ResultsPage() {
   });
   const [sourceCards, setSourceCards] = useState<SearchResultCard[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -241,7 +245,11 @@ export function ResultsPage() {
       }));
   }, [filters, sort, sourceCards]);
 
-  const selected = cards.find(card => card.id === selectedId) ?? cards[0] ?? null;
+  const selected = cards.find(card => card.id === selectedId) ?? null;
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedId]);
 
   useEffect(() => {
     saveActiveSearchRoute(`${location.pathname}${location.search}`, window.sessionStorage);
@@ -265,7 +273,7 @@ export function ResultsPage() {
         const nextCards = response.sections.flatMap(section => section.cards.map(mapCard));
         setSourceCards(nextCards);
         setHasNext(response.hasNext);
-        setSelectedId(current => nextCards.some(card => card.id === current) ? current : nextCards[0]?.id ?? null);
+        setSelectedId(current => nextCards.some(card => card.id === current) ? current : null);
       })
       .catch(reason => {
         if (!active) return;
@@ -381,7 +389,7 @@ export function ResultsPage() {
         <button type="submit" className="ask-primary-button">{t("searchBar.button")}</button>
       </form>
 
-      <div className="ask-results-layout">
+      <div className={`ask-results-layout${filtersOpen ? " filters-open" : ""}`}>
         <SearchFilterSort
           open={filtersOpen}
           sort={sort}
@@ -462,13 +470,9 @@ export function ResultsPage() {
               key={card.id}
               data={card}
               selected={selected?.id === card.id}
-              onClick={() => {
-                if (card.businessId) {
-                  navigate(buildRoute(ROUTES.storefront, { businessId: card.businessId }));
-                  return;
-                }
-                setSelectedId(card.id);
-              }}
+              onSelect={() => setSelectedId(card.id)}
+              onPreview={() => setSelectedId(card.id)}
+              onBusiness={() => card.businessId && navigate(buildRoute(ROUTES.storefront, { businessId: card.businessId }))}
               onChat={() => openChat(card)}
             />
           ))}
@@ -494,29 +498,48 @@ export function ResultsPage() {
               <button type="button" className="ask-result-detail__close" onClick={() => setSelectedId(null)} aria-label="Закрыть">
                 <X size={18} />
               </button>
-              <div
-                className="ask-result-detail__cover"
-                style={{
-                  backgroundColor: selected.brandColor || undefined,
-                  backgroundImage: selected.businessProfile?.coverUrl ? `url(${selected.businessProfile.coverUrl})` : undefined,
-                }}
-              >
-                {!selected.businessProfile?.coverUrl && <Store size={44} />}
+              <div className="ask-result-detail__gallery">
+                <div
+                  className="ask-result-detail__cover"
+                  style={{
+                    backgroundImage: selected.images[selectedImageIndex]?.url ? `url(${selected.images[selectedImageIndex].url})` : undefined,
+                  }}
+                >
+                  {!selected.images[selectedImageIndex]?.url && <Store size={44} />}
+                </div>
+                {selected.images.length > 1 && (
+                  <div className="ask-result-detail__thumbs">
+                    {selected.images.map((image, index) => (
+                      <button
+                        key={image.id}
+                        type="button"
+                        className={selectedImageIndex === index ? "is-active" : ""}
+                        style={{ backgroundImage: `url(${image.url})` }}
+                        onClick={() => setSelectedImageIndex(index)}
+                        aria-label={`Показать изображение ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="ask-result-detail__content">
-                <span className="ask-result-detail__brand">{selected.brandName}</span>
+                <div className="ask-result-detail__business">
+                  <button
+                    type="button"
+                    onClick={() => selected.businessId && navigate(buildRoute(ROUTES.storefront, { businessId: selected.businessId }))}
+                    aria-label={`Открыть профиль ${selected.brandName}`}
+                    style={{
+                      backgroundColor: selected.brandColor || undefined,
+                      backgroundImage: selected.brandLogoUrl ? `url(${selected.brandLogoUrl})` : undefined,
+                    }}
+                  >
+                    {!selected.brandLogoUrl && <Store size={15} />}
+                  </button>
+                  <span>{selected.brandName}</span>
+                </div>
                 <h2>{selected.title}</h2>
                 {selected.price && <strong className="ask-result-detail__price">{selected.price}</strong>}
                 {selected.summary && <p>{selected.summary}</p>}
-
-                {selected.matchReasons.length > 0 && (
-                  <section>
-                    <h3>Почему подходит</h3>
-                    <div className="ask-result-detail__tags">
-                      {selected.matchReasons.map(reason => <span key={reason}>{reason}</span>)}
-                    </div>
-                  </section>
-                )}
 
                 {(selected.location || selected.city) && (
                   <div className="ask-result-detail__fact">
@@ -540,9 +563,6 @@ export function ResultsPage() {
                 )}
               </div>
               <footer className="ask-result-detail__actions">
-                <button type="button" className="ask-secondary-button" onClick={() => navigate(buildRoute(ROUTES.storefront, { businessId: selected.businessId ?? "" }))}>
-                  Открыть профиль
-                </button>
                 <button type="button" className="ask-primary-button" onClick={() => openChat(selected)}>
                   <MessageCircle size={17} />
                   Написать
@@ -550,7 +570,10 @@ export function ResultsPage() {
               </footer>
             </>
           ) : (
-            <div className="ask-empty"><p>Выберите результат</p></div>
+            <div className="ask-result-detail__empty">
+              <Store size={28} />
+              <span>Наведите на товар или услугу, чтобы посмотреть детали</span>
+            </div>
           )}
         </aside>
       </div>

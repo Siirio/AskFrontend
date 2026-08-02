@@ -1,5 +1,5 @@
-import { Clock3, MapPin, MessageCircle, Store } from "lucide-react";
-import type { BrandProfileDto, ContactActionDto } from "../../api/dto";
+import { BriefcaseBusiness, Clock3, MapPin, MessageCircle, Package, Store } from "lucide-react";
+import type { BrandProfileDto, CatalogImageDto, ContactActionDto } from "../../api/dto";
 
 export interface ResultCardData {
   id: string;
@@ -12,6 +12,8 @@ export interface ResultCardData {
   city?: string;
   distance?: string;
   imageUrl?: string;
+  images?: CatalogImageDto[];
+  brandLogoUrl?: string;
   brandName?: string;
   brandColor?: string;
   businessId?: string | null;
@@ -28,50 +30,69 @@ export interface ResultCardData {
 type ResultCardProps = {
   data: ResultCardData;
   selected: boolean;
-  onClick: () => void;
+  onSelect: () => void;
+  onPreview: () => void;
+  onBusiness: () => void;
   onChat: () => void;
 };
 
-export function ResultCard({ data, selected, onClick, onChat }: ResultCardProps) {
+export function ResultCard({ data, selected, onSelect, onPreview, onBusiness, onChat }: ResultCardProps) {
+  const PlaceholderIcon = data.resultType === "ITEM" ? Package : BriefcaseBusiness;
   return (
     <article
       className={`ask-result-row${selected ? " is-selected" : ""}`}
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onClick={onSelect}
+      onMouseEnter={onPreview}
+      onFocus={event => {
+        if (event.target === event.currentTarget) onPreview();
+      }}
       onKeyDown={event => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
-          onClick();
+          onSelect();
         }
       }}
     >
       <div
         className="ask-result-row__media"
         style={{
-          backgroundColor: data.brandColor || undefined,
           backgroundImage: data.imageUrl ? `url(${data.imageUrl})` : undefined,
         }}
       >
-        {!data.imageUrl && <Store size={28} />}
+        {!data.imageUrl && <PlaceholderIcon size={28} />}
       </div>
 
       <div className="ask-result-row__body">
         <div className="ask-result-row__heading">
-          <div>
-            <strong>{data.brandName || data.title}</strong>
-            {data.brandName && <h3>{data.title}</h3>}
+          <div className="ask-result-row__identity">
+            {data.businessId && (
+              <button
+                type="button"
+                className="ask-result-row__avatar"
+                style={{
+                  backgroundColor: data.brandColor || undefined,
+                  backgroundImage: data.brandLogoUrl ? `url(${data.brandLogoUrl})` : undefined,
+                }}
+                onClick={event => {
+                  event.stopPropagation();
+                  onBusiness();
+                }}
+                aria-label={`Открыть профиль ${data.brandName || "бизнеса"}`}
+              >
+                {!data.brandLogoUrl && <Store size={15} />}
+              </button>
+            )}
+            <div>
+              <strong>{data.title}</strong>
+              {data.brandName && <h3>{data.brandName}</h3>}
+            </div>
           </div>
           {data.price && <b>{data.price}</b>}
         </div>
 
         {data.summary && <p>{data.summary}</p>}
-
-        {data.matchReasons.length > 0 && (
-          <div className="ask-result-row__reasons">
-            {data.matchReasons.slice(0, 3).map(reason => <span key={reason}>{reason}</span>)}
-          </div>
-        )}
 
         <div className="ask-result-row__meta">
           {data.openingLabel && (

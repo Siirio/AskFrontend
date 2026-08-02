@@ -32,8 +32,8 @@ import {
   getBrandProfile, listDrops,
   updateBrandProfile,
   createDrop, cancelDrop, deleteDrop, uploadDropCover,
-  listProducts, createProduct, updateProduct, deleteProduct,
-  listServices, createService, updateService,
+  listProducts, createProduct, updateProduct, deleteProduct, syncProductImages,
+  listServices, createService, updateService, syncServiceImages,
   listBranches, createBranch, updateBranch,
   listStaff, createStaff, updateStaff, resetStaffPassword,
   listEmployees, createEmployee, deletePendingEmployee,
@@ -97,10 +97,6 @@ function parseAttributes(value: string) {
   } catch {
     return undefined;
   }
-}
-
-function formatAttributes(value?: Record<string, unknown> | null) {
-  return value && Object.keys(value).length > 0 ? JSON.stringify(value, null, 2) : "";
 }
 
 function emptyBranchForm() {
@@ -196,7 +192,7 @@ export function BusinessPage() {
   const [productsTotal, setProductsTotal] = useState(0);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editProduct, setEditProduct] = useState<BusinessProductDto | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true });
+  const [productForm, setProductForm] = useState({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] as import("../../shared/lib/catalogImages").CatalogImageDraft[] });
   const [productsBusy, setProductsBusy] = useState(false);
   const [selectedProductOfferIds, setSelectedProductOfferIds] = useState<Set<string>>(new Set());
   const [aiEnrichmentBusy, setAiEnrichmentBusy] = useState(false);
@@ -231,7 +227,7 @@ export function BusinessPage() {
   const [servicesBusy, setServicesBusy] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [editService, setEditService] = useState<BusinessServiceDto | null>(null);
-  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND" as "ON_DEMAND" | "SCHEDULED", scheduleText: "", attributesText: "", isActive: true });
+  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND" as "ON_DEMAND" | "SCHEDULED", scheduleText: "", attributesText: "", isActive: true, images: [] as import("../../shared/lib/catalogImages").CatalogImageDraft[] });
 
   // Branches
   const [branchesBusy, setBranchesBusy] = useState(false);
@@ -344,7 +340,7 @@ export function BusinessPage() {
       icon: <Package size={16} />,
       onClick: () => {
         setEditProduct(null);
-        setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true });
+        setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] });
         setShowProductForm(true);
         setSection("products");
       },
@@ -354,7 +350,7 @@ export function BusinessPage() {
       icon: <Briefcase size={16} />,
       onClick: () => {
         setEditService(null);
-        setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true });
+        setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true, images: [] });
         setShowServiceForm(true);
         setSection("services");
       },
@@ -627,7 +623,7 @@ export function BusinessPage() {
 
   // Product CRUD
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true });
+    setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] });
     setEditProduct(null);
     setShowProductForm(false);
   };
@@ -656,8 +652,9 @@ export function BusinessPage() {
         attributes: parseAttributes(productForm.attributesText) ?? {},
         isActive: true,
       });
+      const saved = await syncProductImages(created.productId, productForm.images);
       productsCacheRef.current.clear();
-      setProducts(current => [created, ...current.filter(item => item.productId !== created.productId)]);
+      setProducts(current => [saved, ...current.filter(item => item.productId !== saved.productId)]);
       setProductsTotal(current => current + 1);
       setProductsPage(0);
       resetProductForm();
@@ -681,6 +678,7 @@ export function BusinessPage() {
         attributes: parseAttributes(productForm.attributesText) ?? {},
         isActive: productForm.isActive,
       });
+      await syncProductImages(editProduct.productId, productForm.images);
       productsCacheRef.current.clear();
       resetProductForm();
       loadProducts();
@@ -700,22 +698,6 @@ export function BusinessPage() {
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.deleteError"), "error");
     }
-  };
-
-  const openEditProduct = (p: BusinessProductDto) => {
-    setEditProduct(p);
-    setProductForm({
-      name: p.name,
-      description: p.description || "",
-      deepLink: p.deepLink || "",
-      price: p.price != null ? String(p.price) : "",
-      categoryId: p.categoryId || "",
-      categoryLabel: p.categoryLabel || "",
-      tags: (p.tags || []).join(", "),
-      attributesText: formatAttributes(p.attributes),
-      isActive: p.isActive,
-    });
-    setShowProductForm(false);
   };
 
   const handleAiEnrichment = async (targetType: "PRODUCT" | "SERVICE" | "UNIQUE_OFFER", aggregateIds: string[]) => {
@@ -744,7 +726,7 @@ export function BusinessPage() {
 
   // Service CRUD
   const resetServiceForm = () => {
-    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true });
+    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true, images: [] });
     setEditService(null);
     setShowServiceForm(false);
   };
@@ -773,7 +755,8 @@ export function BusinessPage() {
         attributes: parseAttributes(serviceForm.attributesText) ?? {},
         isActive: true,
       });
-      setServices(current => [created, ...current.filter(item => item.serviceOfferingId !== created.serviceOfferingId)]);
+      const saved = await syncServiceImages(businessId, created.serviceOfferingId, serviceForm.images);
+      setServices(current => [saved, ...current.filter(item => item.serviceOfferingId !== saved.serviceOfferingId)]);
       resetServiceForm();
       toast.show(t("business.toast.serviceCreated"), "success");
     } catch (e) {
@@ -795,28 +778,13 @@ export function BusinessPage() {
         attributes: parseAttributes(serviceForm.attributesText) ?? {},
         isActive: serviceForm.isActive,
       });
+      await syncServiceImages(businessId, editService.serviceOfferingId, serviceForm.images);
       resetServiceForm();
       loadServices();
       toast.show(t("business.toast.serviceUpdated"), "success");
     } catch (e) {
       toast.show(e instanceof ApiError ? e.message : t("business.toast.updateError"), "error");
     }
-  };
-
-  const openEditService = (s: BusinessServiceDto) => {
-    setEditService(s);
-    setServiceForm({
-      name: s.name,
-      description: s.description || "",
-      basePrice: s.basePrice != null ? String(s.basePrice) : "",
-      categoryId: s.categoryId || "",
-      categoryLabel: s.categoryLabel || "",
-      serviceMode: s.serviceMode,
-      scheduleText: s.scheduleText || "",
-      attributesText: formatAttributes(s.attributes),
-      isActive: s.isActive,
-    });
-    setShowServiceForm(false);
   };
 
   // Branch CRUD

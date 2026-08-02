@@ -5,6 +5,8 @@ import { Select } from "../../shared/ui/Select/Select";
 import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/CategoryAutocomplete";
 import { AttributesEditor } from "../../shared/ui/AttributesEditor/AttributesEditor";
 import { EditorDisclosure, EditorSection, EntityEditor } from "../../shared/ui/EntityEditor/EntityEditor";
+import { CatalogImagePicker } from "../../shared/ui/CatalogImagePicker/CatalogImagePicker";
+import { toCatalogImageDrafts } from "../../shared/lib/catalogImages";
 import type { ServicesTabProps } from "./types";
 
 export function ServicesTab(props: ServicesTabProps) {
@@ -81,6 +83,12 @@ export function ServicesTab(props: ServicesTabProps) {
         )}
       >
         <EditorSection title={t("business.service.mainDetails")} description={t("business.service.mainDetailsDescription")}>
+          <CatalogImagePicker
+            images={serviceForm.images}
+            onChange={images => setServiceForm(form => ({ ...form, images }))}
+            label="Изображения услуги"
+            hint="До 3 файлов. Первое изображение будет главным. Можно вставить через Ctrl+V."
+          />
           <div className="ask-editor-grid">
             <div className="ask-editor-field ask-editor-field--wide">
               <label className="ask-editor-required">{t("business.service.name")}</label>
@@ -135,6 +143,12 @@ export function ServicesTab(props: ServicesTabProps) {
                     <label className="fcw-label">{t("business.service.schedule")}</label>
                     <Select options={[{ value: "ON_DEMAND", label: "ON_DEMAND" }, { value: "SCHEDULED", label: "SCHEDULED" }]} value={serviceForm.serviceMode} onChange={v => setServiceForm(v2 => ({ ...v2, serviceMode: v as "ON_DEMAND" | "SCHEDULED" }))} />
                   </div>
+                  <CatalogImagePicker
+                    images={serviceForm.images}
+                    onChange={images => setServiceForm(form => ({ ...form, images }))}
+                    label="Изображения услуги"
+                    hint="Перетащите изображения, чтобы изменить порядок."
+                  />
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(110px, 160px) minmax(110px, 160px)", gap: "0.75rem" }}>
                     <div className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                       <label className="fcw-label">{t("business.service.name")}</label>
@@ -188,7 +202,7 @@ export function ServicesTab(props: ServicesTabProps) {
                     <div className="fcw-flex" style={{ gap: "0.25rem" }}>
                       <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => {
                         setEditService(s);
-                        setServiceForm({ name: s.name, description: s.description || "", basePrice: s.basePrice > 0 ? String(s.basePrice) : "", categoryId: s.categoryId || "", categoryLabel: s.categoryLabel || "", serviceMode: s.serviceMode, scheduleText: s.scheduleText || "", attributesText: s.attributes ? JSON.stringify(s.attributes, null, 2) : "", isActive: s.isActive });
+                        setServiceForm({ name: s.name, description: s.description || "", basePrice: s.basePrice > 0 ? String(s.basePrice) : "", categoryId: s.categoryId || "", categoryLabel: s.categoryLabel || "", serviceMode: s.serviceMode, scheduleText: s.scheduleText || "", attributesText: s.attributes ? JSON.stringify(s.attributes, null, 2) : "", isActive: s.isActive, images: toCatalogImageDrafts(s.images) });
                         setShowServiceForm(true);
                       }} aria-label={t("business.editAria")}>
                         <Edit3 size={14} />

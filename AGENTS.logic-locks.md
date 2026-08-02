@@ -1,5 +1,13 @@
 # Approved Logic Locks
 
+## LOCKED: Catalog galleries and responsive result details
+
+**Approved signal:** User clarification on 2026-08-02.
+
+**Protected behavior:** ITEM and SERVICE editors accept up to three real ASK-managed images through file selection, drag-and-drop, and clipboard paste. The user controls order and the first image is primary. Desktop rows preview details on hover/focus; mobile rows open a detail modal on tap. Business avatar and chat are independent actions, and only the avatar opens the Business profile. Match reasons are not rendered. Public Business profiles use one continuous surface and omit empty optional fields.
+
+**Scope:** Business catalog editors, ResultsPage, ResultCard, StorefrontPage, catalog/search DTOs, and media API clients.
+
 ## LOCKED: Seller delivery onboarding and profile editing
 
 **Approved signal:** User correction on 2026-07-27.

@@ -41,7 +41,7 @@ interface AuthState {
 interface AuthActions {
   setMode: (mode: AuthMode) => void;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; displayName: string; locale: string }) => Promise<void>;
+  register: (data: { email: string; password: string; passwordConfirmation: string; displayName: string; locale: string }) => Promise<void>;
   verify: (code: string) => Promise<void>;
   verifyTwoFactor: (code: string) => Promise<void>;
   logout: () => Promise<void>;

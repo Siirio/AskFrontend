@@ -19,16 +19,18 @@ test("product and service updates preserve entity category fields", async () => 
   assert.match(source, /handleUpdateService[\s\S]*categoryName:/);
 });
 
-test("catalog creation renders committed create responses", async () => {
+test("catalog creation renders committed responses after image synchronization", async () => {
   const source = await readFile(businessPagePath, "utf8");
   const productCreate = source.match(/const handleCreateProduct[\s\S]*?const handleUpdateProduct/)?.[0] ?? "";
   const serviceCreate = source.match(/const handleCreateService[\s\S]*?const handleUpdateService/)?.[0] ?? "";
 
   assert.match(productCreate, /const created = await createProduct/);
-  assert.match(productCreate, /setProducts\(current => \[created,/);
+  assert.match(productCreate, /const saved = await syncProductImages\(created\.productId/);
+  assert.match(productCreate, /setProducts\(current => \[saved,/);
   assert.doesNotMatch(productCreate, /reloadFirstProductPage/);
   assert.match(serviceCreate, /const created = await createService/);
-  assert.match(serviceCreate, /setServices\(current => \[created,/);
+  assert.match(serviceCreate, /const saved = await syncServiceImages\(businessId, created\.serviceOfferingId/);
+  assert.match(serviceCreate, /setServices\(current => \[saved,/);
   assert.doesNotMatch(serviceCreate, /loadServices\(\)/);
 });
 

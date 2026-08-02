@@ -78,6 +78,7 @@ export type SearchV2CardDto = {
   brandLogoUrl?: string | null;
   title: string;
   summary?: string | null;
+  images?: CatalogImageDto[];
   categoryLabel?: string | null;
   price?: number | null;
   currency?: string | null;
@@ -99,6 +100,11 @@ export type SearchV2CardDto = {
     closesAt?: string | null;
     opensAt?: string | null;
   } | null;
+};
+
+export type CatalogImageDto = {
+  id: string;
+  url: string;
 };
 
 export type SearchV2SectionDto = {
@@ -272,6 +278,7 @@ export type BusinessProductDto = {
   categoryLabel: string | null;
   name: string;
   description: string;
+  images: CatalogImageDto[];
   deepLink?: string | null;
   tags: string[];
   attributes?: Record<string, unknown> | null;
@@ -295,6 +302,7 @@ export type BusinessServiceDto = {
   categoryLabel: string | null;
   name: string;
   description: string;
+  images: CatalogImageDto[];
   serviceMode: "ON_DEMAND" | "SCHEDULED";
   basePrice: number;
   scheduleText: string;

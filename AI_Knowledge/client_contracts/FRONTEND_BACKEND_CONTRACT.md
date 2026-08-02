@@ -2,6 +2,10 @@
 
 This document captures the frontend-facing contract expectations for Ask. Backend implementation details belong in AskBackend; this repository tracks what the UI needs to render honestly.
 
+## Catalog image galleries
+
+ITEM and SERVICE catalog rows and search cards may expose an ordered `images` array of `{ id, url }`. The first entry is the primary result image. Catalog editors synchronize up to three real PNG, JPEG, or WebP files through multipart endpoints; retained image identifiers and `new:{index}` tokens define final order. External media URL inputs are not part of the contract.
+
 ## Product Flow
 
 - Customer search is the primary entry point.

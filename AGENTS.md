@@ -44,7 +44,7 @@ Ask is NOT a marketplace. The frontend must never:
 - **Make brand storefronts look like marketplace pages.** Brand storefronts are LEGO-like block constructors, not uniform product grids.
 
 ### Match reason block
-Show backend-provided match reasons on result cards when present. Never synthesize examples or fallback claims in the UI.
+Backend-provided match reasons are optional presentation data. The current search UI does not render them; if a future surface restores them, it must use backend values without synthesized examples or fallback claims.
 
 ### Brand-aware card structure
 - Standardized layer: price, availability, branch, pickup, match_reason, quick actions.

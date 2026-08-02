@@ -1,5 +1,12 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-08-02 — Catalog galleries and responsive result details
+
+- Added managed Item and Service image selection from real files, clipboard pasting, drag-and-drop ingestion, and drag reordering with a three-image limit.
+- Made search filters collapsible, switched desktop result details to hover preview, and added a mobile detail modal that excludes business-avatar and chat actions.
+- Replaced oversized business artwork in result details with a compact profile avatar, hid match-reason explanations, and rendered catalog image galleries.
+- Consolidated the public storefront into one continuous surface and omitted empty optional fields.
+
 ## 2026-07-30 — Existing-email registration rejection
 
 - Kept the registration form open when the backend returns `EMAIL_ALREADY_REGISTERED`.
