@@ -18,7 +18,7 @@ The seller workspace (UF 3.1). Owns the cabinet shell and the tabs whose data be
 ## Status
 
 **Seller registration is BUILT (2026-07-27, revised 2026-07-29)** — `/app/business/register`,
-the slice's first code. The cabinet and its tabs remain roadmap #7–#9.
+the slice's first code. The cabinet and its tabs remain roadmap #6–#8.
 
 It was built ahead of the cabinet because it was the missing half of something already
 shipped: the role modal's "set up your business" routed into the cabinet's own guard and was

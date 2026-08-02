@@ -6,7 +6,7 @@ Traces PRODUCT_VISION **UF 3.1** (the seller is redirected to the business regis
 
 **Screen:** `/app/business/register` → `BusinessRegisterPage` (this slice, client behind a
 thin server route file, D7). It is the first code the business-cabinet slice has; the cabinet
-itself is still roadmap #7.
+itself is still roadmap #6.
 
 **Why it exists.** The role-choosing modal has always offered "set up your business" and
 always routed to `/app/business`, where `RequireDashboardAccess` bounced the customer-only
@@ -80,7 +80,7 @@ entry"), and a second POST would create a second business.
 **Deliberately absent.** `countryCode` is fixed to `KZ` (the legal forms on offer are
 Kazakhstan's; a one-option country picker is a dead control, and a second market is gate G4).
 `phone` / `corporateEmail` are optional backend fields with no vision entry (P9.1). The
-managed-import SCOPING/PRICING dialog (roadmap #8) does not exist — but `catalogSetupMode`
+managed-import SCOPING/PRICING dialog (roadmap #7) does not exist — but `catalogSetupMode`
 itself is no longer restricted (reversed 2026-07-29, see locks.md's Retired Locks): step 2's two
 cards are both real, selectable choices, and whichever is picked is what gets submitted.
 

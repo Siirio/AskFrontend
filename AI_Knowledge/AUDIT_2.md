@@ -31,6 +31,52 @@ on `resolve`) · `CityDto {id, name}` · `SearchCardResponse` carrying
 i18n parity re-counted programmatically: **256/256/256** across ru/kk/en, zero
 missing, zero extra (AUDIT_1's "240/240" is an older count, not a defect).
 
+## ⚠ 2026-08-02, SECOND PASS — backend moved to `b02105a`; G1 and G3 re-checked
+
+*(Read this before the `d00f96b` stamp below. That stamp is still accurate about the FRONTEND;
+what changed underneath it is the BACKEND, which every gate on this page depends on.)*
+
+The backend advanced **two commits past `cdc47dc`**, the basis both audits were written
+against: **`098fd44`** *"Document purchase destination ownership"* and **`b02105a`** *"Add
+catalog image galleries and release workflow"*. Every G1 and G3 blocker was re-read from Java
+source at `b02105a`. **The headline: neither gate is unblocked, and it is not close.**
+
+| Blocker | Expected home | State at `b02105a` |
+|---|---|---|
+| `MAX_CANDIDATES` | `StructuredSearchProcessor:53` | **Still `200`.** Unchanged |
+| `page` ceiling | `SearchRequest` | **Still `@Max(20)`.** Unchanged |
+| Unique-Offers sort | `SearchRequest.sort` regex | **Absent.** Still `relevance\|distance\|price_asc\|lowest_price` |
+| Companies filter · map-area bbox | `SearchFilterRequest` | **Absent.** Still the same 7 fields |
+| Backend's `Results Filter & Sort V1` lock | backend `search/locks.md` | **Still there, verbatim.** Our raise to retire it was not actioned |
+| `deepLink` as a collection | `Item.java:63` | **Still a single `String`** |
+| `deepLink` on `Service` | `offer/service` | **Still zero hits** |
+| Purchase destinations in the search projection | `SearchCardResponse` | **Absent** |
+
+**G3's product question is now CLOSED on both sides, and that is the real news.** `098fd44` is
+documentation-only, and it writes the owner's 2026-08-02 answer into the backend's own
+authorities almost word for word: `ProductVision.md` gains *"An Item or Service may publish
+multiple labeled customer purchase destinations. These destinations belong to that Item or
+Service, never to a branch"*, and `item/locks.md` + `service/locks.md` each gain **two** locks —
+one placing destinations on the entity rather than the branch, one forbidding verification and
+moderation links from ever being reused as a purchase destination. Both were exactly our raise.
+The backend's `item/contracts.md` then states the build order itself: *"The current singular
+`deepLink` field must be replaced or migrated before this target contract is exposed"* and
+*"Public search must expose the Item purchase destinations before the customer-facing `Proceed
+to Purchase` action is rendered."*
+
+So **G3 changed category, not status**: it was *blocked on a product answer AND on backend code*;
+it is now *blocked on backend code only*. Nothing is owed by the owner, nothing is owed by us,
+and there is nothing left to ask — the raise is agreed and queued. **G1 did not move at all.**
+
+### What DID ship, and it is not nothing: catalog image galleries
+
+`b02105a` added `images` to `SearchCardResponse` (`List<CatalogImageResponse>` = `{id, url}`),
+populated it in `toCard()`, and added a gallery-sync endpoint to items and services. The
+backend developer confirmed the intent directly (2026-08-02): *"Для услуг и товаров до 3
+картинок загружать."* `CatalogImageLayout.MAX_IMAGES = 3` matches. Recorded as **N11** (the
+field) and **N12** (the presentation contract shipped alongside it, which is a product question,
+not a data one).
+
 ## Status VERIFIED AT COMMIT `d00f96b` — a measurement, not a standing claim
 
 *(Deliberately not headed "current". A verification result is true of the commit
@@ -214,12 +260,15 @@ Full text in `AUDIT_1.md`; this is the queue view.
   business profile, which is what `SearchCardResponse.businessProfile.{number,
   email}` surfaces on every card. Every business onboarded through this UI ships
   a card with no contact channels. Also starves **G3**.
-- [ ] **B3 — `cityId` never sent on drafted branches** → `branch_city` null →
-  invisible to the city filter. The bridge is `GET /cities/resolve?name=`.
-  **Verify the KATO↔`city`-table name overlap cross-repo FIRST** (KATO spells
-  `"г. Кокшетау"` / `"Көкшетау қ."`); a miss must leave `cityId` unset, and
-  `resolve` 404s with `CITY_NOT_FOUND`, so the call needs a swallow. **Pairs with
-  S1** — same endpoint family, verify the table once.
+- [x] **B3 — `cityId` never sent on drafted branches** → `branch_city` null →
+  invisible to the city filter. The bridge was to be `GET /cities/resolve?name=`.
+  **→ VERIFICATION DONE 2026-08-02, and it REFUTES the plan: the overlap is 0 of 11 954
+  KATO names against all 23 seeded cities, in both languages.** The call would 404 every
+  time. Re-filed as a backend dependency (resolve by KATO code); `cityId` stays honestly
+  unset meanwhile. See the N-section entry above and
+  `features/business-cabinet/contracts.md` § *B3*. **This item is closed as an
+  INVESTIGATION, not as a shipped fix** — the gap it describes is real and still open,
+  it simply is not ours to close.
 - [ ] **B4 — `SELLER_TERMS`/`PERSONAL_DATA_CONSENT` never recorded.** Step 5's
   checkbox gates the form and posts nothing. Deferred with the legals work.
 - [ ] **B5 — Nominatim called raw from the browser.** No rate-limit handling,
@@ -270,6 +319,14 @@ Full text in `AUDIT_1.md`; this is the queue view.
 
 ## New — found 2026-08-01, not in AUDIT_1
 
+- [x] **N6 — `POST /api/v1/legal/acceptances` is in no frontend doc.**
+  **→ FIXED 2026-08-02.** `features/auth/contracts.md` now carries both `LegalController`
+  endpoints as a table. They are the SAME request body and the same service call and differ
+  only by the `LegalAcceptanceChannel` recorded (`WEB_REGISTRATION` vs `ACCOUNT_SETTINGS`) —
+  so the endpoint is chosen by the moment, not by convenience, or the record falsifies where
+  the person actually agreed. `/acceptances` has no caller yet; it is the consent gate's
+  channel. Neither has a GET, which is **N7**.
+
 - [x] **N1 — the 2026-07-28 renumbering never reached the code; ~28 sites still
   carry the OLD numbers.** AUDIT_1 uses the NEW numbering, `src/` mostly the old,
   so the two authorities contradict each other and every comment reads
@@ -289,9 +346,21 @@ Full text in `AUDIT_1.md`; this is the queue view.
   `features/catalog/contracts.md:46,79`). Hand-check each. `src/auth/*` and
   `AccountMenu.tsx` are already corrected.
 
+  **→ THE `AI_Knowledge/` HALF IS NOW CLOSED TOO (2026-08-02) — 30 sites hand-checked,
+  11 wrong.** The find-and-replace warning held a third time: 19 of 30 were already correct,
+  so a blind pass would have corrupted the majority of what it touched. Corrected:
+  `auth/contracts.md:155` (#7→#6), `auth/README.md:24` (#7→#6),
+  `auth/ux-ui-flow.md:244` (#10→#9) and `:245` (#6→#5),
+  `business-cabinet/contracts.md:92,139,142` (#8→#7),
+  `business-cabinet/README.md:21` (#7–#9→#6–#8), `business-cabinet/ux-ui-flow.md:9` (#7→#6)
+  and `:83` (#8→#7), `business-cabinet/locks.md:28` (#8→#7).
+  Left alone because they are RIGHT: every `slice #1` in auth, `auth/ux-ui-flow.md:111` (#2),
+  `business-cabinet/contracts.md:190` and `locks.md:16` and `ux-ui-flow.md:95` (#6, the cabinet
+  itself), all four in `catalog/contracts.md` (#3 modal, #7 seller pass), `chats` (#4), and
+  ROADMAP's own historical references. **N1 is fully closed** — `src/` and `AI_Knowledge/`.
+
   **Hand-check DONE for `src/` 2026-08-01 (second pass) — 18 sites, 9 wrong.**
-  The remaining 29 sites are in `AI_Knowledge/features/` and are NOT yet
-  checked. The `src/` half is now a mechanical edit, no judgement left:
+  The `src/` half was a mechanical edit, no judgement left:
 
   | Site | Says | Should say |
   |---|---|---|
@@ -498,6 +567,96 @@ Full text in `AUDIT_1.md`; this is the queue view.
 
 ---
 
+## New — found 2026-08-02 (second pass, backend `b02105a`)
+
+- [x] **N11 — `SearchCardResponse.images` was on the wire and unmodelled.** Landed in
+  `b02105a`; `toCard()` populates it via `loadImages()` from `ProductRepository` /
+  `ServiceOfferingRepository`, defaulting to `List.of()`, so it is always present and never
+  null. Same class as **S5** (`hasActiveOffer`/`latitude`/`longitude`) and found the same way:
+  diff the Java DTO against `model.ts`.
+  **→ MODELLED 2026-08-02.** `CatalogImage {id, url}` + `images: CatalogImage[]` in
+  `search/model.ts`, documented in `features/search/contracts.md`, and added to the
+  `e2e/mock-backend.mjs` card factory from the Java DTO (the e2e-stub lock — a stub that omits
+  a live field stops mirroring the contract it claims to cover). **Deliberately NOT rendered
+  — see N12.**
+
+- [x] **N12 — the backend shipped a RESULT-PRESENTATION contract, and one line of it reverses
+  the vision.** `b02105a` rewrote `Ask_Backend/AI_Knowledge/features/search/README.md`
+  § *Result presentation* to describe a UI: a primary catalog image on each row, a compact
+  business avatar/name, **desktop hover previewing the gallery and details in a right panel**,
+  mobile tap opening the same as a modal, business-avatar and chat actions NOT opening details,
+  and — the load-bearing one — ***"Match reasons remain response metadata but are not
+  displayed."***
+
+  `PRODUCT_VISION.md` has **zero** occurrences of image, photo or gallery on a result card, and
+  describes no hover-preview panel. Three of the four statements are new UI and one is a
+  reversal: we render `matchReasons` today as the intent layer's core "why this matched"
+  signal, and `features/search/contracts.md` calls it exactly that.
+
+  **This is the D9/P9.4 boundary in its sharpest form: the backend is the authority for DATA,
+  the vision for INTENT.** A README describing how rows should look is intent, and an agent
+  must not adopt it by inference — which is precisely AUDIT_2's own lesson 2 ("never infer
+  product intent from the SHAPE of code"), one level up: never infer it from the other repo's
+  prose either.
+
+  **→ DECIDED 2026-08-02 (owner), and the answer SPLITS the contract.**
+  1. **The primary card image is ADOPTED** — appended to `PRODUCT_VISION.md` UF 2.1 with its
+     justification, dated, per the CORE-file append rule. Up to three images, first primary on
+     the row, the rest belonging to the Product Card; a card with **no** image is a first-class
+     state, and image presence is never a trust or quality signal (Design Locks). **Rendering is
+     roadmap #3's**, not this pass's: `images` is modelled and stubbed, and no seller can upload
+     one until #7/#8 ship, so every gallery is `[]` until then.
+  2. **The hover-preview panel and mobile detail modal are NOT adopted** — they describe a
+     different Product Card interaction model than the modal-over-catalog #3 plans.
+  3. **Match reasons STAY rendered.** The owner's reasoning is the D9/P9.4 split itself: "why
+     this matched" is the intent layer's core affordance, and a README in the other repo is not
+     where a product affordance gets removed. **Raised back to the backend** as a documentation
+     conflict (ROADMAP § *Cross-Repo Dependencies*) — recorded rather than silently ignored,
+     because CLAUDE.md sends every agent to read the backend's contracts first, and the next one
+     will hit the contradiction.
+
+- [x] **N13 — every endpoint in `features/services/contracts.md` was a dead path.** All four
+  read `/api/v1/business-admin/branches/{branchId}/services`. The real controller is
+  `BusinessServiceController` at **`/api/v1/businesses/{businessId}/services`** — BUSINESS-scoped,
+  not branch-scoped, so the error was structural rather than a typo. `business-admin` survives
+  in exactly ONE place in the entire backend: `/api/v1/business-admin/chats`.
+  **→ FIXED 2026-08-02** from the Java source, with the gallery-sync endpoint added.
+
+- [x] **N14 — the cabinet's Unique Offers table was a dead path too.** All four read
+  `/api/v1/business-admin/offers`. The real controller is `UniqueOfferController`, and the
+  routes are **`drops`** across two prefixes: `/api/v1/businesses/{businessId}/drops` for
+  list/create, `/api/v1/drops/{dropId}` for update/cover/cancel/delete. CLAUDE.md's Feature
+  Index already noted "backend calls them **drops**" — the rename was known at index level and
+  never reached the contracts table.
+  **→ FIXED 2026-08-02.** Two behaviours worth the ink: the list GET is **public** (no
+  principal, allowlisted), and `POST /drops/{dropId}/cancel` **toggles** rather than cancelling
+  (`uniqueOfferProcessor.toggle`) — a one-way "Cancel" button built on its name would be wrong.
+
+  **N13 and N14 share a cause and it is worth naming.** Both slices are unbuilt (#8 and #6), so
+  nothing ever followed the path and nothing ever failed. A wrong endpoint in a doc for a slice
+  that exists gets caught in an afternoon; a wrong endpoint in a doc for a slice that does not
+  exist waits, and then costs whoever finally starts it. Both were found by diffing the tables
+  against controllers — the only method that works before there is code. **The same sweep should
+  be repeated for `chats` and `profile` before waves 4–5**, since they are unbuilt on the same
+  terms; this pass verified `catalog`, `services` and `business-cabinet` only.
+
+- [x] **B3 is ANSWERED — and the answer is that the planned fix cannot work.** Both audits
+  carried it as *"verify the KATO↔`city` name overlap cross-repo first."* Done, by measurement:
+  the `city` table is seeded by `V2__reference_data.sql` with **23 bare Russian names**
+  (`Алматы`, `Кокшетау`, …); KATO always carries a type marker (`г. Алматы` / `Алматы қ.`).
+  Across **all 11 954** KATO region/district/locality names in both languages, exact matches to
+  a seeded city: **0**. Not "might miss" — `resolve?name=` would 404 on every call, for every
+  seller.
+  **Not closable client-side**, and the obvious two-line fix is a trap: KATO holds
+  **`с. Караганда`** (a village) beside **`г. Караганда`** (the city), so prefix-stripping
+  attaches the CITY's `cityId` to a rural branch — silently, and worse than the current honest
+  null. Full working in `features/business-cabinet/contracts.md` § *B3*; converted to a backend
+  raise (resolve by KATO **code**, or seed KATO codes onto `city`, or accept a name server-side)
+  in `ROADMAP.md` § *Cross-Repo Dependencies*. **The investigation is closed; the fix is now
+  someone else's and is tracked as such.**
+
+---
+
 ## Cross-repo — backend knowledge drift
 
 The backend is the DATA authority (D9), and its Java source is reliable. Its
@@ -566,6 +725,14 @@ roadmap proper.
 
 ### Wave 0 — dispatch, ~30 min, zero code. Do this FIRST, always
 
+> **→ WRITTEN AND READY TO SEND, 2026-08-02: `AI_Knowledge/BACKEND_RAISE_2026-08-02.md`.**
+> Every backend row in this table is consolidated there as ONE message, verified item-by-item
+> against `dev` `b02105a` first. **Two rows were dropped during that verification rather than
+> sent:** the deploy-domain **CORS** raise (already shipped — `ask.com.kz`, `stage.ask.com.kz`
+> and the Vercel host are all in `application.yml`) and G3's **product** question (answered by
+> `098fd44`). Sending either would have repeated the `suggestRoleExpansion` failure this file
+> records — asking for work already done. The owner rows below are separate and still owed.
+
 Nothing here is work; it is unblocking. Each has days of latency, and every one
 currently blocks something downstream. Sending them costs half an hour and
 converts dead time into parallel time.
@@ -590,19 +757,23 @@ N8** (`fc5c6b0`), **N1 (src) + N2 + N10 + D-6 + D-5 residual** (`3c0fc3f`),
 **N4 + B1's placeholder half** (`97bbc7b`), **B2** (`6f1247a`, `d00f96b`).
 Verified at `d00f96b`: build green, `format:check` clean, e2e **120/120**.
 
-**Do NOT re-do them.** What survives from these three waves is only:
+**Do NOT re-do them.** What survives from these three waves, **updated 2026-08-02 (second
+pass)**:
 
-- **B3 — `cityId` on drafted branches.** Deliberately NOT done with S1, though
-  the plan paired them. The bridge (`/cities/resolve?name=`) is confirmed to
-  exist, but the KATO↔`city`-table name overlap is unverified and cannot be
-  verified from this repo — KATO spells things `"г. Кокшетау"` / `"Көкшетау қ."`
-  and a miss must leave `cityId` unset, never guess a neighbour. Needs a real
-  `city` table (cross-repo) before it is safe to write.
-- **B5 — Nominatim rate limits and silent failure.** Unblocked, unscheduled; the
-  only fully-free item left on this page.
+- ~~**B3 — `cityId` on drafted branches.**~~ **INVESTIGATION CLOSED 2026-08-02 by measurement:
+  the KATO↔`city` overlap is 0 of 11 954, so the planned `/cities/resolve?name=` bridge would
+  404 on every call and cannot be repaired client-side without silently mis-filing rural
+  branches. Now a backend dependency (resolve by KATO code).** The gap itself remains open; it
+  is simply no longer ours.
+- **B5 — Nominatim rate limits and silent failure.** Unblocked, unscheduled; **now the ONLY
+  fully-free code item left on this page.**
 - **N3 — the radius scale**, and it is NOT what the entry originally claimed —
-  read its correction before touching it.
-- **N1's `AI_Knowledge/` half** — 29 sites, still hand-checkable only.
+  read its correction before touching it. Needs the design skill + browser verification, not a
+  token swap.
+- ~~**N1's `AI_Knowledge/` half**~~ — **CLOSED 2026-08-02**, 30 sites hand-checked, 11 wrong.
+- **NEW: sweep `chats` and `profile` contracts against their controllers before wave 4.**
+  N13/N14 found every endpoint wrong in two unbuilt slices' docs; those two are unbuilt on
+  identical terms and were not checked this pass.
 
 ### Wave 4 — the customer path, end to end (the mission)
 

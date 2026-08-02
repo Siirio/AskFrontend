@@ -84,6 +84,21 @@ Sign up verifies the email with a 6-digit code; **log in is email + password**
 `POST /api/v1/legal/registration-acceptances` (Bearer, `LegalController#acceptRegistration`)
 records consent once the session exists.
 
+**`LegalController` exposes exactly two endpoints, and they differ only by CHANNEL** (added
+2026-08-02, AUDIT_2 N6 — the sibling was in no frontend doc). Both take the same
+`AcceptLegalDocumentsRequest` (`documentCodes`, `countryCode`, `locale`), both return `204`,
+and both delegate to one `legalService.acceptActiveDocuments(...)`:
+
+| Path | `LegalAcceptanceChannel` | Who calls it |
+|---|---|---|
+| `POST /api/v1/legal/registration-acceptances` | `WEB_REGISTRATION` | `recordRegistrationConsent()` — email verify and the OAuth callback (below) |
+| `POST /api/v1/legal/acceptances` | `ACCOUNT_SETTINGS` | **Nothing yet.** It is the channel for the consent GATE and for any future profile/settings re-acceptance |
+
+Pick the endpoint by the moment, not by convenience: the channel is stored on `LegalAcceptance`,
+so calling the registration path from a settings screen would falsify the record of *where* the
+person agreed. **There is no GET on either** — the module is write-only, which is what blocks the
+consent gate (AUDIT_2 N7, and § *Cross-Repo Dependencies* in `ROADMAP.md`).
+
 > ### ⚠ MOVED 2026-08-01 — it now fires from `useVerifyStep`, not the role modal
 >
 > It used to be called from `RoleSelectionModal.confirm()` **only when the customer card was
@@ -137,7 +152,7 @@ call above. The same change started sending `countryCode` and `locale` for real,
 is no longer stamped with the backend's `"ru"` default in a product whose own default locale
 is `kk`.
 
-## Endpoints deferred (backend exists; built with the seller/staff paths, roadmap #7)
+## Endpoints deferred (backend exists; built with the seller/staff paths, roadmap #6)
 
 | Method | Path | Auth | Deferred to |
 |--------|------|------|-------------|

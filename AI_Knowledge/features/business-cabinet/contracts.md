@@ -18,13 +18,25 @@ branch drafted through that modal is a pickup point). `BranchResponse` mirrors t
 `SellerOnboardingRequest.pickupBranches: CreateBranchRequest[]`** (same shape, different
 envelope) — this standalone endpoint is for the cabinet's Branches tab only.
 
-## Unique Offers
+## Unique Offers — the backend calls them **drops**
+
+> **CORRECTED 2026-08-02 (AUDIT_2 N14) — all four paths were wrong.** The table read
+> `/api/v1/business-admin/offers`; **no such endpoint exists.** `business-admin` survives in
+> exactly one place in the whole backend, `/api/v1/business-admin/chats`. The real routes are
+> `.../drops`, split across two prefixes — business-scoped for list/create, **drop-scoped for
+> everything after**. Read from `kz.ask.business.uniqueoffer.api.UniqueOfferController`.
+> CLAUDE.md's Feature Index already said "Unique Offers (backend calls them **drops**)", so the
+> rename was known at the index level and never reached this table — the tab is roadmap #6 and
+> unbuilt, so nothing followed the dead path.
+
 | Method | Path | Auth | Used by |
 |--------|------|------|---------|
-| GET | /api/v1/business-admin/offers | OWNER | Unique Offers tab |
-| POST | /api/v1/business-admin/offers | OWNER | Create offer |
-| PATCH | /api/v1/business-admin/offers/{id} | OWNER | Update offer |
-| DELETE | /api/v1/business-admin/offers/{id} | OWNER | Delete offer |
+| GET | /api/v1/businesses/{businessId}/drops | **public** (allowlisted — no `@AuthenticationPrincipal`) | Unique Offers tab; also the only public read |
+| POST | /api/v1/businesses/{businessId}/drops | Bearer, business member | Create offer → **201** |
+| PATCH | /api/v1/drops/{dropId} | Bearer, business member | Update offer |
+| POST | /api/v1/drops/{dropId}/cover | Bearer, business member | Upload cover — `multipart`, part name **`file`** (singular). An ASK-managed upload, never a client-supplied URL (slice lock) |
+| POST | /api/v1/drops/{dropId}/cancel | Bearer, business member | **Toggles** (`uniqueOfferProcessor.toggle`) — the name says cancel, the behaviour is a switch. Do not build a one-way "cancel" button on it without re-reading the processor |
+| DELETE | /api/v1/drops/{dropId} | Bearer, business member | Delete → 204 |
 
 ## Staff & Invites (Company Dashboard)
 | Method | Path | Auth | Used by |
@@ -89,7 +101,7 @@ Staff & Invites above; prefer these for company-level people management.
 |---|---|---|
 | `businessScope` | `ITEM` · `SERVICE` · `BOTH` | NOT `PRODUCTS`/`SERVICES` — the module speaks `ITEM` |
 | `legalForm` | `KZ_IP` · `KZ_TOO` · `NONE` | The form's one branch |
-| `catalogSetupMode` | `MANUAL` · `ASK_MANAGED_IMPORT` | Both sent for real (D29) — `ASK_MANAGED_IMPORT` still lacks its own follow-up scoping screen (roadmap #8), but the field itself is not manual-only |
+| `catalogSetupMode` | `MANUAL` · `ASK_MANAGED_IMPORT` | Both sent for real (D29) — `ASK_MANAGED_IMPORT` still lacks its own follow-up scoping screen (roadmap #7), but the field itself is not manual-only |
 | `legalIdentifier`, `legalName` | — | REQUIRED for `KZ_IP`/`KZ_TOO`; identifier is exactly 12 digits (IIN / BIN) |
 | `twoGisUrl` `kaspiUrl` `ozonUrl` `wildberriesUrl` `websiteUrl` `instagramUrl` `telegramUrl` | `^(?:https?://\S+)?$` | For `legalForm: NONE`, **at least one** must be non-blank |
 | `deliveryCoverage` | `NO_DELIVERY` · `SELECTED_CITIES` · `KAZAKHSTAN` · `WORLDWIDE` | `kz.ask.business.profile.domain.enums.DeliveryCoverage`, `@NotNull` |
@@ -136,10 +148,10 @@ selectable choices; whichever `catalogSetupMode` the seller picks is what
 `toOnboardingRequest` sends. This is valid: `ASK_MANAGED_IMPORT` is accepted by
 `SellerOnboardingRequest` on its own (confirmed from the Java DTO). What is STILL missing is the
 SEPARATE managed-import request dialog (`POST /api/v1/businesses/{businessId}/managed-imports`,
-roadmap #8) for scoping/pricing an import after the fact — the UI is honest about that gap
+roadmap #7) for scoping/pricing an import after the fact — the UI is honest about that gap
 ("our team will follow up to confirm scope and price") rather than promising an instant quote or
 a dialog that does not exist. A business created with `catalogSetupMode: ASK_MANAGED_IMPORT`
-today has no further in-product screen; follow-up is manual/ops-side until roadmap #8 ships.
+today has no further in-product screen; follow-up is manual/ops-side until roadmap #7 ships.
 
 **Branches drafted during registration are real (2026-07-29), not part of this request.** Step
 3's map picker collects `DraftBranch[]` client-side (`model.ts`); once `onboardSeller` resolves
@@ -228,10 +240,48 @@ need not even match theirs. The seller still edits the field freely.
 **Where the composed address goes.** `CreateBranchRequest` has ONE `address` string and no
 `country`/`state`/`region` fields (verified against `kz.ask.business.branch.api.dto`), so the
 registry levels and the street line are joined into that one string by `formatKzAddress` —
-widest first. No DTO field is invented (P9.4). ⚠ `cityId` is still **not** sent (AUDIT_1 B3);
-`GET /api/v1/cities/resolve?name=` (`CityService.findByName`) is the endpoint that would turn
-`KzPlace.placeName` into the required UUID — that is the next step for this flow, not part of
-the D30 change.
+widest first. No DTO field is invented (P9.4). ⚠ `cityId` is still **not** sent — see below.
+
+## B3 — `cityId` on drafted branches: MEASURED 2026-08-02, and the planned fix does not work
+
+Both audits carried B3 as *"the bridge exists, but verify the KATO↔`city` name overlap
+cross-repo first."* **That verification has now been done, and the overlap is zero.**
+
+The `city` table is seeded by `Ask_Backend/src/main/resources/db/migration/V2__reference_data.sql`
+— **23 rows**, bare Russian names: `Алматы`, `Астана`, `Кокшетау`, `Караганда`, … KATO, which
+is what `AddressSelect` emits as `KzPlace.placeName`, **always carries a type marker**:
+`г. Алматы` / `Алматы қ.`, `г. Кокшетау` / `Көкшетау қ.`.
+
+Measured over the whole registry — every region, district and locality name in
+`src/shared/geo/kato/`, in both languages:
+
+| | Result |
+|---|---|
+| KATO name entries scanned | **11 954** |
+| Exact matches to a seeded city (`nameRus`) | **0** |
+| Exact matches to a seeded city (`nameKaz`) | **0** |
+| Seeded cities reachable from a KATO name | **0 of 23** |
+
+So `GET /cities/resolve?name={placeName}` would **404 on every call, for every seller**. The
+finding is not "it might miss" — as specified, B3 attaches `cityId` never, and would ship a
+network round-trip per branch whose only outcome is a swallowed `CITY_NOT_FOUND`.
+
+**Do not close this by normalising the string client-side.** Stripping the `г.` prefix or the
+`қ.` suffix looks like
+a two-line fix and is the trap the original entry's own caution names — *"a miss must leave
+`cityId` unset, never guess a neighbour."* KATO contains **`с. Караганда`** (a village) as well
+as **`г. Караганда`** (the city); a prefix-stripping match maps both to the city row, silently
+attaching the wrong `cityId` to a rural branch and putting it in the city filter it does not
+belong to. That is worse than the current null, because it is invisible. It would also be the
+client re-deriving the backend's table from a different registry — inventing a mapping the wire
+does not define (P9.4, the Data Lock).
+
+**The fix is the backend's.** Raised in `ROADMAP.md` § *Cross-Repo Dependencies*: either resolve
+by **KATO code** (`KzPlace` already carries `code`, the real classifier key, precisely so it can
+be reconciled), or seed/extend the `city` table with its KATO codes, or accept a city NAME on
+`CreateBranchRequest` and let the server do the matching against its own table. Until one lands,
+`cityId` stays unset — an honest null, and branches stay invisible to the city filter, which is
+a stated gap rather than a silent wrong answer.
 
 ## Not built yet
 **Company Profile** has no endpoint set — the vision marks it "coming in a future update". Ship the placeholder, not a screen.

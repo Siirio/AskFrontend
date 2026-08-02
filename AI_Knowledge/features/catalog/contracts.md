@@ -50,6 +50,34 @@ Sources: `../Ask_Backend` modules `offer/item` (`kz.ask.offer.item.api.*`) and `
 | POST | /api/v1/businesses/{businessId}/items | Bearer, business member | Add product |
 | PATCH | /api/v1/items/{itemId} | Bearer, business member | Update product |
 | DELETE | /api/v1/items/{itemId} | Bearer, business member | Delete |
+| POST | /api/v1/items/{itemId}/images | Bearer, business member | **Gallery sync** — see below |
+
+### Catalog images (backend `b02105a`, 2026-08-02 — confirmed by the backend developer: *"для услуг и товаров до 3 картинок загружать"*)
+
+`POST /api/v1/items/{itemId}/images` is **multipart/form-data** and it is a *sync*, not an
+append — one call declares the gallery's final state, and the response is a full
+`BusinessProductRowResponse`.
+
+| Part | Repeatable | Meaning |
+|---|---|---|
+| `files` | yes | The NEW binaries this call uploads. PNG / JPEG / WebP. Optional |
+| `order` | yes | The FINAL gallery, in order. Each value is either a **retained stored identifier** (already on the item) or a **`new:{zeroBasedFileIndex}`** token pointing into `files` |
+
+Rules read from `kz.ask.offer.media.CatalogImageLayout` — not inferred:
+
+- **`MAX_IMAGES = 3`.** `order.size() > 3` → `CATALOG_IMAGE_LIMIT_EXCEEDED`.
+- **The first entry in `order` is the primary image** — it is what the search card shows.
+- An `order` token that is neither a current stored name nor a valid `new:{i}` index →
+  `CATALOG_IMAGE_ORDER_INVALID`. So does a **duplicate** token.
+- **Every uploaded file must be referenced by `order`.** Uploading a file and leaving it out of
+  `order` is `CATALOG_IMAGE_ORDER_INVALID`, not a silent discard.
+- **Omitting a current image from `order` DELETES it.** There is no separate delete endpoint;
+  removal is expressed by absence. A UI that sends only the new file would wipe the gallery.
+- URLs are **server-generated** (`CatalogImageResponse { id, url }`); a client never submits an
+  external media URL.
+
+Both error codes are new in `ErrorCode` and need i18n keys when this tab is built.
+The identical contract exists for services — see `features/services/contracts.md`.
 
 `GET` query params: `branchId?`, `enabled?`, `query?`, `page` (default 0), `size` (default 20).
 Returns `BusinessProductListResponse` — a wrapper object, **not a bare array** (the 2026-07-24

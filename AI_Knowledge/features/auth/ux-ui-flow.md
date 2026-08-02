@@ -241,5 +241,5 @@ composition root (R3):
 
 ## Cross-slice
 
-- Logged-in visitor on `/` is redirected to `/app/` by a client check of `ask.accessToken`; `?from=app` suppresses it (D6). Built with the landing (slice #10).
-- Sign out lives in the profile card in the navigation menu (UF 2.3) — the action is `@/auth` (`useAuth().signOut`), the surface is `@/profile` (slice #6).
+- Logged-in visitor on `/` is redirected to `/app/` by a client check of `ask.accessToken`; `?from=app` suppresses it (D6). Built with the landing (slice #9).
+- Sign out lives in the profile card in the navigation menu (UF 2.3) — the action is `@/auth` (`useAuth().signOut`), the surface is `@/profile` (slice #5).
