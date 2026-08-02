@@ -31,20 +31,31 @@ on `resolve`) · `CityDto {id, name}` · `SearchCardResponse` carrying
 i18n parity re-counted programmatically: **256/256/256** across ru/kk/en, zero
 missing, zero extra (AUDIT_1's "240/240" is an older count, not a defect).
 
-## Current status — as of 2026-08-02, frontend `b5138b9`
+## Status VERIFIED AT COMMIT `b5138b9` — a measurement, not a standing claim
+
+*(Deliberately not headed "current". A verification result is true of the commit
+it was run against and of nothing else; the next code commit invalidates it
+silently. Trust the commit hash, not the heading — and if `HEAD` is not
+`b5138b9` or a docs-only descendant of it, re-run rather than reading on.)*
 
 **Closed since the snapshot:** **N9** only (commit `8e41a30` — both auth routes
 `noindex`, the false `/app/*` crawlability premise corrected in three places, two
 e2e assertions added). With it, `auth` meets all 8 DONE criteria.
 
 **Everything else on this page is OPEN**, including N8 and N10, which were found
-by this pass and not acted on. Verification state of the tree at `b5138b9`:
-`npm run build` green end to end (lint → boundary fixtures → token drift → tsc →
-next build → rendering contract); `format:check` clean repo-wide; e2e
-**108/108** on `chromium` and `mobile-chromium` against a real
-`next build && next start`. **That e2e figure required working around N10** — a
-dev server owned `:3000`, so the run was driven on `:3100`; a plain
-`npm run test:e2e` would have tested the dev server instead.
+by this pass and not acted on.
+
+**What was actually run, at `b5138b9`:** `npm run build` green end to end (lint →
+boundary fixtures → token drift → tsc → next build → rendering contract);
+`format:check` clean repo-wide; e2e **108/108** on `chromium` and
+`mobile-chromium` against a real `next build && next start`. Commits after
+`b5138b9` are documentation only and do not disturb these figures — the first
+code commit does. **The e2e figure required working around N10:** a dev server
+owned `:3000`, so the run was driven on `:3100`; a plain `npm run test:e2e`
+would have tested the dev server instead. **That workaround is also what
+produced this file's one self-inflicted error** — the retracted D-6
+"confirmation" below. A workaround changes the conditions of the experiment, and
+anything concluded under it has to be re-derived, not assumed.
 
 **How to use this file:** same rule as AUDIT_1 and the Changelog — when an item
 is fixed, mark it `[x]` with the date and what the change did. Do NOT delete it.
@@ -53,7 +64,7 @@ file.
 
 ---
 
-## Read this first — three lessons that cost real work
+## Read this first — four lessons that cost real work
 
 1. **An unchecked box is not evidence of anything. Re-run before acting.** Three
    AUDIT_1 items were found already-green on 2026-08-01: **D-5** (prettier was
@@ -69,6 +80,18 @@ file.
    were sentences, not identifiers — `features/auth/README.md` describing the
    consent bug it had already fixed, and `ux-ui-flow.md` timing consent at the
    role answer. A grep for `startRouteToPath` found neither. Read the doc.
+4. **A prediction plus a green run is NOT confirmation. Check the mechanism.**
+   *(Added 2026-08-02, and this one was committed BY an audit pass, not found by
+   it — see the retraction under **D-6**.)* D-6 predicted that a hardcoded
+   `localhost:3000` cookie URL would be dropped "when the harness runs on another
+   port". The suite was then run on `:3100`, everything passed, and that was
+   written up as the prediction coming true. It was the opposite: **cookies are
+   scoped by host, not port** (RFC 6265), so the pin applied normally — provable
+   from the same run, because `search.spec.ts` asserts English copy against a
+   `kk` default and those assertions passed. Two plausible stories fit "it
+   passed"; only reading the mechanism separates them. Lesson 1 says an unchecked
+   box is not evidence — this is its twin: **a green run is not evidence for
+   whichever explanation you already had in mind.**
 
 ---
 
@@ -188,14 +211,29 @@ Full text in `AUDIT_1.md`; this is the queue view.
   then passes while asserting the default locale. **Its stated blocker is gone**
   (D-5 is fixed), so this is now a 3-line change: lift `pinLocale` out of
   `business-register.spec.ts:169` into a shared e2e helper.
-  **CONFIRMED IN THE WILD 2026-08-02:** the suite was driven on `:3100` (N10's
-  workaround), which IS this finding's "a different port when 3000 is taken"
-  case. The cookie was set for the `:3000` origin, the page under test was
-  `:3100`, the pin silently did nothing — **and every `search.spec.ts` test
-  passed anyway.** The prediction was "it does not fail; it quietly asserts
-  against the default locale", and that is what happened. A pin no assertion
-  depends on is worse than no pin: it reads as coverage. Fix the helper AND
-  check whether any assertion was ever meant to depend on it.
+  **RETRACTED 2026-08-02 — an earlier note here claimed the `:3100` run
+  "CONFIRMED IN THE WILD" that the pin silently did nothing. That was WRONG, and
+  the run proves the OPPOSITE.** Cookies are keyed on host, **not port**
+  (RFC 6265 — the port is not part of a cookie's scope), so a cookie set with
+  `url: "http://localhost:3000"` applies perfectly well to a page served on
+  `localhost:3100`. The proof is in the suite that was cited as evidence:
+  `search.spec.ts` pins `ask.locale=en` and then asserts the ENGLISH strings
+  `"Enter what you're looking for."` (`:75`, `:91`) and a button named
+  `"Search"` (`:59`, `:73`) — while the product's default locale is `kk`. Those
+  assertions **passed** on `:3100`, which is only possible if the pin APPLIED.
+  Had it been dropped, they would have failed against Kazakh copy.
+  **What survives, and why this stays open.** The finding is real but NARROWER
+  than written: a hardcoded `http://localhost:3000` breaks on a different
+  **HOST**, not a different port — a preview deploy, or CI on any non-`localhost`
+  origin. The original entry's own example ("a different port when 3000 is
+  taken") is therefore the one case that does NOT break, and the AUDIT_1 text
+  still says it. The fix is unchanged and still correct: lift `pinLocale`
+  (`business-register.spec.ts:172`), which derives the URL from
+  `test.info().project.use.baseURL` and is right on every origin.
+  **The lesson is this file's own recurring one, turned on itself:** a
+  prediction plus a green run was read as confirmation without checking the
+  mechanism, which is exactly the "an unchecked box is not evidence" failure
+  the header warns about — committed here by the audit rather than found by it.
 
 ---
 

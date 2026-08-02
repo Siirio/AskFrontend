@@ -484,16 +484,20 @@ checked in the first pass — `startRoute` was taken on trust.
   D-5's unformatted set, so touching it drags a reformat into an unrelated diff.
   **→ The stated blocker is GONE (D-5 fixed by `5b5a955`), so this is now a
   3-line lift with no coupling. Still open.**
-  **→ CONFIRMED IN THE WILD 2026-08-02, exactly as predicted.** The suite was
-  driven on **port 3100** (a production build, because a dev server owned :3000 —
-  see N10 in `AUDIT_2.md`). That is precisely this entry's "a different port when
-  3000 is taken" scenario: the cookie was set for the `:3000` origin and the page
-  under test was `:3100`, so the locale pin silently did nothing — **and all
-  `search.spec.ts` tests passed anyway, 108/108.** The prediction was that it
-  "does not fail; it quietly asserts against the default locale", and that is
-  what happened. The pin is currently a no-op that no assertion depends on, which
-  is strictly worse than no pin: it reads as coverage. Fix the helper AND check
-  whether any assertion was ever meant to depend on it.
+  **→ CORRECTED 2026-08-02 — and this entry's own example is the one case that
+  does NOT break.** A note added here earlier claimed the `:3100` run confirmed
+  the finding "exactly as predicted". It did not; it **disproved the port half**.
+  Cookies are scoped by host, **not by port** (RFC 6265), so a cookie set with
+  `url: "http://localhost:3000"` reaches a page served on `localhost:3100`
+  normally. The evidence is the suite itself: `search.spec.ts` pins
+  `ask.locale=en` and asserts ENGLISH copy (`"Enter what you're looking for."`,
+  a `"Search"` button) against a product whose default locale is `kk` — and
+  those assertions PASSED on `:3100`, which requires the pin to have applied.
+  So the sentence above — *"a different port when 3000 is taken"* — is wrong and
+  should be read as **a different HOST**: a preview deploy, or CI on any
+  non-`localhost` origin. **The finding stays open**; only its trigger narrows,
+  and the fix is unchanged (lift `pinLocale`, which derives from `baseURL` and
+  is correct on every origin). Full correction in `AUDIT_2.md` § D-6.
 
 - [x] **D-5 — `npm run format:check` is RED on this branch, on 11 pre-existing
   files** *(found 2026-07-31; unrelated to that day's change, which is clean).*
