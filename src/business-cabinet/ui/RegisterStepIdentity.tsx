@@ -156,11 +156,20 @@ export function RegisterStepIdentity({
        *  `SearchCardResponse.businessProfile.{number, email}` renders on every
        *  result card. Never collecting them shipped every business a card with
        *  no way to reach it (AUDIT_1 B2), so the form asks; a seller who
-       *  declines simply leaves them blank and nothing is sent. */}
+       *  declines simply leaves them blank and nothing is sent.
+       *
+       *  BOTH carry their own hint, and both open with "Optional" (2026-08-02,
+       *  owner review). They first shipped with the hint on `phone` only, on the
+       *  reasoning that one explanation served the pair — but in a form where
+       *  every other field is required, the field WITHOUT the note reads as
+       *  required. Silence is not neutral here; it is the default meaning. The
+       *  two sentences differ only in the verb (call / write), which is real
+       *  information rather than duplicated boilerplate, and each stands alone
+       *  so neither depends on the other's position. */}
       <Field
         label={t("fields.phone")}
         htmlFor="business-phone"
-        hint={t("hints.contact")}
+        hint={t("hints.phone")}
         error={errors.phone ? t(errors.phone) : undefined}
       >
         <Input
@@ -181,6 +190,7 @@ export function RegisterStepIdentity({
       <Field
         label={t("fields.corporateEmail")}
         htmlFor="business-corporate-email"
+        hint={t("hints.corporateEmail")}
         error={errors.corporateEmail ? t(errors.corporateEmail) : undefined}
       >
         <Input

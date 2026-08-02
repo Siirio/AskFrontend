@@ -256,7 +256,8 @@
       "verification": "Pick the places that are yours and paste the links. One is enough.",
       "deliveryCities": "Type a city, then press Enter or a comma.",
       "onlineOnly": "No storefront, warehouse, or pickup point — everything ships or is delivered.",
-      "contact": "Optional. Shown on your listings so customers can reach you directly."
+      "phone": "Optional. Shown on your listings so customers can call you directly.",
+      "corporateEmail": "Optional. Shown on your listings so customers can email you directly."
     },
     "placeholders": {
       "businessName": "For example, Aigul Flowers",
