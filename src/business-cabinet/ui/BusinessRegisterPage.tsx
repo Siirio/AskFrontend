@@ -69,7 +69,7 @@ const STEP_TITLE_KEYS = [
  * WHAT IS DELIBERATELY NOT HERE. `catalogSetupMode` is fixed to MANUAL:
  * step 2 SHOWS the `ASK_MANAGED_IMPORT` option (with illustrative pricing)
  * but it stays disabled — the request dialog it is contracted to open does
- * not exist until roadmap #8, so making it selectable would rebuild the
+ * not exist until roadmap #7, so making it selectable would rebuild the
  * exact dead end this page removes. `countryCode` is fixed to KZ — the legal
  * forms on offer are Kazakhstan's (api.ts).
  */

@@ -23,7 +23,7 @@ import { RequireDashboardAccess } from "@/auth";
  *
  * Server component (D7): RequireDashboardAccess is the client island that reads
  * the live session; the route content passed as `children` stays server-rendered
- * (§2 provider note). When the business-cabinet slice lands (roadmap #7) it keeps
+ * (§2 provider note). When the business-cabinet slice lands (roadmap #6) it keeps
  * this guard — access control is the app composition root's to place (R3).
  */
 export default function BusinessCabinetLayout({

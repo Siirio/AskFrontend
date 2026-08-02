@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { pinLocale } from "./helpers";
+
 /**
  * Seller registration — /app/business/register (PRODUCT_VISION UF 3.1).
  *
@@ -159,23 +161,9 @@ async function advanceToDeliveryStep(page: Page) {
   ).toBeVisible();
 }
 
-/**
- * Pin the platform locale (D19) before the first navigation, so the SERVER
- * render already sees it.
- *
- * The origin comes from the project's own `baseURL` rather than a literal:
- * `addCookies` needs an absolute URL, and hardcoding one silently drops the
- * cookie the moment the harness runs anywhere else (a different port when 3000
- * is taken, or a deployed preview) — the test would then not fail, it would
- * quietly assert against the default locale instead.
- */
-async function pinLocale(page: Page, locale: string) {
-  const { baseURL } = test.info().project.use;
-  if (!baseURL) throw new Error("playwright.config.ts must define a baseURL");
-  await page
-    .context()
-    .addCookies([{ name: "ask.locale", value: locale, url: baseURL }]);
-}
+// `pinLocale` moved to ./helpers 2026-08-02 so search.spec.ts stops carrying a
+// literal origin (AUDIT_2 D-6). Its rationale is corrected there too: a
+// different PORT never dropped the cookie — cookies are keyed on host, not port.
 
 /** Confirms step 5's agreement checkbox and submits — the shared tail of every
  *  successful-registration test regardless of how many steps preceded it. */

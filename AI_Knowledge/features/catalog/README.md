@@ -1,6 +1,14 @@
 # Catalog — Product Card & Products Management
 
-Mirrors backend modules: **catalog** + **import** (`../Ask_Backend/AI_Knowledge/features/catalog/`, `.../import/`).
+Mirrors backend modules: **`offer/item`** + **`importing`** (docs at `../Ask_Backend/AI_Knowledge/features/item/`; the import module has no knowledge folder — read the Java in `kz/ask/importing/`).
+
+> **Corrected 2026-08-02 (AUDIT_2 N2).** This line used to cite
+> `../Ask_Backend/AI_Knowledge/features/catalog/` and `.../import/`. **Neither directory exists** —
+> the backend's folders are `business, identity, item, messaging, offers, platform, request,
+> search, service` plus `_archived/{import,shipping}`. Since CLAUDE.md tells every agent to read
+> the backend's `features/{module}/contracts.md` before consuming an endpoint, that sent whoever
+> builds this slice down a dead path on the very next slice to be built. `contracts.md` in this
+> folder already named `offer/item` correctly; only this line was wrong.
 
 Owns everything about a product: the customer-facing **Product Card** (UF 2.1 step 3) and the seller-facing **Products** tab of the business cabinet (UF 3.1 item 2 — list, add, import).
 

@@ -46,8 +46,8 @@
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-boundaries": "^7.0.2",
     "eslint-plugin-import": "^2.32.0",
-    "prettier": "^3.9.5",
-    "prettier-plugin-tailwindcss": "^0.8.0",
+    "prettier": "3.9.5",
+    "prettier-plugin-tailwindcss": "0.8.0",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3"
   }

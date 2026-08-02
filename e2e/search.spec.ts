@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { pinLocale } from "./helpers";
+
 // The search slice (roadmap Phase 1 #2): Home's search form + mode toggle,
 // and the Catalog Page's sectioned results, sort, and filters.
 //
@@ -32,14 +34,10 @@ async function seedSession(page: Page) {
   await page.route("**/api/v1/auth/session", (route) =>
     route.fulfill({ status: 200, json: CUSTOMER_SESSION }),
   );
-  // The default locale is kk (shared/i18n/locales.ts) — pin the server-read
-  // `ask.locale` cookie (D19) to `en` so assertions read stable English
-  // strings instead of juggling three languages of text matchers.
-  await page
-    .context()
-    .addCookies([
-      { name: "ask.locale", value: "en", url: "http://localhost:3000" },
-    ]);
+  // The default locale is kk (shared/i18n/locales.ts) — pin `ask.locale` (D19)
+  // to `en` so assertions read stable English strings. Derived from baseURL by
+  // the shared helper, never a literal origin (AUDIT_2 D-6).
+  await pinLocale(page, "en");
 }
 
 test("Home renders the query input and the mode toggle, and submitting navigates to Catalog", async ({

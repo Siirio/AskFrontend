@@ -9,7 +9,7 @@
  *
  * V1 surface: seller onboarding + the BUSINESS category autocomplete it needs.
  * The rest of the module (branches, staff, invitations, offers, managed import)
- * lands with the cabinet itself, roadmap #7–#9.
+ * lands with the cabinet itself, roadmap #6–#8.
  */
 import { httpClient } from "@/shared/api/httpClient";
 

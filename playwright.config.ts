@@ -7,6 +7,10 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
+  // Refuses the run if `reuseExistingServer` has quietly attached us to a dev
+  // server instead of a production build (AUDIT_2 N10) — the promise in the
+  // comment above is otherwise unenforced, and only locally does it break.
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

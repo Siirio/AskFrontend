@@ -35,7 +35,7 @@ const CATALOG_SETUP_ICON: Record<CatalogSetupMode, typeof PencilLine> = {
  * item 6 revision — see business-cabinet/locks.md's amended note and D29 in
  * the architecture decision log). `ASK_MANAGED_IMPORT` is a valid value on
  * `SellerOnboardingRequest` by itself; only a SEPARATE follow-up scoping
- * screen (roadmap #8) is missing, so the copy here is honest about a human
+ * screen (roadmap #7) is missing, so the copy here is honest about a human
  * follow-up rather than promising an instant dialog or a locked price.
  */
 export function RegisterStepScope({

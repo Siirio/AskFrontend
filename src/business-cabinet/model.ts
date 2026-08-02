@@ -27,7 +27,7 @@ export type BusinessLegalForm = (typeof BUSINESS_LEGAL_FORMS)[number];
  *  for real (2026-07-29, owner directive, D29 — see Changelog and
  *  business-cabinet/locks.md's amended note): `ASK_MANAGED_IMPORT` is a valid
  *  value on `SellerOnboardingRequest` by itself. What is STILL missing is a
- *  separate follow-up screen for scoping/pricing the import (roadmap #8) — the
+ *  separate follow-up screen for scoping/pricing the import (roadmap #7) — the
  *  UI is honest about that gap (see catalogSetup.managedImport copy) rather
  *  than promising an instant quote. */
 export const CATALOG_SETUP_MODES = ["MANUAL", "ASK_MANAGED_IMPORT"] as const;
@@ -176,7 +176,7 @@ export type SellerOnboardingValues = {
   businessScope: BusinessScope;
   /** Step 2's choice, submitted for real (2026-07-29, D29 — see Changelog).
    *  `ASK_MANAGED_IMPORT` is a valid `SellerOnboardingRequest` value on its
-   *  own; only the SEPARATE follow-up scoping dialog (roadmap #8) is missing,
+   *  own; only the SEPARATE follow-up scoping dialog (roadmap #7) is missing,
    *  not this field. */
   catalogSetupMode: CatalogSetupMode;
   legalForm: BusinessLegalForm | null;

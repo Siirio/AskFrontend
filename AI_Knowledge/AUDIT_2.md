@@ -38,12 +38,24 @@ it was run against and of nothing else; the next code commit invalidates it
 silently. Trust the commit hash, not the heading — and if `HEAD` is not
 `b5138b9` or a docs-only descendant of it, re-run rather than reading on.)*
 
-**Closed since the snapshot:** **N9** only (commit `8e41a30` — both auth routes
-`noindex`, the false `/app/*` crawlability premise corrected in three places, two
-e2e assertions added). With it, `auth` meets all 8 DONE criteria.
+**Closed since the snapshot:**
 
-**Everything else on this page is OPEN**, including N8 and N10, which were found
-by this pass and not acted on.
+- **N9** (`8e41a30`) — both auth routes `noindex`; the false `/app/*`
+  crawlability premise corrected in three places; two e2e assertions. With it,
+  `auth` meets all 8 DONE criteria.
+- **N1 (the `src/` half), N2, D-5 residual, D-6, N10** — the 2026-08-02
+  housekeeping pass. `src/`'s 9 stale roadmap numbers corrected by hand against
+  the verified table (comments only — the diff was checked to contain no code);
+  catalog's README no longer points at two backend folders that do not exist;
+  `prettier` + `prettier-plugin-tailwindcss` pinned exactly, so "formatted" stops
+  being a moving target on a CI-gated check; `pinLocale` lifted to
+  `e2e/helpers.ts` and both specs derive the origin from `baseURL`; a
+  `globalSetup` now **fails** the run when the harness is attached to a dev
+  server. **N1's `AI_Knowledge/` half (29 sites) is still open.**
+
+**Everything else on this page is OPEN**, including **N8** and the corrected
+**N3** — see its entry: acting on N3 as written would have made the toast
+inconsistent rather than consistent.
 
 **What was actually run, at `b5138b9`:** `npm run build` green end to end (lint →
 boundary fixtures → token drift → tsc → next build → rendering contract);
@@ -198,7 +210,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   `specialHours` absent from `model.ts`. Build with the Branches tab (#6) — the
   backend never populates `openingSummary` either, so there is no payoff before.
 - [ ] **B7 — `createBranch()` is dead code** (`api.ts:75`), waiting on #6.
-- [ ] **D-5 residual — `prettier` and `prettier-plugin-tailwindcss` are still on
+- [x] **D-5 residual — `prettier` and `prettier-plugin-tailwindcss` are still on
   caret ranges.** The reformat (`5b5a955`) closed the drift; it did not close the
   CAUSE, which is D-5's own last sentence: a `^` range on a FORMATTER makes
   "formatted" a moving target, and CI gates `format:check` (D15). The next minor
@@ -206,7 +218,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   which is exactly how the original 10-file drift appeared. Pin both exactly.
   Carried here so closing D-5 in `AUDIT_1.md` does not retire the finding that
   records it.
-- [ ] **D-6 — `e2e/search.spec.ts:41` hardcodes `http://localhost:3000`** in its
+- [x] **D-6 — `e2e/search.spec.ts:41` hardcodes `http://localhost:3000`** in its
   `addCookies` locale pin; silently dropped on any other origin, and the test
   then passes while asserting the default locale. **Its stated blocker is gone**
   (D-5 is fixed), so this is now a 3-line change: lift `pinLocale` out of
@@ -239,7 +251,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
 
 ## New — found 2026-08-01, not in AUDIT_1
 
-- [ ] **N1 — the 2026-07-28 renumbering never reached the code; ~28 sites still
+- [x] **N1 — the 2026-07-28 renumbering never reached the code; ~28 sites still
   carry the OLD numbers.** AUDIT_1 uses the NEW numbering, `src/` mostly the old,
   so the two authorities contradict each other and every comment reads
   plausibly. Current order: `1 auth · 2 search · 3 catalog · 4 chats · 5 profile ·
@@ -282,7 +294,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   (`#6`). *(That is 9 correct to 9 wrong in `src/` — which is exactly why the
   find-and-replace warning is load-bearing: a blind pass would corrupt half the
   sites it touched.)*
-- [ ] **N2 — `features/catalog/README.md:3` cites two backend folders that do not
+- [x] **N2 — `features/catalog/README.md:3` cites two backend folders that do not
   exist:** `../Ask_Backend/AI_Knowledge/features/catalog/` and `.../import/`. The
   backend's folders are `business, identity, item, messaging, offers, platform,
   request, search, service` (+ `_archived/{import,shipping}`). Catalog's real
@@ -296,6 +308,23 @@ Full text in `AUDIT_1.md`; this is the queue view.
   nothing else in the product and the adjacent comment ("the skin's 16px radius")
   asserts something false. P9.2 + the magic-values lock, which forecloses the
   excuse verbatim.
+  **→ HALF-WRONG, corrected 2026-08-02 before acting on it.** The raw value in a
+  COMPONENT is real and still stands (P9.2 scopes the lock to `all ui/`). **The
+  rest of the entry is false.** 16px is not "in no scale" and the comment does
+  not assert something false — `neumorphism.css` uses a literal `16px` radius in
+  three places (`:1082`, `:1112`, `:1318`), so the toast matches the skin
+  exactly as its comment claims. Swapping it to `--neu-radius-lg` (18px) or
+  `--neu-radius-md` (14px) would have made it the ODD ONE OUT while appearing to
+  fix a violation.
+  **The real finding is bigger and is a DESIGN question, not a token swap.** The
+  skin declares a four-value radius scale and then ignores it: `border-radius`
+  literals in `neumorphism.css` include **9, 10, 11, 16, 18 and 20px** against
+  tokens of 10/14/18/24. The tokens are close to decorative for radii. Fixing
+  that means deciding which surfaces share a corner and rounding the scale to
+  fit — a visual change across the whole platform, so it goes through
+  `platform-ui-design` and browser verification (the UI work loop), not a
+  one-line edit. **Deliberately NOT bundled into the 2026-08-02 housekeeping
+  commit** for that reason.
 - [ ] **N8 — `separateBadges` does the OPPOSITE of the lock it implements, and
   the failure wears the Unique-Offer tint.** *(Found 2026-08-01, second pass.
   Highest-severity item on this list that is not gate-blocked.)*
@@ -389,7 +418,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   removal has to fail the suite rather than the launch. **With this, `auth` meets
   all 8 DONE criteria.**
 
-- [ ] **N10 — a local `npm run test:e2e` silently tests the DEV server, which
+- [x] **N10 — a local `npm run test:e2e` silently tests the DEV server, which
   the harness config's own header forbids.** *(Found 2026-08-02 by running the
   suite — not by reading it. Empirical, and it would not have shown up in any
   code review.)*
