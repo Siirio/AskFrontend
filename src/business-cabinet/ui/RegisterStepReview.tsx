@@ -60,6 +60,17 @@ export function RegisterStepReview({
           label={t("fields.category")}
           value={values.categoryLabel || t("review.notSet")}
         />
+        {/* Both are optional, and "not set" is shown rather than the row being
+         *  hidden — these become the public contact channels on every result
+         *  card, so a seller about to publish with none should SEE that. */}
+        <ReviewRow
+          label={t("review.phone")}
+          value={values.phone.trim() || t("review.notSet")}
+        />
+        <ReviewRow
+          label={t("review.corporateEmail")}
+          value={values.corporateEmail.trim() || t("review.notSet")}
+        />
         <ReviewRow
           label={t("fields.scope")}
           value={t(`scopes.${values.businessScope}`)}

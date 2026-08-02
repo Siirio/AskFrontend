@@ -96,7 +96,18 @@ Staff & Invites above; prefer these for company-level people management.
 | `deliveryCities` | `string[]`, max 50 items, 120 chars each | REQUIRED (≥1 non-blank) only when `deliveryCoverage: SELECTED_CITIES`; free text, not the `/cities` picker used by branches |
 | `pickupAvailable` | `boolean` | `@NotNull` — always sent |
 | `pickupBranches` | `CreateBranchRequest[]`, max 50 | REQUIRED (≥1) only when `pickupAvailable: true` (`@AssertTrue`, confirmed live 2026-07-29). Each entry needs `name` + `latitude`/`longitude`; `pickupAvailable: true` set per-branch to match `CreateBranchRequest`'s own shape |
-| `phone`, `corporateEmail` | — | Optional; not collected in V1 (no vision entry — P9.1) |
+| `phone`, `corporateEmail` | `String`, no backend validation at all | Optional on the DTO and optional in the form. **COLLECTED since 2026-08-02** (step 1, AUDIT_1 B2) — blank is dropped rather than sent as `""`. Format-checked client-side only, deliberately loosely: they become the PUBLIC contact channels, so a typo is unreachable-for-good, but an over-strict regex rejects real addresses and real numbers on a field nobody must fill |
+
+> **Corrected 2026-08-02 (AUDIT_1 B2).** The row above used to read *"Optional; not
+> collected in V1 (no vision entry — P9.1)"*. Both halves were wrong. These two land
+> DIRECTLY on the business profile (`SellerOnboardingProcessor`), and that profile is
+> exactly what `SearchCardResponse.businessProfile.{number, email}` renders on every
+> result card — so **every business onboarded through this UI shipped a card with no way
+> to reach it**, silently, with nothing in the UI revealing it. And P9.1 was mis-cited: the
+> vision does not enumerate form fields, and a contact channel for a business listing is
+> not an invented screen. P9.1 forbids inventing UI, not filling a field the wire already
+> has. Left uncollected, it also starved gate **G3**, whose surviving candidate was those
+> very fields.
 
 **`SellerOnboardingResponse`**: `businessId`, `catalogSetupMode`, `startRoute`
 (`BUSINESS_CABINET` | `MANAGED_IMPORT`). **`startRoute` is modelled and not consumed** — both

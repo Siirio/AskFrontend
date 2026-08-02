@@ -245,7 +245,9 @@
       "deliveryCities": "Which cities?",
       "onlineOnly": "Only online — no physical branch",
       "pickup": "PickUp available",
-      "catalogSetup": "How do you want to build your catalog?"
+      "catalogSetup": "How do you want to build your catalog?",
+      "phone": "Phone",
+      "corporateEmail": "Business email"
     },
     "hints": {
       "legalForm": "This decides what we need to confirm your business.",
@@ -253,7 +255,8 @@
       "legalName": "The name on the registration, if it differs from the one above.",
       "verification": "Pick the places that are yours and paste the links. One is enough.",
       "deliveryCities": "Type a city, then press Enter or a comma.",
-      "onlineOnly": "No storefront, warehouse, or pickup point — everything ships or is delivered."
+      "onlineOnly": "No storefront, warehouse, or pickup point — everything ships or is delivered.",
+      "contact": "Optional. Shown on your listings so customers can reach you directly."
     },
     "placeholders": {
       "businessName": "For example, Aigul Flowers",
@@ -261,7 +264,9 @@
       "legalIdentifier": "123456789012",
       "legalName": "IP Aigul Nurlankyzy",
       "link": "https://",
-      "deliveryCity": "For example, Almaty"
+      "deliveryCity": "For example, Almaty",
+      "phone": "+7 700 000 00 00",
+      "corporateEmail": "info@company.kz"
     },
     "scopes": {
       "ITEM": "Products",
@@ -344,7 +349,9 @@
       "notSet": "Not set",
       "linkCount": "{count, plural, =0 {No links} one {# link} other {# links}}",
       "branchCount": "Branches added",
-      "agreement": "I confirm this information is accurate and I agree to ASK's terms."
+      "agreement": "I confirm this information is accurate and I agree to ASK's terms.",
+      "phone": "Phone",
+      "corporateEmail": "Business email"
     },
     "actions": {
       "createBusiness": "Create business",
@@ -370,7 +377,9 @@
       "pickupRequired": "Say whether pickup is available.",
       "agreementRequired": "Confirm the information above before you continue.",
       "onboardingInvalid": "Some details are missing or invalid. Check the form and try again.",
-      "network": "Something went wrong. Check your connection and try again."
+      "network": "Something went wrong. Check your connection and try again.",
+      "phoneFormat": "Enter a phone number, digits only apart from + ( ) - and spaces.",
+      "corporateEmailFormat": "Enter an email address, for example info@company.kz"
     }
   },
   "common": {

@@ -555,3 +555,71 @@ test("changing the registry place clears the pin and street it belonged to", asy
     page.getByRole("dialog").getByText("Aigul Flowers", { exact: true }),
   ).toHaveCount(0);
 });
+
+test("the contact channels reach the wire, and a typo is caught before they do", async ({
+  page,
+}) => {
+  // AUDIT_1 B2: `phone` and `corporateEmail` were never collected, so every
+  // business onboarded through this UI shipped a result card with no way to
+  // reach it — `SearchCardResponse.businessProfile.{number, email}` reads
+  // exactly these two fields off the business profile.
+  let onboardingBody: Record<string, unknown> | null = null;
+  await seedCustomerBecomingSeller(page, (body) => {
+    onboardingBody = body;
+  });
+  await pinLocale(page, "en");
+
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await fillKzIp(page);
+
+  // Both are OPTIONAL, so an invalid value is the only thing that may block —
+  // and it must block HERE, not become an unreachable phone number on a
+  // published card.
+  await page.locator("#business-corporate-email").fill("info@company");
+  await page.locator('button[type="submit"]').click();
+  await expect(page.getByText(/Enter an email address/)).toBeVisible();
+
+  await page.locator("#business-corporate-email").fill("info@company.kz");
+  await page.locator("#business-phone").fill("+7 700 000 00 00");
+
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-NO").click();
+  // legalForm KZ_IP skips step 4 (proof of trade) — one submit reaches review.
+  await page.locator('button[type="submit"]').click();
+  await confirmAndSubmit(page);
+
+  await expect(page).toHaveURL(/\/app\/business$/);
+  expect(onboardingBody).toMatchObject({
+    phone: "+7 700 000 00 00",
+    corporate_email: "info@company.kz",
+  });
+});
+
+test("declining both contact fields sends neither, rather than empty strings", async ({
+  page,
+}) => {
+  let onboardingBody: Record<string, unknown> | null = null;
+  await seedCustomerBecomingSeller(page, (body) => {
+    onboardingBody = body;
+  });
+  await pinLocale(page, "en");
+
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await fillKzIp(page);
+  await advanceToDeliveryStep(page);
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-NO").click();
+  // legalForm KZ_IP skips step 4 (proof of trade) — one submit reaches review.
+  await page.locator('button[type="submit"]').click();
+  await confirmAndSubmit(page);
+
+  await expect(page).toHaveURL(/\/app\/business$/);
+  // Absent, not "" — a blank string would publish an empty contact channel as
+  // though one had been supplied (the same reason the verification links are
+  // dropped when blank).
+  expect(onboardingBody).not.toHaveProperty("phone");
+  expect(onboardingBody).not.toHaveProperty("corporate_email");
+});

@@ -150,6 +150,55 @@ export function RegisterStepIdentity({
           </Field>
         </>
       ) : null}
+
+      {/* Contact channels. OPTIONAL on the backend and optional here — but they
+       *  land straight on the business profile, which is exactly what
+       *  `SearchCardResponse.businessProfile.{number, email}` renders on every
+       *  result card. Never collecting them shipped every business a card with
+       *  no way to reach it (AUDIT_1 B2), so the form asks; a seller who
+       *  declines simply leaves them blank and nothing is sent. */}
+      <Field
+        label={t("fields.phone")}
+        htmlFor="business-phone"
+        hint={t("hints.contact")}
+        error={errors.phone ? t(errors.phone) : undefined}
+      >
+        <Input
+          id="business-phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={values.phone}
+          aria-invalid={Boolean(errors.phone)}
+          aria-describedby={
+            errors.phone ? fieldErrorId("business-phone") : undefined
+          }
+          placeholder={t("placeholders.phone")}
+          onChange={(e) => setField("phone", e.target.value)}
+        />
+      </Field>
+
+      <Field
+        label={t("fields.corporateEmail")}
+        htmlFor="business-corporate-email"
+        error={errors.corporateEmail ? t(errors.corporateEmail) : undefined}
+      >
+        <Input
+          id="business-corporate-email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          value={values.corporateEmail}
+          aria-invalid={Boolean(errors.corporateEmail)}
+          aria-describedby={
+            errors.corporateEmail
+              ? fieldErrorId("business-corporate-email")
+              : undefined
+          }
+          placeholder={t("placeholders.corporateEmail")}
+          onChange={(e) => setField("corporateEmail", e.target.value)}
+        />
+      </Field>
     </div>
   );
 }

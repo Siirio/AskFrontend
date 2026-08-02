@@ -115,7 +115,7 @@ file.
 |---|---|---|
 | **auth** | ✅ **DONE** | Full anatomy; login / register / verify / Google OAuth + consent / guards / role modal. All of AUDIT_1 A1–A9 closed except A1's persistence half, which the owner deferred (below). **All 8 DONE criteria pass as of 2026-08-02** — anatomy, thin routes + D7 split, zero hardcoded copy, the four states, docs, build/lint, 476-line e2e, and criterion 8 once **N9** closed. Two carve-outs remain DECIDED-not-missing, neither buildable here: A1's consent gate (blocked on N7 — the backend exposes no read) and the launch lock on placeholder legal copy (owner-authored, item 11) |
 | **search** | 🟡 **ALMOST** | Home + Catalog Page ship; the city filter WORKS as of 2026-08-02 (S1–S4) and the offer tint reads `hasActiveOffer` (S5/N8). What is left is not a defect: the 3 controls parked by G1, now waiting on server params, plus infinite scroll blocked by `MAX_CANDIDATES` |
-| **business-cabinet** | 🟠 **~25%** | Seller-registration wizard only. `/app/business` is still the i18n placeholder (B1) |
+| **business-cabinet** | 🟠 **~25%** | Seller-registration wizard only, now collecting contact channels (B2 closed 2026-08-02). `/app/business` says plainly it is not open (B1 placeholder half closed); the cabinet shell itself is roadmap #6 |
 | **catalog** | ⬜ **EMPTY** | Docs only. **Next up — roadmap #3** |
 | **chats** | ⬜ **EMPTY** | Docs only; `/app/chats` states plainly it is not open (N4 closed 2026-08-02) |
 | **profile** | ⬜ **EMPTY** | Docs only; reached from the account menu's Settings, and says plainly it is not open (N4 closed) |
@@ -193,7 +193,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   seller never reaches this page, which was true only in the window before
   onboarding routing was fixed. Fix by building the shell (#6) or by making the
   page honest (see N4 — same fix, three routes).
-- [ ] **B2 — `phone`/`corporateEmail` never collected.** Both land directly on the
+- [x] **B2 — `phone`/`corporateEmail` never collected.** Both land directly on the
   business profile, which is what `SearchCardResponse.businessProfile.{number,
   email}` surfaces on every card. Every business onboarded through this UI ships
   a card with no contact channels. Also starves **G3**.

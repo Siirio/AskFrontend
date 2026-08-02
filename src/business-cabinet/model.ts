@@ -79,6 +79,12 @@ export type SellerOnboardingRequest = {
    *  branch is required when pickup is enabled") — branches are created in the
    *  SAME transaction as the business, not via a follow-up `createBranch` call. */
   pickupBranches?: CreateBranchRequest[];
+  /** Both land DIRECTLY on the business profile (`SellerOnboardingProcessor`),
+   *  which is what `SearchCardResponse.businessProfile.{number, email}`
+   *  surfaces on every result card. Optional on the DTO, but leaving them
+   *  unsent shipped every business a card with no way to reach it (AUDIT_1 B2). */
+  phone?: string;
+  corporateEmail?: string;
 } & Partial<Record<VerificationSource, string>>;
 
 export type SellerOnboardingResponse = {
@@ -182,6 +188,12 @@ export type SellerOnboardingValues = {
   legalForm: BusinessLegalForm | null;
   legalIdentifier: string;
   legalName: string;
+  /** How a customer reaches this business. Both are OPTIONAL on the backend and
+   *  optional here — a seller may decline both — but they are the ONLY contact
+   *  channels a result card can show (`businessProfile.{number, email}`), so
+   *  the form asks rather than silently shipping a card with none (B2). */
+  phone: string;
+  corporateEmail: string;
   /** Which link fields the seller opted to fill. The backend's UX contract asks
    *  for a source TYPE before rendering its field, so an unregistered seller is
    *  not faced with seven empty boxes. */
@@ -209,6 +221,8 @@ export type SellerOnboardingErrors = Partial<
     | "legalForm"
     | "legalIdentifier"
     | "legalName"
+    | "phone"
+    | "corporateEmail"
     | "sources"
     | "deliveryCoverage"
     | "deliveryCities"
@@ -225,6 +239,8 @@ export const EMPTY_ONBOARDING_VALUES: SellerOnboardingValues = {
   businessScope: "ITEM",
   catalogSetupMode: "MANUAL",
   legalForm: null,
+  phone: "",
+  corporateEmail: "",
   legalIdentifier: "",
   legalName: "",
   sources: [],
@@ -241,6 +257,15 @@ export const EMPTY_ONBOARDING_VALUES: SellerOnboardingValues = {
  *  LEGAL_IDENTIFIER pattern, mirrored so the form never sends a 400 it could
  *  have caught. */
 const LEGAL_IDENTIFIER_RE = /^\d{12}$/;
+/** Deliberately permissive: "something@something.tld", nothing cleverer. The
+ *  backend applies NO validation to `corporateEmail`, so this exists to catch a
+ *  typo in a channel customers will use, not to police address syntax — the
+ *  strict RFC-shaped regexes reject real addresses, and this field is optional. */
+const CORPORATE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/** Digits with the punctuation people actually type, 7–20 of them. KZ numbers
+ *  are +7 XXX XXX XX XX, but a business may publish a short city or service
+ *  number, so the shape is checked and the country is not assumed. */
+const PHONE_RE = /^\+?[\d\s().-]{7,20}$/;
 /** The backend accepts an EMPTY link or an http(s) one. Blank is filtered out
  *  before send, so what is left must be a real absolute URL. */
 const HTTP_URL_RE = /^https?:\/\/\S+$/;
@@ -276,6 +301,20 @@ export function validateOnboarding(
     errors.categoryLabel = "errors.categoryRequired";
   }
   if (!values.legalForm) errors.legalForm = "errors.legalFormRequired";
+
+  // Both are OPTIONAL (the backend declares them plain `String`, no @Email, no
+  // @NotBlank), so an empty field is valid and NOT an error. A filled one is
+  // format-checked here only: these become the public contact channels on every
+  // result card, and a typo there is unreachable-for-good rather than merely
+  // wrong. Deliberately loose — an over-strict e-mail or phone regex rejects
+  // real addresses and real numbers, which is the worse failure for a field
+  // nobody is required to fill.
+  const corporateEmail = values.corporateEmail.trim();
+  if (corporateEmail && !CORPORATE_EMAIL_RE.test(corporateEmail)) {
+    errors.corporateEmail = "errors.corporateEmailFormat";
+  }
+  const phone = values.phone.trim();
+  if (phone && !PHONE_RE.test(phone)) errors.phone = "errors.phoneFormat";
 
   if (legalFormNeedsIdentifier(values.legalForm)) {
     if (!LEGAL_IDENTIFIER_RE.test(values.legalIdentifier.trim())) {
@@ -377,6 +416,8 @@ export function validateOnboardingStep(
     if (full.legalForm) errors.legalForm = full.legalForm;
     if (full.legalIdentifier) errors.legalIdentifier = full.legalIdentifier;
     if (full.legalName) errors.legalName = full.legalName;
+    if (full.phone) errors.phone = full.phone;
+    if (full.corporateEmail) errors.corporateEmail = full.corporateEmail;
   } else if (step === 3) {
     if (full.deliveryCoverage) errors.deliveryCoverage = full.deliveryCoverage;
     if (full.deliveryCities) errors.deliveryCities = full.deliveryCities;
@@ -413,6 +454,14 @@ export function toOnboardingRequest(
     // Non-null by validation; the form cannot submit without an answer.
     pickupAvailable: values.pickupAvailable as boolean,
   };
+
+  // Optional on the DTO and optional in the form — omitted rather than sent
+  // blank, so a seller who declines both leaves no empty strings on their
+  // public profile.
+  const phone = values.phone.trim();
+  if (phone) body.phone = phone;
+  const corporateEmail = values.corporateEmail.trim();
+  if (corporateEmail) body.corporateEmail = corporateEmail;
 
   // The backend rejects pickupAvailable: true with no branches (`@AssertTrue`
   // on SellerOnboardingRequest) — every drafted branch travels inline, created

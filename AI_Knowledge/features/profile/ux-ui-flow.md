@@ -28,7 +28,6 @@ Traces PRODUCT_VISION **UF 2.3** (configure something, log out, or find addition
 ## Not in V1
 No preferences screen (sizes/style/budget/favorite brands) — the backend supports it, the vision does not ask for it. Do not build it (P9.1).
 
-
 ## Route placeholder — until this slice lands (2026-08-02)
 
 `/app/profile` is LIVE and reachable today, so it states plainly that the section is

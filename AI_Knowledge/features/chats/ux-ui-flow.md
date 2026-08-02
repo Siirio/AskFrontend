@@ -29,7 +29,6 @@ The cabinet's Overview tab — which the vision says should be called **"Request
 ## Hard rule
 Only **real conversations** appear here. An automated supplier check is not a chat and must never create a conversation row or an unread badge (backend lock, see locks.md).
 
-
 ## Route placeholder — until this slice lands (2026-08-02)
 
 `/app/chats` is LIVE and reachable today, so it states plainly that the section is

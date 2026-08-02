@@ -48,7 +48,6 @@ Traces PRODUCT_VISION **UF 2.1** steps 3–4 (customer) and **UF 3.1** item 2 (s
 - The chat button embeds `@/chats` (same knowledge, live feature → import via its `index.ts`, D8).
 - The Catalog Page that hosts the modal belongs to `@/search`.
 
-
 ## Route placeholder — until this slice lands (2026-08-02)
 
 `/app/product/:id` is LIVE and reachable today, so it states plainly that the section is
