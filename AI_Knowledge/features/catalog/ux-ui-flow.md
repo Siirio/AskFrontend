@@ -17,6 +17,10 @@ Traces PRODUCT_VISION **UF 2.1** steps 3–4 (customer) and **UF 3.1** item 2 (s
    - **Deeplinks present** → the button opens the seller's public purchase/booking destination.
    - **More than one** → a **modal to choose where to buy**. Deliberate: a brand selling in
      several places must not have that collapsed into one channel we picked for them.
+   - **Deeplinks belong to the ITEM/SERVICE, never to a branch** (owner, 2026-08-02). Several
+     deeplinks = several places to buy the SAME item, not one link per shop. A branch is a
+     physical place; a link on a branch would be a map/location link, which is a different
+     concept and not this button.
    - **None** → the in-app chat opens with an **editable draft** pre-filled ("Здравствуйте! Хочу
      приобрести товар «…»…", or the booking wording for a service). **Never auto-sent** — the
      customer edits and sends it.

@@ -90,6 +90,12 @@ The 4 key features of our platform:
 > **Links the seller supplied for VERIFICATION or moderation are never used as a customer
 > deeplink.** A deeplink is its own public field on the item or service.
 >
+> **A deeplink belongs to the ITEM or SERVICE, never to a branch** (clarified the same day, same
+> owner directive). A branch is a physical place, and the only link that would ever hang off one
+> is a map/location link — a different thing, and not this button. So several deeplinks on one
+> item means several places to buy the SAME item, which is precisely what the chooser modal is
+> for; it never means "one link per shop".
+>
 > **Justification.** The button's original answer was the backend's `contact` module and its
 > `contactActionId` privacy pattern; that module was deleted 2026-07-21 and no contact-action
 > concept remains on the wire. This replaces it rather than reviving it. The rule against reusing

@@ -545,7 +545,7 @@ converts dead time into parallel time.
 | ~~Owner~~ | ~~**G3** — "Proceed to Purchase"~~ | ✅ **DONE 2026-08-02** — deeplinks → modal → chat draft. Re-dispatch as a BACKEND item (rows below) |
 | **Backend** | **`MAX_CANDIDATES = 200` + `page @Max(20)`** — deep paging | **NEW, blocks G1 entirely.** Infinite scroll dies at ~200 results regardless of catalogue size |
 | **Backend** | **Retire the `Results Filter & Sort V1` lock** | **NEW.** It contradicts the owner AND the backend's own `SearchFilterRequest` |
-| **Backend** | **`deepLink`: collection on `Item`, add to `Service`, carry in the search projection** | **NEW, blocks G3 entirely.** Also open: per-item or per-branch? |
+| **Backend** | **`deepLink`: collection on `Item`, add to `Service`, carry in the search projection** | **NEW, blocks G3 entirely.** Scope settled 2026-08-02: **per ITEM/SERVICE, never per branch** — label+URL pairs on the item, no branch FK. Nothing left to ask; the raise can go as written |
 | Owner | **PRODUCT_VISION entry for the consent gate** | The blocking modal; a new screen needs a vision append (P9.1) |
 | Owner | **Terms / Privacy / Cookies copy** (launch item 11) | The launch lock. Longest lead time of anything on this list — it is writing, not code |
 | Backend | **N7** — expose who has accepted what; prefer a session field over a `GET` | The consent gate entirely |
