@@ -27,3 +27,21 @@ Traces PRODUCT_VISION **UF 2.3** (configure something, log out, or find addition
 
 ## Not in V1
 No preferences screen (sizes/style/budget/favorite brands) — the backend supports it, the vision does not ask for it. Do not build it (P9.1).
+
+
+## Route placeholder — until this slice lands (2026-08-02)
+
+`/app/profile` is LIVE and reachable today, so it states plainly that the section is
+not open rather than looking unfinished: the shared `EmptyState` primitive via
+`app/_components/SectionNotOpen.tsx`, with copy in ru/kk/en. It used to render a
+bare `<h1>` plus "Section under construction" inside a neumorphic product, which
+reads as a broken build rather than as a message (AUDIT_2 N4 / AUDIT_1 B1).
+
+This is the second of the three endings the "a reachable control must DO
+something" lock allows — build it, say plainly it is not open, or stop offering
+the control. Not invented UI (P9.1): it is the mandatory empty state P9.3
+requires of a surface that exists with no content.
+
+Reached from the account menu's Settings; the copy points at sign-out, which does work there.
+
+Verified in a browser, light and dark, against a production build.

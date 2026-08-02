@@ -42,8 +42,25 @@
       "profile": "Profile",
       "business": "Business cabinet"
     },
-    "placeholder": "Section under construction",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "notOpen": {
+      "chats": {
+        "title": "Chats are not open yet",
+        "description": "Your conversations with businesses will appear here. Nothing is missing from your account — this section simply has not opened."
+      },
+      "profile": {
+        "title": "Settings are not open yet",
+        "description": "Your profile and account settings will appear here. You can still sign out from the account menu."
+      },
+      "business": {
+        "title": "The business cabinet is not open yet",
+        "description": "Your branches, unique offers and products will be managed here. Your business is registered — the cabinet itself is still being built."
+      },
+      "product": {
+        "title": "Product cards open from search",
+        "description": "Open a product from the catalog to see its full card. A direct link to a single product is not available yet."
+      }
+    }
   },
   "search": {
     "home": {

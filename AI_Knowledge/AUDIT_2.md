@@ -117,8 +117,8 @@ file.
 | **search** | 🟡 **ALMOST** | Home + Catalog Page ship; the city filter WORKS as of 2026-08-02 (S1–S4) and the offer tint reads `hasActiveOffer` (S5/N8). What is left is not a defect: the 3 controls parked by G1, now waiting on server params, plus infinite scroll blocked by `MAX_CANDIDATES` |
 | **business-cabinet** | 🟠 **~25%** | Seller-registration wizard only. `/app/business` is still the i18n placeholder (B1) |
 | **catalog** | ⬜ **EMPTY** | Docs only. **Next up — roadmap #3** |
-| **chats** | ⬜ **EMPTY** | Docs only; `/app/chats` is a nav destination rendering a bare placeholder (N4) |
-| **profile** | ⬜ **EMPTY** | Docs only; reached from the account menu's Settings (N4) |
+| **chats** | ⬜ **EMPTY** | Docs only; `/app/chats` states plainly it is not open (N4 closed 2026-08-02) |
+| **profile** | ⬜ **EMPTY** | Docs only; reached from the account menu's Settings, and says plainly it is not open (N4 closed) |
 | **services** | ⬜ **EMPTY** | Docs only, no route |
 
 > **The customer path still breaks after step 2.** Result cards have no click
@@ -185,7 +185,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   load-bearing — the TINT IS INFORMATION lock is currently served by inferring
   the offer from a free-text badge instead of the boolean the backend sends.
 - [ ] **S6 — G1 is open** (see the owner table).
-- [ ] **B1 — the cabinet behind registration is a placeholder, and it is LIVE.**
+- [x] **B1 — the cabinet behind registration is a placeholder, and it is LIVE.** *(The PLACEHOLDER half closed 2026-08-02 — the page is now honest via EmptyState. Building the cabinet shell itself is still roadmap #6.)*
   `/app/business` renders `<main><h1>Business cabinet</h1><p>Section under
   construction</p></main>` — bare HTML, no token, no `.neu-*`, no `EmptyState`.
   Reached two ways: completing registration (`POST_ONBOARDING_PATH`) and the nav
@@ -456,7 +456,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   running e2e locally**, or drive a production build on another port (what this
   audit did — a throwaway config, deleted after the run).
 
-- [ ] **N4 — B1 has two siblings on the CUSTOMER path.** `/app/chats` and
+- [x] **N4 — B1 has two siblings on the CUSTOMER path.** `/app/chats` and
   `/app/profile` render the identical bare placeholder, and **Chats is a
   permanent nav destination for every user** while Settings is one tap inside the
   account menu. AUDIT_1 files only the business one. The "reachable control must

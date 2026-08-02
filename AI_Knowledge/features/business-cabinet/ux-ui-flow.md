@@ -119,3 +119,21 @@ Route: `/app/business` (client). Tabs 1–3 are embedded from their owning slice
 - **No branch import.** Branches are "the same as goods and services, but without imports".
 - **Company Profile stays a placeholder** until the vision describes it. Inventing the screen is forbidden (P9.1).
 - Unique Offers are brand signals — the editor must not present them as standalone listings.
+
+
+## Route placeholder — until this slice lands (2026-08-02)
+
+`/app/business` is LIVE and reachable today, so it states plainly that the section is
+not open rather than looking unfinished: the shared `EmptyState` primitive via
+`app/_components/SectionNotOpen.tsx`, with copy in ru/kk/en. It used to render a
+bare `<h1>` plus "Section under construction" inside a neumorphic product, which
+reads as a broken build rather than as a message (AUDIT_2 N4 / AUDIT_1 B1).
+
+This is the second of the three endings the "a reachable control must DO
+something" lock allows — build it, say plainly it is not open, or stop offering
+the control. Not invented UI (P9.1): it is the mandatory empty state P9.3
+requires of a surface that exists with no content.
+
+A seller lands here the moment registration completes (`POST_ONBOARDING_PATH`), so this was the first thing a new seller saw.
+
+Verified in a browser, light and dark, against a production build.

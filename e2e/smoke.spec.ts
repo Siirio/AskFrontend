@@ -78,7 +78,34 @@ test("every V1 route from the vision responds", async ({ page }) => {
     const response = await page.goto(path);
     expect(response, path).not.toBeNull();
     expect(response!.status(), path).toBe(200);
-    await expect(page.getByRole("heading", { level: 1 }), path).toBeVisible();
+    // Heading present for the document outline...
+    await expect(page.getByRole("heading", { level: 1 }), path).toBeAttached();
+    // ...and something a HUMAN can see. These two used to be one assertion,
+    // which stopped meaning anything on 2026-08-02: the not-open routes moved
+    // their <h1> to `sr-only`, and an sr-only element still has a 1px box, so
+    // `toBeVisible()` on the heading alone would now pass on a blank page.
+    await expect(page.locator("main"), path).toBeVisible();
+    await expect(page.locator("main"), path).not.toBeEmpty();
+  }
+});
+
+test("the four not-open sections say so, rather than looking unfinished", async ({
+  page,
+}) => {
+  // AUDIT_2 N4 / AUDIT_1 B1: all four are reachable today — Chats is a
+  // permanent nav destination, Settings is one tap inside the account menu, and
+  // a seller lands on the cabinet the moment registration completes. Each used
+  // to render a bare <h1> + "Section under construction" inside a neumorphic
+  // product, which reads as a broken build rather than as a message.
+  await seedSession(page, SELLER_SESSION);
+  for (const path of [
+    "/app/chats",
+    "/app/profile",
+    "/app/business",
+    "/app/product/e2e-smoke",
+  ]) {
+    await page.goto(path);
+    await expect(page.locator('[data-slot="empty-state"]'), path).toBeVisible();
   }
 });
 

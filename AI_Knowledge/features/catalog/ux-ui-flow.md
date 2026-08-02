@@ -47,3 +47,21 @@ Traces PRODUCT_VISION **UF 2.1** steps 3–4 (customer) and **UF 3.1** item 2 (s
 ## Cross-slice
 - The chat button embeds `@/chats` (same knowledge, live feature → import via its `index.ts`, D8).
 - The Catalog Page that hosts the modal belongs to `@/search`.
+
+
+## Route placeholder — until this slice lands (2026-08-02)
+
+`/app/product/:id` is LIVE and reachable today, so it states plainly that the section is
+not open rather than looking unfinished: the shared `EmptyState` primitive via
+`app/_components/SectionNotOpen.tsx`, with copy in ru/kk/en. It used to render a
+bare `<h1>` plus "Section under construction" inside a neumorphic product, which
+reads as a broken build rather than as a message (AUDIT_2 N4 / AUDIT_1 B1).
+
+This is the second of the three endings the "a reachable control must DO
+something" lock allows — build it, say plainly it is not open, or stop offering
+the control. Not invented UI (P9.1): it is the mandatory empty state P9.3
+requires of a surface that exists with no content.
+
+Its copy differs from the other three ON PURPOSE: this deep link is DEFERRED, not merely late (there is no public item read), so it points at the modal instead of promising the URL. The raw route id is no longer echoed — printing it told the visitor nothing and read as debug output.
+
+Verified in a browser, light and dark, against a production build.
