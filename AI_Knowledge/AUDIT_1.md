@@ -47,10 +47,27 @@ summary into `Changelog.md` and retire this file.
 >
 > The one substantive content change this pass is to **S5**, which understated
 > its own defect — see the annotation there, and **N8** in `AUDIT_2.md`.
+>
+> **Closing stamp, 2026-08-02 (frontend `d00f96b`).** Nine items were fixed and
+> ticked in one pass: **S1–S6, B1 (its placeholder half), B2, D-6.** Each carries
+> a dated closure note naming the commit. **Six remain open — B3, B4, B5, B6, B7,
+> A1** — and none of the six is idle debt: B4 ships with the legals, B6/B7 with
+> the cabinet's Branches tab (roadmap #6), A1's gate is blocked on N7, and B3
+> needs a cross-repo check of the KATO↔`city` name overlap before it is safe to
+> write. Only **B5** (Nominatim rate limits) is unblocked and unscheduled.
+> **The queue and the plan live in `AUDIT_2.md`; this file is now almost entirely
+> record.**
 
 ---
 
 ## Slice status
+
+**⚠ This table is the 2026-07-31 SNAPSHOT and is deliberately not maintained.
+For live slice status read `AUDIT_2.md`.** Three of its rows were already wrong
+by 2026-08-02: search's city filter works, `/app/business` is no longer an i18n
+placeholder, and the three sibling placeholder routes now say plainly that they
+are not open. It is kept unedited because this file is the record of what that
+pass found.
 
 | Slice | Status | What exists |
 |---|---|---|
@@ -69,13 +86,14 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
 > **The customer path breaks after step 2.** The Catalog Page's result cards have
 > no click target, because the Product Card lives in the empty `catalog` slice
 > (deliberate — `ResultCard.tsx` L16-18 documents it — but it means PRODUCT_VISION
-> UF 2.1 steps 3-4 are unreachable today).
+> UF 2.1 steps 3-4 are unreachable today). **Still true on 2026-08-02** — this is
+> the one line above that has not moved, and it is why `catalog` #3 is next.
 
 ---
 
 ## 🔴 search — three confirmed live defects
 
-- [ ] **S1 — The city-filter autocomplete cannot work.** Read from
+- [x] **S1 — The city-filter autocomplete cannot work.** Read from
   `kz/ask/shared/api/CityController.java` + `CityDto.java`:
 
   | | Frontend sends / reads | Backend actually does |
@@ -92,22 +110,26 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   **Fix:** read `CityDto`; `{ id, name }`; drop the `q` param or raise a
   server-side filter with backend.
 
-- [ ] **S2 — `resolveCity()` is dead code hiding a broken contract.**
+  **→ FIXED 2026-08-02 (`fc5c6b0`).** `CitySuggestion` is `{id, name}` read from `CityDto`; `getCities()` sends no params, because `listAll()` accepts none; the list is fetched ONCE and filtered in memory, so a keystroke no longer re-downloads the whole city table. `CityField` renders `name` and keys on `id`.
+- [x] **S2 — `resolveCity()` is dead code hiding a broken contract.**
   `src/search/api.ts` L41-50 is exported and called from nowhere. It would 400 if
   it were called. Either wire it correctly or delete it (P8.1).
 
-- [ ] **S3 — The docs are why the code is wrong.**
+  **→ FIXED 2026-08-02 (`fc5c6b0`) by DELETION**, which is what this entry's second option asked for. `business-cabinet` will add a correct `?name=` call when B3 gives it a caller, rather than keeping a broken one warm (P8.1/P8.2).
+- [x] **S3 — The docs are why the code is wrong.**
   `features/search/contracts.md` § *Filter reference data* lists both city
   endpoints with **no request params and no response shape**, and describes
   `/cities/resolve` as "Resolve a city from coordinates" — which is not what the
   controller does. Correct it from the Java source in the same commit as S1.
 
-- [ ] **S4 — No e2e reaches the city endpoint.** `e2e/mock-backend.mjs` stubs only
+  **→ FIXED 2026-08-02 (`fc5c6b0`).** `features/search/contracts.md` now states that `/cities` takes NO parameters and returns `CityDto {id, name}`, and that `/cities/resolve` requires `name` and is not consumed by `search`.
+- [x] **S4 — No e2e reaches the city endpoint.** `e2e/mock-backend.mjs` stubs only
   `POST /api/v1/search`; `e2e/search.spec.ts` never routes `/cities`. This is
   precisely the failure mode the 2026-07-27 e2e-stub lock was written after: a
   green suite over a broken wire. Add a stub **built from `CityDto`**.
 
-- [ ] **S5 — Three `SearchCardResponse` fields exist on the wire and appear in
+  **→ FIXED 2026-08-02 (`fc5c6b0`).** `mock-backend.mjs` serves `/api/v1/cities` built from `CityDto`, and deliberately IGNORES any `?q=` exactly as the controller does. `search.spec.ts` drives the combobox end to end. **A second stub defect surfaced while writing it:** the card stub put the offer label SECOND with no `has_active_offer` at all, though `resolveBadges()` adds it first — the stub lock again. Fixed in the same commit, along with CORS on the mock, which had never been needed because every prior call was server-side.
+- [x] **S5 — Three `SearchCardResponse` fields exist on the wire and appear in
   neither `model.ts` nor `contracts.md`:** `hasActiveOffer`, `latitude`,
   `longitude`. `hasActiveOffer` is load-bearing — the "TINT IS INFORMATION"
   Unique-Offer lock is currently served by inferring the offer from a free-text
@@ -127,16 +149,18 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   as one change**; `hasActiveOffer` is what makes the tint honest and collapses
   `separateBadges` to the map-and-filter it was documented as.
 
-- [ ] **S6 — Gate G1 is open and its 2026-07-29 scope question is undecided.** No
+  **→ FIXED 2026-08-02 (`fc5c6b0`).** All three modelled. `hasActiveOffer` is now the authority for the offer tint, which also closed **N8** — see `AUDIT_2.md` for that entry; `latitude`/`longitude` are modelled but read by nothing, since the map-area filter is still parked.
+- [x] **S6 — Gate G1 is open and its 2026-07-29 scope question is undecided.** No
   filter/sort work should start until someone (not an agent inferring from backend
   prose) picks option 1, 2, or 3 in `ROADMAP.md` § *G1 — scope question*. Three
   controls stay parked: Unique-Offers sort, Companies filter, map area.
 
+  **→ ANSWERED 2026-08-02 (owner), see `ROADMAP.md` § *G1 — RESOLVED*.** Filtering and sorting are SERVER-side across the whole catalogue, always, and infinite scroll replaces pagination. Our server-capability lock is confirmed, not reversed. **The three controls stay parked, but their nature changed:** a client-side refinement layer is now forbidden, so they REQUIRE server params — and infinite scroll is additionally blocked by `MAX_CANDIDATES = 200`. Both are cross-repo rows in `ROADMAP.md`.
 ---
 
 ## 🟠 business-cabinet — registration works; everything after it does not
 
-- [ ] **B1 — Onboarding succeeds and the cabinet behind it is a placeholder.**
+- [x] **B1 — Onboarding succeeds and the cabinet behind it is a placeholder.**
   `/app/business` renders the i18n `{t("placeholder")}` page. This is the same
   shape as the D26 bug that produced the "a reachable control must DO something"
   lock, one level up: the registration door opens onto an empty room. Either
@@ -150,7 +174,8 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   pass read that value off the e2e stub instead of the Java source — the same
   mistake the e2e-stub lock names (see **A8**).
 
-- [ ] **B2 — `phone` and `corporateEmail` are never collected.** Both are on
+  **→ HALF CLOSED 2026-08-02 (`97bbc7b`).** This entry offered two endings — build the shell, or say plainly it is not open. The second was taken: `/app/business` renders the shared `EmptyState` with honest copy in ru/kk/en, as do its three siblings (`AUDIT_2.md` N4). **The cabinet shell itself is still roadmap #6** and nothing here claims otherwise.
+- [x] **B2 — `phone` and `corporateEmail` are never collected.** Both are on
   `SellerOnboardingRequest` and land *directly* on the business profile
   (`SellerOnboardingProcessor` L70-71) — which is exactly what
   `SearchCardResponse.businessProfile.{number, email}` surfaces on every result
@@ -158,6 +183,7 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   channels.** This also starves gate **G3**, whose only surviving candidate is
   those very fields.
 
+  **→ FIXED 2026-08-02 (`6f1247a`, refined by `d00f96b`).** Both collected on step 1, optional as on the backend, dropped from the body when blank rather than sent as `""`, format-checked client-side (the backend applies none), and shown on step 5's recap as "Not set" when empty. `contracts.md` carried a doubly-wrong claim — *"not collected in V1 (no vision entry — P9.1)"* — and is corrected: P9.1 forbids inventing UI, not filling a field the wire already has.
 - [ ] **B3 — `cityId` is never sent on drafted branches.** `model.ts` L100-108
   types it on `CreateBranchRequest`; `toOnboardingRequest` (L402-409) omits it.
   Branches created at registration therefore have no city → `branch_city` is null
@@ -472,7 +498,7 @@ checked in the first pass — `startRoute` was taken on trust.
   green — the same staleness as **D-5**, and the reason to re-run before
   trusting any unchecked box in this file.
 
-- [ ] **D-6 — `e2e/search.spec.ts` hardcodes `http://localhost:3000`** in its
+- [x] **D-6 — `e2e/search.spec.ts` hardcodes `http://localhost:3000`** in its
   `addCookies` locale pin *(found 2026-07-31 by review of the same pattern in
   `business-register.spec.ts`, which was fixed there).* `addCookies` needs an
   absolute URL, and a literal one is silently dropped the moment the harness runs
@@ -499,6 +525,7 @@ checked in the first pass — `startRoute` was taken on trust.
   and the fix is unchanged (lift `pinLocale`, which derives from `baseURL` and
   is correct on every origin). Full correction in `AUDIT_2.md` § D-6.
 
+  **→ FIXED 2026-08-02 (`3c0fc3f`).** `pinLocale` lifted to `e2e/helpers.ts`; both specs derive the origin from `baseURL`. The helper carries the CORRECTED rationale — a different port never dropped the cookie, since cookies are keyed on host, not port; only a different HOST does.
 - [x] **D-5 — `npm run format:check` is RED on this branch, on 11 pre-existing
   files** *(found 2026-07-31; unrelated to that day's change, which is clean).*
   With the exact declared Prettier (3.9.5) these do not match their committed

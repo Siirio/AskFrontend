@@ -5,12 +5,12 @@ fresh session needs to continue without re-deriving it. AUDIT_1 stays where it
 is — it is the historical record of that pass and its corrections. This file is
 the queue.
 
-**Verification basis.** Frontend at `new_frontend` `83549fa`; backend read
-directly from `../Ask_Backend` @ `dev` `cdc47dc` — Java controllers and DTOs,
-never the backend's prose docs (the e2e-stub lock's rule, applied to audits).
-Everything marked open below was re-checked against source on 2026-08-01, not
-recalled. `npm run build` green end to end; e2e **104/104** on `chromium` and
-`mobile-chromium` against `next build && next start`.
+**Verification basis — HISTORICAL, describing `83549fa` (2026-08-01).** *For the
+live figures read § Status VERIFIED AT COMMIT below; the `104/104` here is the
+count on the day this file opened, not today's.* Backend read directly from
+`../Ask_Backend` @ `dev` `cdc47dc` — Java controllers and DTOs, never the
+backend's prose docs (the e2e-stub lock's rule, applied to audits). Everything
+marked open below was re-checked against source on 2026-08-01, not recalled.
 
 ## The audit SNAPSHOT (2026-08-01/02) — what the pass found, before any fix
 
@@ -31,12 +31,12 @@ on `resolve`) · `CityDto {id, name}` · `SearchCardResponse` carrying
 i18n parity re-counted programmatically: **256/256/256** across ru/kk/en, zero
 missing, zero extra (AUDIT_1's "240/240" is an older count, not a defect).
 
-## Status VERIFIED AT COMMIT `b5138b9` — a measurement, not a standing claim
+## Status VERIFIED AT COMMIT `d00f96b` — a measurement, not a standing claim
 
 *(Deliberately not headed "current". A verification result is true of the commit
 it was run against and of nothing else; the next code commit invalidates it
 silently. Trust the commit hash, not the heading — and if `HEAD` is not
-`b5138b9` or a docs-only descendant of it, re-run rather than reading on.)*
+`d00f96b` or a docs-only descendant of it, re-run rather than reading on.)*
 
 **Closed since the snapshot:**
 
@@ -53,23 +53,40 @@ silently. Trust the commit hash, not the heading — and if `HEAD` is not
   `globalSetup` now **fails** the run when the harness is attached to a dev
   server. **N1's `AI_Knowledge/` half (29 sites) is still open.**
 
-- **S1–S4, S5, N8** — the 2026-08-02 search pass (see their entries).
+- **S1–S4, S5, N8** (`fc5c6b0`) — the city filter works on the wire, and the
+  Unique-Offer tint reads `hasActiveOffer` instead of guessing from badge text.
+- **N4, and B1's placeholder half** (`97bbc7b`) — `/app/chats`, `/app/profile`,
+  `/app/business` and `/app/product/:id` now say plainly they are not open, via
+  the shared `EmptyState`. **B1's cabinet SHELL is still roadmap #6.**
+- **B2** (`6f1247a`, refined by `d00f96b`) — `phone` and `corporateEmail` are
+  collected at registration, so a business stops publishing a card with no way
+  to reach it.
 
 **Everything else on this page is OPEN**, including the corrected **N3** — see
 its entry: acting on N3 as written would have made the toast inconsistent
 rather than consistent.
 
-**What was actually run, at `b5138b9`:** `npm run build` green end to end (lint →
+**What was actually run, at `d00f96b`:** `npm run build` green end to end (lint →
 boundary fixtures → token drift → tsc → next build → rendering contract);
-`format:check` clean repo-wide; e2e **108/108** on `chromium` and
-`mobile-chromium` against a real `next build && next start`. Commits after
-`b5138b9` are documentation only and do not disturb these figures — the first
-code commit does. **The e2e figure required working around N10:** a dev server
-owned `:3000`, so the run was driven on `:3100`; a plain `npm run test:e2e`
-would have tested the dev server instead. **That workaround is also what
-produced this file's one self-inflicted error** — the retracted D-6
-"confirmation" below. A workaround changes the conditions of the experiment, and
-anything concluded under it has to be re-derived, not assumed.
+`format:check` clean repo-wide; e2e **120/120** on `chromium` and
+`mobile-chromium` against a real `next build && next start`. Both UI changes were
+additionally driven in a browser in light and dark with ru copy.
+
+**This paragraph said "commits after `b5138b9` are documentation only" until
+2026-08-02, by which point FIVE commits had changed code.** It is recorded rather
+than quietly overwritten, because it is the same failure the heading above warns
+about, committed by the person who wrote the warning: a status line ages the
+moment the next commit lands, and nothing enforces it. If you are reading this at
+a later `HEAD`, re-run — do not trust the figures.
+
+**The e2e figure required working around N10:** a dev server owned `:3000`, so
+the run was driven on `:3100`; a plain `npm run test:e2e` would have tested the
+dev server instead. **That workaround cost real time twice** — it produced this
+file's retracted D-6 "confirmation", and later made `business-register.spec.ts`
+fail 14/14 against a hand-started server that was serving a build from a
+different moment. Letting Playwright own the build and both servers gives
+120/120. A workaround changes the conditions of the experiment; anything
+concluded under it has to be re-derived, not assumed.
 
 **How to use this file:** same rule as AUDIT_1 and the Changelog — when an item
 is fixed, mark it `[x]` with the date and what the change did. Do NOT delete it.
@@ -466,6 +483,18 @@ Full text in `AUDIT_1.md`; this is the queue view.
   `EmptyState` primitive (P9.3's sanctioned pattern) with honest copy. Not
   invented UI — a "not open yet" state is what P9.3 requires of a surface that
   exists with no content.
+  **→ CLOSED 2026-08-02 (`97bbc7b`), and it was FOUR pages, not three.**
+  `/app/product/:id` had the same defect and is fixed with them, though its copy
+  differs on purpose: the other three are "not open yet", while that deep link is
+  DEFERRED for want of a public item read, so it points at the modal rather than
+  promising the URL. All four share `app/_components/SectionNotOpen.tsx` over
+  `EmptyState`, server-rendered, with copy in ru/kk/en. **A side effect worth
+  knowing:** the pages moved their `<h1>` to `sr-only`, and an `sr-only` element
+  still has a 1px box — so the smoke test's "heading is visible" assertion would
+  have passed on a blank page. It now asserts the heading is attached, that
+  `<main>` is visible and non-empty, and that all four render a visible
+  empty-state. **B1's cabinet SHELL remains roadmap #6** — only the placeholder
+  half of B1 closed here.
 
 ---
 
@@ -554,30 +583,26 @@ converts dead time into parallel time.
 | Backend | **N5a–N5d, N6** — archive `request/`, fix the stale lock, document `legal`, make `features/README.md` an index | Every agent that follows CLAUDE.md's "read the backend contracts first" rule |
 | Backend | The three G1 params · a public item read · populate `openingSummary` · stable badge TOKENS · deploy-domain CORS · redeploy `:2020` from `dev` | Already in ROADMAP § *Cross-Repo Dependencies*; re-send as one message rather than seven |
 
-### Wave 1 — repair what is shipped and broken (1–2 commits, no gate)
+### Waves 1–3 — ✅ DONE 2026-08-02, except four items listed below
 
-- **S1–S4 + S5 + N8** — the city filter cannot work, and the offer tint renders
-  unknown badge tokens raw. One context, one area of `search/model.ts`. Split
-  into two commits only if the diff argues for it.
-- While `/cities` is loaded, **verify the KATO↔`city`-table name overlap** that
-  B3 needs. Same endpoint family; verifying it twice is waste.
+Everything these three waves called for shipped in four commits: **S1–S4 + S5 +
+N8** (`fc5c6b0`), **N1 (src) + N2 + N10 + D-6 + D-5 residual** (`3c0fc3f`),
+**N4 + B1's placeholder half** (`97bbc7b`), **B2** (`6f1247a`, `d00f96b`).
+Verified at `d00f96b`: build green, `format:check` clean, e2e **120/120**.
 
-### Wave 2 — cheap correctness, before it misinforms the next build
+**Do NOT re-do them.** What survives from these three waves is only:
 
-- **N2 + N1** — ~20 min. Both mislead whoever builds `catalog` next; N2 sends
-  them to two backend folders that do not exist.
-- **N4 + B1** — three honest placeholder pages via `EmptyState`. A seller can
-  complete registration TODAY and land on a bare `<h1>`.
-- **N10** — at minimum the loud `globalSetup` guard, so a local run stops
-  instead of lying. Cheap, and everything after this wave is verified by e2e.
-- **D-6, N3** — 3 lines and 1 line. Attach to any commit touching the area.
-
-### Wave 3 — data completeness (unblocked, high silent cost)
-
-- **B2 + B3** — every business onboarded through this UI ships a card with no
-  contact channels and no city. Both are silent: nothing errors, the data is
-  simply absent forever. B2 also starves G3.
-- **B5** — the Nominatim rate-limit and silent-failure halves.
+- **B3 — `cityId` on drafted branches.** Deliberately NOT done with S1, though
+  the plan paired them. The bridge (`/cities/resolve?name=`) is confirmed to
+  exist, but the KATO↔`city`-table name overlap is unverified and cannot be
+  verified from this repo — KATO spells things `"г. Кокшетау"` / `"Көкшетау қ."`
+  and a miss must leave `cityId` unset, never guess a neighbour. Needs a real
+  `city` table (cross-repo) before it is safe to write.
+- **B5 — Nominatim rate limits and silent failure.** Unblocked, unscheduled; the
+  only fully-free item left on this page.
+- **N3 — the radius scale**, and it is NOT what the entry originally claimed —
+  read its correction before touching it.
+- **N1's `AI_Knowledge/` half** — 29 sites, still hand-checkable only.
 
 ### Wave 4 — the customer path, end to end (the mission)
 
