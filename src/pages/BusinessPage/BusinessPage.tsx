@@ -78,14 +78,6 @@ function emptyProfile(businessId: string): BrandProfileDto {
   };
 }
 
-function normalizeCityName(value: string) {
-  return value
-    .toLocaleLowerCase()
-    .replace(/^(\u0433\.?|\u0433\u043e\u0440\u043e\u0434)\s*/u, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
 function parseAttributes(value: string) {
   if (!value.trim()) return undefined;
   try {
@@ -100,7 +92,7 @@ function parseAttributes(value: string) {
 }
 
 function emptyBranchForm() {
-  return { name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }>, pickupAvailable: false };
+  return { name: "", address: "", addressDetails: "", cityId: "", cityName: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }>, pickupAvailable: false };
 }
 
 function formatOpeningTime(iso?: string, timeZoneId?: string) {
@@ -192,7 +184,7 @@ export function BusinessPage() {
   const [productsTotal, setProductsTotal] = useState(0);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editProduct, setEditProduct] = useState<BusinessProductDto | null>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] as import("../../shared/lib/catalogImages").CatalogImageDraft[] });
+  const [productForm, setProductForm] = useState({ name: "", description: "", purchaseDestinations: [] as import("../../shared/api/dto").PurchaseDestinationDto[], price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] as import("../../shared/lib/catalogImages").CatalogImageDraft[] });
   const [productsBusy, setProductsBusy] = useState(false);
   const [selectedProductOfferIds, setSelectedProductOfferIds] = useState<Set<string>>(new Set());
   const [aiEnrichmentBusy, setAiEnrichmentBusy] = useState(false);
@@ -227,14 +219,14 @@ export function BusinessPage() {
   const [servicesBusy, setServicesBusy] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [editService, setEditService] = useState<BusinessServiceDto | null>(null);
-  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND" as "ON_DEMAND" | "SCHEDULED", scheduleText: "", attributesText: "", isActive: true, images: [] as import("../../shared/lib/catalogImages").CatalogImageDraft[] });
+  const [serviceForm, setServiceForm] = useState({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND" as "ON_DEMAND" | "SCHEDULED", scheduleText: "", purchaseDestinations: [] as import("../../shared/api/dto").PurchaseDestinationDto[], attributesText: "", isActive: true, images: [] as import("../../shared/lib/catalogImages").CatalogImageDraft[] });
 
   // Branches
   const [branchesBusy, setBranchesBusy] = useState(false);
   const [showBranchForm, setShowBranchForm] = useState(false);
   const [showOnlineOnlyConfirm, setShowOnlineOnlyConfirm] = useState(false);
   const [editBranchId, setEditBranchId] = useState<string | null>(null);
-  const [branchForm, setBranchForm] = useState({ name: "", address: "", addressDetails: "", cityId: "", latitude: null as number | null, longitude: null as number | null, timeZoneId: "", weeklyHours: [] as Array<{ dayOfWeek: string; opensAt: string; closesAt: string }>, specialHours: [] as Array<{ date: string; closed: boolean; opensAt: string; closesAt: string }>, pickupAvailable: false });
+  const [branchForm, setBranchForm] = useState(emptyBranchForm());
   const [staffByBranch, setStaffByBranch] = useState<Record<string, StaffDto[]>>({});
   const [staffForms, setStaffForms] = useState<Record<string, { displayName: string; email: string; role: string }>>({});
   const [staffBusy, setStaffBusy] = useState("");
@@ -340,7 +332,7 @@ export function BusinessPage() {
       icon: <Package size={16} />,
       onClick: () => {
         setEditProduct(null);
-        setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] });
+        setProductForm({ name: "", description: "", purchaseDestinations: [], price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] });
         setShowProductForm(true);
         setSection("products");
       },
@@ -350,7 +342,7 @@ export function BusinessPage() {
       icon: <Briefcase size={16} />,
       onClick: () => {
         setEditService(null);
-        setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true, images: [] });
+        setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", purchaseDestinations: [], attributesText: "", isActive: true, images: [] });
         setShowServiceForm(true);
         setSection("services");
       },
@@ -623,7 +615,7 @@ export function BusinessPage() {
 
   // Product CRUD
   const resetProductForm = () => {
-    setProductForm({ name: "", description: "", deepLink: "", price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] });
+    setProductForm({ name: "", description: "", purchaseDestinations: [], price: "", categoryId: "", categoryLabel: "", tags: "", attributesText: "", isActive: true, images: [] });
     setEditProduct(null);
     setShowProductForm(false);
   };
@@ -644,7 +636,7 @@ export function BusinessPage() {
         branchId: selectedBranchId || undefined,
         name: productForm.name,
         description: productForm.description,
-        deepLink: productForm.deepLink.trim() || undefined,
+        purchaseDestinations: productForm.purchaseDestinations.filter(destination => destination.label.trim() && destination.url.trim()),
         price: productForm.price !== "" ? Number(productForm.price) : undefined,
         categoryId: catId,
         categoryName: catLabel || undefined,
@@ -670,7 +662,7 @@ export function BusinessPage() {
       await updateProduct(editProduct.productId, {
         name: productForm.name || undefined,
         description: productForm.description,
-        deepLink: productForm.deepLink.trim() || undefined,
+        purchaseDestinations: productForm.purchaseDestinations.filter(destination => destination.label.trim() && destination.url.trim()),
         price: productForm.price !== "" ? Number(productForm.price) : undefined,
         categoryId: productForm.categoryId || undefined,
         categoryName: productForm.categoryLabel.trim() || undefined,
@@ -726,7 +718,7 @@ export function BusinessPage() {
 
   // Service CRUD
   const resetServiceForm = () => {
-    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", attributesText: "", isActive: true, images: [] });
+    setServiceForm({ name: "", description: "", basePrice: "", categoryId: "", categoryLabel: "", serviceMode: "ON_DEMAND", scheduleText: "", purchaseDestinations: [], attributesText: "", isActive: true, images: [] });
     setEditService(null);
     setShowServiceForm(false);
   };
@@ -749,6 +741,7 @@ export function BusinessPage() {
         categoryName: catLabel || undefined,
         name: serviceForm.name,
         description: serviceForm.description,
+        purchaseDestinations: serviceForm.purchaseDestinations.filter(destination => destination.label.trim() && destination.url.trim()),
         basePrice: serviceForm.basePrice !== "" ? Number(serviceForm.basePrice) : undefined,
         serviceMode: serviceForm.serviceMode,
         scheduleText: serviceForm.scheduleText,
@@ -770,6 +763,7 @@ export function BusinessPage() {
       await updateService(businessId, editService.serviceOfferingId, {
         name: serviceForm.name || undefined,
         description: serviceForm.description,
+        purchaseDestinations: serviceForm.purchaseDestinations.filter(destination => destination.label.trim() && destination.url.trim()),
         basePrice: serviceForm.basePrice !== "" ? Number(serviceForm.basePrice) : undefined,
         serviceMode: serviceForm.serviceMode,
         scheduleText: serviceForm.scheduleText,
@@ -801,7 +795,7 @@ export function BusinessPage() {
       toast.show(t("business.toast.branchLocationRequired"), "error");
       return;
     }
-    if (!branchForm.address || !branchForm.cityId) {
+    if (!branchForm.address || (!branchForm.cityId && !branchForm.cityName)) {
       toast.show(t("business.toast.branchLocationRequired"), "error");
       return;
     }
@@ -811,6 +805,7 @@ export function BusinessPage() {
         address: branchForm.address || undefined,
         addressDetails: branchForm.addressDetails || undefined,
         cityId: branchForm.cityId || undefined,
+        cityName: branchForm.cityName || undefined,
         latitude: branchForm.latitude,
         longitude: branchForm.longitude,
         timeZoneId: branchForm.timeZoneId || undefined,
@@ -844,6 +839,7 @@ export function BusinessPage() {
         address: branchForm.address || undefined,
         addressDetails: branchForm.addressDetails || undefined,
         cityId: branchForm.cityId || undefined,
+        cityName: branchForm.cityName || undefined,
         latitude: branchForm.latitude ?? undefined,
         longitude: branchForm.longitude ?? undefined,
         timeZoneId: branchForm.timeZoneId || undefined,
@@ -1667,21 +1663,19 @@ export function BusinessPage() {
                                     initialLat={branchForm.latitude ?? undefined}
                                     initialLng={branchForm.longitude ?? undefined}
                                     onChange={(lat, lng, address, cityName) => {
-                                      const cityId = cities.find(city =>
-                                        normalizeCityName(city.name) === normalizeCityName(cityName || "")
-                                      )?.id || "";
                                       setBranchForm(p => ({
                                         ...p,
                                         latitude: lat,
                                         longitude: lng,
                                         address: address || "",
-                                        cityId,
+                                        cityId: "",
+                                        cityName: cityName || "",
                                       }));
                                     }}
                                   />
-                                  {(branchForm.address || branchForm.cityId) && (
+                                  {(branchForm.address || branchForm.cityId || branchForm.cityName) && (
                                     <span className="fcw-body-s fcw-text-secondary">
-                                      {[cities.find(city => city.id === branchForm.cityId)?.name, branchForm.address].filter(Boolean).join(", ")}
+                                      {[branchForm.cityName || cities.find(city => city.id === branchForm.cityId)?.name, branchForm.address].filter(Boolean).join(", ")}
                                     </span>
                                   )}
                                   <input
@@ -1896,7 +1890,7 @@ export function BusinessPage() {
                                     onClick={() => {
                                       setEditBranchId(b.id);
                                       setBranchForm({
-                                        name: b.name, address: b.address || "", addressDetails: b.addressDetails || "", cityId: b.cityId || "",
+                                        name: b.name, address: b.address || "", addressDetails: b.addressDetails || "", cityId: b.cityId || "", cityName: b.cityName || "",
                                         latitude: b.latitude ?? null, longitude: b.longitude ?? null,
                                         timeZoneId: b.timeZoneId || "",
                                         weeklyHours: (b.weeklyHours || []).map(h => ({ dayOfWeek: h.dayOfWeek, opensAt: h.opensAt, closesAt: h.closesAt })),

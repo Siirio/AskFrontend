@@ -39,6 +39,7 @@ export type AuthSession = {
     permissions: string[];
   };
   pendingInvitationsCount?: number;
+  pendingLegalDocuments?: string[];
 };
 
 export function getGoogleOAuthUrl() {

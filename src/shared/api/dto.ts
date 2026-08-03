@@ -79,6 +79,7 @@ export type SearchV2CardDto = {
   title: string;
   summary?: string | null;
   images?: CatalogImageDto[];
+  purchaseDestinations?: PurchaseDestinationDto[];
   categoryLabel?: string | null;
   price?: number | null;
   currency?: string | null;
@@ -94,12 +95,11 @@ export type SearchV2CardDto = {
   branchName?: string | null;
   branchAddress?: string | null;
   branchCity?: string | null;
-  openingSummary?: {
-    state?: "OPEN" | "CLOSED" | "UNKNOWN" | string;
-    label?: string | null;
-    closesAt?: string | null;
-    opensAt?: string | null;
-  } | null;
+};
+
+export type PurchaseDestinationDto = {
+  label: string;
+  url: string;
 };
 
 export type CatalogImageDto = {
@@ -151,21 +151,6 @@ export type BrandProfileDto = {
   deliveryCoverage?: "NO_DELIVERY" | "SELECTED_CITIES" | "KAZAKHSTAN" | "WORLDWIDE";
   deliveryCities?: string[];
   pickupAvailable?: boolean;
-};
-
-export type StorefrontBlockDto = {
-  blockId?: string;
-  blockType: string;
-  displayOrder: number;
-  config: Record<string, unknown>;
-  enabled: boolean;
-};
-
-export type StorefrontPageDto = {
-  businessId: string;
-  brandProfile: BrandProfileDto;
-  blocks: StorefrontBlockDto[];
-  publishedAt?: string | null;
 };
 
 export type BrandDropDto = {
@@ -279,7 +264,7 @@ export type BusinessProductDto = {
   name: string;
   description: string;
   images: CatalogImageDto[];
-  deepLink?: string | null;
+  purchaseDestinations: PurchaseDestinationDto[];
   tags: string[];
   attributes?: Record<string, unknown> | null;
   price: number;
@@ -303,6 +288,7 @@ export type BusinessServiceDto = {
   name: string;
   description: string;
   images: CatalogImageDto[];
+  purchaseDestinations: PurchaseDestinationDto[];
   serviceMode: "ON_DEMAND" | "SCHEDULED";
   basePrice: number;
   scheduleText: string;

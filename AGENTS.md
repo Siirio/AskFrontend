@@ -36,25 +36,21 @@ Read:
 ## Anti-Marketplace Guardrails (2026-07-01)
 
 Ask is NOT a marketplace. The frontend must never:
-- **Sort results by price by default.** Default sort is intent_match (relevance). Price sort is user-selectable, not default.
+- **Sort results by price by default.** Default sort is `relevance`. Price sort is user-selectable, not default.
 - **Show uniform commodity cards.** Every result card has a standardized decision layer AND brand expression (color, logo, cover).
 - **Show "cheaper alternative" or buy-box logic.** Never compare brands as interchangeable SKUs.
-- **Collapse brands into a single comparison table.** Each brand result explains WHY it matches this specific intent.
-- **Show raw AI confidence scores.** Backend sends human-readable match reasons; frontend displays them as-is.
-- **Make brand storefronts look like marketplace pages.** Brand storefronts are LEGO-like block constructors, not uniform product grids.
+- **Collapse brands into a single comparison table.** Each result retains its business identity and presentation.
+- **Show raw AI confidence scores or match reasons.** Search may carry match-reason metadata, but the customer UI does not render it.
 
 ### Match reason block
-Backend-provided match reasons are optional presentation data. The current search UI does not render them; if a future surface restores them, it must use backend values without synthesized examples or fallback claims.
+Backend-provided match reasons are metadata only and are not rendered. Restoring them requires a new explicit owner decision.
 
 ### Brand-aware card structure
-- Standardized layer: price, availability, branch, pickup, match_reason, quick actions.
+- Standardized layer: price, availability, branch, pickup, quick actions.
 - Brand layer: brand color accent, logo, cover thumbnail, brand name + short descriptor.
 
-### Brand storefront (page opened from any brand card)
-- Hero block (cover + tagline)
-- Collections / drops
-- Popular products
-- "Why us" block
+### Public business profile
+The customer-facing business route renders the current public `business-profile` response. The removed storefront-builder API is not a frontend contract.
 - Materials / production / story
 - Lookbook photos
 - Branches / pickup points

@@ -1,5 +1,12 @@
 ﻿# Ask Frontend AI Knowledge Changelog
 
+## 2026-08-03 — Full-catalogue search and current backend contracts
+
+- Moved search filters and sorting to the backend request, replaced page-local refinement with bounded infinite-scroll page appending, and kept match reasons out of every customer surface.
+- Added ordered purchase/booking destination editors and actions for Items and Services.
+- Sent type-marked address-picker city names to the backend without client normalization.
+- Added the session-driven legal consent gate and removed dead storefront-builder API code.
+
 ## 2026-08-02 — Catalog galleries and responsive result details
 
 - Added managed Item and Service image selection from real files, clipboard pasting, drag-and-drop ingestion, and drag reordering with a three-image limit.

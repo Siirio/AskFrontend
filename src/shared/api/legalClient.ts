@@ -25,3 +25,15 @@ export function acceptLegalDocuments(documentCodes: string[], locale: string) {
     },
   });
 }
+
+export function acceptAccountLegalDocuments(documentCodes: string[], locale: string) {
+  return apiRequest<void>("/api/v1/legal/acceptances", {
+    method: "POST",
+    auth: true,
+    body: {
+      documentCodes,
+      countryCode: "KZ",
+      locale,
+    },
+  });
+}

@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { SearchLocalFilters } from "../../shared/api/askClient";
+import type { SearchFilters } from "../../shared/api/askClient";
 import { CitySelector } from "../../shared/ui/CitySelector/CitySelector";
 import { SearchAreaPicker } from "./SearchAreaPicker";
 
@@ -32,17 +32,17 @@ export type SearchCompanyOption = {
 type SearchFilterSortProps = {
   open: boolean;
   sort: SearchSortKey;
-  filters: SearchLocalFilters;
+  filters: SearchFilters;
   companies: SearchCompanyOption[];
   locationError: string;
   onClose: () => void;
   onSortChange: (sort: SearchSortKey) => void;
-  onFiltersChange: (filters: SearchLocalFilters) => void;
+  onFiltersChange: (filters: SearchFilters) => void;
   onApply: () => void;
   onReset: () => void;
 };
 
-function locationMode(filters: SearchLocalFilters): LocationMode {
+function locationMode(filters: SearchFilters): LocationMode {
   if (filters.mapBounds) return "map";
   if (filters.radiusMeters) return "radius";
   if (filters.city) return "city";

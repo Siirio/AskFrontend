@@ -27,6 +27,7 @@ type BranchDraft = {
   address: string;
   addressDetails: string;
   cityId: string;
+  cityName: string;
   latitude: number | null;
   longitude: number | null;
 };
@@ -110,7 +111,7 @@ export function SellerOnboardingPage() {
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([]);
   const [draftForm, setDraftForm] = useState<BranchDraft>({
-    id: "", name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null,
+    id: "", name: "", address: "", addressDetails: "", cityId: "", cityName: "", latitude: null, longitude: null,
   });
 
   useEffect(() => {
@@ -125,22 +126,15 @@ export function SellerOnboardingPage() {
     listCities().then(setCities).catch(() => setCities([]));
   }, []);
 
-  function normalizeCityName(value: string) {
-    return value
-      .toLocaleLowerCase()
-      .replace(/^(\u0433\.?|\u0433\u043e\u0440\u043e\u0434)\s*/u, "")
-      .replace(/[^\p{L}\p{N}]+/gu, " ")
-      .trim();
-  }
-
   const addBranchDraft = () => {
-    if (!draftForm.name.trim() || draftForm.latitude == null || draftForm.longitude == null) return;
+    if (!draftForm.name.trim() || (!draftForm.cityId && !draftForm.cityName)
+        || draftForm.latitude == null || draftForm.longitude == null) return;
     const newDraft: BranchDraft = {
       ...draftForm,
       id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     };
     setBranchDrafts(current => [...current, newDraft]);
-    setDraftForm({ id: "", name: "", address: "", addressDetails: "", cityId: "", latitude: null, longitude: null });
+    setDraftForm({ id: "", name: "", address: "", addressDetails: "", cityId: "", cityName: "", latitude: null, longitude: null });
     if (!data.pickupAvailable) {
       update("pickupAvailable", true);
     }
@@ -235,6 +229,7 @@ export function SellerOnboardingPage() {
           address: draft.address,
           addressDetails: draft.addressDetails || undefined,
           cityId: draft.cityId || undefined,
+          cityName: draft.cityName || undefined,
           latitude: draft.latitude,
           longitude: draft.longitude,
           pickupAvailable: true,
@@ -517,7 +512,7 @@ export function SellerOnboardingPage() {
                                 {draft.name}
                               </span>
                               <span className="fcw-body-s fcw-text-secondary" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {[cities.find(c => c.id === draft.cityId)?.name, draft.address].filter(Boolean).join(", ") || "—"}
+                                {[draft.cityName || cities.find(c => c.id === draft.cityId)?.name, draft.address].filter(Boolean).join(", ") || "—"}
                               </span>
                               <div style={{ flex: 1 }} />
                               <button className="fcw-btn fcw-btn-ghost fcw-btn-sm" style={{ color: "var(--fcw-color-error)" }}
@@ -542,15 +537,12 @@ export function SellerOnboardingPage() {
                             initialLat={draftForm.latitude ?? undefined}
                             initialLng={draftForm.longitude ?? undefined}
                             onChange={(latitude, longitude, address, cityName) => {
-                              const cityId = cities.find(city =>
-                                normalizeCityName(city.name) === normalizeCityName(cityName || "")
-                              )?.id || "";
-                              setDraftForm(f => ({ ...f, latitude, longitude, address: address || f.address, cityId: cityId || f.cityId }));
+                              setDraftForm(f => ({ ...f, latitude, longitude, address: address || f.address, cityId: "", cityName: cityName || "" }));
                             }}
                           />
                           {draftForm.address && (
                             <span className="fcw-body-s fcw-text-secondary">
-                              {[cities.find(c => c.id === draftForm.cityId)?.name, draftForm.address].filter(Boolean).join(", ")}
+                              {[draftForm.cityName || cities.find(c => c.id === draftForm.cityId)?.name, draftForm.address].filter(Boolean).join(", ")}
                             </span>
                           )}
                         </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Clock3, MapPin, MessageCircle, Store } from "lucide-react";
+import { ArrowLeft, ExternalLink, MapPin, MessageCircle, Store } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { buildRoute, ROUTES } from "../../app/routes";
 import { EmptyState } from "../../shared/ui/EmptyState/EmptyState";
@@ -57,11 +57,6 @@ export function ProductPage() {
             {card.summary && <p>{card.summary}</p>}
             {card.price && <strong>{card.price}</strong>}
 
-            {card.matchReasons.length > 0 && (
-              <div className="ask-product-card__chips">
-                {card.matchReasons.map(reason => <span key={reason}>{reason}</span>)}
-              </div>
-            )}
           </div>
         </section>
 
@@ -79,9 +74,15 @@ export function ProductPage() {
           </div>
 
           <div className="ask-product-aside__meta">
-            {card.openingLabel && <span><Clock3 size={16} />{card.openingLabel}</span>}
             {(card.location || card.city) && <span><MapPin size={16} />{[card.location, card.city].filter(Boolean).join(", ")}</span>}
           </div>
+
+          {card.purchaseDestinations?.map((destination, index) => (
+            <a key={`${destination.label}-${destination.url}-${index}`} className="ask-primary-button" href={destination.url} target="_blank" rel="noreferrer">
+              <ExternalLink size={18} />
+              {destination.label}
+            </a>
+          ))}
 
           <button type="button" className="ask-primary-button" onClick={() => openChat(card)} disabled={!card.businessId}>
             <MessageCircle size={18} />

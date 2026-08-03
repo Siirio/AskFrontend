@@ -13,10 +13,9 @@ export function SmartSearchWidget({ results, isLoading }: { results: SearchResul
 
   function badgeLabel(value: string): string {
     const labels: Record<string, string> = {
-      "official channel": t("smartSearch.badgeOfficial"),
-      "complete card": t("smartSearch.badgeComplete"),
-      pickup: t("smartSearch.badgePickup"),
-      "active drop": t("smartSearch.badgeActiveDrop"),
+      OFFICIAL_CHANNEL: t("smartSearch.badgeOfficial"),
+      COMPLETE_CARD: t("smartSearch.badgeComplete"),
+      PICKUP: t("smartSearch.badgePickup"),
     };
     return labels[value] ?? value;
   }

@@ -170,7 +170,6 @@ export function StorefrontPage() {
               imageUrl: profile.logoUrl,
               businessId,
               businessProfile: profile,
-              matchReasons: [],
             })}
           >
             <MessageCircle size={19} />

@@ -5,6 +5,7 @@ import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/Categ
 import { AttributesEditor } from "../../shared/ui/AttributesEditor/AttributesEditor";
 import { EditorDisclosure, EditorSection, EntityEditor } from "../../shared/ui/EntityEditor/EntityEditor";
 import { CatalogImagePicker } from "../../shared/ui/CatalogImagePicker/CatalogImagePicker";
+import { PurchaseDestinationsEditor } from "../../shared/ui/PurchaseDestinationsEditor/PurchaseDestinationsEditor";
 import { toCatalogImageDrafts } from "../../shared/lib/catalogImages";
 import type { ProductsTabProps } from "./types";
 
@@ -133,9 +134,7 @@ export function ProductsTab(props: ProductsTabProps) {
               </div>
             </div>
             <div className="ask-editor-field ask-editor-field--wide">
-              <label>{t("business.product.deepLink")}</label>
-              <input className="fcw-input" type="url" value={productForm.deepLink} onChange={event => setProductForm(form => ({ ...form, deepLink: event.target.value }))} placeholder={t("business.product.deepLinkPlaceholder")} />
-              <span className="ask-editor-hint">{t("business.product.deepLinkHint")}</span>
+              <PurchaseDestinationsEditor value={productForm.purchaseDestinations} onChange={purchaseDestinations => setProductForm(form => ({ ...form, purchaseDestinations }))} />
             </div>
           </div>
         </EditorSection>
@@ -190,11 +189,8 @@ export function ProductsTab(props: ProductsTabProps) {
                         <label className="fcw-label">{t("business.product.category")}</label>
                         <CategoryAutocomplete value={productForm.categoryLabel} categoryId={productForm.categoryId || null} onChange={(label, categoryId) => setProductForm(value => ({ ...value, categoryLabel: label, categoryId: categoryId || "" }))} type="ITEM" />
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                        <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
-                          <span className="fcw-label">{t("business.product.deepLink")}</span>
-                          <input className="fcw-input" type="url" value={productForm.deepLink} onChange={e => setProductForm(v => ({ ...v, deepLink: e.target.value }))} />
-                        </label>
+                      <PurchaseDestinationsEditor value={productForm.purchaseDestinations} onChange={purchaseDestinations => setProductForm(form => ({ ...form, purchaseDestinations }))} />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "0.75rem" }}>
                         <label className="fcw-flex-col" style={{ gap: "0.25rem" }}>
                           <span className="fcw-label">{t("business.product.tags")}</span>
                           <input className="fcw-input" value={productForm.tags} onChange={e => setProductForm(v => ({ ...v, tags: e.target.value }))} />
@@ -236,7 +232,7 @@ export function ProductsTab(props: ProductsTabProps) {
                         <div className="fcw-flex" style={{ gap: "0.25rem" }}>
                           <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => {
                             setEditProduct(p);
-                            setProductForm({ name: p.name, description: p.description || "", deepLink: p.deepLink || "", price: p.price > 0 ? String(p.price) : "", categoryId: p.categoryId || "", categoryLabel: p.categoryLabel || "", tags: (p.tags || []).join(", "), attributesText: p.attributes ? JSON.stringify(p.attributes, null, 2) : "", isActive: p.isActive, images: toCatalogImageDrafts(p.images) });
+                            setProductForm({ name: p.name, description: p.description || "", purchaseDestinations: p.purchaseDestinations || [], price: p.price > 0 ? String(p.price) : "", categoryId: p.categoryId || "", categoryLabel: p.categoryLabel || "", tags: (p.tags || []).join(", "), attributesText: p.attributes ? JSON.stringify(p.attributes, null, 2) : "", isActive: p.isActive, images: toCatalogImageDrafts(p.images) });
                             setShowProductForm(true);
                           }} aria-label={t("business.editAria")}>
                             <Edit3 size={14} />

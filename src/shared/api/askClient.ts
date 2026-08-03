@@ -10,9 +10,9 @@ import type {
   ChatMessageDto, ChatMessageListResponse,
   ContactResolveDto,
   CustomerRequestDetailDto, CustomerRequestHistoryDto,
+  PurchaseDestinationDto,
   SearchV2ResponseDto,
   StaffDto,
-  StorefrontPageDto,
   SupplierTaskDetailDto,
   SupplierTaskDto
 } from "./dto";
@@ -142,11 +142,12 @@ export type SearchExplicitFilters = {
   country?: string;
   minPrice?: number;
   maxPrice?: number;
-  openNow?: boolean;
   radiusMeters?: number;
+  businessIds?: string[];
+  mapArea?: SearchMapBounds;
 };
 
-export type SearchLocalFilters = {
+export type SearchFilters = {
   city?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -158,7 +159,7 @@ export type SearchLocalFilters = {
 export function searchAskV2(params: {
   rawQuery: string;
   mode: "ITEM" | "SERVICE";
-  sort?: "relevance" | "price_asc" | "distance";
+  sort?: "relevance" | "price_asc" | "price_desc" | "distance" | "unique_offers";
   page?: number;
   pageSize?: number;
   explicitFilters?: SearchExplicitFilters;
@@ -248,11 +249,11 @@ export function listProducts(businessId: string, params?: { branchId?: string; c
   return apiRequest<BusinessProductListDto>(`/api/v1/businesses/${businessId}/items${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createProduct(businessId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name: string; description?: string; deepLink?: string; price?: number; isActive?: boolean; tags?: string[]; attributes?: Record<string, unknown> }) {
+export function createProduct(businessId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name: string; description?: string; purchaseDestinations?: PurchaseDestinationDto[]; price?: number; isActive?: boolean; tags?: string[]; attributes?: Record<string, unknown> }) {
   return apiRequest<BusinessProductDto>(`/api/v1/businesses/${businessId}/items`, { method: "POST", auth: true, body: data });
 }
 
-export function updateProduct(productId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name?: string; description?: string; deepLink?: string; price?: number; isActive?: boolean; tags?: string[]; attributes?: Record<string, unknown> }) {
+export function updateProduct(productId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name?: string; description?: string; purchaseDestinations?: PurchaseDestinationDto[]; price?: number; isActive?: boolean; tags?: string[]; attributes?: Record<string, unknown> }) {
   return apiRequest<BusinessProductDto>(`/api/v1/items/${productId}`, { method: "PATCH", auth: true, body: data });
 }
 
@@ -301,11 +302,11 @@ export function listServices(businessId: string, params?: { branchId?: string; c
   return apiRequest<BusinessServiceListDto>(`/api/v1/businesses/${businessId}/services${q ? "?" + q : ""}`, { auth: true });
 }
 
-export function createService(businessId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name: string; description?: string; serviceMode: "ON_DEMAND" | "SCHEDULED"; basePrice?: number; scheduleText?: string; isActive?: boolean; attributes?: Record<string, unknown> }) {
+export function createService(businessId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name: string; description?: string; purchaseDestinations?: PurchaseDestinationDto[]; serviceMode: "ON_DEMAND" | "SCHEDULED"; basePrice?: number; scheduleText?: string; isActive?: boolean; attributes?: Record<string, unknown> }) {
   return apiRequest<BusinessServiceDto>(`/api/v1/businesses/${businessId}/services`, { method: "POST", auth: true, body: data });
 }
 
-export function updateService(businessId: string, serviceOfferingId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name?: string; description?: string; serviceMode?: "ON_DEMAND" | "SCHEDULED"; basePrice?: number; scheduleText?: string; isActive?: boolean; attributes?: Record<string, unknown> }) {
+export function updateService(businessId: string, serviceOfferingId: string, data: { branchId?: string; categoryId?: string; categoryName?: string; name?: string; description?: string; purchaseDestinations?: PurchaseDestinationDto[]; serviceMode?: "ON_DEMAND" | "SCHEDULED"; basePrice?: number; scheduleText?: string; isActive?: boolean; attributes?: Record<string, unknown> }) {
   return apiRequest<BusinessServiceDto>(`/api/v1/businesses/${businessId}/services/${serviceOfferingId}`, { method: "PATCH", auth: true, body: data });
 }
 
@@ -517,29 +518,6 @@ export function uploadBusinessProfileLogo(businessId: string, file: File) {
 
 export function uploadBusinessProfileCover(businessId: string, file: File) {
   return uploadBusinessProfileMedia(businessId, "cover", file);
-}
-
-export function getStorefront(businessId: string) {
-  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront`);
-}
-
-export function getStorefrontDraft(businessId: string) {
-  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront/draft`, { auth: true });
-}
-
-export function saveStorefrontDraft(businessId: string, blocks: StorefrontPageDto["blocks"]) {
-  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront/draft`, {
-    method: "PUT",
-    auth: true,
-    body: { blocks },
-  });
-}
-
-export function publishStorefront(businessId: string) {
-  return apiRequest<StorefrontPageDto>(`/api/v1/businesses/${businessId}/storefront/publish`, {
-    method: "POST",
-    auth: true,
-  });
 }
 
 export function listDrops(businessId: string) {

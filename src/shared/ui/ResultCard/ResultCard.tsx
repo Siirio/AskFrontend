@@ -1,5 +1,5 @@
-import { BriefcaseBusiness, Clock3, MapPin, MessageCircle, Package, Store } from "lucide-react";
-import type { BrandProfileDto, CatalogImageDto, ContactActionDto } from "../../api/dto";
+import { BriefcaseBusiness, MapPin, MessageCircle, Package, Store } from "lucide-react";
+import type { BrandProfileDto, CatalogImageDto, ContactActionDto, PurchaseDestinationDto } from "../../api/dto";
 
 export interface ResultCardData {
   id: string;
@@ -13,16 +13,13 @@ export interface ResultCardData {
   distance?: string;
   imageUrl?: string;
   images?: CatalogImageDto[];
+  purchaseDestinations?: PurchaseDestinationDto[];
   brandLogoUrl?: string;
   brandName?: string;
   brandColor?: string;
   businessId?: string | null;
   availabilityWarning?: string;
   availability?: string;
-  matchReasons: string[];
-  badges?: string[];
-  openingLabel?: string;
-  openingState?: string;
   businessProfile?: BrandProfileDto | null;
   contactActions?: ContactActionDto[];
 }
@@ -95,12 +92,6 @@ export function ResultCard({ data, selected, onSelect, onPreview, onBusiness, on
         {data.summary && <p>{data.summary}</p>}
 
         <div className="ask-result-row__meta">
-          {data.openingLabel && (
-            <span className={data.openingState === "OPEN" ? "is-open" : ""}>
-              <Clock3 size={14} />
-              {data.openingLabel}
-            </span>
-          )}
           {(data.location || data.city) && (
             <span>
               <MapPin size={14} />

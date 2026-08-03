@@ -50,6 +50,7 @@ export type CreateBranchData = {
   address?: string;
   addressDetails?: string;
   cityId?: string;
+  cityName?: string;
   latitude: number;
   longitude: number;
   timeZoneId?: string;
@@ -63,6 +64,7 @@ export type UpdateBranchData = {
   address?: string;
   addressDetails?: string;
   cityId?: string;
+  cityName?: string;
   latitude?: number;
   longitude?: number;
   timeZoneId?: string;

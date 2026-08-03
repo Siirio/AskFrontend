@@ -6,6 +6,7 @@ import { CategoryAutocomplete } from "../../shared/ui/CategoryAutocomplete/Categ
 import { AttributesEditor } from "../../shared/ui/AttributesEditor/AttributesEditor";
 import { EditorDisclosure, EditorSection, EntityEditor } from "../../shared/ui/EntityEditor/EntityEditor";
 import { CatalogImagePicker } from "../../shared/ui/CatalogImagePicker/CatalogImagePicker";
+import { PurchaseDestinationsEditor } from "../../shared/ui/PurchaseDestinationsEditor/PurchaseDestinationsEditor";
 import { toCatalogImageDrafts } from "../../shared/lib/catalogImages";
 import type { ServicesTabProps } from "./types";
 
@@ -123,6 +124,7 @@ export function ServicesTab(props: ServicesTabProps) {
             <label>{t("business.service.description")}</label>
             <textarea className="fcw-textarea" maxLength={2000} rows={4} placeholder={t("business.service.descriptionPlaceholder")} value={serviceForm.description} onChange={event => setServiceForm(form => ({ ...form, description: event.target.value }))} />
           </div>
+          <PurchaseDestinationsEditor value={serviceForm.purchaseDestinations} onChange={purchaseDestinations => setServiceForm(form => ({ ...form, purchaseDestinations }))} />
           <AttributesEditor value={serviceForm.attributesText} onChange={attributesText => setServiceForm(form => ({ ...form, attributesText }))} />
         </EditorDisclosure>
       </EntityEditor>
@@ -170,6 +172,7 @@ export function ServicesTab(props: ServicesTabProps) {
                     <label className="fcw-label">{t("business.service.category")}</label>
                     <CategoryAutocomplete value={serviceForm.categoryLabel} categoryId={serviceForm.categoryId || null} onChange={(label, categoryId) => setServiceForm(value => ({ ...value, categoryLabel: label, categoryId: categoryId || "" }))} type="SERVICE" />
                   </div>
+                  <PurchaseDestinationsEditor value={serviceForm.purchaseDestinations} onChange={purchaseDestinations => setServiceForm(form => ({ ...form, purchaseDestinations }))} />
                   <AttributesEditor value={serviceForm.attributesText} onChange={attributesText => setServiceForm(value => ({ ...value, attributesText }))} />
                   <label className="fcw-flex fcw-items-center" style={{ gap: "0.5rem" }}>
                     <input type="checkbox" checked={serviceForm.isActive} onChange={e => setServiceForm(value => ({ ...value, isActive: e.target.checked }))} />
@@ -202,7 +205,7 @@ export function ServicesTab(props: ServicesTabProps) {
                     <div className="fcw-flex" style={{ gap: "0.25rem" }}>
                       <button className="fcw-btn fcw-btn-ghost fcw-btn-icon fcw-btn-sm" onClick={() => {
                         setEditService(s);
-                        setServiceForm({ name: s.name, description: s.description || "", basePrice: s.basePrice > 0 ? String(s.basePrice) : "", categoryId: s.categoryId || "", categoryLabel: s.categoryLabel || "", serviceMode: s.serviceMode, scheduleText: s.scheduleText || "", attributesText: s.attributes ? JSON.stringify(s.attributes, null, 2) : "", isActive: s.isActive, images: toCatalogImageDrafts(s.images) });
+                        setServiceForm({ name: s.name, description: s.description || "", basePrice: s.basePrice > 0 ? String(s.basePrice) : "", categoryId: s.categoryId || "", categoryLabel: s.categoryLabel || "", serviceMode: s.serviceMode, scheduleText: s.scheduleText || "", purchaseDestinations: s.purchaseDestinations || [], attributesText: s.attributes ? JSON.stringify(s.attributes, null, 2) : "", isActive: s.isActive, images: toCatalogImageDrafts(s.images) });
                         setShowServiceForm(true);
                       }} aria-label={t("business.editAria")}>
                         <Edit3 size={14} />

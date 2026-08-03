@@ -18,6 +18,7 @@ import { SellerOnboardingPage } from "../pages/SellerOnboardingPage/SellerOnboar
 import { BusinessInvitationModal } from "../widgets/BusinessInvitationModal/BusinessInvitationModal";
 import { ChatPanel } from "../widgets/ChatPanel/ChatPanel";
 import { ChatProvider } from "../widgets/ChatPanel/ChatContext";
+import { LegalConsentGate } from "../widgets/LegalConsentGate/LegalConsentGate";
 
 import { ROUTES } from "./routes";
 
@@ -46,6 +47,7 @@ export function App() {
       </a>
       <Navigation />
       <BusinessInvitationModal />
+      <LegalConsentGate />
       <Routes>
         <Route path={ROUTES.auth} element={<AuthPage />} />
         <Route path={ROUTES.oauthCallback} element={<OAuthCallbackPage />} />

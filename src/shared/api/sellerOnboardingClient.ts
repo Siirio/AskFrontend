@@ -30,6 +30,7 @@ export type SellerOnboardingBranchData = {
   address: string;
   addressDetails?: string;
   cityId?: string;
+  cityName?: string;
   latitude: number;
   longitude: number;
   pickupAvailable: true;

@@ -145,7 +145,7 @@ Each brand gets a LEGO-like page constructor inside Ask:
 ### Ranking Philosophy
 
 No absolute "best brand" rating. Only "best match for THIS intent."
-- Default sort: intent_match (query relevance + style + availability + distance + data confidence).
+- Default sort: `relevance`. Price, distance, and active-Unique-Offers ordering require explicit customer selection.
 - Price is a filter factor, not the default sort king.
 - Visible badges: data freshness, confirmation speed, card quality, business activity.
 

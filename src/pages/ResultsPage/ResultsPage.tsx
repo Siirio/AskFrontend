@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Clock3,
   Filter,
+  ExternalLink,
   MapPin,
   MessageCircle,
   Search,
@@ -17,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { buildRoute, ROUTES } from "../../app/routes";
 import {
   searchAskV2,
-  type SearchLocalFilters,
+  type SearchFilters,
 } from "../../shared/api/askClient";
 import type { SearchV2CardDto } from "../../shared/api/dto";
 import { ResultCard, type ResultCardData } from "../../shared/ui/ResultCard/ResultCard";
@@ -45,18 +43,6 @@ function hasStoredUserLocation() {
     return typeof parsed.lat === "number" && typeof parsed.lng === "number";
   } catch {
     return false;
-  }
-}
-
-function getStoredUserLocation() {
-  try {
-    const raw = window.localStorage.getItem("ask.geo");
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw) as { lat?: number; lng?: number };
-    if (typeof parsed.lat !== "number" || typeof parsed.lng !== "number") return undefined;
-    return { lat: parsed.lat, lng: parsed.lng };
-  } catch {
-    return undefined;
   }
 }
 
@@ -99,20 +85,6 @@ type SearchResultCard = ResultCardData & {
   hasActiveOffer: boolean;
 };
 
-function distanceBetween(
-  origin: { lat: number; lng: number },
-  destination: { latitude: number; longitude: number },
-) {
-  const earthRadius = 6371000;
-  const radians = (degrees: number) => degrees * Math.PI / 180;
-  const latitudeDelta = radians(destination.latitude - origin.lat);
-  const longitudeDelta = radians(destination.longitude - origin.lng);
-  const a = Math.sin(latitudeDelta / 2) ** 2
-    + Math.cos(radians(origin.lat)) * Math.cos(radians(destination.latitude))
-    * Math.sin(longitudeDelta / 2) ** 2;
-  return Math.round(earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
 function mapCard(card: SearchV2CardDto): SearchResultCard {
   return {
     id: card.resultId,
@@ -126,16 +98,13 @@ function mapCard(card: SearchV2CardDto): SearchResultCard {
     distance: card.distanceMeters ? `${(card.distanceMeters / 1000).toFixed(1)} км` : undefined,
     imageUrl: card.images?.[0]?.url,
     images: card.images ?? [],
+    purchaseDestinations: card.purchaseDestinations ?? [],
     brandLogoUrl: card.brandLogoUrl ?? card.businessProfile?.logoUrl ?? undefined,
     brandName: card.businessName,
     brandColor: card.brandColor ?? undefined,
     businessId: card.businessId,
     availability: card.availability ?? undefined,
     availabilityWarning: card.availabilityWarning ?? undefined,
-    matchReasons: card.matchReasons ?? [],
-    badges: card.badges ?? [],
-    openingLabel: card.openingSummary?.label ?? undefined,
-    openingState: card.openingSummary?.state,
     businessProfile: card.businessProfile,
     priceValue: card.price ?? undefined,
     distanceMeters: card.distanceMeters ?? undefined,
@@ -160,10 +129,10 @@ export function ResultsPage() {
   const [sort, setSort] = useState<SearchSortKey>("relevance");
   const [page, setPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<SearchLocalFilters>({
+  const [filters, setFilters] = useState<SearchFilters>({
     city: initialCity || undefined,
   });
-  const [draftFilters, setDraftFilters] = useState<SearchLocalFilters>({
+  const [draftFilters, setDraftFilters] = useState<SearchFilters>({
     city: initialCity || undefined,
   });
   const [sourceCards, setSourceCards] = useState<SearchResultCard[]>([]);
@@ -173,6 +142,7 @@ export function ResultsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [locationError, setLocationError] = useState("");
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const companies = useMemo<SearchCompanyOption[]>(() => {
     const values = new Map<string, SearchCompanyOption>();
@@ -192,58 +162,7 @@ export function ResultsPage() {
     return [...values.values()];
   }, [sourceCards]);
 
-  const cards = useMemo(() => {
-    const userLocation = getStoredUserLocation();
-    const withDistance = sourceCards.map((card, index) => ({
-      card: card.latitude !== undefined && card.longitude !== undefined && userLocation
-        ? {
-            ...card,
-            distanceMeters: distanceBetween(userLocation, {
-              latitude: card.latitude,
-              longitude: card.longitude,
-            }),
-          }
-        : card,
-      index,
-    }));
-    const filtered = withDistance.filter(({ card }) => {
-      if (filters.minPrice !== undefined && (card.priceValue === undefined || card.priceValue < filters.minPrice)) return false;
-      if (filters.maxPrice !== undefined && (card.priceValue === undefined || card.priceValue > filters.maxPrice)) return false;
-      if (filters.businessIds?.length && (!card.businessId || !filters.businessIds.includes(card.businessId))) return false;
-      if (filters.city && card.city?.toLocaleLowerCase() !== filters.city.toLocaleLowerCase()) return false;
-      if (filters.radiusMeters && (card.distanceMeters === undefined || card.distanceMeters > filters.radiusMeters)) return false;
-      if (filters.mapBounds) {
-        if (card.latitude === undefined || card.longitude === undefined) return false;
-        if (card.latitude > filters.mapBounds.north || card.latitude < filters.mapBounds.south
-            || card.longitude > filters.mapBounds.east || card.longitude < filters.mapBounds.west) return false;
-      }
-      return true;
-    });
-    const numberValue = (value: number | undefined, descending = false) => {
-      if (value === undefined) return Number.POSITIVE_INFINITY;
-      return descending ? -value : value;
-    };
-    return filtered
-      .sort((left, right) => {
-        if (sort === "distance") {
-          return numberValue(left.card.distanceMeters) - numberValue(right.card.distanceMeters) || left.index - right.index;
-        }
-        if (sort === "price_asc") {
-          return numberValue(left.card.priceValue) - numberValue(right.card.priceValue) || left.index - right.index;
-        }
-        if (sort === "price_desc") {
-          return numberValue(left.card.priceValue, true) - numberValue(right.card.priceValue, true) || left.index - right.index;
-        }
-        if (sort === "unique_offers") {
-          return Number(right.card.hasActiveOffer) - Number(left.card.hasActiveOffer) || left.index - right.index;
-        }
-        return left.index - right.index;
-      })
-      .map(({ card }) => ({
-        ...card,
-        distance: card.distanceMeters !== undefined ? `${(card.distanceMeters / 1000).toFixed(1)} км` : card.distance,
-      }));
-  }, [filters, sort, sourceCards]);
+  const cards = sourceCards;
 
   const selected = cards.find(card => card.id === selectedId) ?? null;
 
@@ -264,20 +183,34 @@ export function ResultsPage() {
     searchAskV2({
       rawQuery: initialQuery,
       mode,
-      sort: "relevance",
+      sort,
       page,
       pageSize: PAGE_SIZE,
+      explicitFilters: {
+        city: filters.city,
+        minPrice: filters.minPrice,
+        maxPrice: filters.maxPrice,
+        radiusMeters: filters.radiusMeters,
+        businessIds: filters.businessIds,
+        mapArea: filters.mapBounds,
+      },
     })
       .then(response => {
         if (!active) return;
         const nextCards = response.sections.flatMap(section => section.cards.map(mapCard));
-        setSourceCards(nextCards);
+        setSourceCards(current => {
+          if (page === 0) return nextCards;
+          const known = new Set(current.map(card => card.id));
+          return [...current, ...nextCards.filter(card => !known.has(card.id))];
+        });
         setHasNext(response.hasNext);
-        setSelectedId(current => nextCards.some(card => card.id === current) ? current : null);
+        if (page === 0) {
+          setSelectedId(current => nextCards.some(card => card.id === current) ? current : null);
+        }
       })
       .catch(reason => {
         if (!active) return;
-        setSourceCards([]);
+        if (page === 0) setSourceCards([]);
         setError(reason instanceof Error ? reason.message : t("results.error.title"));
       })
       .finally(() => {
@@ -286,7 +219,17 @@ export function ResultsPage() {
     return () => {
       active = false;
     };
-  }, [initialQuery, mode, page, t]);
+  }, [filters, initialQuery, mode, page, sort, t]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasNext) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting && !busy) setPage(current => current + 1);
+    }, { rootMargin: "300px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [busy, hasNext]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -300,6 +243,7 @@ export function ResultsPage() {
     event.preventDefault();
     const rawQuery = query.trim();
     if (!rawQuery) return;
+    setPage(0);
     const route = buildRoute(ROUTES.results, {}, {
       query: rawQuery,
       mode,
@@ -342,7 +286,7 @@ export function ResultsPage() {
   };
 
   const resetFilters = () => {
-    const reset = {} satisfies SearchLocalFilters;
+    const reset = {} satisfies SearchFilters;
     setDraftFilters(reset);
     setFilters(reset);
     setLocationError("");
@@ -477,19 +421,7 @@ export function ResultsPage() {
             />
           ))}
 
-          {!busy && !error && cards.length > 0 && (
-            <footer className="ask-results-pagination">
-              <button type="button" disabled={page === 0} onClick={() => setPage(current => current - 1)}>
-                <ChevronLeft size={17} />
-                Назад
-              </button>
-              <span>{page + 1}</span>
-              <button type="button" disabled={!hasNext} onClick={() => setPage(current => current + 1)}>
-                Далее
-                <ChevronRight size={17} />
-              </button>
-            </footer>
-          )}
+          {!error && cards.length > 0 && hasNext && <div ref={loadMoreRef} aria-hidden="true" />}
         </section>
 
         <aside className={`ask-result-detail ask-surface${selected ? " is-open" : ""}`}>
@@ -548,13 +480,6 @@ export function ResultsPage() {
                   </div>
                 )}
 
-                {selected.openingLabel && (
-                  <div className="ask-result-detail__fact">
-                    <Clock3 size={18} />
-                    <span>{selected.openingLabel}</span>
-                  </div>
-                )}
-
                 {selected.businessProfile?.description && (
                   <section>
                     <h3>О бизнесе</h3>
@@ -563,6 +488,12 @@ export function ResultsPage() {
                 )}
               </div>
               <footer className="ask-result-detail__actions">
+                {selected.purchaseDestinations?.map((destination, index) => (
+                  <a key={`${destination.label}-${destination.url}-${index}`} className="ask-secondary-button" href={destination.url} target="_blank" rel="noreferrer">
+                    <ExternalLink size={17} />
+                    {destination.label}
+                  </a>
+                ))}
                 <button type="button" className="ask-primary-button" onClick={() => openChat(selected)}>
                   <MessageCircle size={17} />
                   Написать

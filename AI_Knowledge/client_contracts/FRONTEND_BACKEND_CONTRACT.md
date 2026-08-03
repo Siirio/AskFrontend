@@ -44,6 +44,8 @@ There are three distinct entry paths into the system. They are not three equal "
 
 Customer registration does not send a legal-acceptance flag. After contact verification, role selection requires a dedicated `POST /api/v1/legal/registration-acceptances`: customers accept `USER_TERMS` and `PRIVACY_POLICY`; sellers accept `SELLER_TERMS` and `PERSONAL_DATA_CONSENT`. For a newly created Google identity, the backend callback adds `registration=1`; the frontend keeps that pending-registration state in session storage until this acceptance succeeds and does not depend on `AuthSessionResponse.requiresRoleSelection`.
 
+Session restore also returns `pendingLegalDocuments`. Outside the registration flow, a non-empty list blocks protected routes, loads active versions from `GET /api/v1/legal/documents`, posts `/api/v1/legal/acceptances`, and refreshes the session. Failed writes keep the gate active.
+
 `POST /api/v1/auth/customer/register` returns `409 EMAIL_ALREADY_REGISTERED` when the normalized email belongs to an active identity. The frontend must keep the registration form open, state that the account already exists, and direct the user to the `Sign in` tab; it must not open the verification-code step.
 
 Authenticated seller setup uses `POST /api/v1/business/onboarding`. It requires a business name, a selected or free-text business category, country, legal form, entity-backed `businessScope` (`ITEM`, `SERVICE`, or `BOTH`), `deliveryCoverage`, and `pickupAvailable`. `deliveryCoverage` is `NO_DELIVERY`, `SELECTED_CITIES`, `KAZAKHSTAN`, or `WORLDWIDE`; selected-city coverage also requires `deliveryCities`. Delivery and pickup are requested on the penultimate onboarding screen and remain editable in the Business profile. For `KZ_IP` and `KZ_TOO`, the UI also sends the 12-digit legal identifier (IIN/BIN) and legal name; it must not request verification source links. For `NONE`, at least one valid HTTP(S) verification source is mandatory. When the owner selects Ask managed import, the business cabinet opens a dialog containing only `preferredContactChannel` and `preferredContactValue`; source links collected during onboarding are submitted without being shown again.
@@ -234,16 +236,16 @@ The AI intent structurer returns a SearchPlan JSON. Backend validates and execut
 | `branchName` | String | Branch display name |
 | `branchAddress` | String | Branch street address |
 | `branchCity` | String | Branch city name |
-| `openingSummary` | Object | `{ state, timeZoneId, evaluatedAt, nextOpensAt, nextClosesAt }` — computed branch opening state |
-| `hasActiveDrop` | Boolean | Brand has active drop |
+| `purchaseDestinations` | Array | Ordered `{ label, url }` links for purchase or booking |
+| `hasActiveOffer` | Boolean | Item/Service has an active Unique Offer |
 | `contactActions` | [ContactActionSummary] | Available contact actions (Telegram, WhatsApp, Chat, etc.) |
 
 ### Generative UI Rules
 
 - Frontend renders only whitelisted components: ProductCard, ServiceCard, DropCard, BusinessCandidateCard.
 - Frontend never renders arbitrary HTML or inv invents UI from backend text.
-- Badges are backend-controlled; frontend maps badge strings to visual treatments.
-- Default sort is `intent_match` (relevance). `price_asc`/`price_desc` available as user choice, not default.
+- Badges use stable backend tokens; frontend maps `OFFICIAL_CHANNEL`, `COMPLETE_CARD`, and `PICKUP` to localized presentation.
+- Default sort is `relevance`. `distance`, `price_asc`, `price_desc`, and `unique_offers` are explicit user choices.
 
 ## Contact Actions
 
@@ -367,13 +369,14 @@ When a brand has an active drop, its product cards receive `hasActiveDrop: true`
 - `SpecialOpeningIntervalDto`: `{ date, closed?, opensAt?, closesAt? }` — date overrides for holidays or special events.
 - `BranchOpeningSummaryDto`: `{ state: "OPEN" | "CLOSED" | "UNKNOWN", timeZoneId?, evaluatedAt, nextOpensAt?, nextClosesAt? }` — computed by backend `BranchOpeningHoursPolicy`.
 - Frontend formats opening times using `Intl.DateTimeFormat` with the branch's IANA timezone; no manual UTC offset math.
-- Search result cards carry `openingSummary` for distance-aware open/closed display.
+- Search cards do not carry `openingSummary`; branch-management responses retain the computed schedule summary.
 - Schedule editors in branch create/edit forms use dayOfWeek dropdowns + time inputs for weeklyHours, and date pickers + closed checkbox + conditional time inputs for specialHours. Both support add/remove rows.
 
-### Search openNow filter
+### Search filtering and pagination
 
-- `POST /api/v1/search` accepts `filters.openNow?: boolean`. When `true`, backend filters results to branches currently open (per `BranchOpeningHoursPolicy`).
-- ResultsPage renders an `openNow` toggle button (Clock icon) in the sort rail sidebar. Toggling it resets to page 0 and re-fetches.
+- Search sorting and filtering are server-side across the full eligible catalogue.
+- The client requests bounded pages sequentially and appends them for infinite scroll until `hasNext=false`; it never downloads a fixed 500-result batch and never stops at an internal 200-result window.
+- Supported hard filters are category, city, country, price range, radius, business IDs, and map area. `openNow` is not a current search request field.
 
 ### Domain types (frontend)
 

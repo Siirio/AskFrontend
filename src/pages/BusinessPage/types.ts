@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { BrandProfileDto, BrandDropDto, BusinessProductDto, BusinessServiceDto, StaffDto, ChatConversationDto, ChatMessageDto } from "../../shared/api/dto";
+import type { BrandProfileDto, BrandDropDto, BusinessProductDto, BusinessServiceDto, PurchaseDestinationDto, StaffDto, ChatConversationDto, ChatMessageDto } from "../../shared/api/dto";
 import type { BranchDto } from "../../shared/api/domainTypes";
 import type { ManagedImportItem } from "../../shared/api/managedImportClient";
 import type { BusinessCatalogStatus } from "../../shared/api/sellerOnboardingClient";
@@ -12,6 +12,7 @@ export type BranchFormState = {
   address: string;
   addressDetails: string;
   cityId: string;
+  cityName: string;
   latitude: number | null;
   longitude: number | null;
   timeZoneId: string;
@@ -56,7 +57,7 @@ export interface ProductsTabProps {
   showProductForm: boolean;
   editProduct: BusinessProductDto | null;
   productForm: {
-    name: string; description: string; deepLink: string; price: string;
+    name: string; description: string; purchaseDestinations: PurchaseDestinationDto[]; price: string;
     categoryId: string; categoryLabel: string; tags: string; attributesText: string; isActive: boolean; images: CatalogImageDraft[];
   };
   activeBranchId: string;
@@ -72,7 +73,7 @@ export interface ProductsTabProps {
   setProductsPage: (p: number) => void;
   setShowProductForm: (v: boolean) => void;
   setProductForm: React.Dispatch<React.SetStateAction<{
-    name: string; description: string; deepLink: string; price: string;
+    name: string; description: string; purchaseDestinations: PurchaseDestinationDto[]; price: string;
     categoryId: string; categoryLabel: string; tags: string; attributesText: string; isActive: boolean; images: CatalogImageDraft[];
   }>>;
   setSelectedProductOfferIds: (s: Set<string>) => void;
@@ -97,7 +98,7 @@ export interface ServicesTabProps {
   editService: BusinessServiceDto | null;
   serviceForm: {
     name: string; description: string; basePrice: string; categoryId: string; categoryLabel: string;
-    serviceMode: "ON_DEMAND" | "SCHEDULED"; scheduleText: string; attributesText: string; isActive: boolean; images: CatalogImageDraft[];
+    serviceMode: "ON_DEMAND" | "SCHEDULED"; scheduleText: string; purchaseDestinations: PurchaseDestinationDto[]; attributesText: string; isActive: boolean; images: CatalogImageDraft[];
   };
   managedImportItems: Record<string, ManagedImportItem>;
   aiEnrichmentBusy: boolean;
@@ -109,7 +110,7 @@ export interface ServicesTabProps {
   setShowServiceForm: (v: boolean) => void;
   setServiceForm: React.Dispatch<React.SetStateAction<{
     name: string; description: string; basePrice: string; categoryId: string; categoryLabel: string;
-    serviceMode: "ON_DEMAND" | "SCHEDULED"; scheduleText: string; attributesText: string; isActive: boolean; images: CatalogImageDraft[];
+    serviceMode: "ON_DEMAND" | "SCHEDULED"; scheduleText: string; purchaseDestinations: PurchaseDestinationDto[]; attributesText: string; isActive: boolean; images: CatalogImageDraft[];
   }>>;
   setManagedImportDialogScope: (s: "ITEM" | "SERVICE" | "BOTH" | null) => void;
   setManagedImportChat: (item: ManagedImportItem | null) => void;

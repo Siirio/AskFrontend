@@ -1,5 +1,21 @@
 # Approved Logic Locks
 
+## LOCKED: Global server search with bounded infinite-scroll pages
+
+**Approved signal:** User clarification on 2026-08-03.
+
+**Protected behavior:** Search filters and sorting are sent to the backend and apply to the full eligible catalogue. Results load as bounded page 0, page 1, page 2, and so on, appending during infinite scroll until `hasNext=false`; the client neither filters only the loaded page nor requests one oversized catalogue batch. Match reasons are not rendered.
+
+**Scope:** ResultsPage, SearchFilterSort, askClient search contract, search DTOs.
+
+## LOCKED: Ordered purchase destinations and consent gate
+
+**Approved signal:** User clarification on 2026-08-03.
+
+**Protected behavior:** ITEM and SERVICE editors own ordered `{ label, url }` purchase destinations, search cards expose them, and purchase/booking actions render only from those server values. Authenticated protected routes remain blocked while `pendingLegalDocuments` is non-empty; acceptance uses the active server documents and refreshes the session.
+
+**Scope:** Business catalog editors, search/detail cards, legal client, LegalConsentGate, AuthSession.
+
 ## LOCKED: Catalog galleries and responsive result details
 
 **Approved signal:** User clarification on 2026-08-02.

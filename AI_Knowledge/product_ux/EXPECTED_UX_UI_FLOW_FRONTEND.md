@@ -50,9 +50,9 @@ Ask не должен быть местом, где бренды выставл�
 7. Чем бренд отличается
 8. Действие: открыть мини-сайт, уточнить, перейти в канал, начать чат
 
-### 0.3 Сортировка по умолчанию — intent_match, не цена
+### 0.3 Сортировка по умолчанию — relevance, не цена
 
-Сортировка по умолчанию — релевантность запросу (intent_match). Цена — фильтр, а не король сортировки. Сортировка "дешевле сверху" смертельна для брендовости.
+Сортировка по умолчанию — релевантность запросу (`relevance`). Цена — фильтр и явный выбор сортировки, а не порядок по умолчанию.
 
 ### 0.4 Brand Storefront (мини-сайт бренда)
 
@@ -1659,13 +1659,12 @@ Desktop не должен превращать Ask в тяжелый марке�
 
 ## 32. Anti-marketplace result card rules
 
-Search result cards must show why an offer fits the current intent.
+Search result cards preserve business identity and decision facts. Match reasons are response metadata and are not displayed.
 
 Visible card content:
 
 - business brand identity: name, logo or initial, brand color, short descriptor;
-- trust/completeness badges: official channel, complete card, pickup, active drop;
-- human-readable match reasons;
+- trust/completeness badges mapped from stable tokens: `OFFICIAL_CHANNEL`, `COMPLETE_CARD`, `PICKUP`;
 - branch context and pickup options;
 - confirmation state when availability still requires supplier check.
 

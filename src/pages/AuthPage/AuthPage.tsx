@@ -151,6 +151,7 @@ export function AuthPage() {
         ROLE_DOCUMENTS[registrationRole].map(document => document.code),
         i18n.resolvedLanguage?.split("-")[0] ?? "ru",
       );
+      await actions.refreshSession();
       if (registrationRole === "customer") {
         continueAsBuyer();
       } else {

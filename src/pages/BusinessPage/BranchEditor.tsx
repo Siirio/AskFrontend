@@ -16,14 +16,6 @@ type BranchEditorProps = {
 
 const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
 
-function normalizeCityName(value: string) {
-  return value
-    .toLocaleLowerCase()
-    .replace(/^(\u0433\.?|\u0433\u043e\u0440\u043e\u0434)\s*/u, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
 export function BranchEditor({ open, form, cities, onChange, onClose, onCreate, t }: BranchEditorProps) {
   const [step, setStep] = useState(0);
 
@@ -31,8 +23,8 @@ export function BranchEditor({ open, form, cities, onChange, onClose, onCreate, 
     if (open) setStep(0);
   }, [open]);
 
-  const addressReady = Boolean(form.name.trim() && form.address && form.cityId && form.latitude != null && form.longitude != null);
-  const resolvedAddress = [cities.find(city => city.id === form.cityId)?.name, form.address].filter(Boolean).join(", ");
+  const addressReady = Boolean(form.name.trim() && form.address && (form.cityId || form.cityName) && form.latitude != null && form.longitude != null);
+  const resolvedAddress = [form.cityName || cities.find(city => city.id === form.cityId)?.name, form.address].filter(Boolean).join(", ");
 
   const footer = step === 0 ? (
     <>
@@ -74,13 +66,13 @@ export function BranchEditor({ open, form, cities, onChange, onClose, onCreate, 
               initialLat={form.latitude ?? undefined}
               initialLng={form.longitude ?? undefined}
               onChange={(latitude, longitude, address, cityName) => {
-                const cityId = cities.find(city => normalizeCityName(city.name) === normalizeCityName(cityName || ""))?.id || "";
                 onChange(current => ({
                   ...current,
                   latitude,
                   longitude,
                   address: address || current.address,
-                  cityId: cityId || current.cityId,
+                  cityId: "",
+                  cityName: cityName || "",
                 }));
               }}
             />
