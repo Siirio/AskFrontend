@@ -4,7 +4,7 @@
 
 **Approved signal:** User clarification on 2026-08-03.
 
-**Protected behavior:** Search filters and sorting are sent to the backend and apply to the full eligible catalogue. Results load as bounded page 0, page 1, page 2, and so on, appending during infinite scroll until `hasNext=false`; the client neither filters only the loaded page nor requests one oversized catalogue batch. Match reasons are not rendered.
+**Protected behavior:** Search filters and sorting are sent to the backend and apply to the full eligible catalogue. Results load as bounded page 0, page 1, page 2, and so on, appending during infinite scroll until `hasNext=false`; the client neither filters only the loaded page nor requests one oversized catalogue batch. Company choices and counts come from full-query backend facets computed without the active `businessIds` filter and are never derived from loaded cards. Match reasons are not rendered.
 
 **Scope:** ResultsPage, SearchFilterSort, askClient search contract, search DTOs.
 

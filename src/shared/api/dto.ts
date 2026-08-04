@@ -122,11 +122,18 @@ export type SearchConstraintDto = {
   source: string;
 };
 
+export type SearchCompanyFacetDto = {
+  businessId: string;
+  businessName: string;
+  resultCount: number;
+};
+
 export type SearchV2ResponseDto = {
   rawQuery: string;
   mode: "ITEM" | "SERVICE";
   understoodQuery: string;
   sections: SearchV2SectionDto[];
+  companyFacets: SearchCompanyFacetDto[];
   interpretedConstraints: SearchConstraintDto[];
   page: number;
   pageSize: number;

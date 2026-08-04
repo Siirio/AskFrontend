@@ -136,6 +136,7 @@ export function ResultsPage() {
     city: initialCity || undefined,
   });
   const [sourceCards, setSourceCards] = useState<SearchResultCard[]>([]);
+  const [companies, setCompanies] = useState<SearchCompanyOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [hasNext, setHasNext] = useState(false);
@@ -143,24 +144,6 @@ export function ResultsPage() {
   const [error, setError] = useState("");
   const [locationError, setLocationError] = useState("");
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-
-  const companies = useMemo<SearchCompanyOption[]>(() => {
-    const values = new Map<string, SearchCompanyOption>();
-    sourceCards.forEach(card => {
-      if (!card.businessId) return;
-      const existing = values.get(card.businessId);
-      if (existing) {
-        existing.resultCount += 1;
-        return;
-      }
-      values.set(card.businessId, {
-        businessId: card.businessId,
-        businessName: card.brandName || card.title,
-        resultCount: 1,
-      });
-    });
-    return [...values.values()];
-  }, [sourceCards]);
 
   const cards = sourceCards;
 
@@ -198,6 +181,11 @@ export function ResultsPage() {
       .then(response => {
         if (!active) return;
         const nextCards = response.sections.flatMap(section => section.cards.map(mapCard));
+        setCompanies((response.companyFacets ?? []).map(facet => ({
+          businessId: facet.businessId,
+          businessName: facet.businessName,
+          resultCount: facet.resultCount,
+        })));
         setSourceCards(current => {
           if (page === 0) return nextCards;
           const known = new Set(current.map(card => card.id));
@@ -210,7 +198,10 @@ export function ResultsPage() {
       })
       .catch(reason => {
         if (!active) return;
-        if (page === 0) setSourceCards([]);
+        if (page === 0) {
+          setSourceCards([]);
+          setCompanies([]);
+        }
         setError(reason instanceof Error ? reason.message : t("results.error.title"));
       })
       .finally(() => {

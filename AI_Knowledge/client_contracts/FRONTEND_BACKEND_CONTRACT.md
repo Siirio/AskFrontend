@@ -193,22 +193,26 @@ API responses should support:
 
 ## Search V2 / Generative UI
 
-`POST /api/v1/search` replaces the current search with a structured pipeline: raw query → AI intent structurer (SearchPlan JSON) → PostgreSQL in-memory scoring → SearchResponse with sections. Meilisearch integration is under investigation — evaluating whether it improves query understanding and guessing. Current search uses PostgreSQL as both source of truth and search engine.
+`POST /api/v1/search` runs the current structured search pipeline. Meilisearch applies hard filters, ranking, sorting, pagination, and company faceting across the eligible catalogue; PostgreSQL remains canonical and hydrates the returned page.
 
 ### SearchPlan Contract
 
-The AI intent structurer returns a SearchPlan JSON. Backend validates and executes it. Frontend never constructs or interprets SearchPlan — it sends rawQuery + scope and receives hydrated SearchResponse.
+The AI intent structurer returns a SearchPlan JSON. Backend validates and executes it. Frontend never constructs or interprets SearchPlan; it sends `rawQuery`, `mode`, paging, sort, explicit filters, optional user location, and locale, then receives a hydrated `SearchResponse`.
 
 ### SearchResponse
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `searchSessionId` | UUID | Search session for history and tabs |
 | `rawQuery` | String | Original query preserved |
-| `scope` | String | `PRODUCT` or `SERVICE` |
-| `understoodQuery` | String | How AI understood the query (Russian) |
+| `mode` | String | `ITEM` or `SERVICE` |
+| `understoodQuery` | String | Normalized query interpretation |
 | `sections` | [SearchSection] | Result sections in display order |
-| `supplierCheckCount` | Integer | How many auto supplier checks were created |
+| `companyFacets` | [SearchCompanyFacet] | Full-query company options `{ businessId, businessName, resultCount }` |
+| `interpretedConstraints` | [SearchConstraint] | Applied explicit and interpreted constraints |
+| `page` | Integer | Current zero-based page |
+| `pageSize` | Integer | Requested bounded page size |
+| `total` | Integer | Total matching rows across the full result set |
+| `hasNext` | Boolean | Whether another bounded page exists |
 
 ### SearchSection
 
@@ -377,6 +381,7 @@ When a brand has an active drop, its product cards receive `hasActiveDrop: true`
 - Search sorting and filtering are server-side across the full eligible catalogue.
 - The client requests bounded pages sequentially and appends them for infinite scroll until `hasNext=false`; it never downloads a fixed 500-result batch and never stops at an internal 200-result window.
 - Supported hard filters are category, city, country, price range, radius, business IDs, and map area. `openNow` is not a current search request field.
+- Company choices and counts come from `companyFacets`, calculated over the full current query with all active filters except `businessIds`; the client never derives them from loaded cards.
 
 ### Domain types (frontend)
 
