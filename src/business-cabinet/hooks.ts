@@ -459,10 +459,36 @@ export function useCitySuggestions(query: string): {
     setLoading(true);
     api
       .getCities(controller.signal)
-      .then((rows) => setCities(rows ?? []))
-      .catch(() => setCities([]))
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      .then((rows) => {
+        if (!controller.signal.aborted) setCities(rows ?? []);
+      })
+      .catch(() => {
+        // The field still accepts free text, so an outage degrades to "type it
+        // yourself" rather than a dead end — and a later mount may retry.
+        if (!controller.signal.aborted) {
+          requested.current = false;
+          setCities([]);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+      // **Clearing the guard here is what makes this work at all.** React
+      // StrictMode double-invokes effects on mount (dev): run → cleanup → run.
+      // Without this line the first run's cleanup aborted the request while the
+      // guard blocked the second run from starting another, so the fetch was
+      // CANCELLED and never retried — the city list stayed empty forever, and
+      // the only trace was a lone `(canceled)` row in the network tab.
+      //
+      // Search's copy of this hook has the same structure and is not bitten,
+      // because its effect is gated on a typed query and therefore first fires
+      // AFTER mount, where StrictMode does not double-invoke. That is luck, not
+      // design, so the same reset was added there too.
+      requested.current = false;
+    };
   }, []);
 
   const trimmed = query.trim().toLowerCase();

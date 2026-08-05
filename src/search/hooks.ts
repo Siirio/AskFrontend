@@ -87,7 +87,16 @@ export function useCitySuggestions(query: string): CitySuggestions {
         if (!controller.signal.aborted) setLoading(false);
       });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      // Cleared so a remount can retry. Not currently reachable — this effect is
+      // gated on a typed query, so it first fires AFTER mount, where React
+      // StrictMode does not double-invoke. The cabinet's copy runs on mount and
+      // WAS bitten by exactly this: cleanup aborted the request, the guard
+      // blocked the retry, and the list stayed empty with one `(canceled)` row
+      // as the only evidence. Hardened here so the difference stays luck-free.
+      requested.current = false;
+    };
   }, [ready]);
 
   const suggestions = useMemo(() => {
