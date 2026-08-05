@@ -60,22 +60,38 @@ async function seed(page: Page, locale: string) {
  *  backend's populated scenario, so the Catalog Page renders real cards with
  *  badges, an offer chip and the full sort row rather than an empty state. */
 const ROUTES = [
-  ["Home", "/app"],
-  ["Catalog", "/app/catalog?query=roses&mode=ITEM"],
-  ["Login", "/app/auth/login"],
-  ["Register", "/app/auth/register"],
+  // `ready` is a locator that only resolves once the route's WIDEST real
+  // content is on screen. Waiting for `<main>` alone is not enough: an empty
+  // shell never overflows, so the assertion would pass on nothing and the guard
+  // would quietly stop guarding — the same "green run proving nothing" failure
+  // this suite has been bitten by before. Each is chosen as the element most
+  // likely to be the overflow culprit.
+  ["Home", "/app", (p: Page) => p.getByRole("textbox").first()],
+  [
+    "Catalog",
+    "/app/catalog?query=roses&mode=ITEM",
+    // The sort row — four tabs, the widest thing on the page in ru/kk.
+    (p: Page) => p.getByRole("group").first(),
+  ],
+  ["Login", "/app/auth/login", (p: Page) => p.getByRole("button").first()],
+  [
+    "Register",
+    "/app/auth/register",
+    (p: Page) => p.getByRole("button").first(),
+  ],
 ] as const;
 
 for (const locale of ["kk", "ru"] as const) {
-  for (const [name, path] of ROUTES) {
+  for (const [name, path, ready] of ROUTES) {
     test(`${name} does not scroll horizontally on a phone in ${locale}`, async ({
       page,
     }) => {
       await seed(page, locale);
       await page.goto(path);
-      // Wait for real content rather than a bare load: an empty shell never
-      // overflows, so asserting too early would pass on nothing.
       await expect(page.locator("main")).toBeVisible();
+      // The real gate — see the ROUTES comment. Without this the measurement
+      // can run against a shell that has not laid out its widest control yet.
+      await expect(ready(page)).toBeVisible();
 
       const { scrollWidth, clientWidth, widest } = await page.evaluate(() => {
         const doc = document.documentElement;

@@ -211,9 +211,10 @@ and **N12** (the presentation contract).
   search failure.
 
 ## Gaps (P9.4 — never fake client-side)
-- **Default sort is `relevance`** and stays that way (slice lock). Offer `distance` / `price_asc`
-  only as explicit user choices. `lowest_price` exists on the wire but has no vision entry —
-  do not surface it (P9.1).
+- **Default sort is `relevance`** and stays that way (slice lock). Offer `distance`,
+  `price_asc` and `unique_offers` only as explicit user choices. `price_desc` exists on the
+  wire and has no vision entry — do not surface it (P9.1). (`lowest_price` used to be the
+  example here; the backend REMOVED it on 2026-08-04.)
 - Never re-sort or re-filter a rendered page client-side to fake a server capability.
 - ~~**Still missing for the vision's §4 controls (gate G1)**~~ — **ALL THREE DELIVERED
   2026-08-04.** `unique_offers` joined the `sort` regex, `explicitFilters.businessIds`

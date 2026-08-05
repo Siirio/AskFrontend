@@ -240,7 +240,8 @@ need not even match theirs. The seller still edits the field freely.
 **Where the composed address goes.** `CreateBranchRequest` has ONE `address` string and no
 `country`/`state`/`region` fields (verified against `kz.ask.business.branch.api.dto`), so the
 registry levels and the street line are joined into that one string by `formatKzAddress` —
-widest first. No DTO field is invented (P9.4). ⚠ `cityId` is still **not** sent — see below.
+widest first. No DTO field is invented (P9.4). **`cityId` IS sent** as of 2026-08-04, resolved
+at submit from the branch's Russian KATO name — see § *B3* below for how and why.
 
 ## B3 — CLOSED 2026-08-04. The backend normalised server-side; we send the RUSSIAN name
 

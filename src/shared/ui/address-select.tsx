@@ -103,8 +103,10 @@ export type KzPlace = {
   /** The most specific level answered, in the ACTIVE locale. For display. */
   placeName: string;
   /**
-   * The same level, always in RUSSIAN — for matching against a backend that
-   * stores Russian names.
+   * The narrowest level that is a CITY, always in RUSSIAN — for matching
+   * against a backend that stores Russian city names. Not a Russian copy of
+   * `placeName`: in Astana, Almaty and Shymkent the REGION is the city and
+   * `placeName` is its inner district, so the two deliberately differ.
    *
    * Not a duplicate of `placeName`, and the difference is load-bearing. Added
    * 2026-08-04 for AUDIT_1 B3: `GET /api/v1/cities/resolve?name=` matches
@@ -303,9 +305,15 @@ export function AddressSelect({
       localityName,
       // Narrowest first — the registry's own order of specificity.
       placeName: localityName ?? districtName ?? regionName,
-      // The same choice of level, read from `nameRus` instead of the locale.
-      placeNameRu:
-        localityItem?.nameRus ?? districtItem?.nameRus ?? region.nameRus,
+      // NOT simply the narrowest level in Russian — the narrowest level that is
+      // a CITY. For a republican city the region IS the city, and its "district"
+      // is a subdivision INSIDE it (`Есильский Район` in Astana), so taking the
+      // narrowest would hand the lookup a name no city table can hold. Oblast
+      // branches are unaffected: their district/settlement levels are genuinely
+      // not cities and are meant to miss.
+      placeNameRu: isRepublicanCity(region.id)
+        ? region.nameRus
+        : (localityItem?.nameRus ?? districtItem?.nameRus ?? region.nameRus),
       complete,
     };
   }, [region, oblastPick, cityDistrict, settlement, chunkState, locale]);

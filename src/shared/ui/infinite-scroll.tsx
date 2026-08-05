@@ -41,6 +41,7 @@ function InfiniteScroll({
   loader,
   endMessage,
   threshold = 200,
+  root = null,
   className,
   children,
   ...props
@@ -56,6 +57,14 @@ function InfiniteScroll({
   endMessage?: React.ReactNode;
   /** How far below the viewport the sentinel triggers, in px. */
   threshold?: number;
+  /**
+   * The scrolling ancestor to observe against. Omit for the viewport, which is
+   * the catalog's case. Pass the element when the list scrolls inside a box
+   * (a modal, a pane): an IntersectionObserver defaults its root to the
+   * viewport, so a sentinel inside an overflow container can sit "visible" by
+   * viewport maths and never fire, or fire immediately and load everything.
+   */
+  root?: Element | null;
   children: React.ReactNode;
 }) {
   const sentinelRef = React.useRef<HTMLDivElement | null>(null);
@@ -68,6 +77,18 @@ function InfiniteScroll({
     onLoadMoreRef.current = onLoadMore;
   }, [onLoadMore]);
 
+  // Guards the window between firing `onLoadMore` and the parent's `loading`
+  // prop coming back true. That window is a full React render, and the observer
+  // can fire more than once inside it — a fast scroll past the sentinel, or a
+  // second entry in the same callback batch — which would request the same page
+  // twice and append it twice. The prop alone cannot close this: it is state
+  // owned by someone else and arrives a render late. Reset below, once the
+  // caller confirms the load actually finished.
+  const inFlightRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!loading) inFlightRef.current = false;
+  }, [loading]);
+
   React.useEffect(() => {
     const sentinel = sentinelRef.current;
     // No sentinel is rendered once `hasMore` is false, so there is nothing to
@@ -77,19 +98,20 @@ function InfiniteScroll({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // `loading` is read from the ref-free closure deliberately: the effect
-        // re-runs when it changes, so the observer always sees a current value
-        // and a second page cannot be requested while the first is in flight.
-        if (entries[0]?.isIntersecting && !loading) {
-          onLoadMoreRef.current();
-        }
+        if (!entries[0]?.isIntersecting) return;
+        // Both conditions are needed and neither is redundant: `loading` covers
+        // the steady state the caller controls, `inFlightRef` covers the render
+        // gap before it flips.
+        if (loading || inFlightRef.current) return;
+        inFlightRef.current = true;
+        onLoadMoreRef.current();
       },
-      { rootMargin: `0px 0px ${threshold}px 0px` },
+      { root, rootMargin: `0px 0px ${threshold}px 0px` },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loading, threshold]);
+  }, [hasMore, loading, threshold, root]);
 
   return (
     <div className={cn("flex flex-col", className)} {...props}>
@@ -114,13 +136,25 @@ function InfiniteScroll({
   );
 }
 
-/** The default loader body: our Spinner plus the caller's translated label.
- *  Kept beside the component so a caller does not re-invent the arrangement,
- *  but the STRING still comes from the caller (shared/ui carries no copy). */
+/**
+ * The default loader body: our Spinner plus the caller's translated label.
+ * Kept beside the component so a caller does not re-invent the arrangement,
+ * but the STRING still comes from the caller (shared/ui carries no copy).
+ *
+ * The Spinner is `aria-hidden` here, which is the opposite of how it is used
+ * everywhere else and is deliberate. Spinner carries `role="status"` and an
+ * `sr-only` copy of its label — correct when it stands alone, but this sits
+ * INSIDE the component's `aria-live="polite"` region and beside the same label
+ * as visible text. Left exposed it is both a nested live region and a second
+ * copy of the same words, so a screen reader announces the label twice. The
+ * visible text does the announcing; the spinner is decoration at this spot.
+ */
 function InfiniteScrollLoader({ label }: { label: string }) {
   return (
     <span className="flex items-center gap-2 text-sm text-foreground-muted">
-      <Spinner label={label} />
+      <span aria-hidden="true" className="inline-flex">
+        <Spinner label={label} />
+      </span>
       {label}
     </span>
   );

@@ -34,7 +34,11 @@ function card(overrides = {}) {
     component: "ItemCard",
     result_id: "11111111-1111-1111-1111-111111111111",
     result_type: "ITEM",
-    business_id: "b1",
+    // A real UUID, not "b1". `SearchCardResponse.businessId` is a `UUID` and
+    // the Companies filter sends `explicitFilters.businessIds: List<UUID>` —
+    // a short opaque id would let a filter built against this stub pass here
+    // and 400 against the real backend on a validation the stub never had.
+    business_id: "b1111111-1111-1111-1111-111111111111",
     business_name: "Aigul Flowers",
     brand_color: "#e8734a",
     brand_logo_url: null,
@@ -86,56 +90,86 @@ function card(overrides = {}) {
   };
 }
 
+/**
+ * Company facets, DERIVED from the cards a response actually carries — the same
+ * direction as the real `toCompanyFacets`, which counts businesses across the
+ * matching set and sorts by count desc then name.
+ *
+ * Deriving rather than hand-writing matters here: a hand-written list can name a
+ * company that appears in no card, and a component reading it would pass against
+ * the stub and break in production. That is the e2e-stub lock applied to
+ * BEHAVIOUR, not just to field names — the stub has to answer the way the
+ * backend answers, not merely in the right shape.
+ *
+ * The one thing a single-page mock cannot reproduce is the backend counting the
+ * FULL result set with `businessIds` excluded from the filters. Stated rather
+ * than faked.
+ */
+function companyFacetsFrom(sections) {
+  const counts = new Map();
+  for (const section of sections) {
+    for (const c of section.cards ?? []) {
+      const key = c.business_id;
+      const entry = counts.get(key) ?? {
+        business_id: key,
+        business_name: c.business_name,
+        result_count: 0,
+      };
+      entry.result_count += 1;
+      counts.set(key, entry);
+    }
+  }
+  return [...counts.values()].sort(
+    (a, b) =>
+      b.result_count - a.result_count ||
+      a.business_name.localeCompare(b.business_name),
+  );
+}
+
 function sectionsResponse(rawQuery, overrides = {}) {
+  const sections = overrides.sections ?? [
+    {
+      type: "exact",
+      kind: "EXACT",
+      title: "Совпадения",
+      relaxed_constraints: null,
+      reason: null,
+      cards: [card()],
+    },
+    {
+      type: "alternatives",
+      kind: "ALTERNATIVE",
+      title: "Альтернативы",
+      relaxed_constraints: ["max_price"],
+      reason:
+        "No additional exact matches were found; relaxed constraints: max_price",
+      cards: [card({ result_id: "22222222-2222-2222-2222-222222222222" })],
+    },
+  ];
+
   return {
     raw_query: rawQuery,
     mode: "ITEM",
     understood_query: "Looking for fresh roses",
-    sections: [
-      {
-        type: "exact",
-        kind: "EXACT",
-        title: "Совпадения",
-        relaxed_constraints: null,
-        reason: null,
-        cards: [card()],
-      },
-      {
-        type: "alternatives",
-        kind: "ALTERNATIVE",
-        title: "Альтернативы",
-        relaxed_constraints: ["max_price"],
-        reason:
-          "No additional exact matches were found; relaxed constraints: max_price",
-        cards: [card({ result_id: "22222222-2222-2222-2222-222222222222" })],
-      },
-    ],
+    sections,
     // `SearchResponse.companyFacets` (backend `526871a`) — the Companies
-    // filter's option list. Computed server-side over the whole query with
-    // every filter EXCEPT `businessIds`, so selecting a company never shrinks
-    // the list, and counts cover the full result set rather than this page.
-    // Sorted by count desc then name, which is the order the backend emits and
-    // the client renders as-is.
-    company_facets: [
-      {
-        business_id: "b1",
-        business_name: "Aigul Flowers",
-        result_count: 2,
-      },
-      {
-        business_id: "b2",
-        business_name: "Astana Bloom",
-        result_count: 1,
-      },
-    ],
+    // filter's option list, derived from `sections` so it can never disagree
+    // with the cards beside it. See `companyFacetsFrom`.
+    company_facets: companyFacetsFrom(sections),
     interpreted_constraints: [],
     page: 0,
     page_size: 20,
-    total: 2,
+    total: sections.reduce((n, s) => n + (s.cards?.length ?? 0), 0),
     has_next: false,
     ambiguity: null,
     suggestions: [],
     ...overrides,
+    // Re-applied AFTER the spread: an override supplying `sections` must not
+    // leave the facets and total describing the DEFAULT cards. Every scenario
+    // below overrides sections, so without this the two would silently diverge
+    // — which is the exact defect this whole change fixes.
+    sections,
+    company_facets: companyFacetsFrom(sections),
   };
 }
 
