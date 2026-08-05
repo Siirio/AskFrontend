@@ -355,6 +355,11 @@ export type CatalogSearchParams = {
   radiusMeters?: string;
   lat?: string;
   lng?: string;
+  /** The Companies filter, as a COMMA-SEPARATED list of business ids. One param
+   *  rather than a repeated `businessIds=` so `useUpdateCatalogParams` — which
+   *  works in `set`/`delete` pairs over `URLSearchParams` — needs no special
+   *  case, and so the catalog remount key (a flat string) stays comparable. */
+  businessIds?: string;
   page?: string;
 };
 
@@ -381,6 +386,7 @@ export function parseCatalogSearchParams(
     radiusMeters: firstValue(raw.radiusMeters),
     lat: firstValue(raw.lat),
     lng: firstValue(raw.lng),
+    businessIds: firstValue(raw.businessIds),
     page: firstValue(raw.page),
   };
 }
@@ -432,6 +438,16 @@ export function toSearchRequest(
   // is the one that needed an explicit permission grant to exist at all.
   // Cross-field rule two: radiusMeters requires userLocation, so a radius with
   // no coordinate fix is dropped rather than sent.
+  // The Companies filter. Capped at 100 to match `@Size(max = 100)` — a longer
+  // list is a 400, and silently truncating is the honest degrade here because
+  // the cap is far beyond any list a person assembles by clicking.
+  const businessIds = (params.businessIds ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .slice(0, 100);
+  if (businessIds.length > 0) explicitFilters.businessIds = businessIds;
+
   const useRadius = radiusMeters !== undefined && hasLocation;
   if (useRadius) {
     explicitFilters.radiusMeters = radiusMeters;

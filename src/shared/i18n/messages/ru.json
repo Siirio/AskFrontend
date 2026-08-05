@@ -103,7 +103,8 @@
       "location": "Где искать",
       "locationAnywhere": "Везде",
       "locationCity": "В городе",
-      "locationExclusive": "Можно выбрать только один способ"
+      "locationExclusive": "Можно выбрать только один способ",
+      "companies": "Компании"
     },
     "results": {
       "section": {

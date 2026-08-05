@@ -103,7 +103,8 @@
       "location": "Қайдан іздеу",
       "locationAnywhere": "Барлық жерде",
       "locationCity": "Қалада",
-      "locationExclusive": "Тек бір тәсілді таңдауға болады"
+      "locationExclusive": "Тек бір тәсілді таңдауға болады",
+      "companies": "Компаниялар"
     },
     "results": {
       "section": {

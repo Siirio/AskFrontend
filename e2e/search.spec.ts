@@ -324,3 +324,55 @@ test("Distance without a location fix asks for one instead of pretending", async
   // the server was still ordering by relevance.
   await expect(page).not.toHaveURL(/[?&]sort=distance/);
 });
+
+// The Companies filter (PRODUCT_VISION §4) — gate G1's last parked control.
+// Options come from `SearchResponse.companyFacets`, computed server-side over
+// the whole query; deriving them from loaded cards is forbidden by both our
+// server-capability lock and the backend's own.
+test("the Companies filter offers server facets and sends the ids it selects", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses-companies&mode=ITEM");
+
+  // Two companies in the facets, so the control renders (it hides below two —
+  // a filter that can only be a no-op is noise).
+  const aigul = page.getByRole("checkbox", { name: /Aigul Flowers/ });
+  await expect(aigul).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: /Astana Bloom/ }),
+  ).toBeVisible();
+
+  await aigul.check();
+  await page.getByRole("button", { name: "Apply filters" }).click();
+
+  // The id travels as a real UUID — `businessIds` is List<UUID> on the wire, so
+  // a short opaque id would 400 against the backend.
+  await expect(page).toHaveURL(
+    /[?&]businessIds=b1111111-1111-1111-1111-111111111111/,
+  );
+});
+
+// The primary catalog image (PRODUCT_VISION UF 2.1, owner append 2026-08-04).
+test("a result card shows its primary image, and no image is a normal state", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses&mode=ITEM");
+
+  // `images[0]` only — the rest of the gallery belongs to the Product Card.
+  // next/image rewrites the src, so match the encoded original rather than the
+  // literal URL.
+  const image = page.getByRole("img", { name: "Fresh rose bouquet" }).first();
+  await expect(image).toBeVisible();
+  await expect(image).toHaveAttribute("src", /rose-1\.webp/);
+
+  // A card with NO images renders none — and renders no placeholder either. An
+  // empty frame would mark every imageless listing as "missing", which reads as
+  // a judgement about the business (the vision append forbids it).
+  await page.goto("/app/catalog?query=roses-noimages&mode=ITEM");
+  await expect(page.getByText("Aigul Flowers").first()).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Fresh rose bouquet" }),
+  ).toHaveCount(0);
+});

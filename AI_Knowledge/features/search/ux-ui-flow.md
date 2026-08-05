@@ -242,3 +242,41 @@ Distance REQUESTS the fix (never auto-prompted on load), the sort applies once g
 denial says so rather than pretending. The two controls share one grammar because they share one
 requirement. The fallback in `toSearchRequest` survives only as a last-resort guard for a URL the
 UI cannot police.
+
+## The Companies filter (2026-08-04) — gate G1's last parked control
+
+A checkbox list in the filter panel, one row per company, with its result count
+right-aligned in tabular numerals.
+
+**Every option and count comes from `SearchResponse.companyFacets`**, computed
+server-side over the whole query. Deriving them from the loaded cards — the obvious
+shortcut — would show only companies whose results happen to be on screen, and the
+list would grow as you scroll. Both our server-capability lock and the backend's own
+lock forbid exactly that.
+
+The backend computes facets with every active filter **except `businessIds`**, which
+is what makes a multi-select possible: with the selection applied, the list would
+collapse to what is already chosen and a second company could never be added.
+
+**The count is metadata, never a ranking.** It states how many results a company has
+for this query — a fact about the query, not a judgement about the business. No bar,
+no share-of-total, nothing that reads as "bigger is better" (the same rule that makes
+badges metadata rather than a score).
+
+The control **hides below two companies**: a filter that can only ever be a no-op is
+noise. Selection travels as one comma-separated `businessIds` param, capped at 100 to
+match `@Size(max = 100)`.
+
+## The primary catalog image on a result card (2026-08-04)
+
+`images[0]` only — at most three exist and the rest belong to the Product Card (#3).
+The seller owns the order (`@OrderColumn(display_order)`); it is never re-sorted here.
+
+**A card with no image is a first-class state and renders nothing in its place.** No
+grey box, no placeholder icon: an empty frame would give every imageless listing a
+visible "missing" marker, which reads as a judgement about the business. Most listings
+have no image until the seller cabinet ships (#7/#8), so this is the COMMON case, not
+the edge one — the vision append says so explicitly.
+
+`alt` is the item title, because the image *is* the item; a separate description would
+be duplicated text for a screen reader.

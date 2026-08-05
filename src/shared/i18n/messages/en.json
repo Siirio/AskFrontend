@@ -103,7 +103,8 @@
       "location": "Where to search",
       "locationAnywhere": "Anywhere",
       "locationCity": "In a city",
-      "locationExclusive": "Only one can be chosen"
+      "locationExclusive": "Only one can be chosen",
+      "companies": "Companies"
     },
     "results": {
       "section": {

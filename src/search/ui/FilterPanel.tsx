@@ -8,8 +8,9 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 
 import { useGeolocation, useUpdateCatalogParams } from "../hooks";
-import type { CatalogSearchParams } from "../model";
+import type { CatalogSearchParams, SearchCompanyFacet } from "../model";
 import { CityField } from "./CityField";
+import { CompanyFilter } from "./CompanyFilter";
 import { Field } from "./Field";
 
 /** 100 km — the ONE radius the vision names (§4: "search within 100 km"), not
@@ -55,7 +56,13 @@ function initialMode(params: CatalogSearchParams): LocationMode {
  * the one exception: it needs the browser's geolocation permission (explicit
  * opt-in only, hooks.ts) before it can be applied at all.
  */
-export function FilterPanel({ params }: { params: CatalogSearchParams }) {
+export function FilterPanel({
+  params,
+  companyFacets,
+}: {
+  params: CatalogSearchParams;
+  companyFacets: SearchCompanyFacet[];
+}) {
   const t = useTranslations("search");
   const updateParams = useUpdateCatalogParams();
   const { state: geo, request: requestLocation } = useGeolocation();
@@ -64,6 +71,9 @@ export function FilterPanel({ params }: { params: CatalogSearchParams }) {
   const [maxPrice, setMaxPrice] = useState(params.maxPrice ?? "");
   const [city, setCity] = useState(params.city ?? "");
   const [mode, setMode] = useState<LocationMode>(() => initialMode(params));
+  const [companies, setCompanies] = useState<string[]>(() =>
+    (params.businessIds ?? "").split(",").filter(Boolean),
+  );
 
   const minPriceId = useId();
   const maxPriceId = useId();
@@ -80,6 +90,10 @@ export function FilterPanel({ params }: { params: CatalogSearchParams }) {
       minPrice,
       maxPrice,
       city: mode === "city" ? city.trim() : undefined,
+      // Empty means "no company filter", and `useUpdateCatalogParams` deletes a
+      // param set to "" — so clearing every box removes it from the URL rather
+      // than sending an empty list.
+      businessIds: companies.join(","),
       radiusMeters: useRadius ? String(HUNDRED_KM_METERS) : undefined,
       lat: useRadius ? String(geo.lat) : undefined,
       lng: useRadius ? String(geo.lng) : undefined,
@@ -179,6 +193,18 @@ export function FilterPanel({ params }: { params: CatalogSearchParams }) {
           </div>
         ) : null}
       </fieldset>
+
+      <CompanyFilter
+        facets={companyFacets}
+        selected={companies}
+        onToggle={(id) =>
+          setCompanies((prev) =>
+            prev.includes(id)
+              ? prev.filter((existing) => existing !== id)
+              : [...prev, id],
+          )
+        }
+      />
 
       <Button type="submit">{t("filters.apply")}</Button>
     </form>

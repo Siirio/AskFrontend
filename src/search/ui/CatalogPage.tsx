@@ -92,7 +92,10 @@ export async function CatalogPage({
       ) : response ? (
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <aside className="lg:w-64 lg:shrink-0">
-            <FilterPanel params={params} />
+            <FilterPanel
+              params={params}
+              companyFacets={response.companyFacets}
+            />
           </aside>
 
           <div className="flex flex-1 flex-col gap-6">

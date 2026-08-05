@@ -41,10 +41,39 @@ export function ResultCard({ card }: { card: SearchCardResponse }) {
     card.badges,
     card.hasActiveOffer,
   );
+  // First is primary — the backend orders the gallery and the seller owns that
+  // order (`@OrderColumn(display_order)`); never re-pick or re-sort here.
+  const primaryImage = card.images?.[0] ?? null;
 
   return (
     <Card className="gap-3 py-4">
       <CardContent className="flex flex-col gap-3 px-4">
+        {/* The PRIMARY catalog image (PRODUCT_VISION UF 2.1, owner append
+            2026-08-04). At most three exist; the rest belong to the Product
+            Card (#3), so the row shows only `images[0]`.
+
+            A card with NO image is a first-class state, not a broken one — most
+            listings have none until sellers upload, and nothing renders in its
+            place. No grey box, no placeholder icon: an empty frame would give
+            every imageless listing a visible "missing" marker, which reads as a
+            judgement about the business. The vision append says so explicitly.
+
+            `sizes` matches the grid (1 / 2 / 3 columns) so the optimizer picks a
+            sensible width instead of shipping a full-width source to a third of
+            a row. `alt` is the item title — the image IS the item, so a separate
+            description would be duplicated text for a screen reader. */}
+        {primaryImage ? (
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md">
+            <Image
+              src={primaryImage.url}
+              alt={card.title}
+              fill
+              sizes="(min-width: 1024px) 20rem, (min-width: 640px) 45vw, 90vw"
+              className="object-cover"
+            />
+          </div>
+        ) : null}
+
         {/* Brand layer */}
         <div className="flex items-center gap-3">
           <span

@@ -51,6 +51,13 @@ function card(overrides = {}) {
     // uploaded none — never null. Stubbed even though no component reads it
     // yet: a stub that omits a live field stops mirroring the DTO, which is
     // the whole point of the e2e-stub lock.
+    // `media.ask.test` does not resolve, ON PURPOSE — it is not a real host and
+    // must not become one. next/image tries to OPTIMIZE it server-side and logs
+    // `ENOTFOUND` during the run; that is expected noise, not a failure. The
+    // <img> still renders with the encoded original in its `src`, which is what
+    // the card test asserts. Do not "fix" it by pointing at a live URL: an e2e
+    // suite that fetches the public internet is slower and flakier than one
+    // that does not, and nothing here tests image DELIVERY.
     images: [
       { id: "img-1", url: "https://media.ask.test/items/rose-1.webp" },
       { id: "img-2", url: "https://media.ask.test/items/rose-2.webp" },
@@ -314,6 +321,58 @@ const server = createServer(async (req, res) => {
                         : `Filler ${page}-${i}`,
                   }),
                 ),
+              },
+            ],
+          }),
+        ),
+      );
+      return;
+    }
+    // TWO companies, so the Companies filter has something to choose between.
+    // Facets are derived from these cards by `companyFacetsFrom`, exactly as the
+    // backend derives them from the matching set.
+    if (rawQuery === "roses-companies") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          sectionsResponse(rawQuery, {
+            sections: [
+              {
+                type: "exact",
+                kind: "EXACT",
+                title: "Exact matches",
+                relaxed_constraints: null,
+                reason: null,
+                cards: [
+                  card(),
+                  card({
+                    result_id: "33333333-3333-3333-3333-333333333333",
+                    business_id: "b2222222-2222-2222-2222-222222222222",
+                    business_name: "Astana Bloom",
+                  }),
+                ],
+              },
+            ],
+          }),
+        ),
+      );
+      return;
+    }
+    // A seller who uploaded nothing — `toCard()` defaults `images` to an empty
+    // list, so this is the COMMON case until the seller cabinet ships (#7/#8).
+    if (rawQuery === "roses-noimages") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          sectionsResponse(rawQuery, {
+            sections: [
+              {
+                type: "exact",
+                kind: "EXACT",
+                title: "Exact matches",
+                relaxed_constraints: null,
+                reason: null,
+                cards: [card({ images: [] })],
               },
             ],
           }),
