@@ -27,6 +27,17 @@ const CUSTOMER_SESSION = {
   all_roles: ["CUSTOMER"],
 };
 
+/** Grant a location fix. The Distance sort REQUIRES `userLocation` since
+ *  backend `c56f75c` (`isDistanceLocationValid`), so `SortControl` asks for one
+ *  before it will apply the sort — a test that clicks Distance without this is
+ *  testing the denied path, not the sort. */
+async function grantLocation(page: Page) {
+  await page.context().grantPermissions(["geolocation"]);
+  await page
+    .context()
+    .setGeolocation({ latitude: 43.2389, longitude: 76.8897 });
+}
+
 async function seedSession(page: Page) {
   await page.addInitScript(() =>
     localStorage.setItem("ask.accessToken", "search-test-token"),
@@ -104,11 +115,16 @@ test("the sort control updates the URL and re-fetches with the new sort", async 
   page,
 }) => {
   await seedSession(page);
+  await grantLocation(page);
   await page.goto("/app/catalog?query=roses-sort&mode=ITEM");
   await expect(page.getByText("Aigul Flowers").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Distance" }).click();
+  // The coordinates travel WITH the sort — the backend rejects one without the
+  // other, so asserting only `sort=distance` would pass on a request that 400s.
   await expect(page).toHaveURL(/[?&]sort=distance/);
+  await expect(page).toHaveURL(/[?&]lat=/);
+  await expect(page).toHaveURL(/[?&]lng=/);
 
   await expect
     .poll(async () => {
@@ -155,6 +171,12 @@ test("the city filter lists real cities from GET /cities and picks one", async (
 }) => {
   await seedSession(page);
   await page.goto("/app/catalog?query=roses&mode=ITEM");
+
+  // The city field lives INSIDE the "In a city" location mode since 2026-08-04
+  // — `city`, `radiusMeters` and `mapArea` are mutually exclusive on the wire
+  // (`isLocationFilterValid`), so the UI asks "where" once as a radio group and
+  // the field only exists while that answer is selected.
+  await page.getByRole("radio", { name: "In a city" }).check();
 
   // `GET /cities` takes no parameters and answers CityDto {id, name}. Before
   // AUDIT_1 S1 the client read `.city`, so every row rendered blank and
@@ -239,7 +261,66 @@ test("changing the sort discards the accumulated pages rather than appending to 
   // A new sort is a NEW query. The vision requires the list to reset, which the
   // params-derived remount key enforces structurally — page 1's card must be
   // gone, not merely pushed further down.
-  await page.getByRole("button", { name: "Distance" }).click();
+  // "Cost" rather than "Distance": this test is about the RESET, and Distance
+  // would drag a geolocation grant into it for no extra coverage.
+  await page.getByRole("button", { name: "Cost" }).click();
   await expect(page.getByText("Paged bouquet page 0")).toBeVisible();
   await expect(page.getByText("Paged bouquet page 1")).toHaveCount(0);
+});
+
+// `isLocationFilterValid` (backend c56f75c) rejects any two of city /
+// radiusMeters / mapArea at once. The radio group makes the invalid combination
+// unreachable in the UI; this asserts that, because before 2026-08-04 the city
+// field and the radius checkbox were independent and ticking both was normal.
+test("where-to-search is ONE choice — picking the radius drops the city", async ({
+  page,
+}) => {
+  await seedSession(page);
+  // A pre-rework URL carrying BOTH. Reachable by bookmark or by hand, which is
+  // exactly why `toSearchRequest` enforces the rule too rather than trusting
+  // the control.
+  await page.goto(
+    "/app/catalog?query=roses&mode=ITEM&city=Almaty&radiusMeters=100000&lat=43.2&lng=76.9",
+  );
+
+  // Radius wins — the more specific answer, and the one that required an
+  // explicit permission grant. The city field is therefore not on screen.
+  await expect(
+    page.getByRole("radio", { name: "Search within 100 km" }),
+  ).toBeChecked();
+  await expect(page.getByRole("combobox", { name: "City" })).toHaveCount(0);
+
+  // Switching to the city mode reveals the field and deselects the radius —
+  // a radio group cannot hold both, which is the point.
+  await page.getByRole("radio", { name: "In a city" }).check();
+  await expect(page.getByRole("combobox", { name: "City" })).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: "Search within 100 km" }),
+  ).not.toBeChecked();
+});
+
+// The other half of the Distance rule. An earlier fix downgraded distance to
+// relevance inside `toSearchRequest`, which left the tab looking selected while
+// the results came back in a different order — a live-looking control that did
+// nothing (project lock). The sort must not be claimed unless it was applied.
+test("Distance without a location fix asks for one instead of pretending", async ({
+  page,
+}) => {
+  await seedSession(page);
+  // No grantPermissions — the browser denies, which is what a real refusal does.
+  // Its OWN query key: the mock records the last sort per `raw_query`, so
+  // sharing `roses-sort` with the test above makes the two clobber each other's
+  // recorded value (that convention is in mock-backend.mjs's header, and
+  // reusing the key made that test fail only when the whole file ran).
+  await page.goto("/app/catalog?query=roses-sort-denied&mode=ITEM");
+  await expect(page.getByText("Aigul Flowers").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Distance" }).click();
+
+  await expect(
+    page.getByText("Sorting by distance needs your location."),
+  ).toBeVisible();
+  // The URL never claimed the sort, so the tab never rendered as selected while
+  // the server was still ordering by relevance.
+  await expect(page).not.toHaveURL(/[?&]sort=distance/);
 });

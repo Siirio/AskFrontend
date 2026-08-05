@@ -86,7 +86,8 @@
       "relevance": "Актуальность",
       "distance": "Расстояние",
       "price_asc": "Цена",
-      "unique_offers": "Уникальные предложения"
+      "unique_offers": "Уникальные предложения",
+      "distanceNeedsLocation": "Для сортировки по расстоянию нужен доступ к геолокации."
     },
     "filters": {
       "minPrice": "Цена от",
@@ -98,7 +99,11 @@
       "locationPending": "Определяем ваше местоположение…",
       "locationDenied": "Доступ к геолокации отклонён.",
       "retryLocation": "Попробовать снова",
-      "apply": "Применить фильтры"
+      "apply": "Применить фильтры",
+      "location": "Где искать",
+      "locationAnywhere": "Везде",
+      "locationCity": "В городе",
+      "locationExclusive": "Можно выбрать только один способ"
     },
     "results": {
       "section": {

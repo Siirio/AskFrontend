@@ -86,7 +86,8 @@
       "relevance": "Сәйкестік",
       "distance": "Қашықтық",
       "price_asc": "Баға",
-      "unique_offers": "Бірегей ұсыныстар"
+      "unique_offers": "Бірегей ұсыныстар",
+      "distanceNeedsLocation": "Қашықтық бойынша сұрыптау үшін геолокация қажет."
     },
     "filters": {
       "minPrice": "Ең төмен баға",
@@ -98,7 +99,11 @@
       "locationPending": "Орналасқан жеріңіз анықталуда…",
       "locationDenied": "Геолокацияға рұқсат берілмеді.",
       "retryLocation": "Қайталап көру",
-      "apply": "Сүзгілерді қолдану"
+      "apply": "Сүзгілерді қолдану",
+      "location": "Қайдан іздеу",
+      "locationAnywhere": "Барлық жерде",
+      "locationCity": "Қалада",
+      "locationExclusive": "Тек бір тәсілді таңдауға болады"
     },
     "results": {
       "section": {

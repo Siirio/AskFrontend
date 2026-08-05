@@ -208,3 +208,37 @@ request that just failed.
 the page is shorter than the viewport, the sentinel starts inside the observer's `rootMargin`,
 and every page auto-loads with no scrolling — a scroll test written against that passes while
 asserting nothing about scrolling. Measured before the fix: page 1 arrived unscrolled.
+
+## Where to search — ONE control, three modes (2026-08-04)
+
+`SearchFilterRequest.isLocationFilterValid` (backend `c56f75c`) permits **at most one** of
+`city`, `radiusMeters` and `mapArea`. Two at once is a 400.
+
+The filter panel therefore asks *where* once, as a **radio group** — Anywhere · In a city ·
+Within 100 km — and the selected mode reveals its own detail beneath it. Modelling it this way
+means the UI cannot express the invalid state, so there is no validation rule to enforce and
+none to forget. Before this, the city field and the radius checkbox were independent controls
+and ticking both was reachable; that combination now fails on the wire, which is why this was a
+REWORK of shipped controls rather than an addition beside them.
+
+`toSearchRequest` enforces the same rule again, because the URL is reachable directly with a
+bookmarked or hand-edited link — the same reasoning as the route file's blank-`rawQuery` guard.
+Radius wins when both appear: it is the more specific answer and the one that required an
+explicit permission grant. **A UI that cannot express an invalid state does not make that state
+unreachable.**
+
+The map-area mode is deliberately absent from the union until a map surface exists — a radio
+that selects nothing would be a dead control (project lock).
+
+## Distance sorting asks for a location fix
+
+`isDistanceLocationValid` (same commit) makes `sort=distance` without `userLocation` a 400. The
+first attempt at handling that downgraded distance to relevance inside `toSearchRequest`, which
+produced a **live-looking control that did nothing**: the tab rendered selected while the results
+came back in a different order. An existing e2e test caught it, not review.
+
+`SortControl` now behaves like the radius filter, which had already solved this: clicking
+Distance REQUESTS the fix (never auto-prompted on load), the sort applies once granted, and a
+denial says so rather than pretending. The two controls share one grammar because they share one
+requirement. The fallback in `toSearchRequest` survives only as a last-resort guard for a URL the
+UI cannot police.

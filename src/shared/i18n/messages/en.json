@@ -86,7 +86,8 @@
       "relevance": "Relevance",
       "distance": "Distance",
       "price_asc": "Cost",
-      "unique_offers": "Unique offers"
+      "unique_offers": "Unique offers",
+      "distanceNeedsLocation": "Sorting by distance needs your location."
     },
     "filters": {
       "minPrice": "Min price",
@@ -98,7 +99,11 @@
       "locationPending": "Finding your location…",
       "locationDenied": "Location access was denied.",
       "retryLocation": "Try again",
-      "apply": "Apply filters"
+      "apply": "Apply filters",
+      "location": "Where to search",
+      "locationAnywhere": "Anywhere",
+      "locationCity": "In a city",
+      "locationExclusive": "Only one can be chosen"
     },
     "results": {
       "section": {

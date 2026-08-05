@@ -410,20 +410,33 @@ export function toSearchRequest(
   locale: string,
 ): SearchRequest {
   const explicitFilters: SearchFilterRequest = {};
-  if (params.city) explicitFilters.city = params.city;
   const minPrice = toNumber(params.minPrice);
   const maxPrice = toNumber(params.maxPrice);
   if (minPrice !== undefined) explicitFilters.minPrice = minPrice;
   if (maxPrice !== undefined) explicitFilters.maxPrice = maxPrice;
-  const radiusMeters = toNumber(params.radiusMeters);
-  // Cross-field rule (contracts.md): radiusMeters requires userLocation. Drop
-  // the radius silently if a coordinate fix never arrived rather than send a
-  // request the backend rejects.
+
   const lat = toNumber(params.lat);
   const lng = toNumber(params.lng);
   const hasLocation = lat !== undefined && lng !== undefined;
-  if (radiusMeters !== undefined && hasLocation) {
+  const radiusMeters = toNumber(params.radiusMeters);
+
+  // ── WHERE: at most ONE of city / radiusMeters / mapArea ────────────────────
+  // `isLocationFilterValid` on the backend rejects any two at once, so sending
+  // both is a 400 rather than a narrower search. `FilterPanel` cannot produce
+  // that combination — the control is a radio group — but this route is
+  // reachable DIRECTLY with a typed, bookmarked or pre-rework URL, which is the
+  // same reason the route file guards a blank `rawQuery`. A UI that cannot
+  // express an invalid state does not make the state unreachable.
+  //
+  // Radius wins when both are present: it is the more specific answer, and it
+  // is the one that needed an explicit permission grant to exist at all.
+  // Cross-field rule two: radiusMeters requires userLocation, so a radius with
+  // no coordinate fix is dropped rather than sent.
+  const useRadius = radiusMeters !== undefined && hasLocation;
+  if (useRadius) {
     explicitFilters.radiusMeters = radiusMeters;
+  } else if (params.city) {
+    explicitFilters.city = params.city;
   }
 
   const request: SearchRequest = {
@@ -432,7 +445,20 @@ export function toSearchRequest(
     locale,
     page: toNumber(params.page) ?? 0,
   };
+  // Third cross-field rule (`isDistanceLocationValid`, backend c56f75c): the
+  // distance SORT requires userLocation, so a `distance` with no fix is dropped
+  // to the default rather than sent as a 400 that would lose the whole search.
+  //
+  // **This is a LAST-RESORT guard, not the mechanism.** An earlier version made
+  // it the mechanism, and it produced a live-looking control that did nothing:
+  // the tab rendered selected while the results came back by relevance. The
+  // real fix is in `SortControl`, which asks for the fix before it ever sets
+  // `sort=distance` — so in the UI this branch is unreachable. It stays for the
+  // case the UI cannot cover: a typed, bookmarked or shared URL carrying
+  // `sort=distance` with no coordinates, the same class the `rawQuery` guard in
+  // the route file exists for.
   if (isSortOption(params.sort)) request.sort = params.sort;
+  if (request.sort === "distance" && !hasLocation) delete request.sort;
   if (hasLocation) request.userLocation = { lat, lng };
   if (Object.keys(explicitFilters).length > 0) {
     request.explicitFilters = explicitFilters;
