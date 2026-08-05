@@ -184,7 +184,7 @@ Terms / Privacy / Cookies are `noindex` placeholders; there is no `sitemap.ts`,
   those very fields.
 
   **→ FIXED 2026-08-02 (`6f1247a`, refined by `d00f96b`).** Both collected on step 1, optional as on the backend, dropped from the body when blank rather than sent as `""`, format-checked client-side (the backend applies none), and shown on step 5's recap as "Not set" when empty. `contracts.md` carried a doubly-wrong claim — *"not collected in V1 (no vision entry — P9.1)"* — and is corrected: P9.1 forbids inventing UI, not filling a field the wire already has.
-- [ ] **B3 — `cityId` is never sent on drafted branches.** `model.ts` L100-108
+- [x] **B3 — `cityId` is never sent on drafted branches.** **→ CLOSED 2026-08-04**: backend `c56f75c` canonicalises city names server-side, and the client now sends the RUSSIAN KATO name (22/23 cities resolve vs 8/23 from Kazakh) and attaches `cityId` at submit. Full working in `features/business-cabinet/contracts.md` § *B3*. Original text below. `model.ts` L100-108
   types it on `CreateBranchRequest`; `toOnboardingRequest` (L402-409) omits it.
   Branches created at registration therefore have no city → `branch_city` is null
   on their search cards → **they are invisible to the city filter** (which S1

@@ -247,7 +247,7 @@ Full text in `AUDIT_1.md`; this is the queue view.
   `latitude`, `longitude` (0 hits in `search/model.ts`). `hasActiveOffer` is
   load-bearing — the TINT IS INFORMATION lock is currently served by inferring
   the offer from a free-text badge instead of the boolean the backend sends.
-- [ ] **S6 — G1 is open** (see the owner table).
+- [x] **S6 — G1 is open** (see the owner table). **→ CLOSED 2026-08-04.** Backend `c56f75c` + `526871a` delivered every blocker; all three parked controls and infinite scroll are built, except map-area which waits on a map surface (not a gate — a missing UI primitive).
 - [x] **B1 — the cabinet behind registration is a placeholder, and it is LIVE.** *(The PLACEHOLDER half closed 2026-08-02 — the page is now honest via EmptyState. Building the cabinet shell itself is still roadmap #6.)*
   `/app/business` renders `<main><h1>Business cabinet</h1><p>Section under
   construction</p></main>` — bare HTML, no token, no `.neu-*`, no `EmptyState`.
@@ -685,7 +685,7 @@ endpoint.
   (`catalog`, `importing`, `legal`, `managedimport`, `moderation`, `audit`, `ai`).
   **The frontend's own CLAUDE.md Feature Index is currently the more accurate map
   of the backend than the backend's own docs.**
-- [ ] **N6 — `POST /api/v1/legal/acceptances` is in no frontend doc.** It is the
+- [x] **N6 — CLOSED 2026-08-02, documented in `features/auth/contracts.md`.** It is the
   `ACCOUNT_SETTINGS` channel of the same service the registration path uses
   (`LegalController`), and it is what the consent gate and any future settings
   screen would call. Only `/registration-acceptances` is documented.
