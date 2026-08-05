@@ -461,7 +461,14 @@ test("selecting map mode always ends up submitting a real box", async ({
   await apply.click();
   await expect(page).toHaveURL(/[?&]mapArea=/);
   const box = new URL(page.url()).searchParams.get("mapArea") ?? "";
-  expect(box.split(",").filter(Boolean)).toHaveLength(4);
+  // EXACTLY four, and none of them empty. `filter(Boolean)` was wrong here: it
+  // drops empty components before counting, so "10,20,30,40," — five parts,
+  // one empty — would have counted as four and passed, while `parseMapArea`
+  // rejects it. An assertion that tolerates a value the parser refuses is
+  // asserting the wrong shape.
+  const parts = box.split(",");
+  expect(parts).toHaveLength(4);
+  expect(parts.every((n) => n !== "" && Number.isFinite(Number(n)))).toBe(true);
 });
 
 test("a map-area box with an empty component is rejected, not read as zero", async ({
@@ -475,4 +482,34 @@ test("a map-area box with an empty component is rejected, not read as zero", asy
 
   await expect(page.getByText("Aigul Flowers").first()).toBeVisible();
   await expect(page.getByRole("radio", { name: "Anywhere" })).toBeChecked();
+});
+
+test("re-opening a saved map area does not widen it", async ({ page }) => {
+  await seedSession(page);
+  // A box already applied, written CANONICALLY (no trailing zeros) so that an
+  // unchanged value is byte-identical after a round trip through
+  // parseMapArea/formatMapArea. Leaflet fits `bounds` to the nearest whole
+  // zoom, so the viewport it settles on is usually LARGER than the box it was
+  // given — reporting that back would replace the customer's area with the
+  // fitted one and widen the search a little more on every reopen.
+  const box = "43.3,43.18,76.99,76.85";
+  await page.goto(
+    `/app/catalog?query=roses&mode=ITEM&mapArea=${encodeURIComponent(box)}`,
+  );
+
+  await expect(page.getByRole("radio", { name: "On the map" })).toBeChecked();
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await page.waitForTimeout(1500);
+
+  // Change something ELSE, so Apply is guaranteed to produce a different URL
+  // and the assertion below has a navigation to wait for. Without this the
+  // click may resolve to the same href, `toHaveURL` matches the ORIGINAL
+  // instantly, and the test reads a URL the click never produced — which is
+  // exactly how an earlier version of this test passed with the guard REMOVED.
+  await page.getByLabel("Min price").fill("500");
+  await page.getByRole("button", { name: "Apply filters" }).click();
+  await expect(page).toHaveURL(/[?&]minPrice=500/);
+
+  // The untouched map contributed nothing.
+  expect(new URL(page.url()).searchParams.get("mapArea")).toBe(box);
 });

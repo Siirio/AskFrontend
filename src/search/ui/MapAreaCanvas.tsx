@@ -14,8 +14,9 @@ const DEFAULT_CENTER: [number, number] = [43.238, 76.945];
 const DEFAULT_ZOOM = 11;
 
 /**
- * Reports the viewport bounds on every settle — move end, zoom end, and once on
- * mount so the caller has a box before the customer touches anything.
+ * Reports the viewport bounds on every settle, plus once on mount **only when
+ * the caller has no area yet** — see the effect below for why a restored area
+ * must not be re-reported.
  *
  * `moveend` covers panning AND the tail of a zoom, so `zoomend` is not also
  * subscribed: Leaflet fires both for one gesture and the second would push a
@@ -23,8 +24,11 @@ const DEFAULT_ZOOM = 11;
  */
 function ReportBounds({
   onChange,
+  hasRestoredArea,
 }: {
   onChange: (area: SearchMapArea) => void;
+  /** True when the map opened on a box the customer had already applied. */
+  hasRestoredArea: boolean;
 }) {
   const map = useMap();
 
@@ -47,21 +51,29 @@ function ReportBounds({
 
   useMapEvents({ moveend: emit });
 
-  // The initial box, before any interaction — in an EFFECT, once.
+  // The initial box, before any interaction — in an EFFECT, once, and ONLY when
+  // the caller has no area yet.
+  //
+  // **Emitting over a RESTORED area silently widened it.** Leaflet fits
+  // `bounds` to the nearest whole zoom level, so the viewport it settles on is
+  // usually LARGER than the box it was given. Reporting that back would replace
+  // the customer's saved area with the fitted one, and every reopen would widen
+  // it again — a search area that grows on its own, which is exactly the drift
+  // the `bounds` fix was meant to end. A restored map already has its box; it
+  // has nothing to tell the caller until the customer moves it, and `moveend`
+  // covers that.
   //
   // The first version called `map.whenReady(emit)` during RENDER, reasoning
   // that bounds are meaningless until Leaflet has measured its container. That
   // is true, and it still caused an infinite loop (React error #185): `emit`
   // sets state in the parent, the parent re-renders this component, render
   // calls `whenReady` again, and round it goes. A state setter must never run
-  // during render, whatever the value it is waiting for.
-  //
-  // `whenReady` is still used INSIDE the effect, because the timing concern was
-  // real: on mount the container may not be measured yet, and Leaflet fires the
-  // callback immediately if it already is.
+  // during render, whatever the value it is waiting for. `whenReady` survives
+  // INSIDE the effect, where the timing concern is real and the loop is not.
   useEffect(() => {
+    if (hasRestoredArea) return;
     map.whenReady(emit);
-  }, [map, emit]);
+  }, [map, emit, hasRestoredArea]);
 
   return null;
 }
@@ -115,7 +127,7 @@ export default function MapAreaCanvas({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <ReportBounds onChange={onChange} />
+      <ReportBounds onChange={onChange} hasRestoredArea={area !== null} />
     </MapContainer>
   );
 }
