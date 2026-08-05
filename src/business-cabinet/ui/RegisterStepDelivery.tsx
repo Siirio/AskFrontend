@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Wifi } from "lucide-react";
+import { Plus, Wifi } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -39,6 +39,7 @@ export function RegisterStepDelivery({
   setOnlineOnly,
   setPickupAvailable,
   addBranch,
+  updateBranch,
   removeBranch,
 }: {
   values: SellerOnboardingValues;
@@ -49,13 +50,20 @@ export function RegisterStepDelivery({
   setOnlineOnly: (onlineOnly: boolean) => void;
   setPickupAvailable: (pickupAvailable: boolean) => void;
   addBranch: (branch: Omit<DraftBranch, "draftId">) => void;
+  updateBranch: (draftId: string, branch: Omit<DraftBranch, "draftId">) => void;
   removeBranch: (draftId: string) => void;
 }) {
   const t = useTranslations("businessCabinet");
   const [mapOpen, setMapOpen] = useState(false);
+  // Non-null while editing an already-drafted branch (item 11, 2026-08-05) —
+  // set from `BranchList`'s edit action, read by `BranchMapModal` to seed
+  // the form instead of starting empty. Cleared whenever the modal closes,
+  // by ANY means, so a later "Add another branch" always opens fresh rather
+  // than on a stale edit target.
+  const [editingBranch, setEditingBranch] = useState<DraftBranch | null>(null);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-8">
       <Field
         label={t("fields.deliveryCoverage")}
         htmlFor="business-delivery-coverage"
@@ -88,6 +96,12 @@ export function RegisterStepDelivery({
           onRemove={removeDeliveryCity}
         />
       ) : null}
+
+      {/* The same `.neu-rule` divider the wizard's own steps use — cities
+          and the online-only switch answer two different questions and sat
+          only a `gap-8` apart, which read as one continuous block (owner
+          report). */}
+      <div aria-hidden="true" className="neu-rule w-full" />
 
       <ToggleRow
         icon={Wifi}
@@ -138,12 +152,42 @@ export function RegisterStepDelivery({
 
           {values.pickupAvailable ? (
             <div className="flex flex-col gap-2">
-              <BranchList branches={values.branches} onRemove={removeBranch} />
+              {/* Same label typography `Field` gives "Which cities?" — this
+                  block isn't a single input, so it doesn't use `Field`
+                  itself (its `label htmlFor` expects one control), but the
+                  branches list reads as its own answer, not a trailing
+                  continuation of the Yes/No control above it, only with a
+                  matching title (owner request, 2026-08-05). */}
+              <p className="ps-1 text-sm font-semibold text-foreground-muted">
+                {t("fields.branches")}
+              </p>
+              <BranchList
+                branches={values.branches}
+                onRemove={removeBranch}
+                onEdit={(branch) => {
+                  setEditingBranch(branch);
+                  setMapOpen(true);
+                }}
+              />
+              {/* Full width, not `w-fit` — a small button floating under a
+                  full-width city field/branch list read as an odd-sized
+                  extra piece (owner report, 2026-08-05: "search bar on whole
+                  width but button add branches is not"). The `Plus` matches
+                  the icon vocabulary the cities/branches lists just gained. */}
               <button
                 type="button"
-                className="neu-btn w-fit px-4 py-2 text-sm font-semibold focus-ring"
-                onClick={() => setMapOpen(true)}
+                className="neu-btn w-full px-4 py-2 text-sm font-semibold focus-ring"
+                onClick={() => {
+                  // Always starts a fresh add, even if the last thing this
+                  // button's sibling edit action did left `editingBranch`
+                  // set — `BranchMapModal`'s own close handler already
+                  // clears it on every close, but this guards the case
+                  // where the modal was never actually closed in between.
+                  setEditingBranch(null);
+                  setMapOpen(true);
+                }}
               >
+                <Plus aria-hidden="true" className="size-4" />
                 {t("branchModal.addAnotherBranch")}
               </button>
             </div>
@@ -151,10 +195,15 @@ export function RegisterStepDelivery({
 
           <BranchMapModal
             open={mapOpen}
-            onOpenChange={setMapOpen}
+            onOpenChange={(next) => {
+              setMapOpen(next);
+              if (!next) setEditingBranch(null);
+            }}
             branches={values.branches}
             onAdd={addBranch}
+            onUpdate={updateBranch}
             onRemove={removeBranch}
+            editingBranch={editingBranch}
           />
         </>
       ) : null}

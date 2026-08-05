@@ -67,7 +67,7 @@ export function VerificationSources({
   const t = useTranslations("businessCabinet");
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <p className="ps-1 text-sm font-semibold text-foreground-muted">
           {t("fields.verification")}
@@ -126,6 +126,17 @@ export function VerificationSources({
           </p>
         ) : null}
       </div>
+
+      {/* Separates PICKING platforms from FILLING their URLs — two different
+          questions that sat only a `gap-4` apart, same class of gap
+          RegisterStepDelivery closed between its own controls (owner
+          report, 2026-08-05: "no divider between link fields and link
+          buttons"). Gated on a selection existing, matching the pattern
+          `BranchMapModal`'s divider already uses — nothing to divide from
+          the grid above when no URL field has appeared yet. */}
+      {selected.length > 0 ? (
+        <div aria-hidden="true" className="neu-rule w-full" />
+      ) : null}
 
       {/* Rendered in the canonical source order, not the order they were
           clicked — a list that reshuffles as you tick boxes is disorienting. */}

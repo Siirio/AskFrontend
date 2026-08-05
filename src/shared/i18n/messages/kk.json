@@ -259,6 +259,7 @@
       "deliveryCities": "Қай қалаларға?",
       "onlineOnly": "Тек онлайн — физикалық филиалсыз",
       "pickup": "PickUp available",
+      "branches": "Қай филиалдар?",
       "catalogSetup": "Каталогты қалай толтырғыңыз келеді?",
       "phone": "Телефон",
       "corporateEmail": "Жұмыс поштасы"
@@ -336,7 +337,7 @@
     },
     "branchModal": {
       "title": "Филиал қосу",
-      "searchPlaceholder": "Мекенжай бойынша іздеу",
+      "editTitle": "Филиалды өзгерту",
       "mapHint": "Мекенжайды іздеңіз немесе белгі қою үшін картаны басыңыз. Белгіні сүйреп орнын өзгертуге болады.",
       "fields": {
         "name": "Филиал атауы",
@@ -353,6 +354,8 @@
       },
       "addBranch": "Филиал қосу",
       "addAnotherBranch": "Тағы филиал қосу",
+      "saveChanges": "Өзгерістерді сақтау",
+      "editBranch": "{name} өзгерту",
       "removeBranch": "{name} алып тастау",
       "done": "Дайын",
       "errors": {

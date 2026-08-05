@@ -259,6 +259,7 @@
       "deliveryCities": "В какие города?",
       "onlineOnly": "Только онлайн — без физической точки",
       "pickup": "PickUp available",
+      "branches": "Какие филиалы?",
       "catalogSetup": "Как вы хотите наполнить каталог?",
       "phone": "Телефон",
       "corporateEmail": "Рабочая почта"
@@ -336,7 +337,7 @@
     },
     "branchModal": {
       "title": "Добавить филиал",
-      "searchPlaceholder": "Поиск по адресу",
+      "editTitle": "Изменить филиал",
       "mapHint": "Найдите адрес или кликните по карте, чтобы поставить метку. Метку можно перетащить.",
       "fields": {
         "name": "Название филиала",
@@ -353,6 +354,8 @@
       },
       "addBranch": "Добавить филиал",
       "addAnotherBranch": "Добавить ещё филиал",
+      "saveChanges": "Сохранить изменения",
+      "editBranch": "Изменить {name}",
       "removeBranch": "Убрать {name}",
       "done": "Готово",
       "errors": {

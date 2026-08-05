@@ -5,6 +5,17 @@ import createNextIntlPlugin from "next-intl/plugin";
 // build` chains eslint src → the lint-fixtures proof → next build. (Next 16
 // no longer runs ESLint itself.)
 const nextConfig: NextConfig = {
+  // react-leaflet's `MapContainer` (business-cabinet's BranchMapCanvas) does
+  // not tolerate Strict Mode's dev-only double-mount: the second mount finds
+  // Leaflet's `_leaflet_id` still on the DOM node from the first and throws
+  // "Map container is being reused by another instance", which Next then
+  // recovers from with a FULL PAGE RELOAD — silently wiping all in-memory
+  // React state on every reopen of the branch map modal (2026-08-05, traced
+  // after repeated "data clears on close" reports that survived several
+  // rounds of fixing the modal's own state logic, which turned out to be
+  // correct all along). Strict Mode never runs in production regardless, so
+  // this has no production effect — it only stops a dev-only crash loop.
+  reactStrictMode: false,
   // Pin the workspace root: a stray lockfile in the user profile otherwise
   // makes Next infer the wrong root for turbopack and file tracing.
   turbopack: { root: process.cwd() },

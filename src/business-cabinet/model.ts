@@ -7,8 +7,12 @@
  * client-side; a mismatch is raised, not faked.
  *
  * Platform-neutral and DOM-free (D5): pure types and pure functions (P5.1), so
- * this file lifts into a React Native package unchanged.
+ * this file lifts into a React Native package unchanged. The one import below
+ * is `import type` only — erased at compile time, so it adds nothing to the
+ * runtime bundle and does not compromise the D5 guarantee.
  */
+
+import type { KzPlace } from "@/shared/ui/address-select";
 
 // ── Enums (mirrors of the Java enums, exact spelling) ───────────────────────
 
@@ -180,6 +184,18 @@ export type DraftBranch = {
   cityId?: string;
   latitude: number;
   longitude: number;
+  /**
+   * The KATO cascade selection this branch was drafted with — added
+   * 2026-08-05 so an already-added branch can be EDITED: without it, reopening
+   * the map modal on an existing branch would have no way to restore the
+   * oblast/district/settlement picker, only the composed `address` string
+   * (which cannot be parsed back into a place — see `cityNameRu` above for
+   * why that string alone is not enough). `null` only for branches added
+   * before this field existed (a stale `localStorage` draft) — editing one
+   * of those still works, it just starts the cascade unset instead of
+   * pre-filled.
+   */
+  place: KzPlace | null;
 };
 
 /** GET /api/v1/categories?q=&type= — flat, no trees (backend contracts.md). */

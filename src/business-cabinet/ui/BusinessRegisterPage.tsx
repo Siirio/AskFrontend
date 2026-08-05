@@ -90,6 +90,7 @@ export function BusinessRegisterPage() {
     setOnlineOnly,
     setPickupAvailable,
     addBranch,
+    updateBranch,
     removeBranch,
     setAgreementConfirmed,
     errors,
@@ -139,7 +140,7 @@ export function BusinessRegisterPage() {
   const isLastStep = step === ONBOARDING_STEP_COUNT;
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 py-8 sm:px-6 sm:py-12">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 pt-18 pb-10 sm:px-6 sm:py-12">
       <header className="flex flex-col items-center gap-3 text-center">
         {/* A neu-card badge, not a bare icon — every other raised surface in
             this skin carries depth, and a flat icon beside carved fields and
@@ -214,6 +215,7 @@ export function BusinessRegisterPage() {
             setOnlineOnly={setOnlineOnly}
             setPickupAvailable={setPickupAvailable}
             addBranch={addBranch}
+            updateBranch={updateBranch}
             removeBranch={removeBranch}
           />
         ) : null}

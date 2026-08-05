@@ -259,6 +259,7 @@
       "deliveryCities": "Which cities?",
       "onlineOnly": "Only online — no physical branch",
       "pickup": "PickUp available",
+      "branches": "Which branches?",
       "catalogSetup": "How do you want to build your catalog?",
       "phone": "Phone",
       "corporateEmail": "Business email"
@@ -336,7 +337,7 @@
     },
     "branchModal": {
       "title": "Add a branch",
-      "searchPlaceholder": "Search for an address",
+      "editTitle": "Edit branch",
       "mapHint": "Search, or click the map to drop a pin. Drag the pin to fine-tune it.",
       "fields": {
         "name": "Branch name",
@@ -353,6 +354,8 @@
       },
       "addBranch": "Add branch",
       "addAnotherBranch": "Add another branch",
+      "saveChanges": "Save changes",
+      "editBranch": "Edit {name}",
       "removeBranch": "Remove {name}",
       "done": "Done",
       "errors": {

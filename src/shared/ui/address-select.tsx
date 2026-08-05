@@ -67,13 +67,31 @@ import { Combobox } from "@/shared/ui/combobox";
  * afterwards left the caller holding names in the old one. A ref-guarded effect
  * re-emits on exactly those transitions and on nothing else.
  *
- * ── NOT REHYDRATABLE (stated, not hidden) ──────────────────────────────────
- * The cascade owns its selection state and emits outward; it does not
- * reconstruct itself from a previously emitted value. Doing so would mean
- * loading a locality chunk to resolve one id, on mount, for every consumer —
- * and no caller needs it yet: a branch draft is created and submitted in one
- * sitting. When an EDIT screen appears (the cabinet's Branches tab, roadmap #6)
- * this grows a `value` prop; it is not built on speculation (P8.2).
+ * ── REHYDRATION IS SEED-ONCE, NOT CONTROLLED (2026-08-05) ──────────────────
+ * This used to say the cascade never reconstructs itself from a previously
+ * emitted value, deferred until a real caller needed it (roadmap #6's edit
+ * screen). That caller arrived earlier, from a different direction: the
+ * branch map modal's own draft now persists to `localStorage` so a reload —
+ * or even just closing and reopening the modal within one session, since
+ * Radix unmounts `DialogContent` on close — no longer discards the pin and
+ * street the seller already entered, and this was the one piece nothing else
+ * could restore, because nothing outside this file can resolve a `districtId`
+ * back into a `KatoItem` or know which locality chunk to load for it.
+ *
+ * The optional `value` prop seeds the cascade from a REMEMBERED place on
+ * mount only — it is read once (a ref guards it) and never re-applied. This
+ * is deliberately NOT the usual React "controlled value" contract: passing a
+ * different `value` on a later render does nothing, because the whole point
+ * is that the cascade owns its selection afterward, and a caller holding a
+ * stale copy of what THIS component already emitted must never overwrite the
+ * seller's own subsequent clicks with it. Two passes, because the oblast
+ * path's district/settlement live in the async locality chunk: the region
+ * (and a republican city's district) resolve synchronously from static KATO
+ * data in the first effect below, which also starts that chunk loading (via
+ * the existing region-driven effect); the second effect resolves the
+ * district/settlement once the chunk lands, and backs off the moment the
+ * region no longer matches what was seeded — the seller picked something
+ * else in the meantime, and a stale id must not resurrect under it.
  */
 
 /** Which level of the cascade a merged oblast-level option came from. */
@@ -153,9 +171,13 @@ export function kzPlaceKey(place: KzPlace | null): string {
 }
 
 export function AddressSelect({
+  value = null,
   onChange,
   disabled = false,
 }: {
+  /** Seeds the cascade from a remembered place, once, on mount — see the
+   *  "REHYDRATION IS SEED-ONCE" section above. Not a controlled value. */
+  value?: KzPlace | null;
   onChange: (place: KzPlace | null) => void;
   disabled?: boolean;
 }) {
@@ -204,6 +226,73 @@ export function AddressSelect({
       active = false;
     };
   }, [region, reloadToken]);
+
+  // Seed pass 1: the region, and (for a republican city) its district —
+  // both resolve synchronously from static KATO data, so this can run once
+  // on mount. Setting `region` here is also what STARTS the locality-chunk
+  // load above, for the oblast path's seed pass 2 below.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || !value) return;
+    seededRef.current = true;
+    const seedRegion = regions.find((r) => r.id === value.regionId);
+    if (!seedRegion) return;
+    setRegion(seedRegion);
+    if (isRepublicanCity(seedRegion.id) && value.districtId != null) {
+      const district = getDistricts(seedRegion.id).find(
+        (d) => d.id === value.districtId,
+      );
+      if (district) setCityDistrict(district);
+    }
+    // Seeds once, deliberately: re-running on a later `value`/`regions`
+    // change would fight the seller's own subsequent picks with a stale
+    // snapshot of what this component itself emitted earlier. The empty dep
+    // array is the point, not an omission.
+  }, []);
+
+  // Seed pass 2: the oblast path's district/settlement, which live in the
+  // async locality chunk pass 1 started loading. Backs off — the `region.id
+  // !== value.regionId` check — the instant the seller picks a DIFFERENT
+  // region before this chunk lands; a slow response must not resurrect a
+  // stale id under a place they have since abandoned. Also backs off once
+  // `oblastPick`/`settlement` are set (by this effect succeeding, OR by the
+  // seller picking their own oblast option first), which is what stops this
+  // from re-running forever once it has done its one job.
+  useEffect(() => {
+    if (
+      !value ||
+      !region ||
+      region.id !== value.regionId ||
+      isRepublicanCity(region.id) ||
+      chunkState.status !== "ready" ||
+      oblastPick ||
+      settlement
+    ) {
+      return;
+    }
+    if (value.localityId != null && value.districtId == null) {
+      // An oblast-level city/village IS the answer — no district beneath it.
+      const item = regionLocalities(chunkState.chunk, region.id).find(
+        (l) => l.id === value.localityId,
+      );
+      if (item) setOblastPick({ kind: "locality", item });
+      return;
+    }
+    if (value.districtId != null) {
+      const district = getDistricts(region.id).find(
+        (d) => d.id === value.districtId,
+      );
+      if (!district) return;
+      setOblastPick({ kind: "district", item: district });
+      if (value.localityId != null) {
+        const settlementItem = districtLocalities(
+          chunkState.chunk,
+          district.id,
+        ).find((l) => l.id === value.localityId);
+        if (settlementItem) setSettlement(settlementItem);
+      }
+    }
+  }, [value, region, chunkState, oblastPick, settlement]);
 
   // ── Option lists ──────────────────────────────────────────────────────────
 
