@@ -705,6 +705,19 @@
     border-radius: var(--neu-radius-lg);
     box-shadow: var(--neu-raised);
     overflow: hidden;
+    /* Leaflet stacks its own internals high — panes at z-index 400, controls at
+       800 — and those numbers are absolute, not relative to us. Our overlays
+       (Select, DropdownMenu) sit at z-50, so an open dropdown near a map was
+       painted UNDERNEATH the tiles: the map won 400 to 50. Seen in the branch
+       picker, where the city-district list opens directly over the map.
+
+       `isolation: isolate` creates a stacking context at the frame, so
+       Leaflet's 400 and 800 are contained by it and composited at the frame's
+       own level in normal flow. Nothing inside the map changes order relative
+       to itself; it simply stops competing with the rest of the app. Preferred
+       over rewriting Leaflet's z-indexes, which would mean re-deriving its
+       internal pane order and re-checking it on every upgrade. */
+    isolation: isolate;
   }
   .neu-skin .neu-map-pin {
     display: block;

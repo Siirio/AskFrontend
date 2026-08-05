@@ -76,6 +76,13 @@ export function BranchMapModal({
 
   const [name, setName] = useState("");
   const [place, setPlace] = useState<KzPlace | null>(null);
+  // Where the chosen registry place IS, so the map can frame it before a pin
+  // exists. KATO carries codes and names, never coordinates, so this is
+  // geocoded — the same Nominatim call the address search already uses.
+  const [placeFocus, setPlaceFocus] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [address, setAddress] = useState("");
   const [addressDetails, setAddressDetails] = useState("");
   // Remounts AddressSelect after a successful add, so the cascade clears with
@@ -136,6 +143,38 @@ export function BranchMapModal({
         // not a requirement; the address field stays editable.
       });
   };
+
+  // Frame the map on the chosen place. Runs only while there is NO pin: once
+  // the seller drops one, their answer outranks a geocoded guess at the city
+  // centre, and moving the map under them would be hostile.
+  //
+  // Failure is silent by design — the map simply stays where it is, which is
+  // what it did before this existed. A geocoder outage must not block a form
+  // whose real requirement is a pin the seller places themselves.
+  useEffect(() => {
+    if (!place || position) return;
+    const controller = new AbortController();
+    let active = true;
+    api
+      .searchAddress(place.placeName, locale, controller.signal)
+      .then((results) => {
+        const first = results[0];
+        if (active && first) {
+          setPlaceFocus({ lat: first.lat, lng: first.lng });
+        }
+      })
+      .catch(() => {
+        /* stay put — see above */
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+    // Keyed on the place IDENTITY, and `position` is deliberately absent: this
+    // must not re-run — and re-frame the map — when the seller drops a pin,
+    // only when the PLACE changes. `kzPlaceKey` is ids-only, so a locale switch
+    // (same place, re-rendered names) does not re-frame either.
+  }, [kzPlaceKey(place), locale]);
 
   /**
    * Changing the registry place invalidates everything narrower than it — the
@@ -283,7 +322,11 @@ export function BranchMapModal({
 
               <div className="h-64 w-full sm:h-80" data-testid="branch-map">
                 {open ? (
-                  <BranchMapCanvas position={position} onPick={pick} />
+                  <BranchMapCanvas
+                    position={position}
+                    focus={placeFocus}
+                    onPick={pick}
+                  />
                 ) : null}
               </div>
               <p className="text-xs text-foreground-subtle">

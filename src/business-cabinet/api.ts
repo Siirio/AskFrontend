@@ -84,6 +84,24 @@ export function createBranch(
   );
 }
 
+/** One row of `GET /api/v1/cities` — `CityDto {id, name}`. */
+export type CityOption = { id: string; name: string };
+
+/**
+ * The whole city table. `CityController.listAll()` takes NO parameters, so
+ * there is nothing a keystroke could narrow server-side: the caller fetches
+ * once and filters in memory.
+ *
+ * Duplicated from `search`'s `getCities` on purpose (D8, R2): same endpoint,
+ * different owner. Search reads it for the catalog's location FILTER; this
+ * slice reads it to suggest a seller's delivery cities. Importing across the
+ * slice boundary is forbidden, and a shared wrapper would be one function
+ * serving two domains' reasons for wanting the same rows.
+ */
+export function getCities(signal?: AbortSignal): Promise<CityOption[]> {
+  return httpClient.get<CityOption[]>("/api/v1/cities", { signal });
+}
+
 /**
  * Resolve a KATO place NAME to the backend's `cityId`, or `null` when it knows
  * no such city. Public, no auth (`CityController#resolve`, allowlisted).

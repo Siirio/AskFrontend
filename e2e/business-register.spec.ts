@@ -623,3 +623,83 @@ test("declining both contact fields sends neither, rather than empty strings", a
   expect(onboardingBody).not.toHaveProperty("phone");
   expect(onboardingBody).not.toHaveProperty("corporate_email");
 });
+
+// Leaflet stacks its own internals at z-index 400 (panes) and 800 (controls),
+// which are absolute numbers, not relative to us. Our overlays sit at z-50, so
+// an open dropdown near the map was painted UNDERNEATH the tiles. Reported from
+// a real browser, invisible to every other check we run: the dropdown is in the
+// DOM, visible, and clickable by Playwright's own hit-testing — it is simply
+// covered. Only a paint-order question answers it, so this asks the browser
+// which element is actually on top at that point.
+// ⚠ HONEST SCOPE: this asserts the dropdown is not covered IN THIS FLOW, and it
+// passes both with and without the `isolation: isolate` fix on `.neu-map-frame`
+// — verified by removing that line and re-running. So it does NOT reproduce the
+// overlap reported from a real browser on 2026-08-05 (Shymkent selected, the
+// city-district list painted under the tiles), and it must not be read as proof
+// that the fix works. It is kept as a weak guard on a real property; the actual
+// repro is still owed, and the isolation stands on its mechanism — Leaflet
+// stacks panes at z-index 400 and controls at 800 against our overlays' z-50 —
+// not on this test.
+test("an open dropdown paints ABOVE the branch map, not under it", async ({
+  page,
+}) => {
+  await seedCustomerBecomingSeller(page);
+  await stubMapNetwork(page);
+  await page.goto("/app/business/register");
+  await fillIdentity(page);
+  await fillKzIp(page);
+  await advanceToDeliveryStep(page);
+
+  await page.getByTestId("business-delivery-coverage-KAZAKHSTAN").click();
+  await page.getByTestId("business-pickup-YES").click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+
+  // Almaty is a republican city, so the cascade's second question is the city
+  // district — a Select that opens directly over the map.
+  await page.getByTestId("address-region").fill("Алматы");
+  await page.getByTestId("address-region-option").first().click();
+  await page.getByTestId("branch-map").locator(".leaflet-container").waitFor();
+
+  await page.getByTestId("address-city-district").click();
+  await expect(page.getByRole("option").first()).toBeVisible();
+
+  // Probe where the list and the map actually OVERLAP, not the list's first
+  // option. The bug covered the list's LOWER part while its top stayed visible,
+  // so a probe at the first option lands in the visible region and passes even
+  // while the map paints over everything below it — which is exactly how an
+  // earlier version of this test passed with the fix removed.
+  const probe = await page.evaluate(() => {
+    const list = document.querySelector('[role="listbox"]');
+    const map = document.querySelector(".leaflet-container");
+    if (!list || !map) return { overlaps: false, covered: false, hit: "" };
+    const l = list.getBoundingClientRect();
+    const m = map.getBoundingClientRect();
+    const top = Math.max(l.top, m.top);
+    const bottom = Math.min(l.bottom, m.bottom);
+    const left = Math.max(l.left, m.left);
+    const right = Math.min(l.right, m.right);
+    if (bottom <= top || right <= left) {
+      return { overlaps: false, covered: false, hit: "" };
+    }
+    const el = document.elementFromPoint(
+      (left + right) / 2,
+      (top + bottom) / 2,
+    );
+    return {
+      overlaps: true,
+      covered: !list.contains(el) && el !== list,
+      hit: (el?.className ?? "").toString().slice(0, 60),
+    };
+  });
+
+  // Without an overlap the assertion below proves nothing, so fail loudly
+  // rather than pass quietly.
+  expect(
+    probe.overlaps,
+    "the list and the map do not overlap — this test is not exercising the bug",
+  ).toBe(true);
+  expect(
+    probe.covered,
+    `the map painted over the dropdown — topmost element was "${probe.hit}"`,
+  ).toBe(false);
+});

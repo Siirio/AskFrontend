@@ -5,7 +5,7 @@
  * the BUSINESS category autocomplete. Components consume these and render; they
  * never call the API directly.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { ApiError } from "@/shared/api/apiError";
@@ -427,4 +427,53 @@ export function useSellerOnboarding() {
     goBack,
     submit,
   };
+}
+
+// ── City suggestions (the delivery-cities field) ─────────────────────────────
+
+/**
+ * The canonical city list, for suggesting delivery cities.
+ *
+ * Fetched ONCE and filtered in memory — `GET /cities` has no query parameter,
+ * so re-requesting per keystroke would re-download the whole table to show a
+ * subset of it. Lazy: nothing is fetched until the field is actually used,
+ * because most sellers never choose SELECTED_CITIES.
+ *
+ * A failure resolves to an empty list rather than an error. Suggestions are an
+ * ASSIST here, not the input: the field still accepts free text (the backend
+ * takes any string up to 120 chars), so an outage costs the convenience and
+ * never the ability to register.
+ */
+export function useCitySuggestions(query: string): {
+  suggestions: api.CityOption[];
+  loading: boolean;
+} {
+  const [cities, setCities] = useState<api.CityOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const requested = useRef(false);
+
+  useEffect(() => {
+    if (requested.current) return;
+    requested.current = true;
+    const controller = new AbortController();
+    setLoading(true);
+    api
+      .getCities(controller.signal)
+      .then((rows) => setCities(rows ?? []))
+      .catch(() => setCities([]))
+      .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, []);
+
+  const trimmed = query.trim().toLowerCase();
+  const suggestions = useMemo(() => {
+    const pool = trimmed
+      ? cities.filter((c) => c.name.toLowerCase().includes(trimmed))
+      : cities;
+    // Capped: 23 rows fit, but the cap is what keeps this honest if the table
+    // grows — a suggestion list taller than the viewport is not a suggestion.
+    return pool.slice(0, 8);
+  }, [cities, trimmed]);
+
+  return { suggestions, loading };
 }
