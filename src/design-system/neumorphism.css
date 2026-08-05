@@ -849,7 +849,17 @@
   .neu-skin .neu-tab-trigger[data-active="true"],
   .neu-skin .neu-tab-trigger[aria-selected="true"],
   .neu-skin .neu-tab-trigger[aria-pressed="true"] {
-    box-shadow: var(--neu-inset-sm);
+    /* The pressed-in shadow alone reads too close to the unselected rest
+     * state on a warm-dark surface (owner report, "Предложения по UI.docx" —
+     * the delivery-coverage control's selected option was hard to pick out
+     * at a glance). A thin accent ring on top of the same inset makes the
+     * choice legible without adding a border to the skin's borderless
+     * grammar — the ring rides the box-shadow list, same technique as
+     * `.neu-nav-indicator`'s, just stronger (35% vs. 25%) since this control
+     * has no separate sliding pill to also signal the pick. */
+    box-shadow:
+      var(--neu-inset-sm),
+      0 0 0 1px color-mix(in oklab, var(--accent) 35%, transparent);
     color: var(--accent);
   }
 
@@ -1299,6 +1309,35 @@
       width: 100px;
       height: 100px;
       opacity: 0.5;
+    }
+
+    /* The two glow orbs are sized for the desktop hero's width; on a narrow
+     * phone the same 360px/280px circles cover most of the viewport instead
+     * of sitting in a corner, reading as glare rather than the intended
+     * "backlit glass" accent (owner report, "Предложения по UI.docx" —
+     * "reduce the glare on narrow screens"). Shrunk and dimmed here, not
+     * removed: the topbar's `backdrop-filter` still needs some colour behind
+     * it to read as glass (see `.neu-hero-decor`'s own header comment).
+     *
+     * `filter: blur()` MUST be overridden alongside width/height, not left
+     * to inherit the base rule's 70px (first attempt's bug, caught by the
+     * owner — "glow just disappears on mobile"). The base blur radius is
+     * fixed in px while the circle shrinks, so a 70px blur on a 220px circle
+     * eats a far larger share of it than on the original 360px one — soft
+     * enough to read as gone rather than dimmed. Scaled here to hold
+     * roughly the SAME blur-to-size ratio as desktop (~0.19–0.25), so the
+     * orb reads as the same shape at a smaller size, not a different one. */
+    .neu-skin .neu-hero-decor::before {
+      width: 280px;
+      height: 280px;
+      filter: blur(55px);
+      opacity: 0.3;
+    }
+    .neu-skin .neu-hero-decor::after {
+      width: 210px;
+      height: 210px;
+      filter: blur(55px);
+      opacity: 0.15;
     }
   }
 

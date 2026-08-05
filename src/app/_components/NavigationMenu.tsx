@@ -150,7 +150,7 @@ export function NavigationMenu() {
     <header className="neu-topbar sticky top-0 z-40">
       <nav
         aria-label={t("nav.aria")}
-        className="relative mx-auto flex h-14 max-w-6xl items-center gap-1 px-4 sm:gap-2"
+        className="relative mx-auto flex h-18 max-w-6xl items-center gap-1 px-4 sm:gap-2"
       >
         <Link
           href="/app"

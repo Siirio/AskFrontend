@@ -41,7 +41,7 @@ export async function HomePage({ locale }: { locale: string }) {
       <span className="neu-hero-decor" aria-hidden="true" />
       <span className="neu-hero-dots" aria-hidden="true" />
       <span className="neu-hero-dots-secondary" aria-hidden="true" />
-      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-3.5rem)] max-w-2xl flex-col items-center justify-center gap-12 px-4 text-center">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-4.5rem)] max-w-2xl flex-col items-center justify-center gap-12 px-4 text-center">
         <div className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold text-balance text-foreground sm:text-4xl">
             {t("home.headline")}

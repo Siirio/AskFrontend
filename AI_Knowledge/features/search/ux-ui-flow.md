@@ -90,6 +90,24 @@ list, and an empty state that no longer routes to the deleted requests feature.
   whole screen, busier than the mode cards sitting above them (owner report: "messing up
   UX/UI" on mobile). Below 640px they drop to 130px/100px so real empty space returns between
   them.
+- **The two glow orbs got the same mobile treatment (2026-08-05, owner: "reduce the glare when
+  narrowing the screen width" — "Предложения по UI.docx").** The dot corners were already
+  shrunk under `max-width: 639px` (above); the `.neu-hero-decor::before`/`::after` orbs were not,
+  and at a phone width their fixed 360px/280px circles cover most of the viewport instead of
+  sitting in a corner-accent role, reading as glare rather than the intended backlit-glass
+  effect. Dimmed and shrunk here, not removed — the topbar's `backdrop-filter` still needs
+  colour behind it to read as glass. **First attempt (`::before` → 220px/0.26 opacity, `::after`
+  → 170px/0.14) shrank the circle without touching its inherited `blur(70px)`, and a blur radius
+  fixed in px eats a far bigger share of a smaller circle — the owner reported the glow "just
+  disappears on mobile."** Corrected same day: both pseudo-elements now also override `filter`
+  to `blur(55px)` on this breakpoint, sized (`::before` 280px/0.3 opacity, `::after` 210px/0.15)
+  to hold roughly the same blur-to-size ratio the desktop values have, so the orb reads as the
+  same shape at a smaller size rather than fading out.
+- **Topbar height increased 56px → 72px (`h-14` → `h-18`, 2026-08-05, same owner note — first
+  landed as `h-16`/64px, bumped once more same day: "better h-18 not h-16").** `HomePage`'s
+  `min-h-[calc(100svh-3.5rem)]` — which subtracts the sticky topbar's height so the hero centres
+  in the remaining viewport — was updated to `4.5rem` alongside it; the two numbers must move
+  together or the hero mis-centers under the taller bar.
 - Catalog Page/result cards are unchanged — explicitly out of scope until that surface gets its
   own full design pass (owner decision: catalog's cards/islands are designed once, later, not
   iterated now).
