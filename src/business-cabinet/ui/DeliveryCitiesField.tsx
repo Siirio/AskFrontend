@@ -105,6 +105,20 @@ import { Field, fieldErrorId } from "./Field";
  * reappearing with no obvious cause. Making the postcondition explicit
  * — "a successful commit always leaves the list ready to show the next
  * batch of suggestions" — removes the guesswork entirely.
+ *
+ * **Two CodeRabbit findings on the resulting PR, both accepted (2026-08-05).**
+ * (1) The already-picked filter (`offered`) compared city names
+ * case-SENSITIVELY, while `commitValue` normalizes an exact match only on
+ * commit — an older lowercase free-text entry would not exclude the
+ * canonical-case suggestion for the same city, letting a seller pick it
+ * again and end up with two near-duplicate chips. Now compared
+ * case-insensitively, same as the commit-time normalization. (2) Suggestion
+ * buttons carried the default `tabIndex` (0), putting them in SEQUENTIAL
+ * (Tab) focus despite this being an `aria-activedescendant` combobox, where
+ * the input holds real DOM focus throughout and the options are meant to be
+ * driven by the arrow keys alone. `tabIndex={-1}` on each option is the fix
+ * — Tab now goes straight from the input to whatever follows the field, not
+ * through every suggestion first.
  */
 export function DeliveryCitiesField({
   id,
@@ -129,8 +143,17 @@ export function DeliveryCitiesField({
   const optionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Never offer a city that is already a chip — picking it would be a no-op the
-  // seller cannot see the result of.
-  const offered = suggestions.filter((c) => !cities.includes(c.name));
+  // seller cannot see the result of. Compared case-insensitively (2026-08-05,
+  // CodeRabbit): `commitValue` normalizes an EXACT match on commit, but this
+  // filter was still comparing case-sensitively, so an older free-text entry
+  // like "алматы" (added before the canonical "Алматы" suggestion happened to
+  // surface, or from a seller who just typed it lowercase) would not exclude
+  // the canonical spelling from the list — letting the seller pick it too and
+  // end up with two near-duplicate chips for the same city.
+  const pickedLower = new Set(cities.map((c) => c.toLowerCase()));
+  const offered = suggestions.filter(
+    (c) => !pickedLower.has(c.name.toLowerCase()),
+  );
   const listShown = open && offered.length > 0;
   const optionId = (index: number) => `${listId}-option-${index}`;
 
@@ -336,6 +359,17 @@ export function DeliveryCitiesField({
                         role="option"
                         aria-selected={index === activeIndex}
                         data-active={index === activeIndex}
+                        // Out of SEQUENTIAL (Tab) focus on purpose (2026-08-05,
+                        // CodeRabbit) — this is an `aria-activedescendant`
+                        // combobox (see the header comment): the input holds
+                        // real DOM focus throughout, and these options are
+                        // driven by ArrowUp/ArrowDown, not tabbed to
+                        // individually. Leaving the default `tabIndex` (0)
+                        // put them in the Tab order anyway, which both
+                        // contradicts that pattern and would make a seller
+                        // Tab through every suggestion before reaching
+                        // whatever control comes after this field.
+                        tabIndex={-1}
                         ref={(node) => {
                           optionRefs.current[optionId(index)] = node;
                         }}

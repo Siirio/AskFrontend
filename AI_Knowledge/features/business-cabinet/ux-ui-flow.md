@@ -242,6 +242,25 @@ only then; a city with no match saves exactly as typed, unchanged. Silent, not a
 the owner's call, on the reasoning that an exact-spelling match is unambiguous enough not to
 need a confirmation step.
 
+**Two CodeRabbit findings on the PR review, both accepted (2026-08-05).** (1) The
+already-picked filter (`offered` in `DeliveryCitiesField`) compared city names
+case-sensitively, while `commitValue` only normalizes an EXACT match at commit time — an
+older lowercase free-text entry ("алматы") would not exclude the canonical-case suggestion
+("Алматы") from the list, letting a seller pick it again and end up with two near-duplicate
+chips for the same city. Now compared case-insensitively, closing the gap the commit-time
+normalization left open. (2) Suggestion buttons carried the default `tabIndex` (0), putting
+them in sequential (Tab) focus despite this being an `aria-activedescendant` combobox — the
+input is meant to hold real DOM focus throughout, with the options driven by arrow keys alone.
+`tabIndex={-1}` on each option fixes it. **A third finding, a nitpick on `next.config.ts`
+suggesting the Strict Mode fix be scoped to just the map component, was deliberately NOT
+applied** — the review tool does not have the context that this was already weighed and
+approved by the owner: two prior rounds tried fixing the map component's own state logic
+first and were wrong (`BranchMapModal` was already correct), the disable is dev-only with
+zero production effect (Strict Mode never runs in production), and re-scoping would mean
+re-attempting the same patch-the-symptom approach that already failed once. Reversing a
+recorded, deliberate tradeoff needs a new reason, not just an automated suggestion that
+cannot see the history behind it.
+
 **One more outside-click bug, same day, that took two attempts: clicking the field's own label
 didn't close the list, and stay closed** ("when I click on top space of the input/field...
 dropdown is not closing"). `Field`'s label is a real `<label htmlFor>`, and clicking a label
