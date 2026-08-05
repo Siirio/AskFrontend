@@ -155,6 +155,29 @@ export type DraftBranch = {
   name: string;
   address: string;
   addressDetails: string;
+  /**
+   * The branch's narrowest KATO level, in RUSSIAN — the lookup key for
+   * `resolveCityId`, never shown to anyone.
+   *
+   * Carried separately from `address` because `address` is a composed,
+   * seller-editable line ("Акмолинская область, г. Кокшетау, Абая 10") and
+   * cannot be parsed back into a place. Russian specifically: the backend's
+   * `city` table is seeded in Russian, so `nameKaz` resolves only 8 of 23
+   * cities where `nameRus` resolves 22 — and `kk` is our default locale
+   * (`KzPlace.placeNameRu`).
+   */
+  cityNameRu: string;
+  /**
+   * Resolved from `cityNameRu` via `resolveCityId` at submit when the backend
+   * knows that city, `undefined` otherwise (AUDIT_1 B3, closed 2026-08-04).
+   *
+   * Optional on purpose and it must stay that way: most KATO places are
+   * districts and villages that the 23-row `city` table does not contain, and
+   * an unresolved city is a real, valid branch — not a validation failure. The
+   * cost of leaving it unset is only that the branch is invisible to the
+   * catalog's city filter.
+   */
+  cityId?: string;
   latitude: number;
   longitude: number;
 };
@@ -471,6 +494,10 @@ export function toOnboardingRequest(
       name: branch.name,
       address: branch.address.trim() || undefined,
       addressDetails: branch.addressDetails.trim() || undefined,
+      // Omitted entirely when unresolved — never sent as null or "". Without
+      // it `branch_city` stays null and the branch is invisible to the
+      // catalog's city filter (AUDIT_1 B3).
+      cityId: branch.cityId || undefined,
       latitude: branch.latitude,
       longitude: branch.longitude,
       pickupAvailable: true,

@@ -33,25 +33,36 @@ Anonymous. It **creates nothing** — no requests, chats, notifications, or supp
 |---|---|---|---|
 | `rawQuery` | string, ≤500 | **yes** (`@NotBlank`) | The complete visible customer query — any language, slang, typos. Sent unmodified (slice lock) |
 | `mode` | `ITEM` \| `SERVICE` | **yes** (`@NotNull`) | **There is no `ALL`.** Every search picks one. Driven by the search-form toggle (PRODUCT_VISION UF 2.1, added 2026-07-28) |
-| `sort` | string | no | `relevance` \| `distance` \| `price_asc` \| `lowest_price`. Regex-validated — **`intent_match` is now REJECTED** |
+| `sort` | string | no | `relevance` \| `distance` \| `price_asc` \| `price_desc` \| `unique_offers`. Regex-validated. **`unique_offers` added 2026-08-04 — gate G1's sort, now buildable.** `lowest_price` was REMOVED the same day (we never sent it); `price_desc` is new and NOT surfaced — §4 names one "Cost" sort and `price_asc` serves it (P9.1) |
 | `userLocation` | `{ lat, lng }` | no | `lat` −90..90, `lng` −180..180, both `@NotNull` when the object is present. Enables `distance` sort + `distanceMeters` on cards |
 | `locale` | string, ≤16 | no | `^[A-Za-z]{2}([_-][A-Za-z]{2})?$`. **Load-bearing** — the server localizes prose in the response from it (see “Strings” below) |
-| `page` | int 0–20 | no | Zero-based |
+| `page` | int ≥0 | no | Zero-based. **The `@Max(20)` ceiling was REMOVED 2026-08-04** — together with `MAX_CANDIDATES`, which is gone entirely (the gateway now returns a real `Page<SearchHitDto>` with a true `hasNext`). **This is what makes infinite scroll possible** |
 | `pageSize` | int 1–50 | no | |
 | `explicitFilters` | `SearchFilterRequest` | no | ONE object. The old `filters` + `overrides` pair no longer exists — these are the user's explicit constraints and they win |
 
-**Cross-field rule:** `explicitFilters.radiusMeters` requires `userLocation` — the backend
-asserts it (`isRadiusLocationValid`). Never offer the radius control without a location fix.
+**THREE cross-field rules, all backend-asserted — each is a UI constraint, not advice.**
+Breaking any is a 400:
+
+1. `explicitFilters.radiusMeters` requires `userLocation` (`isRadiusLocationValid`). Never
+   offer the radius control without a location fix.
+2. **`sort: "distance"` requires `userLocation`** (`isDistanceLocationValid`, **new 2026-08-04**).
+   The distance sort must be *unavailable* until a fix exists, not merely unhelpful.
+3. **`city`, `radiusMeters` and `mapArea` are MUTUALLY EXCLUSIVE** (`isLocationFilterValid`,
+   **new 2026-08-04** — at most ONE may be set). They are three answers to one question, *where*,
+   so the UI presents them as a single choice and setting one CLEARS the other two. Three
+   independent controls would 400 the moment a user ticked two.
 
 ### SearchFilterRequest
 | Field | Type | Notes |
 |---|---|---|
 | `category` | string ≤255 | |
 | `city` | string ≤255 | |
-| `country` | string ≤2 | **new 2026-07-27** |
+| `country` | string, **exactly 2** | Tightened from `≤2` to `@Size(min=2,max=2)` on 2026-08-04 — a 1-char value now 400s |
 | `minPrice` / `maxPrice` | decimal ≥0 | Backend asserts `minPrice ≤ maxPrice` (`isPriceRangeValid`) |
-| `openNow` | boolean | **new 2026-07-27** — no vision entry yet (P9.1); do not surface a control until there is one |
-| `radiusMeters` | int 1–100000 | **new 2026-07-27 — this is the vision's "search within 100 km" filter.** 100 000 m is exactly the cap |
+| ~~`openNow`~~ | **REMOVED 2026-08-04.** Backend capability with no vision entry; never sent, so its deletion costs nothing |
+| `radiusMeters` | int 1–100000 | The vision's "search within 100 km" filter. 100 000 m is exactly the cap. **Mutually exclusive with `city` and `mapArea`** |
+| `businessIds` | `UUID[]`, max 100 | **The Companies filter — gate G1, delivered 2026-08-04.** Options come from `SearchResponse.companyFacets`, NEVER from the loaded cards |
+| `mapArea` | `{ north, south, east, west }` | **The map-area filter — gate G1, delivered 2026-08-04.** All four `@NotNull` together; backend asserts `north > south && east > west`. **Mutually exclusive with `city` and `radiusMeters`** |
 
 ## SearchResponse
 
@@ -60,6 +71,7 @@ asserts it (`isRadiusLocationValid`). Never offer the radius control without a l
 | `rawQuery`, `mode` | Request context preserved. Note `mode`, not `scope` |
 | `understoodQuery` | Human explanation of how the query was read. Render as intent feedback, **never as a control** |
 | `sections` | `SearchSectionResponse[]` — see below. **The result list is sectioned, not flat** |
+| `companyFacets` | `{ businessId, businessName, resultCount }[]` — the Companies filter's option list, **new 2026-08-04**. Computed server-side over the full current query with **every active filter EXCEPT `businessIds`**, so selecting a company never shrinks the list; counts cover the whole matching set, not the page. Pre-sorted by count desc then name — render as given. A backend LOCK forbids deriving these options from loaded cards |
 | `interpretedConstraints` | `{ key, value, source }[]` — each effective constraint WITH its source, so the UI can say "we filtered by X" and let the user override |
 | `page`, `pageSize`, `total`, `hasNext` | Drive the pager off these; never count client-side |
 | `ambiguity` | string — set when the query was ambiguous |
@@ -91,16 +103,17 @@ assume two sections exist.
 | `brandColor` | Always populated (backend falls back to a default) |
 | `brandLogoUrl` | Nullable |
 | `title`, `summary`, `categoryLabel` | |
+| `purchaseDestinations` | `PurchaseDestinationResponse[]` = `{ label, url }`, **ordered** (`@OrderColumn(display_order)` on both `Item` and `Service`), `[]` when the seller published none. **Gate G3's answer, delivered 2026-08-04 (`c56f75c`).** Read by the Product Card's "Proceed to Purchase" (roadmap #3): none → chat draft, one → go, several → chooser modal. A destination belongs to the item/service, never a branch; a verification link is never one (both are backend LOCKS as well as ours) |
 | `images` | `CatalogImageResponse[]` = `{ id, url }` — ordered, **at most three, first is primary**, `[]` when none (`toCard()` defaults to `List.of()`, so never null). Server-generated ASK-managed media; a client never submits an external media URL. **Landed 2026-08-02 (`b02105a`). Modelled, NOT rendered** — see § *Catalog images* |
 | `price`, `currency` | `price` nullable — render nothing when absent, never "0" |
 | `businessProfile` | `{ logoUrl, coverUrl, description, number, email, instagramUrl, telegramUrl, websiteUrl }` |
 | `availability` | `UNKNOWN` \| `AVAILABLE` \| `UNAVAILABLE` |
 | `availabilityWarning` | **Server-localized prose**, non-null ONLY when `availability = UNKNOWN`. An honest caveat — availability is never invented (P9.4) |
 | `matchReasons` | `string[]` — **server-localized prose**, "why this matched". Safe to render; this is the intent layer's core signal |
-| `badges` | `string[]` — **hardcoded English tokens**, see below |
+| `badges` | `string[]` — **stable UPPER_SNAKE tokens** (`OFFICIAL_CHANNEL`, `COMPLETE_CARD`, `PICKUP`) since 2026-08-04; they were lowercase English prose before. See below |
 | `distanceMeters` | Nullable int. Renders only from this value (slice lock) — never derived from a city name |
 | `branchName`, `branchAddress`, `branchCity` | Branch context |
-| `openingSummary` | ⚠ **DECLARED BUT NEVER POPULATED.** `toCard()` has no `.openingSummary(...)` call — it is always null. Do NOT build an open/closed indicator on it. (`BranchResponse` does populate it; the search card does not.) Raised with backend |
+| ~~`openingSummary`~~ | **REMOVED from the wire 2026-08-04 (`c56f75c`).** We raised "populate it or drop it"; they dropped it. Never modelled here, so its deletion cost nothing — the payoff for refusing to model a field that could never arrive |
 
 `contactActions` is **GONE** — the whole `contact` module and its `contactActionId` privacy
 pattern were deleted 2026-07-21. See ROADMAP gate **G3**.
@@ -111,12 +124,21 @@ The backend returns two different kinds of string and they are handled different
 a deliberate, owner-approved narrowing of slice DONE-criterion #3.
 
 - **Badges are a closed token set → map each to a client i18n key.** The backend emits
-  literal English: `"official channel"` (business profile has a website/telegram/instagram),
-  `"complete card"` (the item has a summary), `"pickup"` (the branch has an address), plus the
-  **active offer label** (free text from the business, e.g. "-30%"). Rendering the first three
-  raw would ship English badges to every Russian and Kazakh user. Map the three known tokens;
-  pass the offer label through as data. Badges render as METADATA — never a score, never a
-  traffic light (project lock).
+  `OFFICIAL_CHANNEL` (business profile has a website/telegram/instagram), `COMPLETE_CARD` (the
+  item has a summary), `PICKUP` (the branch has an address), plus the **active offer label**
+  (free text from the business, e.g. "-30%"). Map the three known tokens; pass the offer label
+  through as data. Badges render as METADATA — never a score, never a traffic light
+  (project lock).
+
+  > **⚠ RENAMED 2026-08-04 (`c56f75c`), and the rename was a SILENT regression.** These were
+  > lowercase English prose — `"official channel"`, `"complete card"`, `"pickup"` — which is why
+  > this repo asked for stable tokens on 2026-08-02. The backend delivered them. **Our own
+  > drop-unknown rule then hid the break:** every token would have failed the lookup and been
+  > filtered out, so every badge simply vanished from every card — no error, no English leaking,
+  > nothing for CI to see. The rule worked exactly as designed and, in doing so, removed the
+  > symptom that would have reported the breakage. **A closed token set must be re-verified
+  > against the emitter on every backend bump**, because its failure mode is invisible by
+  > construction.
 - **Prose renders as server copy.** `matchReasons`, section `title`/`reason`, and
   `availabilityWarning` are assembled server-side from `request.locale` (ru/kk/en) and cannot
   be reconstructed client-side. Send `locale` correctly and render what comes back.
@@ -193,8 +215,13 @@ and **N12** (the presentation contract).
   only as explicit user choices. `lowest_price` exists on the wire but has no vision entry —
   do not surface it (P9.1).
 - Never re-sort or re-filter a rendered page client-side to fake a server capability.
-- **Still missing for the vision's §4 controls (gate G1):** a Unique-Offers sort, a Companies
-  filter, and a map-area (bounding-box) filter. The 100 km radius **is now delivered** as
-  `radiusMeters`.
-- `openNow` and `lowest_price` are the reverse case — backend capability with no vision entry.
-  Leave them unbuilt until the vision describes them.
+- ~~**Still missing for the vision's §4 controls (gate G1)**~~ — **ALL THREE DELIVERED
+  2026-08-04.** `unique_offers` joined the `sort` regex, `explicitFilters.businessIds`
+  (`List<UUID>`, max 100) is the Companies filter, and `explicitFilters.mapArea` is the
+  bounding box. **Gate G1 is fully unparked** and infinite scroll is buildable: `MAX_CANDIDATES`
+  is gone (real `Page<SearchHitDto>` paging with a true `hasNext`) and `page` no longer carries
+  `@Max(20)`.
+- **`openNow` and `lowest_price` are GONE** from the wire (`c56f75c`) — both were backend
+  capability with no vision entry, and we never sent either. `price_desc` arrived in the same
+  commit and is the same case: §4 names ONE "Cost" sort and `price_asc` already serves it, so it
+  is not surfaced (P9.1). A client narrower than the wire keeps being the right direction.

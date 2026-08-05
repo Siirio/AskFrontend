@@ -85,7 +85,8 @@
       "label": "Sort by",
       "relevance": "Relevance",
       "distance": "Distance",
-      "price_asc": "Cost"
+      "price_asc": "Cost",
+      "unique_offers": "Unique offers"
     },
     "filters": {
       "minPrice": "Min price",

@@ -51,6 +51,16 @@ function card(overrides = {}) {
       { id: "img-1", url: "https://media.ask.test/items/rose-1.webp" },
       { id: "img-2", url: "https://media.ask.test/items/rose-2.webp" },
     ],
+    // `SearchCardResponse.purchaseDestinations` — the G3 contract, landed
+    // 2026-08-04 in `c56f75c`. An `@ElementCollection` with
+    // `@OrderColumn(display_order)` on Item AND Service, so ORDER is the
+    // seller's and is stable. Two entries on purpose: that is the case the
+    // chooser modal exists for (roadmap #3), and a one-entry stub would let a
+    // single-destination shortcut pass while the real case broke.
+    purchase_destinations: [
+      { label: "Kaspi", url: "https://kaspi.kz/shop/p/rose-bouquet" },
+      { label: "Website", url: "https://aigul.example/roses" },
+    ],
     category_label: "Flowers",
     price: 12000,
     currency: "KZT",
@@ -64,7 +74,7 @@ function card(overrides = {}) {
     // (`activeOfferLabel != null && !isBlank()`). The stub used to put "-30%"
     // second with no flag at all, which could only ever prove the client
     // agrees with itself (the e2e-stub lock).
-    badges: ["-30%", "official channel"],
+    badges: ["-30%", "OFFICIAL_CHANNEL"],
     has_active_offer: true,
     distance_meters: 3400,
     latitude: 43.238949,
@@ -98,6 +108,24 @@ function sectionsResponse(rawQuery, overrides = {}) {
         reason:
           "No additional exact matches were found; relaxed constraints: max_price",
         cards: [card({ result_id: "22222222-2222-2222-2222-222222222222" })],
+      },
+    ],
+    // `SearchResponse.companyFacets` (backend `526871a`) — the Companies
+    // filter's option list. Computed server-side over the whole query with
+    // every filter EXCEPT `businessIds`, so selecting a company never shrinks
+    // the list, and counts cover the full result set rather than this page.
+    // Sorted by count desc then name, which is the order the backend emits and
+    // the client renders as-is.
+    company_facets: [
+      {
+        business_id: "b1",
+        business_name: "Aigul Flowers",
+        result_count: 2,
+      },
+      {
+        business_id: "b2",
+        business_name: "Astana Bloom",
+        result_count: 1,
       },
     ],
     interpreted_constraints: [],
@@ -184,7 +212,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     // An offer PLUS a token the client does not know. `resolveBadges()` puts
-    // `activeOfferLabel` first, so "verified" is a badge the backend could add
+    // `activeOfferLabel` first, so "VERIFIED" is a badge the backend could add
     // tomorrow — it must be dropped, not promoted to the offer label and shown
     // raw in the offer tint (AUDIT_2 N8).
     if (rawQuery === "roses-badges") {
@@ -201,7 +229,7 @@ const server = createServer(async (req, res) => {
                 reason: null,
                 cards: [
                   card({
-                    badges: ["-30%", "official channel", "verified"],
+                    badges: ["-30%", "OFFICIAL_CHANNEL", "VERIFIED"],
                     has_active_offer: true,
                   }),
                 ],
@@ -227,7 +255,7 @@ const server = createServer(async (req, res) => {
                 reason: null,
                 cards: [
                   card({
-                    badges: ["surprise", "pickup"],
+                    badges: ["SURPRISE", "PICKUP"],
                     has_active_offer: false,
                   }),
                 ],

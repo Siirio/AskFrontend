@@ -242,7 +242,49 @@ need not even match theirs. The seller still edits the field freely.
 registry levels and the street line are joined into that one string by `formatKzAddress` —
 widest first. No DTO field is invented (P9.4). ⚠ `cityId` is still **not** sent — see below.
 
-## B3 — `cityId` on drafted branches: MEASURED 2026-08-02, and the planned fix does not work
+## B3 — CLOSED 2026-08-04. The backend normalised server-side; we send the RUSSIAN name
+
+**What shipped.** `CityServiceImpl.findByName` now canonicalises before matching
+(backend `c56f75c`): it strips a Russian `г.`/`город` prefix and a Kazakh `қ.`/`қаласы`
+suffix, then looks up case-insensitively. That is option 3 of the raise below — the server
+matching against its own table, rather than the client guessing at it.
+
+**Re-measured against the whole KATO registry after the change:**
+
+| | Result |
+|---|---|
+| Cities reachable from `nameRus` | **22 of 23** (was 0) |
+| Cities reachable from `nameKaz` | **8 of 23** |
+| `с. Караганда` (village) → the city row | **Still no match — correct** |
+
+**Two consequences that decide the implementation:**
+
+1. **We send `nameRus`, always — never the locale-resolved name.** The `city` table is seeded
+   in Russian, so canonicalising `Көкшетау қ.` yields `Көкшетау`, which is not the row
+   `Кокшетау`. Our default locale is `kk` (D18/D19), so sending the displayed name would fail
+   for most Kazakh-speaking sellers — the *default* path. `KzPlace` therefore carries
+   `placeNameRu` beside `placeName`, and `DraftBranch.cityNameRu` carries it to submit.
+2. **The village trap is handled by the backend, not by us.** `с. Караганда` matches neither
+   pattern, so it stays unresolved and 404s — exactly right, and the reason a client-side
+   prefix-strip was refused. `Конаев` is the one unreachable city: KATO spells it `г. Қонаев`
+   with a Kazakh Қ, so it canonicalises to `Қонаев` ≠ `Конаев`. Left alone; a client-side
+   transliteration would be the same mistake at one remove.
+
+**How it works now.** `submit` resolves every drafted branch through
+`api.resolveCityId(branch.cityNameRu)` in one `Promise.all`, inside the existing pending
+state, then `toOnboardingRequest` sends `cityId` — omitted entirely when unresolved, never
+`null` or `""`. **Best-effort by design:** `resolveCityId` returns `null` for a miss, a 404 or
+a network failure alike. Most KATO places are misses (23 city rows against ~12 000 places), so
+a form error here would reject valid branches over a field the backend marks optional. An
+unresolved branch is a real branch; it is simply invisible to the catalog's city filter.
+
+Resolution happens at SUBMIT rather than when the branch is added, so the modal's "Add" stays
+instant and the one wait sits where a spinner already exists.
+
+<details>
+<summary>The original 2026-08-02 finding, kept because it records why the fix took this shape</summary>
+
+### B3 — MEASURED 2026-08-02, and the planned fix did not work
 
 Both audits carried B3 as *"the bridge exists, but verify the KATO↔`city` name overlap
 cross-repo first."* **That verification has now been done, and the overlap is zero.**
@@ -282,6 +324,10 @@ be reconciled), or seed/extend the `city` table with its KATO codes, or accept a
 `CreateBranchRequest` and let the server do the matching against its own table. Until one lands,
 `cityId` stays unset — an honest null, and branches stay invisible to the city filter, which is
 a stated gap rather than a silent wrong answer.
+
+**→ The third option shipped on 2026-08-04. See the top of this section.**
+
+</details>
 
 ## Not built yet
 **Company Profile** has no endpoint set — the vision marks it "coming in a future update". Ship the placeholder, not a screen.

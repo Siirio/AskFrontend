@@ -349,12 +349,36 @@ export function useSellerOnboarding() {
 
     setPending(true);
     try {
+      // Attach a `cityId` to every drafted branch the backend can recognise
+      // (AUDIT_1 B3). Done HERE rather than when the branch is added, so the
+      // modal's "Add" stays instant and the one wait sits inside submit's
+      // existing pending state.
+      //
+      // Best-effort by design: `resolveCityId` answers null for a miss, a 404
+      // or a network failure alike, and an unresolved branch simply travels
+      // without the optional field. Most KATO places ARE misses — the city
+      // table holds 23 rows and the registry holds ~12 000 places — so a form
+      // error here would reject valid branches for a field the backend marks
+      // optional. `Promise.all` because branches are independent.
+      const branches = await Promise.all(
+        values.branches.map(async (branch) => ({
+          ...branch,
+          cityId:
+            branch.cityId ??
+            (await api.resolveCityId(branch.cityNameRu)) ??
+            undefined,
+        })),
+      );
+
       // Drafted branches travel inline on the request (model.ts
       // `toOnboardingRequest`) — business, membership, profile, verification,
       // and every branch commit in ONE transaction, so there is no follow-up
       // per-branch call to fail independently here.
       await api.onboardSeller(
-        toOnboardingRequest(values, api.REGISTRATION_COUNTRY_CODE),
+        toOnboardingRequest(
+          { ...values, branches },
+          api.REGISTRATION_COUNTRY_CODE,
+        ),
       );
       submitted.current = true;
 

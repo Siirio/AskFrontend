@@ -85,7 +85,8 @@
       "label": "Сортировать по",
       "relevance": "Актуальность",
       "distance": "Расстояние",
-      "price_asc": "Цена"
+      "price_asc": "Цена",
+      "unique_offers": "Уникальные предложения"
     },
     "filters": {
       "minPrice": "Цена от",

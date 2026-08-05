@@ -20,10 +20,26 @@
 export const SEARCH_MODES = ["ITEM", "SERVICE"] as const;
 export type SearchMode = (typeof SEARCH_MODES)[number];
 
-/** The sort values the vision has a control for (§4: Relevance, Distance,
- *  Cost). `lowest_price` exists on the wire but has no vision entry — never
- *  surfaced (P9.1). Unique-Offers has no backend sort — parked (gate G1). */
-export const SORT_OPTIONS = ["relevance", "distance", "price_asc"] as const;
+/**
+ * The sort values the vision has a control for (§4: Relevance, Distance, Cost,
+ * Unique Offers).
+ *
+ * **`unique_offers` UNPARKED 2026-08-04 (backend `c56f75c`)** — gate G1's last
+ * sort blocker. It was absent from the wire, so the control could not exist
+ * without faking it client-side, which the slice lock forbids.
+ *
+ * `price_desc` also arrived in the same commit and is deliberately NOT here:
+ * the vision's §4 names a single "Cost" sort, and `price_asc` already serves
+ * it. A wire value with no vision entry is never surfaced (P9.1) — the same
+ * call made for `lowest_price`, which this backend version REMOVED, proving the
+ * narrower-client-than-wire direction was right.
+ */
+export const SORT_OPTIONS = [
+  "relevance",
+  "distance",
+  "price_asc",
+  "unique_offers",
+] as const;
 export type SortOption = (typeof SORT_OPTIONS)[number];
 
 export type SectionKind = "EXACT" | "ALTERNATIVE";
@@ -44,16 +60,43 @@ export type SearchRequest = {
   explicitFilters?: SearchFilterRequest;
 };
 
-/** Cross-field rule enforced by the backend: `radiusMeters` requires
- *  `userLocation` — never offer the radius control without a location fix
- *  (contracts.md). */
+/** A map viewport, as `SearchMapAreaRequest`. All four bounds are `@NotNull`
+ *  together, and the backend asserts `north > south && east > west` — send the
+ *  whole box or none of it. Unparked 2026-08-04 (gate G1). */
+export type SearchMapArea = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
+
+/**
+ * THREE cross-field rules are enforced by the backend. Breaking any is a 400,
+ * so each one is a UI constraint, not a suggestion:
+ *
+ * 1. `radiusMeters` requires `userLocation` (`isRadiusLocationValid`).
+ * 2. **`sort: "distance"` requires `userLocation`** (`isDistanceLocationValid`,
+ *    NEW in `c56f75c`) — the distance sort must be unavailable, not merely
+ *    unhelpful, until a location fix exists.
+ * 3. **`city`, `radiusMeters` and `mapArea` are MUTUALLY EXCLUSIVE**
+ *    (`isLocationFilterValid`, NEW in `c56f75c`: at most ONE may be set).
+ *    They are three answers to one question — *where* — so the UI must present
+ *    them as a single choice. Setting a new one CLEARS the other two; offering
+ *    them as independent checkboxes would 400 the moment two are ticked.
+ */
 export type SearchFilterRequest = {
   category?: string;
   city?: string;
+  /** Exactly 2 chars (`@Size(min=2,max=2)`) — tightened in `c56f75c`. */
   country?: string;
   minPrice?: number;
   maxPrice?: number;
   radiusMeters?: number;
+  /** The Companies filter — up to 100 business ids (gate G1, unparked
+   *  2026-08-04). Options come from `SearchResponse.companyFacets`, NEVER from
+   *  the loaded cards (backend lock + our own server-capability lock). */
+  businessIds?: string[];
+  mapArea?: SearchMapArea;
 };
 
 // ── Response DTOs ────────────────────────────────────────────────────────────
@@ -68,6 +111,44 @@ export type SearchFilterRequest = {
 export type CatalogImage = {
   id: string;
   url: string;
+};
+
+/**
+ * `PurchaseDestinationResponse` — one seller-published place to buy this exact
+ * item or service. **The G3 contract, delivered by backend `c56f75c`.**
+ *
+ * Stored as an `@ElementCollection` with `@OrderColumn(display_order)` on BOTH
+ * `Item` and `Service`, so the order is the seller's and is stable — render it
+ * as given, never re-sort. `label` is what the chooser modal shows; `url` is
+ * where it goes.
+ *
+ * Two rules travel with this field, and both are LOCKS on the backend side as
+ * well as ours (PRODUCT_VISION UF 2.1, `item/locks.md`, `service/locks.md`):
+ * a destination belongs to the item or service and **never to a branch**, and
+ * a link collected to VERIFY a business (`kaspiUrl`/`ozonUrl`/`wildberriesUrl`
+ * on `BusinessVerification`) is **never** reused as one.
+ */
+export type PurchaseDestination = {
+  label: string;
+  url: string;
+};
+
+/**
+ * `SearchCompanyFacetResponse` — the option list for the Companies filter.
+ *
+ * **Computed by the backend over the full current query with every active
+ * filter EXCEPT `businessIds`** (their lock, added with the feature). That
+ * exception is the whole point and is easy to lose: counting *with*
+ * `businessIds` applied would collapse the list to whatever is already
+ * selected, so a multi-select could never gain a second company. Counts cover
+ * the entire matching set, not the loaded page.
+ *
+ * Already sorted by `resultCount` desc, then name — render in the given order.
+ */
+export type SearchCompanyFacet = {
+  businessId: string;
+  businessName: string;
+  resultCount: number;
 };
 
 export type SearchCardResponse = {
@@ -89,6 +170,12 @@ export type SearchCardResponse = {
    *  raised for an owner decision, not inferred — see `contracts.md`
    *  § *Catalog images* and AUDIT_2 N11/N12. */
   images: CatalogImage[];
+  /** Ordered seller-published places to buy — `[]` when the seller listed none.
+   *  **This is what gate G3's "Proceed to Purchase" button reads** (backend
+   *  `c56f75c`): none → open chat with an editable, never-auto-sent draft; one
+   *  → go there; several → the chooser modal. Built with the Product Card
+   *  (roadmap #3), which is the only surface the vision puts the button on. */
+  purchaseDestinations: PurchaseDestination[];
   categoryLabel: string | null;
   price: number | null;
   currency: string | null;
@@ -125,12 +212,12 @@ export type SearchCardResponse = {
   branchName: string | null;
   branchAddress: string | null;
   branchCity: string | null;
-  // `openingSummary` deliberately NOT modelled — declared on the Java DTO but
-  // never assigned (toCard() has no .openingSummary() call), always null on
-  // the wire. Reading it would invite a control gated on a value that can
-  // never arrive (slice lock). `component` is likewise omitted — mapping the
-  // card kind from `resultType` ourselves, never from a backend-named
-  // frontend component (contracts.md).
+  // `openingSummary` is GONE from the wire as of backend `c56f75c` — it was
+  // declared but never assigned, we raised "populate it or remove it", and
+  // they removed it. Never modelled here, so its deletion costs nothing: that
+  // is the payoff for not modelling a field that could never arrive.
+  // `component` is likewise omitted — mapping the card kind from `resultType`
+  // ourselves, never from a backend-named frontend component (contracts.md).
 };
 
 export type SearchSectionResponse = {
@@ -151,6 +238,10 @@ export type SearchResponse = {
   mode: SearchMode;
   understoodQuery: string | null;
   sections: SearchSectionResponse[];
+  /** Option list + counts for the Companies filter (backend `c56f75c`).
+   *  Server-computed over the whole result set — this is what makes the
+   *  control possible without deriving options from loaded cards. */
+  companyFacets: SearchCompanyFacet[];
   interpretedConstraints: { key: string; value: string; source: string }[];
   page: number;
   pageSize: number;
@@ -180,17 +271,30 @@ export type CitySuggestion = {
 // ── Badges — closed token set (slice lock) ──────────────────────────────────
 
 /**
- * The backend emits three hardcoded-English tokens plus a free-text offer
- * label. Only the three known tokens map to an i18n key; everything else
- * (including a future backend addition) is DROPPED, never rendered raw —
- * shipping raw English into a ru/kk product the day the backend adds a
- * fourth token is exactly the failure this map prevents (contracts.md,
- * slice lock).
+ * The backend emits three STABLE TOKENS plus a free-text offer label. Only the
+ * three known tokens map to an i18n key; everything else (including a future
+ * backend addition) is DROPPED, never rendered raw (contracts.md, slice lock).
+ *
+ * **Renamed 2026-08-04 to match backend `c56f75c`.** These were lowercase
+ * English prose — `"official channel"`, `"complete card"`, `"pickup"` — because
+ * that is literally what `resolveBadges()` used to `badges.add(...)`. It now
+ * adds `OFFICIAL_CHANNEL` / `COMPLETE_CARD` / `PICKUP`, which is the stable
+ * token contract this repo asked for on 2026-08-02.
+ *
+ * **This rename was a silent live regression, and it is worth understanding
+ * why it was silent.** Our own drop-unknown rule is what hid it: the day the
+ * backend deployed, every token would have failed the lookup and been filtered
+ * out, so every badge simply vanished from every card — no error, no English
+ * leaking, nothing for CI to catch. The rule did its job (a ru/kk product never
+ * shipped raw English) and in doing so removed the symptom that would have
+ * reported the breakage. A closed token set needs its spellings verified
+ * against the emitter on every backend bump, precisely because failure is
+ * invisible; the e2e stubs are built from `resolveBadges()` for that reason.
  */
 const BADGE_I18N_KEYS: Record<string, string> = {
-  "official channel": "badges.officialChannel",
-  "complete card": "badges.completeCard",
-  pickup: "badges.pickup",
+  OFFICIAL_CHANNEL: "badges.officialChannel",
+  COMPLETE_CARD: "badges.completeCard",
+  PICKUP: "badges.pickup",
 };
 
 // `knownBadgeKeys()` was deleted 2026-08-02: exported, called from nowhere

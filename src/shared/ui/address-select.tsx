@@ -100,8 +100,24 @@ export type KzPlace = {
   /** A settlement — under a district, or directly under the oblast. */
   localityId: number | null;
   localityName: string | null;
-  /** The most specific level answered. What a `city` field wants. */
+  /** The most specific level answered, in the ACTIVE locale. For display. */
   placeName: string;
+  /**
+   * The same level, always in RUSSIAN — for matching against a backend that
+   * stores Russian names.
+   *
+   * Not a duplicate of `placeName`, and the difference is load-bearing. Added
+   * 2026-08-04 for AUDIT_1 B3: `GET /api/v1/cities/resolve?name=` matches
+   * against a `city` table seeded with bare Russian names, and its server-side
+   * normaliser strips `г.`/`город` and `қ.`/`қаласы`. Measured against the whole
+   * KATO registry, that resolves **22 of 23** cities from `nameRus` and only
+   * **8 of 23** from `nameKaz` — because normalising `Көкшетау қ.` yields
+   * `Көкшетау`, which is not the row `Кокшетау`. Our default locale is `kk`
+   * (D18/D19), so sending `placeName` would fail for most Kazakh-speaking
+   * sellers, i.e. the default path. Callers matching a backend record send this;
+   * callers showing a human a place send `placeName`.
+   */
+  placeNameRu: string;
   /**
    * The cascade is as specific as the registry allows for this branch — there
    * is no further question to ask. Callers gate a street field on this rather
@@ -287,6 +303,9 @@ export function AddressSelect({
       localityName,
       // Narrowest first — the registry's own order of specificity.
       placeName: localityName ?? districtName ?? regionName,
+      // The same choice of level, read from `nameRus` instead of the locale.
+      placeNameRu:
+        localityItem?.nameRus ?? districtItem?.nameRus ?? region.nameRus,
       complete,
     };
   }, [region, oblastPick, cityDistrict, settlement, chunkState, locale]);

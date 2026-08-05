@@ -84,6 +84,44 @@ export function createBranch(
   );
 }
 
+/**
+ * Resolve a KATO place NAME to the backend's `cityId`, or `null` when it knows
+ * no such city. Public, no auth (`CityController#resolve`, allowlisted).
+ *
+ * **Pass a RUSSIAN name** (`KzPlace.placeNameRu`), never the locale-resolved
+ * one — the `city` table is seeded in Russian and the server's normaliser only
+ * strips the `г.`/`город` prefix and the `қ.`/`қаласы` suffix. Measured over
+ * the whole KATO registry: 22/23 cities resolve from `nameRus`, 8/23 from
+ * `nameKaz`.
+ *
+ * **A miss returns `null` and is NOT an error.** `resolve` 404s
+ * `CITY_NOT_FOUND` for every district, village and settlement — which is most
+ * of the registry, and correct: KATO's `с. Караганда` is a village that must
+ * NOT resolve to the city of the same name. A branch whose city the backend
+ * does not know is still a perfectly valid branch, so the caller attaches
+ * nothing and moves on rather than blocking the form (AUDIT_1 B3).
+ *
+ * Any other failure is swallowed the same way, deliberately: `cityId` is an
+ * optional field on `CreateBranchRequest`, so a network blip must not cost the
+ * seller their registration.
+ */
+export async function resolveCityId(
+  name: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  try {
+    const city = await httpClient.get<{ id: string; name: string }>(
+      "/api/v1/cities/resolve",
+      { query: { name: trimmed }, signal },
+    );
+    return city?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ── OpenStreetMap geocoding (Nominatim) ──────────────────────────────────────
 //
 // NOT an AskBackend call — the branch map picker's address search and

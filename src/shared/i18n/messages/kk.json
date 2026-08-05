@@ -85,7 +85,8 @@
       "label": "Сұрыптау",
       "relevance": "Сәйкестік",
       "distance": "Қашықтық",
-      "price_asc": "Баға"
+      "price_asc": "Баға",
+      "unique_offers": "Бірегей ұсыныстар"
     },
     "filters": {
       "minPrice": "Ең төмен баға",

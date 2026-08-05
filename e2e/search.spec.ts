@@ -135,9 +135,9 @@ test("the offer tint comes from has_active_offer, and an unknown badge is DROPPE
   // A known token renders through i18n...
   await expect(page.getByText("Official channel").first()).toBeVisible();
   // ...and an unrecognised one is dropped, NEVER shown raw. Before AUDIT_2 N8
-  // "verified" would have replaced "-30%" as the offer label and rendered as
+  // "VERIFIED" would have replaced "-30%" as the offer label and rendered as
   // English inside bg-offer — a fake discount signal.
-  await expect(page.getByText("verified")).toHaveCount(0);
+  await expect(page.getByText("VERIFIED")).toHaveCount(0);
 });
 
 test("no offer flag means no offer tint, even with an unmapped badge", async ({
@@ -147,7 +147,7 @@ test("no offer flag means no offer tint, even with an unmapped badge", async ({
   await page.goto("/app/catalog?query=roses-nooffer&mode=ITEM");
 
   await expect(page.getByText("Pickup").first()).toBeVisible();
-  await expect(page.getByText("surprise")).toHaveCount(0);
+  await expect(page.getByText("SURPRISE")).toHaveCount(0);
 });
 
 test("the city filter lists real cities from GET /cities and picks one", async ({

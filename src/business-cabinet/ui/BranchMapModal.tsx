@@ -186,6 +186,10 @@ export function BranchMapModal({
       // levels and the street line are composed into it, widest first.
       address: formatKzAddress(place, address),
       addressDetails: addressDetails.trim(),
+      // The narrowest registry level in Russian — submit resolves it to a
+      // `cityId` (B3). Kept beside the composed address because that string is
+      // seller-editable and cannot be parsed back into a place.
+      cityNameRu: place.placeNameRu,
       latitude: position.lat,
       longitude: position.lng,
     });
