@@ -224,8 +224,24 @@ test("sign-up → verify → the role modal over /app → continue searching", a
   );
   let legalAcceptanceBody: unknown = null;
   await page.route("**/api/v1/legal/registration-acceptances", (route) => {
-    legalAcceptanceBody = route.request().postDataJSON();
-    return route.fulfill({ status: 204 });
+    const body = route.request().postDataJSON();
+    legalAcceptanceBody = body;
+    // VALIDATES like the backend instead of answering 204 to anything.
+    // `AcceptLegalDocumentsRequest` marks all three fields required
+    // (`documentCodes` @NotEmpty, `countryCode` @NotBlank @Size(2,2), `locale`
+    // @NotBlank), and a stub that accepts any body can only prove the client
+    // agrees with itself — the e2e-stub lock. It did exactly that until
+    // 2026-08-05: `country_code` was never sent, the real backend 400'd every
+    // consent write this product ever made, and this test stayed green because
+    // the assertion below checked only `document_codes`.
+    const valid =
+      Array.isArray(body?.document_codes) &&
+      body.document_codes.length > 0 &&
+      typeof body?.country_code === "string" &&
+      body.country_code.length === 2 &&
+      typeof body?.locale === "string" &&
+      body.locale.length > 0;
+    return route.fulfill({ status: valid ? 204 : 400 });
   });
 
   await page.goto("/app/auth/register");
@@ -255,8 +271,16 @@ test("sign-up → verify → the role modal over /app → continue searching", a
   // open and unanswered — is the whole point (2026-08-01). It used to fire from
   // the modal's "Continue", so this same assertion at the END of the test passed
   // either way and could not tell the two apart.
+  // The WHOLE required shape, not just the codes. Checking `document_codes`
+  // alone is what let a body the backend rejects pass here for weeks.
   expect(legalAcceptanceBody).toMatchObject({
     document_codes: ["USER_TERMS", "PRIVACY_POLICY"],
+    country_code: "KZ",
+    // `kk` because this spec does not pin a locale and kk is the product
+    // default (D18/D19) — which is the point of asserting it: the ACTIVE locale
+    // travels, rather than a hardcoded "ru" (AUDIT_1 A2). Pin a locale in this
+    // test and this value must change with it.
+    locale: "kk",
   });
 
   // Search is the mission: the customer card is preselected.

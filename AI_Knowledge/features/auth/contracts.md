@@ -84,6 +84,26 @@ Sign up verifies the email with a 6-digit code; **log in is email + password**
 `POST /api/v1/legal/registration-acceptances` (Bearer, `LegalController#acceptRegistration`)
 records consent once the session exists.
 
+> ### 🔴 FIXED 2026-08-05 — `countryCode` was never sent, so EVERY consent write 400'd
+>
+> `AcceptLegalDocumentsRequest` requires all three fields — `documentCodes` `@NotEmpty`,
+> **`countryCode` `@NotBlank @Size(min=2,max=2)`**, `locale` `@NotBlank`. Our request type
+> carried only `documentCodes` and an optional `locale`, so the backend answered
+> `400 VALIDATION_ERROR: countryCode не должно быть пустым` to every single call.
+>
+> **Nothing surfaced it.** `recordRegistrationConsent` catches, toasts a generic network error
+> and proceeds — correctly, because a legal write must never strand a valid account — so
+> registration always succeeded and the record was simply never written. It appeared only as a
+> red line in browser devtools, which is where the owner found it.
+>
+> **AUDIT_1 A1 called the coverage half "closed" on the strength of the call being MADE.** It
+> checked that every registration path fires the request; it never checked that the request was
+> accepted. The e2e stub answered `204` to any body, so the suite agreed. Both are now fixed:
+> the client sends `countryCode: "KZ"` (`REGISTRATION_COUNTRY_CODE`), and the stub VALIDATES
+> the three required fields and 400s otherwise, so this cannot regress silently.
+>
+> Verified against the running backend, not inferred: without `countryCode` → 400, with it → 204.
+
 **`LegalController` exposes exactly two endpoints, and they differ only by CHANNEL** (added
 2026-08-02, AUDIT_2 N6 — the sibling was in no frontend doc). Both take the same
 `AcceptLegalDocumentsRequest` (`documentCodes`, `countryCode`, `locale`), both return `204`,

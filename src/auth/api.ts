@@ -81,9 +81,24 @@ export function logout(): Promise<{ success?: boolean }> {
   return httpClient.post<{ success?: boolean }>(`${BASE}/logout`);
 }
 
+/**
+ * Mirrors `kz.ask.legal.api.dto.AcceptLegalDocumentsRequest`. **All three fields
+ * are REQUIRED on the backend** — `documentCodes` `@NotEmpty`, `countryCode`
+ * `@NotBlank @Size(min=2,max=2)`, `locale` `@NotBlank`.
+ *
+ * **`countryCode` was missing here until 2026-08-05, and its absence 400'd every
+ * consent write this product has ever made.** The failure was invisible by
+ * construction: `recordRegistrationConsent` catches, toasts a generic network
+ * error and proceeds, because a legal write must never strand a valid account —
+ * so registration always succeeded and the record was never written. It showed
+ * only as a red line in devtools. AUDIT_1 A1 recorded the "coverage half" as
+ * closed on the strength of the call being MADE; nothing checked that it was
+ * accepted. `locale` is required for the same reason and is no longer optional.
+ */
 export type AcceptRegistrationLegalRequest = {
   documentCodes: string[];
-  locale?: string;
+  countryCode: string;
+  locale: string;
 };
 
 /**

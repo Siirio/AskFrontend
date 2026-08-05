@@ -394,6 +394,9 @@ async function recordRegistrationConsent(locale: string, t: Translate) {
   try {
     await api.acceptRegistrationLegal({
       documentCodes: REGISTRATION_LEGAL_DOCUMENT_CODES,
+      // Required by the backend, and its omission silently voided every consent
+      // record until 2026-08-05 — see `AcceptRegistrationLegalRequest`.
+      countryCode: REGISTRATION_COUNTRY_CODE,
       locale,
     });
   } catch {
