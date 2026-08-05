@@ -10,6 +10,12 @@ Mirrors backend modules: **`offer/item`** + **`importing`** (docs at `../Ask_Bac
 > builds this slice down a dead path on the very next slice to be built. `contracts.md` in this
 > folder already named `offer/item` correctly; only this line was wrong.
 
+> **This slice does NOT own `/app/catalog`.** That page — the result list, sorting and
+> filters — is `search`'s ("Search & Catalog list"). This slice owns the Product Card **modal**
+> rendered over it, and the seller's Products tab. Slices mirror backend module names, not URLs
+> (Structure Lock), which is why `offer/item` became `catalog/` and the catalog PAGE lives
+> elsewhere. See the matching note in `features/search/README.md`.
+
 Owns everything about a product: the customer-facing **Product Card** (UF 2.1 step 3) and the seller-facing **Products** tab of the business cabinet (UF 3.1 item 2 — list, add, import).
 
 ## Key decisions

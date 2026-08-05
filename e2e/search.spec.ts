@@ -190,3 +190,56 @@ test("a search failure renders the error state with a retry", async ({
 
   await expect(page.getByRole("link", { name: "Try again" })).toBeVisible();
 });
+
+// Infinite scroll (PRODUCT_VISION §4, owner 2026-08-02). `roses-paged` is the
+// ONLY mock scenario with `has_next: true` — every other one returns a single
+// page, which is why the suite could be green while testing none of this.
+test("scrolling appends the next page instead of replacing it, and stops at the end", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses-paged&mode=ITEM");
+
+  // Page 0 arrives SERVER-rendered — it is in the HTML before any scrolling.
+  await expect(page.getByText("Paged bouquet page 0")).toBeVisible();
+  await expect(page.getByText("Paged bouquet page 1")).toHaveCount(0);
+
+  // Two appends to exhaust the set. Scrolling to the bottom brings the sentinel
+  // into view, which is what the observer is watching for.
+  for (const expected of [1, 2]) {
+    await page.mouse.wheel(0, 20000);
+    await expect(
+      page.getByText(`Paged bouquet page ${expected}`),
+    ).toBeVisible();
+  }
+
+  // APPENDED, not replaced — the earlier pages are still on screen. This is the
+  // assertion that separates infinite scroll from pagination.
+  await expect(page.getByText("Paged bouquet page 0")).toBeVisible();
+  await expect(page.getByText("Paged bouquet page 1")).toBeVisible();
+
+  // The server said `has_next: false` on page 2, so the list ends and says so.
+  await expect(page.getByText("No more results")).toBeVisible();
+});
+
+test("changing the sort discards the accumulated pages rather than appending to them", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses-paged&mode=ITEM");
+  // Wait for page 0 BEFORE scrolling. The sentinel's IntersectionObserver is
+  // attached by a client effect, so a wheel event sent before hydration is
+  // simply lost — the observer does not exist yet to see it. This assertion is
+  // the hydration proxy, not decoration; without it the test fails outright.
+  await expect(page.getByText("Paged bouquet page 0")).toBeVisible();
+
+  await page.mouse.wheel(0, 20000);
+  await expect(page.getByText("Paged bouquet page 1")).toBeVisible();
+
+  // A new sort is a NEW query. The vision requires the list to reset, which the
+  // params-derived remount key enforces structurally — page 1's card must be
+  // gone, not merely pushed further down.
+  await page.getByRole("button", { name: "Distance" }).click();
+  await expect(page.getByText("Paged bouquet page 0")).toBeVisible();
+  await expect(page.getByText("Paged bouquet page 1")).toHaveCount(0);
+});

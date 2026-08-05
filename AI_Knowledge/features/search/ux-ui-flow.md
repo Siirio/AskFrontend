@@ -177,3 +177,34 @@ passes through as data. An unrecognised token is dropped (slice lock).
   "0 km"
 - **Availability UNKNOWN** — render the server's `availabilityWarning` verbatim. Never present
   unknown availability as available.
+
+## Infinite scroll — the Catalog Page's result list (2026-08-04)
+
+Pagination is gone; the list extends as the customer scrolls (PRODUCT_VISION §4, owner
+2026-08-02). Buildable only since backend `c56f75c` removed `MAX_CANDIDATES = 200` and the
+`page @Max(20)` ceiling — before that the list died at ~200 results whatever matched.
+
+**Page 0 is still the server's.** The route file fetches it (D7) and passes it into
+`ResultStream`, a client island. A visitor who never scrolls still makes exactly one request,
+and first paint is unchanged.
+
+**Pages 1..n** are fetched by `useCatalogPagination` with the SAME params, so an appended page
+is always the same query the customer is already looking at. `hasNext` comes from the server —
+never inferred by counting what we hold.
+
+**Changing any filter or sort resets the list**, and that is enforced by the remount key rather
+than by a `reset()` call: `CatalogPage` keys the island on the URL params, so a new query mounts
+a new store. There is nothing for a future control to forget.
+
+**States.** Loading appends a spinner + "loading more" beneath the list. The end of the list
+says so — but only once there is more than one page, since on a single short page it is noise
+about something already visible. A failed APPEND keeps the results on screen and offers a retry;
+that is deliberately different from page 0 failing, which is the route's full error state (P9.3).
+While the retry is showing, the sentinel is inert — otherwise it would immediately re-fire the
+request that just failed.
+
+**The scroll path is e2e-covered** by the `roses-paged` scenario, the only mock that sets
+`has_next: true`. It returns **8 cards per page**, and that number is load-bearing: with one card
+the page is shorter than the viewport, the sentinel starts inside the observer's `rootMargin`,
+and every page auto-loads with no scrolling — a scroll test written against that passes while
+asserting nothing about scrolling. Measured before the fix: page 1 arrived unscrolled.

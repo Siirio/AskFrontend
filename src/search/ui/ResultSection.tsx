@@ -1,4 +1,6 @@
-import { getTranslations } from "next-intl/server";
+"use client";
+
+import { useTranslations } from "next-intl";
 
 import type { SearchSectionResponse } from "../model";
 import { ResultCard } from "./ResultCard";
@@ -11,14 +13,8 @@ import { ResultCard } from "./ResultCard";
  * because presenting a relaxed result without saying what was loosened is a
  * silent lie about the match.
  */
-export async function ResultSection({
-  section,
-  locale,
-}: {
-  section: SearchSectionResponse;
-  locale: string;
-}) {
-  const t = await getTranslations({ locale, namespace: "search" });
+export function ResultSection({ section }: { section: SearchSectionResponse }) {
+  const t = useTranslations("search");
 
   return (
     <section className="flex flex-col gap-3">
@@ -32,7 +28,7 @@ export async function ResultSection({
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {section.cards.map((card) => (
-          <ResultCard key={card.resultId} card={card} locale={locale} />
+          <ResultCard key={card.resultId} card={card} />
         ))}
       </div>
     </section>

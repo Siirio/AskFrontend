@@ -13,8 +13,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { useStore } from "zustand";
+
 import * as api from "./api";
-import type { CatalogSearchParams, CitySuggestion } from "./model";
+import type {
+  CatalogSearchParams,
+  CitySuggestion,
+  SearchResponse,
+  SearchSectionResponse,
+} from "./model";
+import { toSearchRequest } from "./model";
+import { createSearchResultsStore } from "./store";
 
 // ── City autocomplete ────────────────────────────────────────────────────────
 
@@ -168,4 +177,89 @@ export function useGeolocation(): {
   };
 
   return { state, request };
+}
+
+// ── Catalog pagination (infinite scroll) ─────────────────────────────────────
+
+/**
+ * Accumulated result pages for the Catalog Page, and the request that extends
+ * them (PRODUCT_VISION §4 — infinite scroll replaced pagination, owner
+ * 2026-08-02).
+ *
+ * **The premise this file opened with no longer holds, deliberately.** The
+ * header above says nothing in search needs to outlive one render because the
+ * URL is the single source of truth. That is still true of query/mode/sort/
+ * filters — every one of them still travels in the URL and still triggers a
+ * fresh server render. What it is no longer true of is the RESULTS, because
+ * pages 1..n arrive after the render that produced page 0. See `store.ts` for
+ * why holding them does not weaken the server-capability lock: the store
+ * concatenates honest server answers, it never refines them.
+ *
+ * Page 0 is NOT fetched here — the route file already has it (D7). This hook
+ * only ever asks for the next one, using the SAME params, so an appended page
+ * is the same query the user is already looking at.
+ */
+export function useCatalogPagination(
+  initial: SearchResponse,
+  params: CatalogSearchParams,
+  locale: string,
+): {
+  sections: SearchSectionResponse[];
+  hasNext: boolean;
+  loading: boolean;
+  error: boolean;
+  loadMore: () => void;
+  retry: () => void;
+} {
+  // Created once per mount. `CatalogPage` remounts this whole island under a
+  // key derived from the params, so a changed filter or sort gets a NEW store
+  // rather than a reset — the vision's "changing any filter or sort resets the
+  // list" is then structural rather than a call someone can forget.
+  const [store] = useState(() =>
+    createSearchResultsStore({
+      sections: initial.sections,
+      hasNext: initial.hasNext,
+    }),
+  );
+  const state = useStore(store);
+
+  // The request is keyed off the store's own page counter rather than a local
+  // one, so there is exactly one notion of "which page are we on".
+  const request = useCallback(async () => {
+    const { page, loading, hasNext } = store.getState();
+    if (loading || !hasNext) return;
+    store.getState().setLoading(true);
+    try {
+      const next = await api.search({
+        ...toSearchRequest(params, locale),
+        page: page + 1,
+      });
+      store.getState().appendPage(next.sections, next.hasNext);
+    } catch {
+      // Kept soft on purpose: the results already on screen stay, and the UI
+      // offers a retry. Throwing here would replace a working list with an
+      // error page because one continuation failed.
+      store.getState().setError(true);
+    }
+  }, [store, params, locale]);
+
+  const retry = useCallback(() => {
+    store.getState().setError(false);
+    void request();
+  }, [store, request]);
+
+  return {
+    sections: state.sections,
+    hasNext: state.hasNext,
+    loading: state.loading,
+    // Nothing may load while an error is showing — otherwise the sentinel, which
+    // is still on screen, would immediately re-fire the request that just failed
+    // and spin. The retry button is the only way forward from here.
+    error: state.error,
+    loadMore: () => {
+      if (store.getState().error) return;
+      void request();
+    },
+    retry,
+  };
 }

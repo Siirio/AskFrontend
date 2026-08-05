@@ -274,6 +274,53 @@ const server = createServer(async (req, res) => {
       );
       return;
     }
+    // A genuinely PAGED result set — the only scenario where `has_next` is
+    // true, so it is the only one that exercises infinite scroll at all. Every
+    // other scenario returns a single page, which is why the suite was green
+    // for the scroll feature while testing none of it.
+    //
+    // Page 0 and 1 carry `has_next: true`; page 2 ends the list. Card titles
+    // encode their page so a test can assert that scrolling APPENDS rather than
+    // replaces, and that the pages arrive in order.
+    if (rawQuery === "roses-paged") {
+      const page = body.page ?? 0;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          sectionsResponse(rawQuery, {
+            page,
+            has_next: page < 2,
+            sections: [
+              {
+                type: "exact",
+                kind: "EXACT",
+                title: "Exact matches",
+                relaxed_constraints: null,
+                reason: null,
+                // EIGHT cards per page, not one, and that number is load-
+                // bearing. With a single card the whole page is shorter than
+                // the viewport, so the sentinel starts inside the observer's
+                // rootMargin and every page auto-loads with no scrolling at
+                // all — a scroll test written against that passes while
+                // asserting nothing about scrolling (measured: page 1 arrived
+                // unscrolled). Eight cards push the sentinel out of range, so
+                // reaching it requires a real scroll.
+                cards: Array.from({ length: 8 }, (_, i) =>
+                  card({
+                    result_id: `${page}${i}000000-0000-0000-0000-00000000000${i}`,
+                    title:
+                      i === 0
+                        ? `Paged bouquet page ${page}`
+                        : `Filler ${page}-${i}`,
+                  }),
+                ),
+              },
+            ],
+          }),
+        ),
+      );
+      return;
+    }
     // No offer at all, and an unmapped token. Nothing may wear the offer tint.
     if (rawQuery === "roses-nooffer") {
       res.writeHead(200, { "Content-Type": "application/json" });

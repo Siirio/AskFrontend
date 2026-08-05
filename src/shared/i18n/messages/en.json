@@ -104,7 +104,9 @@
       "section": {
         "EXACT": "Matches",
         "ALTERNATIVE": "Alternatives"
-      }
+      },
+      "loadingMore": "Loading more…",
+      "endOfResults": "No more results"
     },
     "card": {
       "distanceMeters": "{value} m",
@@ -128,7 +130,8 @@
     "errors": {
       "queryRequired": "Enter what you're looking for.",
       "searchFailed": "Something went wrong. Check your connection and try again.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "loadMoreFailed": "Could not load more results"
     },
     "validation": {
       "emptyQueryDescription": "Go back to Home and type what you're looking for.",

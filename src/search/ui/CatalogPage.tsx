@@ -5,11 +5,16 @@ import { getTranslations } from "next-intl/server";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 
-import type { CatalogSearchParams, SearchResponse, SortOption } from "../model";
+import {
+  SORT_OPTIONS,
+  type CatalogSearchParams,
+  type SearchResponse,
+  type SortOption,
+} from "../model";
 import { CatalogEmptyState } from "./CatalogEmptyState";
 import { CatalogSkeleton } from "./CatalogSkeleton";
 import { FilterPanel } from "./FilterPanel";
-import { ResultSection } from "./ResultSection";
+import { ResultStream } from "./ResultStream";
 import { SortControl } from "./SortControl";
 
 /**
@@ -23,9 +28,13 @@ import { SortControl } from "./SortControl";
  * receives a settled state, but the type keeps the loading state honest for
  * anyone reusing it).
  *
- * State is the URL (no `store.ts` for this slice) — `SortControl` and
- * `FilterPanel` are client islands that push new params via
- * `useUpdateCatalogParams`, which the route file reads on the next request.
+ * Filters and sort still live in the URL — `SortControl` and `FilterPanel` are
+ * client islands that push new params via `useUpdateCatalogParams`, which the
+ * route file reads on the next request. What changed on 2026-08-04 is the
+ * RESULTS: infinite scroll means pages 1..n arrive after this render, so the
+ * list is handed to `ResultStream`, a client island with its own store. Page 0
+ * is still the server's, so first paint is unchanged and a visitor who does not
+ * scroll still makes exactly one request.
  */
 export async function CatalogPage({
   locale,
@@ -41,12 +50,14 @@ export async function CatalogPage({
   emptyQuery?: boolean;
 }) {
   const t = await getTranslations({ locale, namespace: "search" });
-  const sort: SortOption =
-    params.sort === "relevance" ||
-    params.sort === "distance" ||
-    params.sort === "price_asc"
-      ? params.sort
-      : "relevance";
+  // Validated against SORT_OPTIONS rather than a hand-written list: that list
+  // was written when there were three sorts and silently ignored the fourth
+  // when `unique_offers` shipped, so `?sort=unique_offers` would have rendered
+  // the tab UNSELECTED while the server sorted by it. Deriving from the one
+  // array means adding a sort cannot desynchronise the two again.
+  const sort: SortOption = SORT_OPTIONS.includes(params.sort as SortOption)
+    ? (params.sort as SortOption)
+    : "relevance";
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8">
@@ -103,13 +114,19 @@ export async function CatalogPage({
                 locale={locale}
               />
             ) : (
-              response.sections.map((section) => (
-                <ResultSection
-                  key={section.kind}
-                  section={section}
-                  locale={locale}
-                />
-              ))
+              /* The KEY is the reset mechanism, not a React formality. The
+                 vision requires that changing any filter or sort discards the
+                 list and re-queries; keying the island on the params means a
+                 changed URL mounts a NEW instance with a NEW store, so the old
+                 pages cannot survive into the new query. A `reset()` call would
+                 have put that guarantee at the mercy of every future control
+                 remembering to make it. */
+              <ResultStream
+                key={catalogKey(params)}
+                initial={response}
+                params={params}
+                locale={locale}
+              />
             )}
           </div>
         </div>
@@ -118,6 +135,17 @@ export async function CatalogPage({
       )}
     </main>
   );
+}
+
+/** The identity of a QUERY, for `ResultStream`'s remount key. Every field that
+ *  changes what the server would return is in it — so any change discards the
+ *  accumulated pages, and a change to something cosmetic would not. Sorted, so
+ *  the key does not depend on the order the params happen to be spread in. */
+function catalogKey(params: CatalogSearchParams): string {
+  return Object.entries(stripUndefined(params))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join("&");
 }
 
 function stripUndefined(params: CatalogSearchParams): Record<string, string> {

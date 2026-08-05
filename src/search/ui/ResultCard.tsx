@@ -1,6 +1,8 @@
+"use client";
+
 import { MapPin } from "lucide-react";
 import Image from "next/image";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -19,17 +21,20 @@ import { separateBadges, type SearchCardResponse } from "../model";
  * this component gains a `select`-style prop threaded from `CatalogPage`; the
  * data here does not change.
  *
- * Server component — nothing here needs client state; badge/i18n resolution
- * happens at request time from the passed `locale` (matches `HomePage`).
+ * **Client component since 2026-08-04, and the reason is infinite scroll, not
+ * interactivity.** Pages 1..n are fetched in the browser and appended to the
+ * list, so the same card has to render on the client — and rendering it there
+ * with a second, client-side copy of this markup would be two implementations
+ * of one object (P6.1). One component, used from both paths, is the honest
+ * shape. Page 0 still arrives server-rendered inside the client island's
+ * initial HTML, so first paint is unchanged.
+ *
+ * `locale` stays in the props even though `useTranslations` reads it from
+ * context: `ResultSection` passes it down, and dropping it would ripple through
+ * a component the Product Card (#3) is about to modify anyway.
  */
-export async function ResultCard({
-  card,
-  locale,
-}: {
-  card: SearchCardResponse;
-  locale: string;
-}) {
-  const t = await getTranslations({ locale, namespace: "search" });
+export function ResultCard({ card }: { card: SearchCardResponse }) {
+  const t = useTranslations("search");
   // `hasActiveOffer` decides the offer tint — never a guess from badge text
   // (TINT IS INFORMATION lock; AUDIT_2 N8).
   const { badgeKeys, offerLabel } = separateBadges(

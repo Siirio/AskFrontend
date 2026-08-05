@@ -7,6 +7,19 @@ Mirrors backend module: **search** (`../Ask_Backend/AI_Knowledge/features/search
 
 Owns the two entry surfaces of the product: **Home** (the search form — the platform's front door) and the **Catalog Page** (result list with sorting and filters). This is where the mission lives: save time choosing the best product.
 
+> ## ⚠ Naming trap: the "Catalog Page" is NOT in the `catalog` slice
+>
+> `/app/catalog` — the result LIST, its sorting and its filters — belongs **here**, to
+> `search`. The `catalog` slice owns the **Product Card modal** that opens *over* this page,
+> and the seller's Products tab. So `CatalogPage.tsx`, `ResultSection.tsx`, `ResultCard.tsx`
+> and `ResultStream.tsx` are all correctly in `src/search/ui/`.
+>
+> The collision is a consequence of the Structure Lock: **slices mirror BACKEND module names,
+> not URLs.** `search/basic` → `search/`, `offer/item` → `catalog/`. Recorded because it
+> misled a reader on 2026-08-04 who saw `ResultStream` land in `search/` and reasonably asked
+> why a catalog page was there — the answer is that the page is search's and the CARD is
+> catalog's, and no file moved.
+
 ## Key decisions
 - **Home belongs here, not to a "main page" slice.** A page belongs to the domain that does its main job — Home's job is search (architecture §0).
 - The Catalog Page owns **sorting and filters** (PRODUCT_VISION §4): relevance, distance, cost, unique offers; price, companies, location.

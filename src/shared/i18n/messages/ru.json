@@ -104,7 +104,9 @@
       "section": {
         "EXACT": "Совпадения",
         "ALTERNATIVE": "Альтернативы"
-      }
+      },
+      "loadingMore": "Загружаем ещё…",
+      "endOfResults": "Больше результатов нет"
     },
     "card": {
       "distanceMeters": "{value} м",
@@ -128,7 +130,8 @@
     "errors": {
       "queryRequired": "Введите, что вы ищете.",
       "searchFailed": "Что-то пошло не так. Проверьте соединение и попробуйте снова.",
-      "retry": "Попробовать снова"
+      "retry": "Попробовать снова",
+      "loadMoreFailed": "Не удалось загрузить продолжение"
     },
     "validation": {
       "emptyQueryDescription": "Вернитесь на главную и введите, что вы ищете.",
