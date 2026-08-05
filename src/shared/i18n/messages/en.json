@@ -95,16 +95,20 @@
       "city": "City",
       "cityPlaceholder": "For example, Almaty",
       "cityLoading": "Looking for cities",
-      "within100km": "Search within 100 km",
       "locationPending": "Finding your location…",
       "locationDenied": "Location access was denied.",
       "retryLocation": "Try again",
       "apply": "Apply filters",
-      "location": "Where to search",
-      "locationAnywhere": "Anywhere",
-      "locationCity": "In a city",
+      "location": {
+        "legend": "Where to search",
+        "anywhere": "Anywhere",
+        "city": "In a city",
+        "radius": "Search within 100 km",
+        "map": "On the map"
+      },
       "locationExclusive": "Only one can be chosen",
-      "companies": "Companies"
+      "companies": "Companies",
+      "mapAreaHint": "Searching within the visible map area"
     },
     "results": {
       "section": {

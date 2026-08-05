@@ -95,16 +95,20 @@
       "city": "Город",
       "cityPlaceholder": "Например, Алматы",
       "cityLoading": "Ищем города",
-      "within100km": "Искать в радиусе 100 км",
       "locationPending": "Определяем ваше местоположение…",
       "locationDenied": "Доступ к геолокации отклонён.",
       "retryLocation": "Попробовать снова",
       "apply": "Применить фильтры",
-      "location": "Где искать",
-      "locationAnywhere": "Везде",
-      "locationCity": "В городе",
+      "location": {
+        "legend": "Где искать",
+        "anywhere": "Везде",
+        "city": "В городе",
+        "radius": "Искать в радиусе 100 км",
+        "map": "На карте"
+      },
       "locationExclusive": "Можно выбрать только один способ",
-      "companies": "Компании"
+      "companies": "Компании",
+      "mapAreaHint": "Ищем в границах видимой области карты"
     },
     "results": {
       "section": {

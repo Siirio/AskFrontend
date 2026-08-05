@@ -8,10 +8,17 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 
 import { useGeolocation, useUpdateCatalogParams } from "../hooks";
-import type { CatalogSearchParams, SearchCompanyFacet } from "../model";
+import {
+  formatMapArea,
+  parseMapArea,
+  type CatalogSearchParams,
+  type SearchCompanyFacet,
+  type SearchMapArea,
+} from "../model";
 import { CityField } from "./CityField";
 import { CompanyFilter } from "./CompanyFilter";
 import { Field } from "./Field";
+import { MapAreaField } from "./MapAreaField";
 
 /** 100 km — the ONE radius the vision names (§4: "search within 100 km"), not
  *  an arbitrary slider. Offering a range the vision never describes would be
@@ -33,15 +40,17 @@ const HUNDRED_KM_METERS = 100_000;
  * wire, which is why this is a REWORK of shipped controls rather than an
  * addition beside them.
  *
- * `map` is deliberately absent: the fourth mode needs a map surface, and a
- * radio that selects nothing would be a dead control (project lock). It joins
- * this union when that surface exists.
+ * **`map` joined the union 2026-08-05**, when the surface it needed was built
+ * (`MapAreaField`). It was held out until then because a radio that selects
+ * nothing is a dead control (project lock) — not because the backend was
+ * missing anything; `mapArea` had been on the wire since `c56f75c`.
  */
-const LOCATION_MODES = ["anywhere", "city", "radius"] as const;
+const LOCATION_MODES = ["anywhere", "city", "radius", "map"] as const;
 type LocationMode = (typeof LOCATION_MODES)[number];
 
 function initialMode(params: CatalogSearchParams): LocationMode {
   if (params.radiusMeters) return "radius";
+  if (parseMapArea(params.mapArea)) return "map";
   if (params.city) return "city";
   return "anywhere";
 }
@@ -74,6 +83,9 @@ export function FilterPanel({
   const [companies, setCompanies] = useState<string[]>(() =>
     (params.businessIds ?? "").split(",").filter(Boolean),
   );
+  const [mapArea, setMapArea] = useState<SearchMapArea | null>(
+    () => parseMapArea(params.mapArea) ?? null,
+  );
 
   const minPriceId = useId();
   const maxPriceId = useId();
@@ -90,6 +102,7 @@ export function FilterPanel({
       minPrice,
       maxPrice,
       city: mode === "city" ? city.trim() : undefined,
+      mapArea: mode === "map" && mapArea ? formatMapArea(mapArea) : undefined,
       // Empty means "no company filter", and `useUpdateCatalogParams` deletes a
       // param set to "" — so clearing every box removes it from the URL rather
       // than sending an empty list.
@@ -130,7 +143,7 @@ export function FilterPanel({
           a screen reader. The semantics and the backend's assert agree. */}
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium text-foreground">
-          {t("filters.location")}
+          {t("filters.location.legend")}
         </legend>
 
         {LOCATION_MODES.map((option) => (
@@ -154,13 +167,7 @@ export function FilterPanel({
                 }
               }}
             />
-            {t(
-              option === "anywhere"
-                ? "filters.locationAnywhere"
-                : option === "city"
-                  ? "filters.locationCity"
-                  : "filters.within100km",
-            )}
+            {t(`filters.location.${option}`)}
           </label>
         ))}
 
@@ -171,6 +178,12 @@ export function FilterPanel({
             <Field label={t("filters.city")} htmlFor={cityId}>
               <CityField id={cityId} value={city} onChange={setCity} />
             </Field>
+          </div>
+        ) : null}
+
+        {mode === "map" ? (
+          <div className="ps-6">
+            <MapAreaField area={mapArea} onChange={setMapArea} />
           </div>
         ) : null}
 

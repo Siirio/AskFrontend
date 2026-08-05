@@ -95,16 +95,20 @@
       "city": "Қала",
       "cityPlaceholder": "Мысалы, Алматы",
       "cityLoading": "Қалалар ізделуде",
-      "within100km": "100 км радиуста іздеу",
       "locationPending": "Орналасқан жеріңіз анықталуда…",
       "locationDenied": "Геолокацияға рұқсат берілмеді.",
       "retryLocation": "Қайталап көру",
       "apply": "Сүзгілерді қолдану",
-      "location": "Қайдан іздеу",
-      "locationAnywhere": "Барлық жерде",
-      "locationCity": "Қалада",
+      "location": {
+        "legend": "Қайдан іздеу",
+        "anywhere": "Барлық жерде",
+        "city": "Қалада",
+        "radius": "100 км радиуста іздеу",
+        "map": "Картада"
+      },
       "locationExclusive": "Тек бір тәсілді таңдауға болады",
-      "companies": "Компаниялар"
+      "companies": "Компаниялар",
+      "mapAreaHint": "Картаның көрінетін аймағы бойынша іздейміз"
     },
     "results": {
       "section": {

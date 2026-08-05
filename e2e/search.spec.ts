@@ -376,3 +376,48 @@ test("a result card shows its primary image, and no image is a normal state", as
     page.getByRole("img", { name: "Fresh rose bouquet" }),
   ).toHaveCount(0);
 });
+
+// The map-area filter (PRODUCT_VISION §4 filter 3) — the fourth "where" answer
+// and the last G1 control. Leaflet is client-only, so this drives the real
+// canvas rather than stubbing it.
+test("the map area is the viewport, and it travels as one validated box", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses&mode=ITEM");
+
+  await page.getByRole("radio", { name: "On the map" }).check();
+  // The tiles come from OpenStreetMap; only the container is asserted, so the
+  // test does not depend on the public internet answering.
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+
+  await page.getByRole("button", { name: "Apply filters" }).click();
+
+  // ONE param carrying four bounds — they are @NotNull together and the backend
+  // asserts north > south && east > west, which four separate params could
+  // violate independently in a URL.
+  await expect(page).toHaveURL(/[?&]mapArea=/);
+  const box = new URL(page.url()).searchParams.get("mapArea") ?? "";
+  const [north, south, east, west] = box.split(",").map(Number);
+  expect(box.split(",")).toHaveLength(4);
+  expect(north).toBeGreaterThan(south);
+  expect(east).toBeGreaterThan(west);
+
+  // Exclusive with the other location answers — a radio group cannot hold two.
+  expect(new URL(page.url()).searchParams.get("city")).toBeNull();
+  expect(new URL(page.url()).searchParams.get("radiusMeters")).toBeNull();
+});
+
+test("a malformed map-area URL drops the filter instead of losing the search", async ({
+  page,
+}) => {
+  await seedSession(page);
+  // Three bounds, and inverted besides. `parseMapArea` returns undefined rather
+  // than a partial box: sending either would be a 400 that costs the whole
+  // search, and a hand-edited or truncated URL is reachable.
+  await page.goto("/app/catalog?query=roses&mode=ITEM&mapArea=1,2,3");
+
+  await expect(page.getByText("Aigul Flowers").first()).toBeVisible();
+  // The filter was dropped, so the panel falls back to "Anywhere".
+  await expect(page.getByRole("radio", { name: "Anywhere" })).toBeChecked();
+});

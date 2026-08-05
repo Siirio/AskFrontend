@@ -280,3 +280,33 @@ the edge one — the vision append says so explicitly.
 
 `alt` is the item title, because the image *is* the item; a separate description would
 be duplicated text for a screen reader.
+
+## The map-area filter (2026-08-05) — the fourth "where", and G1's last control
+
+**The search area IS the viewport.** Pan and zoom to frame it; what you see is what is
+searched. There is no drawn rectangle to drag, because a box separate from the viewport
+puts two things on screen both claiming to be "the area" and leaves the customer
+reconciling them.
+
+Bounds are read from Leaflet's own `getBounds()` on every `moveend`, which satisfies both
+backend rules by construction: all four bounds are `@NotNull` together, and
+`north > south && east > west`. They travel as ONE `mapArea=north,south,east,west` param —
+four separate params could go out of sync in a hand-edited URL and produce a half-box that
+400s. `parseMapArea` drops anything malformed or inverted rather than sending a partial
+box, so a mangled URL costs the filter, not the whole search.
+
+**It is a fourth radio in the same "where" group**, so it is exclusive with city and radius
+for free — `isLocationFilterValid` permits only one.
+
+`MapAreaCanvas` is a **separate component from `business-cabinet`'s `BranchMapCanvas`**, not
+a parameterized version of it: that one picks a POINT (a branch's `@NotNull` lat/lng), this
+one reports a BOX. Same library, same tiles, different question (D8 · P6.3) — and the slice
+boundary would forbid the import in any case (R2).
+
+**One trap, recorded because it cost a debugging cycle.** The first version called
+`map.whenReady(emit)` during RENDER, reasoning that bounds are meaningless before Leaflet
+measures its container. That is true, and it still produced an infinite loop (React error
+#185): `emit` sets parent state → parent re-renders the canvas → render calls `whenReady`
+again. **A state setter must never run during render, whatever value it is waiting for.**
+The `whenReady` call is still there — inside a mount effect, where the timing concern is
+handled without the loop.

@@ -360,6 +360,11 @@ export type CatalogSearchParams = {
    *  works in `set`/`delete` pairs over `URLSearchParams` — needs no special
    *  case, and so the catalog remount key (a flat string) stays comparable. */
   businessIds?: string;
+  /** The map-area box as `north,south,east,west`. ONE param, because the four
+   *  bounds are `@NotNull` together and the backend asserts `north > south &&
+   *  east > west` — four separate params could go out of sync in a URL and
+   *  produce a half-box that 400s. */
+  mapArea?: string;
   page?: string;
 };
 
@@ -387,8 +392,34 @@ export function parseCatalogSearchParams(
     lat: firstValue(raw.lat),
     lng: firstValue(raw.lng),
     businessIds: firstValue(raw.businessIds),
+    mapArea: firstValue(raw.mapArea),
     page: firstValue(raw.page),
   };
+}
+
+/** `north,south,east,west` → a validated box, or `undefined`.
+ *
+ *  Returns `undefined` rather than a partial box on anything malformed — a
+ *  missing bound, a non-number, or a box failing the backend's own assert
+ *  (`north > south && east > west`). Sending three of four bounds, or an
+ *  inverted box, is a 400; dropping the filter is the honest degrade, and it
+ *  keeps a mangled URL from losing the whole search. */
+export function parseMapArea(
+  value: string | undefined,
+): SearchMapArea | undefined {
+  if (!value) return undefined;
+  const parts = value.split(",").map((n) => Number(n.trim()));
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+    return undefined;
+  }
+  const [north, south, east, west] = parts as [number, number, number, number];
+  if (north <= south || east <= west) return undefined;
+  return { north, south, east, west };
+}
+
+/** The inverse — the one place the param's shape is spelled (P6.2). */
+export function formatMapArea(area: SearchMapArea): string {
+  return `${area.north},${area.south},${area.east},${area.west}`;
 }
 
 function toNumber(value: string | undefined): number | undefined {
@@ -448,9 +479,15 @@ export function toSearchRequest(
     .slice(0, 100);
   if (businessIds.length > 0) explicitFilters.businessIds = businessIds;
 
+  const mapArea = parseMapArea(params.mapArea);
   const useRadius = radiusMeters !== undefined && hasLocation;
+  // Precedence, most specific first. Only one may survive
+  // (`isLocationFilterValid`), and the UI's radio group means only one is ever
+  // set in practice — this ordering exists for a hand-edited or pre-rework URL.
   if (useRadius) {
     explicitFilters.radiusMeters = radiusMeters;
+  } else if (mapArea) {
+    explicitFilters.mapArea = mapArea;
   } else if (params.city) {
     explicitFilters.city = params.city;
   }
