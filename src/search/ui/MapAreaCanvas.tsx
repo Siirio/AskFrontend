@@ -90,16 +90,24 @@ export default function MapAreaCanvas({
   area: SearchMapArea | null;
   onChange: (area: SearchMapArea) => void;
 }) {
-  // Re-open on the saved box when the filter is already applied, so returning
-  // to the page does not silently re-frame the search somewhere else.
-  const center: [number, number] = area
-    ? [(area.north + area.south) / 2, (area.east + area.west) / 2]
-    : DEFAULT_CENTER;
+  // Re-open on the saved BOX, not merely its centre. Centre + a fixed zoom
+  // restores the right place at the wrong scale, so the viewport — which IS the
+  // filter — silently differs from the box that produced the results on screen,
+  // and the next `moveend` would overwrite the saved area with that drift.
+  // Leaflet's `bounds` fits the exact rectangle, so what is framed is what was
+  // searched. Only the unfiltered first open falls back to centre + zoom.
+  const bounds: [[number, number], [number, number]] | undefined = area
+    ? [
+        [area.south, area.west],
+        [area.north, area.east],
+      ]
+    : undefined;
 
   return (
     <MapContainer
-      center={center}
-      zoom={DEFAULT_ZOOM}
+      {...(bounds
+        ? { bounds }
+        : { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM })}
       scrollWheelZoom
       className="neu-map-frame h-full w-full"
     >

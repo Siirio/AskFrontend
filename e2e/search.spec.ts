@@ -421,3 +421,58 @@ test("a malformed map-area URL drops the filter instead of losing the search", a
   // The filter was dropped, so the panel falls back to "Anywhere".
   await expect(page.getByRole("radio", { name: "Anywhere" })).toBeChecked();
 });
+
+// Regressions for the four review findings on the map-area filter. None of them
+// was caught by the suite as it stood, which is why each gets an assertion.
+test("a radius URL with no coordinates does not claim the radius mode", async ({
+  page,
+}) => {
+  await seedSession(page);
+  // `toSearchRequest` needs lat/lng for a radius (isRadiusLocationValid), so
+  // this URL's request falls through to the city. The panel must agree — it
+  // used to show "Search within 100 km" selected while the city did the work.
+  await page.goto(
+    "/app/catalog?query=roses&mode=ITEM&radiusMeters=100000&city=Almaty",
+  );
+
+  await expect(page.getByRole("radio", { name: "In a city" })).toBeChecked();
+  await expect(
+    page.getByRole("radio", { name: "Search within 100 km" }),
+  ).not.toBeChecked();
+});
+
+test("selecting map mode always ends up submitting a real box", async ({
+  page,
+}) => {
+  await seedSession(page);
+  await page.goto("/app/catalog?query=roses&mode=ITEM");
+  await page.getByRole("radio", { name: "On the map" }).check();
+
+  const apply = page.getByRole("button", { name: "Apply filters" });
+  // Playwright waits for the button to be actionable, which is exactly the
+  // guard doing its job: it is disabled until the viewport reports bounds.
+  //
+  // **This does NOT assert the disabled WINDOW existed** — the map emits on
+  // mount, so that window is sub-frame and any assertion on it would be racy
+  // and would fail for the wrong reasons. What it does prove is the property
+  // that matters: selecting map mode can never submit an EMPTY box, which is
+  // what the guard exists to prevent. Before it, an early click sent no
+  // `mapArea` and silently searched everywhere while the radio said otherwise.
+  await apply.click();
+  await expect(page).toHaveURL(/[?&]mapArea=/);
+  const box = new URL(page.url()).searchParams.get("mapArea") ?? "";
+  expect(box.split(",").filter(Boolean)).toHaveLength(4);
+});
+
+test("a map-area box with an empty component is rejected, not read as zero", async ({
+  page,
+}) => {
+  await seedSession(page);
+  // `Number("")` is 0, so "10,,20," would parse as a box spanning the equator
+  // and the prime meridian, pass the ordering assert, and search an area nobody
+  // asked for. A truncated URL must drop the filter rather than invent one.
+  await page.goto("/app/catalog?query=roses&mode=ITEM&mapArea=10,,20,");
+
+  await expect(page.getByText("Aigul Flowers").first()).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Anywhere" })).toBeChecked();
+});

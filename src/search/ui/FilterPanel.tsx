@@ -48,8 +48,20 @@ const HUNDRED_KM_METERS = 100_000;
 const LOCATION_MODES = ["anywhere", "city", "radius", "map"] as const;
 type LocationMode = (typeof LOCATION_MODES)[number];
 
+/**
+ * Which mode the URL actually produced — mirroring `toSearchRequest`'s
+ * precedence EXACTLY, including its preconditions.
+ *
+ * The radius arm requires `lat`/`lng` for the same reason the request does
+ * (`isRadiusLocationValid`). Reading `radiusMeters` alone selected the radius
+ * radio for a URL whose request had in fact fallen through to the map box or
+ * the city — so the panel claimed one search while the results came from
+ * another. Any divergence between these two orders is that same lie, so they
+ * are written to be read side by side.
+ */
 function initialMode(params: CatalogSearchParams): LocationMode {
-  if (params.radiusMeters) return "radius";
+  const hasLocation = Boolean(params.lat && params.lng);
+  if (params.radiusMeters && hasLocation) return "radius";
   if (parseMapArea(params.mapArea)) return "map";
   if (params.city) return "city";
   return "anywhere";
@@ -92,8 +104,16 @@ export function FilterPanel({
   const cityId = useId();
   const modeName = useId();
 
+  // The map reports its viewport on mount, so this is a brief window rather
+  // than a state to live in — but submitting inside it would send no `mapArea`
+  // at all, silently applying "anywhere" while the radio says otherwise.
+  // Blocking the button is the honest reading of "a reachable control must DO
+  // something": it is not ready yet, and it says so by being disabled.
+  const mapNotReady = mode === "map" && !mapArea;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (mapNotReady) return;
     const useRadius = mode === "radius" && geo.status === "granted";
     // Exactly ONE location parameter leaves here, and the others are cleared
     // rather than left behind — a stale `city` in the URL would travel
@@ -219,7 +239,9 @@ export function FilterPanel({
         }
       />
 
-      <Button type="submit">{t("filters.apply")}</Button>
+      <Button type="submit" disabled={mapNotReady}>
+        {t("filters.apply")}
+      </Button>
     </form>
   );
 }

@@ -27,27 +27,25 @@ problem — the index has simply never been built.
 or does it fill only as the projection worker drains the outbox? Every search 502s until
 something does, which makes the whole customer path untestable end to end locally.
 
-## 2. Google OAuth redirects to port 5173 — the old Vite port
+## 2. `.env.example` still points Google OAuth at port 5173
 
-`application.yml:72`:
+**Corrected 2026-08-05 — the original version of this item was wrong, and is rewritten
+rather than deleted.** It claimed Google OAuth was broken locally. It is not: the owner
+confirmed it works, and the reason is that **`.env` sets
+`OAUTH2_FRONTEND_REDIRECT_URI=http://localhost:3000/oauth/callback`** and `docker-compose.yml`
+defaults to the same. We had read the YAML default and stopped there.
 
-```yaml
-frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT_URI:http://localhost:5173/oauth/callback}
-```
+What survives is small but real: **`application.yml:72` and `.env.example:23` both still say
+`http://localhost:5173/oauth/callback`** — the old Vite port. Nothing uses those values today,
+so nothing is broken; but a new developer who copies `.env.example` verbatim, as the file
+exists to be copied, gets an OAuth callback pointing at a port with nothing on it.
 
-This client runs on **:3000** and has since it was created; 5173 was the Vite prototype.
-Unless `OAUTH2_FRONTEND_REDIRECT_URI` is set in the environment, the Google callback
-redirects to a port with nothing on it.
+**Ask (low priority):** make `:3000` the default in both, so the committed example matches the
+committed compose file.
 
-Worth noting the CORS allowlist beside it was already updated for :3000 — so the two
-configs disagree about which port the frontend is on.
-
-**Ask:** change the default to `http://localhost:3000/oauth/callback`. `application-prod.yml`
-is already correct (`https://ask.com.kz/oauth/callback`); this is the local default only.
-
-*(The intermittent CORS we saw alongside this was ours: `next dev` silently falls back to
-:3001 when :3000 is busy, and :3001 is not in the allowlist. We pinned the port so it now
-fails loudly instead. No change needed on your side for that half.)*
+*(The intermittent CORS we mentioned alongside this was entirely ours: `next dev` silently
+falls back to :3001 when :3000 is busy, and :3001 is not in the allowlist. We pinned the port.
+No backend change needed.)*
 
 ## 3. Not a request — a defect we fixed, recorded so you know the data is thin
 

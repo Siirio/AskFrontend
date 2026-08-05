@@ -408,10 +408,15 @@ export function parseMapArea(
   value: string | undefined,
 ): SearchMapArea | undefined {
   if (!value) return undefined;
-  const parts = value.split(",").map((n) => Number(n.trim()));
-  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
-    return undefined;
-  }
+  const raw = value.split(",").map((n) => n.trim());
+  // An EMPTY component is rejected before `Number` sees it, because `Number("")`
+  // is 0 — so `"10,,20,"` would otherwise parse as a valid box spanning the
+  // equator and prime meridian, pass the ordering assert, and silently search
+  // an area nobody asked for. A truncated URL must drop the filter, not invent
+  // a plausible one.
+  if (raw.length !== 4 || raw.some((n) => n === "")) return undefined;
+  const parts = raw.map(Number);
+  if (parts.some((n) => !Number.isFinite(n))) return undefined;
   const [north, south, east, west] = parts as [number, number, number, number];
   if (north <= south || east <= west) return undefined;
   return { north, south, east, west };
