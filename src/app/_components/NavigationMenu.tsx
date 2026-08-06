@@ -105,7 +105,7 @@ export function NavigationMenu() {
           className={
             variant === "row"
               ? "neu-nav-link flex min-h-11 min-w-11 items-center gap-2 px-3 text-sm focus-ring sm:px-4"
-              : "neu-nav-link neu-nav-link--stacked flex h-14 w-full flex-col items-center justify-center gap-1 text-[11px] focus-ring"
+              : "neu-nav-link neu-nav-link--stacked flex h-14 w-full flex-col items-center justify-center gap-1 text-xs focus-ring"
           }
         >
           <link.Icon className="size-4" aria-hidden="true" />

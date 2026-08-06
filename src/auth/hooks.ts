@@ -23,7 +23,10 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { ApiError } from "@/shared/api/apiError";
 import { storage } from "@/shared/api/storage";
-import { tokenStorage } from "@/shared/api/tokenStorage";
+import {
+  ACCESS_TOKEN_STORAGE_KEY,
+  tokenStorage,
+} from "@/shared/api/tokenStorage";
 import { toast } from "@/shared/ui/sonner";
 
 import * as api from "./api";
@@ -99,6 +102,70 @@ function useApplySession() {
     (session: AuthSessionResponse) => applySessionTo(store, session),
     [store],
   );
+}
+
+/**
+ * Restores the session on mount from the stored Bearer token and keeps it in
+ * sync with the storage door's cross-tab `storage` event (D22). Mounted once
+ * by `AuthProvider`, which owns only the store instance and the context
+ * boundary — the fetch itself lives here (P1.2: a component consumes a hook
+ * and renders, it does not call `api.ts` directly).
+ */
+export function useSessionRestore(store: AuthStore) {
+  useEffect(() => {
+    let active = true;
+
+    const restore = () => {
+      const token = tokenStorage.get();
+      if (!token) {
+        // No session → any unanswered role choice belongs to a session that no
+        // longer exists; drop it with the session.
+        persistPendingRoleSelection(store, false);
+        store.getState().clearSession();
+        return;
+      }
+      // An unanswered role choice (fresh signup) survives navigation AND
+      // reload: seed the store's copy from storage before the session restores.
+      store.getState().setPendingRoleSelection(readPendingRoleSelection());
+      api
+        .getSession()
+        .then((session) => {
+          // The token check drops a stale response: if the token changed while
+          // this request was in flight (sign-out/in here or in another tab),
+          // the newer restore owns the store.
+          if (active && tokenStorage.get() === token) {
+            applySessionTo(store, session);
+          }
+        })
+        .catch((error: unknown) => {
+          if (!active || tokenStorage.get() !== token) return;
+          // Only the backend REJECTING the token (401/403) invalidates it. A
+          // network failure or a server error says nothing about the token —
+          // keep it so the next load retries; this session renders signed out.
+          if (
+            error instanceof ApiError &&
+            (error.status === 401 || error.status === 403)
+          ) {
+            tokenStorage.clear();
+            persistPendingRoleSelection(store, false);
+          }
+          store.getState().clearSession();
+        });
+    };
+
+    // Cross-tab session sync (the shared storage door's `storage` event):
+    // sign-out in another tab clears this one immediately instead of leaving a
+    // stale authenticated UI whose requests go out unauthorized; a login in
+    // another tab restores the session here the same way. Subscribed BEFORE
+    // the initial restore runs — a token change landing during that async
+    // window must re-trigger, not slip through unobserved.
+    const unsubscribe = storage.subscribe(ACCESS_TOKEN_STORAGE_KEY, restore);
+    restore();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [store]);
 }
 
 /** Public API — the whole app reads the session through this (R6). */

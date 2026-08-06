@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
 import { MapPin, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Input } from "@/shared/ui/input";
 
-import { useCitySuggestions } from "../hooks";
 import { Field, fieldErrorId } from "./Field";
+import { useCityComboboxField } from "./useCityComboboxField";
 
 /**
  * The city list for `deliveryCoverage: SELECTED_CITIES`.
@@ -34,37 +33,14 @@ import { Field, fieldErrorId } from "./Field";
  * cities in a row never requires the pointer and the control has one action,
  * not two competing ones. Each chip carries its own remove button, styled
  * `.neu-row` (raised) with a leading `MapPin` — matching `BranchList`'s
- * treatment one step down, not `.neu-chip` (2026-08-05, see below).
+ * treatment one step down, not `.neu-chip`.
  *
- * **The suggestion list now closes on a real outside click, not a
- * blur+timeout heuristic (2026-08-05, owner report: it "does not disappear
- * after clicking outside of it, only if I click in the bottom outside
- * space").** `onBlur` only fires for SOME outside targets — a click that
- * lands on a non-focusable element does not reliably blur the input the
- * same way across browsers, which is exactly the "sometimes it closes,
- * sometimes it doesn't" symptom. A `mousedown` listener on `document`,
- * scoped by a wrapper `ref`, closes the list on ANY click outside the field
- * — a button elsewhere on the page, another field, empty space, all count
- * identically. `onBlur` stays too, but only as the KEYBOARD path (Tab
- * away), checked via `relatedTarget`. Suggestion buttons keep their
- * `onMouseDown` + `preventDefault` (focus never leaves the input on a
- * pointer pick, so the list can stay open for a multi-add) — the document
- * listener still recognizes a click on them as "inside" via the same
- * wrapper ref.
- *
- * **Neither outside-click nor blur COMMITS the typed draft (corrected
- * 2026-08-05, same day — owner report: "if I type ANY symbol and click
- * outside of input, then this symbol appears and city like I chosen it").**
- * The first version of the outside-click/blur handlers called `commit()`
- * before closing, on the theory that a half-typed city should survive the
- * seller clicking away rather than being silently lost. In practice that
- * meant a single stray keystroke — a misclick, a character typed then
- * abandoned — got silently accepted as a confirmed city the instant focus
- * moved anywhere else, with no way to tell it apart from an intentional
- * pick. A real city is only ever added by an EXPLICIT action: Enter, a
- * trailing comma, or clicking a suggestion. Closing without one of those
- * just closes the dropdown; the draft stays in the box, unfinished and
- * uncommitted, exactly as the seller left it.
+ * **The combobox behaviour (suggestion filtering, keyboard nav, outside-click
+ * handling, commit/normalize logic) lives in `useCityComboboxField`
+ * (2026-08-06, P1.1) — this file is render-only.** That hook's own header
+ * comment carries the mechanics; the two things that stay here because they
+ * are DOM/JSX-level, not state logic: the label-focus-capture workaround
+ * below, and the dropdown/chip markup itself.
  *
  * **Clicking `Field`'s own `<label>` didn't close the list, and STAY closed
  * (2026-08-05, owner report: "click text... it still is not closing").**
@@ -72,53 +48,13 @@ import { Field, fieldErrorId } from "./Field";
  * content inside `Field`'s own markup, not inside it) and closed the list on
  * `mousedown` — but a `<label htmlFor>` ALSO natively refocuses its
  * associated control on `click`, which fires right after, undoing the close
- * a moment later. **First attempt widened `wrapperRef` to cover the whole
- * `Field`, label included — wrong fix, reported back immediately**: that
- * made the label "inside" so the list never closed AT ALL, which is not
- * what was asked (the label should close it, same as any other outside
- * click — it just needs to STICK). The actual fix leaves `wrapperRef`
- * scoped to input/dropdown/chips only, and separately neutralizes the
- * label's native refocus with a capture-phase `onClickCapture` on the
- * outermost wrapper: `preventDefault()` on a `LABEL` target, called during
- * capture (before the browser resolves the label's default action), cancels
- * the refocus without touching `Field` itself — every other consumer of
- * `Field` keeps normal label-click-focuses-input behaviour.
- *
- * **Arrow-key navigation (2026-08-05, owner report: "why I can't move in
- * dropdown?").** The list had `role="listbox"`/`role="option"` but nothing
- * actually moved a selection with the keyboard — a real gap, not a styling
- * one. `activeIndex` + `aria-activedescendant` is the standard ARIA combobox
- * pattern: ArrowDown/ArrowUp move a highlighted option (reusing
- * `.neu-menu-item[data-active]`, the same look `NavigationMenu`'s own active
- * state uses), Enter commits the highlighted option if one exists or the
- * typed text otherwise, Escape closes without committing. Focus never
- * leaves the input — the listbox is driven by it, not tabbed into.
- *
- * **Every commit path re-opens the list EXPLICITLY, not incidentally
- * (2026-08-05, owner report: "dropdown do not appear after adding
- * city").** `commitValue` — the one function every commit path (Enter,
- * comma, a suggestion click) funnels through — now calls `setOpen(true)`
- * itself as its last step, rather than relying on `open` having already
- * been `true` and nothing since having turned it `false`. That reasoning
- * held on paper but was fragile in practice: the moment ANY future change
- * touched `open` on a path that runs before a commit, the list would stop
- * reappearing with no obvious cause. Making the postcondition explicit
- * — "a successful commit always leaves the list ready to show the next
- * batch of suggestions" — removes the guesswork entirely.
- *
- * **Two CodeRabbit findings on the resulting PR, both accepted (2026-08-05).**
- * (1) The already-picked filter (`offered`) compared city names
- * case-SENSITIVELY, while `commitValue` normalizes an exact match only on
- * commit — an older lowercase free-text entry would not exclude the
- * canonical-case suggestion for the same city, letting a seller pick it
- * again and end up with two near-duplicate chips. Now compared
- * case-insensitively, same as the commit-time normalization. (2) Suggestion
- * buttons carried the default `tabIndex` (0), putting them in SEQUENTIAL
- * (Tab) focus despite this being an `aria-activedescendant` combobox, where
- * the input holds real DOM focus throughout and the options are meant to be
- * driven by the arrow keys alone. `tabIndex={-1}` on each option is the fix
- * — Tab now goes straight from the input to whatever follows the field, not
- * through every suggestion first.
+ * a moment later. The fix leaves `wrapperRef` scoped to input/dropdown/chips
+ * only, and separately neutralizes the label's native refocus with a
+ * capture-phase `onClickCapture` on the outermost wrapper below:
+ * `preventDefault()` on a `LABEL` target, called during capture (before the
+ * browser resolves the label's default action), cancels the refocus without
+ * touching `Field` itself — every other consumer of `Field` keeps normal
+ * label-click-focuses-input behaviour.
  */
 export function DeliveryCitiesField({
   id,
@@ -134,88 +70,22 @@ export function DeliveryCitiesField({
   onRemove: (city: string) => void;
 }) {
   const t = useTranslations("businessCabinet");
-  const [draft, setDraft] = useState("");
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const listId = useId();
-  const { suggestions } = useCitySuggestions(draft);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const optionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  // Never offer a city that is already a chip — picking it would be a no-op the
-  // seller cannot see the result of. Compared case-insensitively (2026-08-05,
-  // CodeRabbit): `commitValue` normalizes an EXACT match on commit, but this
-  // filter was still comparing case-sensitively, so an older free-text entry
-  // like "алматы" (added before the canonical "Алматы" suggestion happened to
-  // surface, or from a seller who just typed it lowercase) would not exclude
-  // the canonical spelling from the list — letting the seller pick it too and
-  // end up with two near-duplicate chips for the same city.
-  const pickedLower = new Set(cities.map((c) => c.toLowerCase()));
-  const offered = suggestions.filter(
-    (c) => !pickedLower.has(c.name.toLowerCase()),
-  );
-  const listShown = open && offered.length > 0;
-  const optionId = (index: number) => `${listId}-option-${index}`;
-
-  // Takes the value explicitly rather than closing over `draft` — the comma
-  // path in onChange needs to commit the SLICED value in the same tick it
-  // computes it, before the state update carrying it has committed.
-  //
-  // **Silently normalizes an exact spelling/case variant to the canonical
-  // name (2026-08-05, owner decision).** Picking a suggestion always saved
-  // the canonical spelling, but typing the same city and pressing Enter did
-  // not — "шымкент" and "Шымкент" landed as two different strings, which is
-  // precisely the "Алматы"/"алматы"/"Almaty" problem this suggestion list
-  // exists to close. `suggestions` (not the narrower `offered`, which also
-  // drops already-picked cities — irrelevant here) is searched for an EXACT
-  // case-insensitive match; only that swap happens. A city with NO
-  // canonical match — a smaller town the backend's ~23-row table does not
-  // carry — still saves exactly as typed. Free text stays a first-class
-  // outcome (this component's own header comment); this closes the
-  // accidental-duplicate-spelling gap without reopening that decision.
-  const commitValue = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    const canonical = suggestions.find(
-      (c) => c.name.trim().toLowerCase() === trimmed.toLowerCase(),
-    );
-    onAdd(canonical ? canonical.name : trimmed);
-    setDraft("");
-    setActiveIndex(null);
-    // Explicit postcondition, not an assumption that `open` is already
-    // true and nothing turned it off in between — see the header comment.
-    setOpen(true);
-  };
-  const commit = () => commitValue(draft);
-
-  // Closes on any REAL outside click — another field, a button elsewhere on
-  // the page, empty space, all count the same way — WITHOUT committing
-  // whatever is still typed (see the header comment: a stray keystroke must
-  // never become a confirmed city just because focus moved). Only listens
-  // while open, so a click anywhere is free the rest of the time.
-  useEffect(() => {
-    if (!open) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
-
-  // Keeps the arrow-key-highlighted option inside the scrollable list —
-  // without this, navigating past the visible ~4 rows (the list caps at
-  // `max-h-56`) moves the highlight somewhere the seller cannot see.
-  useEffect(() => {
-    if (activeIndex === null) return;
-    optionRefs.current[optionId(activeIndex)]?.scrollIntoView({
-      block: "nearest",
-    });
-  }, [activeIndex]);
+  const {
+    draft,
+    listShown,
+    offered,
+    activeIndex,
+    setActiveIndex,
+    listId,
+    optionId,
+    wrapperRef,
+    optionRefs,
+    commitValue,
+    handleChange,
+    handleKeyDown,
+    handleBlur,
+    onFocus,
+  } = useCityComboboxField(cities, onAdd);
 
   return (
     // Guards against the browser's native label→input focus-proxy, which is
@@ -257,72 +127,10 @@ export function DeliveryCitiesField({
               aria-describedby={error ? fieldErrorId(id) : undefined}
               placeholder={t("placeholders.deliveryCity")}
               value={draft}
-              onChange={(e) => {
-                // A trailing comma commits, same as Enter — the two most natural
-                // ways to end a typed city name, both without touching the pointer.
-                if (e.target.value.endsWith(",")) {
-                  commitValue(e.target.value.slice(0, -1));
-                  return;
-                }
-                setDraft(e.target.value);
-                setOpen(true);
-                // The list content is about to change (a new `offered` set for
-                // the new query), so a highlight from the OLD list would point
-                // at the wrong row, or none at all.
-                setActiveIndex(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  if (offered.length === 0) return;
-                  e.preventDefault();
-                  setOpen(true);
-                  setActiveIndex((i) =>
-                    i === null ? 0 : Math.min(i + 1, offered.length - 1),
-                  );
-                } else if (e.key === "ArrowUp") {
-                  if (offered.length === 0) return;
-                  e.preventDefault();
-                  setActiveIndex((i) =>
-                    i === null ? offered.length - 1 : Math.max(i - 1, 0),
-                  );
-                } else if (e.key === "Enter") {
-                  // The field belongs to a form; Enter must add a city, never
-                  // submit the whole page. A highlighted option (arrow-key
-                  // navigated) wins over the raw typed text — that is the
-                  // whole point of being able to navigate to it.
-                  e.preventDefault();
-                  if (
-                    listShown &&
-                    activeIndex !== null &&
-                    offered[activeIndex]
-                  ) {
-                    commitValue(offered[activeIndex].name);
-                  } else {
-                    commit();
-                  }
-                } else if (e.key === "Escape" && listShown) {
-                  // Closes without committing — Escape backs out, it does not
-                  // add whatever is half-typed.
-                  e.preventDefault();
-                  setOpen(false);
-                  setActiveIndex(null);
-                }
-              }}
-              onFocus={() => setOpen(true)}
-              onBlur={(e) => {
-                // The KEYBOARD path (Tab away) — the document mousedown listener
-                // above handles every pointer-driven close. `relatedTarget` is
-                // the element ABOUT to receive focus; null for a pointer-driven
-                // blur where `preventDefault` kept focus from moving at all
-                // (the suggestion buttons), so this never fires for that case.
-                // Closes only — does NOT commit (see the header comment).
-                if (
-                  wrapperRef.current &&
-                  !wrapperRef.current.contains(e.relatedTarget as Node | null)
-                ) {
-                  setOpen(false);
-                }
-              }}
+              onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={onFocus}
+              onBlur={(e) => handleBlur(e.relatedTarget as Node | null)}
               role="combobox"
               aria-expanded={listShown}
               aria-controls={listShown ? listId : undefined}
