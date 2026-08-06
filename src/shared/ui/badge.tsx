@@ -17,12 +17,12 @@ import { cn } from "@/lib/utils";
  *    says "quiet, part of the surface". There is deliberately still NO
  *    green/amber/red variant; a coloured status light is a rating by another
  *    name, and this product has no ratings.
- *  - `offer` is the Unique-Offer chip (−30%, −5000 ₸): a low-chroma warm TINT
- *    with ink text and tabular numerals. It is information, so it never takes
- *    the accent fill — saturation stays reserved for things you can act on.
  *
  * `default` (accent) exists for the rare true call-to-attention only; almost
- * every badge in the product is `metadata` or `offer`.
+ * every badge in the product is `metadata`. (The Unique-Offer chip is NOT a
+ * Badge variant — `search/ui/ResultCard.tsx` renders it directly off the
+ * `--offer`/`--offer-foreground` tokens, since that is slice-owned business
+ * meaning `shared/ui` must not name, per architecture §5's litmus test.)
  */
 const badgeVariants = cva(
   "neu-chip focus-ring w-fit overflow-hidden whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3",
@@ -30,7 +30,6 @@ const badgeVariants = cva(
     variants: {
       variant: {
         metadata: "tabular-nums",
-        offer: "neu-chip-offer",
         // No hairline to outline with on this skin — an "outline" badge is the
         // plain carved chip, one ink step darker so it still reads as distinct.
         outline: "text-foreground",

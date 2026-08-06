@@ -63,7 +63,7 @@ export function ResultCard({ card }: { card: SearchCardResponse }) {
             a row. `alt` is the item title — the image IS the item, so a separate
             description would be duplicated text for a screen reader. */}
         {primaryImage ? (
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md">
+          <div className="relative aspect-4/3 w-full overflow-hidden rounded-md">
             <Image
               src={primaryImage.url}
               alt={card.title}

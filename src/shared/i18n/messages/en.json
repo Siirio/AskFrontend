@@ -46,7 +46,7 @@
     "notOpen": {
       "chats": {
         "title": "Chats are not open yet",
-        "description": "Your conversations with businesses will appear here. Nothing is missing from your account — this section simply has not opened."
+        "description": "Your conversations with businesses will appear here. Nothing is missing from your account - this section simply has not opened."
       },
       "profile": {
         "title": "Settings are not open yet",
@@ -54,7 +54,7 @@
       },
       "business": {
         "title": "The business cabinet is not open yet",
-        "description": "Your branches, unique offers and products will be managed here. Your business is registered — the cabinet itself is still being built."
+        "description": "Your branches, unique offers and products will be managed here. Your business is registered - the cabinet itself is still being built."
       },
       "product": {
         "title": "Product cards open from search",
@@ -108,7 +108,7 @@
       },
       "locationExclusive": "Only one can be chosen",
       "companies": "Companies",
-      "mapAreaHint": "Searching within the visible map area"
+      "mapAreaHint": "Searching within the visible map area."
     },
     "results": {
       "section": {
@@ -141,7 +141,7 @@
       "queryRequired": "Enter what you're looking for.",
       "searchFailed": "Something went wrong. Check your connection and try again.",
       "retry": "Try again",
-      "loadMoreFailed": "Could not load more results"
+      "loadMoreFailed": "Could not load more results."
     },
     "validation": {
       "emptyQueryDescription": "Go back to Home and type what you're looking for.",
@@ -223,7 +223,7 @@
     },
     "roleModal": {
       "title": "Where would you like to start?",
-      "description": "You can search for products and services, or set up your business on ASK",
+      "description": "You can search for products and services, or set up your business on ASK.",
       "customer": "Start searching",
       "business": "Set up your business",
       "customerHint": "Find products and services nearby",
@@ -257,7 +257,7 @@
       "verification": "Where do you already sell or publish?",
       "deliveryCoverage": "Where do you deliver?",
       "deliveryCities": "Which cities?",
-      "onlineOnly": "Only online — no physical branch",
+      "onlineOnly": "Only online - no physical branch",
       "pickup": "PickUp available",
       "branches": "Which branches?",
       "catalogSetup": "How do you want to build your catalog?",
@@ -270,7 +270,7 @@
       "legalName": "The name on the registration, if it differs from the one above.",
       "verification": "Pick the places that are yours and paste the links. One is enough.",
       "deliveryCities": "Type a city, then press Enter or a comma.",
-      "onlineOnly": "No storefront, warehouse, or pickup point — everything ships or is delivered.",
+      "onlineOnly": "No storefront, warehouse, or pickup point - everything ships or is delivered.",
       "phone": "Optional. Shown on your listings so customers can call you directly.",
       "corporateEmail": "Optional. Shown on your listings so customers can email you directly."
     },
@@ -330,9 +330,9 @@
       "managedImport": {
         "title": "Order a catalog import from Ask",
         "description": "The Ask team gathers and prepares your catalog of products and services.",
-        "reassurance": "Skip the manual transfer — going it alone means adding and checking every item one by one; the Ask team moves your catalog fast and formats it for cards and search from the start.",
+        "reassurance": "Skip the manual transfer - going it alone means adding and checking every item one by one; the Ask team moves your catalog fast and formats it for cards and search from the start.",
         "price": "Estimated ₸{range}",
-        "priceNote": "Depends on volume and material quality — our team will follow up after your business is created to confirm the exact scope and price."
+        "priceNote": "Depends on volume and material quality - our team will follow up after your business is created to confirm the exact scope and price."
       }
     },
     "branchModal": {
@@ -345,9 +345,9 @@
         "addressDetails": "Details for customers"
       },
       "placeholders": {
-        "name": "For example, Aigul Flowers — Abay Ave",
+        "name": "For example, Aigul Flowers - Abay Ave",
         "address": "Street and building",
-        "addressDetails": "Floor, entrance, landmarks — anything that helps someone find you"
+        "addressDetails": "Floor, entrance, landmarks - anything that helps someone find you"
       },
       "hints": {
         "addressDetails": "Optional, but it saves customers a phone call."
@@ -363,7 +363,7 @@
       }
     },
     "review": {
-      "intro": "Check everything below before you create your business — you can still go back and fix anything.",
+      "intro": "Check everything below before you create your business - you can still go back and fix anything.",
       "notSet": "Not set",
       "linkCount": "{count, plural, =0 {No links} one {# link} other {# links}}",
       "branchCount": "Branches added",
@@ -389,7 +389,7 @@
       "legalNameRequired": "Enter the registered name.",
       "verificationRequired": "Add at least one valid link.",
       "linkRequired": "Add the link, or remove this option.",
-      "linkFormat": "The link must start with http:// or https://",
+      "linkFormat": "The link must start with http:// or https://.",
       "deliveryCoverageRequired": "Choose where you deliver.",
       "deliveryCitiesRequired": "Add at least one city.",
       "pickupRequired": "Say whether pickup is available.",
@@ -397,7 +397,7 @@
       "onboardingInvalid": "Some details are missing or invalid. Check the form and try again.",
       "network": "Something went wrong. Check your connection and try again.",
       "phoneFormat": "Enter a phone number, digits only apart from + ( ) - and spaces.",
-      "corporateEmailFormat": "Enter an email address, for example info@company.kz"
+      "corporateEmailFormat": "Enter an email address, for example info@company.kz."
     }
   },
   "common": {

@@ -678,19 +678,10 @@
   /* A chip the user TOGGLES (a multi-select filter, a verification source):
    * raised at rest, pressed IN when on, accent on the label. Same depth grammar
    * as the tab trigger, and deliberately not the accent FILL — a chip carries
-   * text, and the fill is reserved for the primary action. Distinct from
-   * `.neu-chip-offer` below, which is never actionable. */
+   * text, and the fill is reserved for the primary action. */
   .neu-skin .neu-chip[data-active="true"] {
     box-shadow: var(--neu-inset-sm);
     color: var(--accent);
-  }
-
-  /* A Unique Offer: low-chroma TINT with ink text and tabular numerals. It is
-   * information, so it never takes the accent fill and never becomes a pill. */
-  .neu-skin .neu-chip-offer {
-    background: var(--offer);
-    color: var(--offer-foreground);
-    font-variant-numeric: tabular-nums;
   }
 
   /* ── MAP (branch picker, business-cabinet registration) ─────────────────
