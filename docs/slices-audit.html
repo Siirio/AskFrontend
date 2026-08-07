@@ -1,0 +1,769 @@
+<title>ASK Platform — Completeness Audit</title>
+<style>
+  :root {
+    --bg: #eef0f2;
+    --surface: #ffffff;
+    --surface-2: #f5f6f8;
+    --ink: #1b2430;
+    --ink-muted: #56626f;
+    --ink-faint: #8992a0;
+    --border: #d7dce1;
+    --border-strong: #c1c8cf;
+    --accent: #3454d1;
+    --accent-ink: #1f3aa8;
+    --good: #1f8a5d;
+    --good-bg: #e3f3ec;
+    --warn: #a3720f;
+    --warn-bg: #faf1dc;
+    --bad: #c13b3b;
+    --bad-bg: #fbe8e6;
+    --deferred: #6b7480;
+    --deferred-bg: #e9ebee;
+    --gate: #6d4aae;
+    --gate-bg: #ede7f7;
+    --shadow: 0 1px 2px rgba(27,36,48,0.05), 0 8px 24px -12px rgba(27,36,48,0.12);
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", "URW Palladio", Georgia, serif;
+    --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", "Consolas", "Liberation Mono", monospace;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12161c;
+    --surface: #181d24;
+    --surface-2: #1e242c;
+    --ink: #e7ecf1;
+    --ink-muted: #98a4b0;
+    --ink-faint: #6b7581;
+    --border: #2a323c;
+    --border-strong: #384250;
+    --accent: #7a95ff;
+    --accent-ink: #9db0ff;
+    --good: #3fbf88;
+    --good-bg: #123329;
+    --warn: #e0ab48;
+    --warn-bg: #392e14;
+    --bad: #e2685f;
+    --bad-bg: #3a1e1c;
+    --deferred: #97a1ac;
+    --deferred-bg: #232a32;
+    --gate: #ac8ee0;
+    --gate-bg: #2a2140;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px -16px rgba(0,0,0,0.55);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161c;
+      --surface: #181d24;
+      --surface-2: #1e242c;
+      --ink: #e7ecf1;
+      --ink-muted: #98a4b0;
+      --ink-faint: #6b7581;
+      --border: #2a323c;
+      --border-strong: #384250;
+      --accent: #7a95ff;
+      --accent-ink: #9db0ff;
+      --good: #3fbf88;
+      --good-bg: #123329;
+      --warn: #e0ab48;
+      --warn-bg: #392e14;
+      --bad: #e2685f;
+      --bad-bg: #3a1e1c;
+      --deferred: #97a1ac;
+      --deferred-bg: #232a32;
+      --gate: #ac8ee0;
+      --gate-bg: #2a2140;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px -16px rgba(0,0,0,0.55);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 56px 32px 96px;
+  }
+
+  /* ---- Masthead ---- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 40px;
+    letter-spacing: -0.01em;
+    margin: 2px 0 4px;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  .dek {
+    font-size: 15.5px;
+    color: var(--ink-muted);
+    max-width: 62ch;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  .meta-row b { color: var(--ink-muted); font-weight: 600; }
+
+  /* ---- Stat strip ---- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat .n {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .stat .l {
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .stat.good .n { color: var(--good); }
+  .stat.warn .n { color: var(--warn); }
+  .stat.bad .n { color: var(--bad); }
+  .stat.gate .n { color: var(--gate); }
+
+  /* ---- Section headers ---- */
+  section { margin-bottom: 44px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+  }
+  .sec-note {
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+  }
+
+  /* ---- Table ---- */
+  .tbl-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 920px;
+  }
+  thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: 13px 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-strong);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 13.6px;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+
+  .slice-name {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .backend-mod {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+  .pct {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .bar-track {
+    width: 64px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .gaps { max-width: 40ch; color: var(--ink-muted); font-size: 13.2px; }
+  .gaps ul { margin: 0; padding-left: 16px; }
+  .gaps li { margin-bottom: 3px; }
+  .gaps li::marker { color: var(--ink-faint); }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 100px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .pill.done { background: var(--good-bg); color: var(--good); }
+  .pill.done::before { background: var(--good); }
+  .pill.partial { background: var(--warn-bg); color: var(--warn); }
+  .pill.partial::before { background: var(--warn); }
+  .pill.notstarted { background: var(--bad-bg); color: var(--bad); }
+  .pill.notstarted::before { background: var(--bad); }
+  .pill.placeholder { background: var(--deferred-bg); color: var(--deferred); }
+  .pill.placeholder::before { background: var(--deferred); }
+  .pill.mature { background: var(--good-bg); color: var(--good); }
+  .pill.mature::before { background: var(--good); }
+
+  /* ---- Callout list ---- */
+  .callouts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--callout-color, var(--accent));
+    border-radius: 8px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .callout .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--callout-color, var(--accent));
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .callout p { margin: 0; font-size: 13.6px; color: var(--ink-muted); }
+  .callout p b { color: var(--ink); font-weight: 600; }
+
+  /* ---- Next-up order block ---- */
+  .order {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .order-head {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .order-head h3 {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .order-head span {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .order pre {
+    margin: 0;
+    padding: 20px 22px;
+    font-family: var(--mono);
+    font-size: 12.8px;
+    line-height: 1.65;
+    color: var(--ink);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .checklist .item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13.4px;
+    color: var(--ink-muted);
+  }
+  .checklist .item b { color: var(--ink); }
+  .checklist .box {
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border-strong);
+    margin-top: 2px;
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    line-height: 1.7;
+  }
+  footer a { color: var(--ink-faint); }
+
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .callouts { grid-template-columns: 1fr; }
+    h1 { font-size: 30px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <span class="eyebrow">Cross-repo audit &middot; AI_Knowledge</span>
+    <h1>ASK Platform — Completeness Audit</h1>
+    <p class="dek">A read of <b style="color:var(--ink-muted)">Ask_Frontend</b> against <b style="color:var(--ink-muted)">Ask_Backend</b> — what each vertical slice actually ships versus what its mirrored backend module supports, checked against the live source tree, not just the docs.</p>
+    <div class="meta-row">
+      <span><b>Frontend</b> new_frontend @ c24d2db (+ uncommitted catalog work)</span>
+      <span><b>Backend</b> dev @ 526871a (2026-08-04)</span>
+      <span><b>Audited</b> 2026-08-06 (completeness) + 2026-08-06 (architecture/design-pattern, fixed) + 2026-08-07 (catalog re-check)</span>
+      <span><b>Method</b> AI_Knowledge docs + src/ tree + git log, cross-checked</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat good">
+      <span class="n">2 / 7</span>
+      <span class="l">Slices shipped</span>
+    </div>
+    <div class="stat warn">
+      <span class="n">2 / 7</span>
+      <span class="l">Slices partial</span>
+    </div>
+    <div class="stat bad">
+      <span class="n">3 / 7</span>
+      <span class="l">Slices not started</span>
+    </div>
+    <div class="stat">
+      <span class="n">8 / 8</span>
+      <span class="l">Backend modules ready</span>
+    </div>
+    <div class="stat gate">
+      <span class="n">0</span>
+      <span class="l">Open blocking gates</span>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <h2>Frontend slices</h2>
+      <span class="sec-note">src/{slice}/ · roadmap Phase 1, items 1–8</span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Slice</th>
+            <th>Backend module</th>
+            <th>Status</th>
+            <th>Complete</th>
+            <th>What's built</th>
+            <th>Gaps</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="slice-name">auth</span></td>
+            <td><span class="backend-mod">identity</span></td>
+            <td><span class="pill done">Shipped</span></td>
+            <td>
+              <div class="bar"><span class="pct">~95%</span><div class="bar-track"><div class="bar-fill" style="width:95%;background:var(--good)"></div></div></div>
+            </td>
+            <td class="gaps">Login/register, email verify, Google OAuth, route guards, role modal, cross-tab session sync, registration consent write.</td>
+            <td class="gaps">
+              <ul>
+                <li>No UI reads <span class="slice-name" style="font-size:12px">pendingLegalDocuments</span> yet — backend now exposes it (2026-08-03) but the blocking consent gate isn't wired client-side</li>
+                <li>Profile/password/2FA/email-change deferred to <span class="slice-name" style="font-size:12px">profile</span> (by design)</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">search</span></td>
+            <td><span class="backend-mod">search</span></td>
+            <td><span class="pill done">Shipped</span></td>
+            <td>
+              <div class="bar"><span class="pct">~90%</span><div class="bar-track"><div class="bar-fill" style="width:90%;background:var(--good)"></div></div></div>
+            </td>
+            <td class="gaps">Home + Catalog Page, infinite scroll, relevance/distance/cost/unique-offer sort, price/city/radius/company/map-area filters, primary card image.</td>
+            <td class="gaps">
+              <ul>
+                <li>All 3 previously-parked G1 controls (companies, map-area, unique-offers sort) are now built and consuming live backend data</li>
+                <li>Remaining thin edge: "why this matched" reasons rendered per owner ruling despite backend README calling them display-optional</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">catalog</span></td>
+            <td><span class="backend-mod">item · importing</span></td>
+            <td><span class="pill partial">Partial</span></td>
+            <td>
+              <div class="bar"><span class="pct">~35%</span><div class="bar-track"><div class="bar-fill" style="width:35%;background:var(--warn)"></div></div></div>
+            </td>
+            <td class="gaps"><b style="color:var(--ink)">Customer half SHIPPED 2026-08-06</b> (uncommitted) — <span class="slice-name" style="font-size:12px">src/catalog/</span> (Product Card modal, up-to-3 image gallery, "Proceed to Purchase"), opened from <span class="slice-name" style="font-size:12px">ResultCard</span>. <span class="slice-name" style="font-size:12px">/app/product/[id]</span> is now a permanent stub (D33), not a "not open yet" placeholder.</td>
+            <td class="gaps">
+              <ul>
+                <li>Seller Products tab + Excel import wizard (roadmap #7) — zero code, ordered after <span class="slice-name" style="font-size:12px">business-cabinet</span>'s own shell (#6)</li>
+                <li>Chat button + zero-destination fallback deliberately deferred to <span class="slice-name" style="font-size:12px">chats</span> (#4) — locked, not an oversight</li>
+                <li>Work is uncommitted as of this audit — reconfirm against <span class="slice-name" style="font-size:12px">git status</span> before trusting this row later</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">chats</span></td>
+            <td><span class="backend-mod">chat</span></td>
+            <td><span class="pill notstarted">Not started</span></td>
+            <td>
+              <div class="bar"><span class="pct">0%</span><div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--bad)"></div></div></div>
+            </td>
+            <td class="gaps"><span class="slice-name" style="font-size:12px">src/chats/</span> does not exist. <span class="slice-name" style="font-size:12px">/app/chats</span> shows an honest "not open yet" placeholder.</td>
+            <td class="gaps">
+              <ul>
+                <li>Roadmap #4 — blocks the customer path's completion, and the cabinet's Overview/Requests tab (which composes from this slice)</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">profile</span></td>
+            <td><span class="backend-mod">identity</span></td>
+            <td><span class="pill notstarted">Not started</span></td>
+            <td>
+              <div class="bar"><span class="pct">0%</span><div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--bad)"></div></div></div>
+            </td>
+            <td class="gaps"><span class="slice-name" style="font-size:12px">src/profile/</span> does not exist. <span class="slice-name" style="font-size:12px">/app/profile</span> shows a placeholder.</td>
+            <td class="gaps">
+              <ul>
+                <li>Roadmap #5 — last item on the customer path; closes it end-to-end once built</li>
+                <li>Settings, password/2FA/email-change surfaces all wait on this</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">business-cabinet</span></td>
+            <td><span class="backend-mod">business · offers</span></td>
+            <td><span class="pill partial">Partial</span></td>
+            <td>
+              <div class="bar"><span class="pct">~30%</span><div class="bar-track"><div class="bar-fill" style="width:30%;background:var(--warn)"></div></div></div>
+            </td>
+            <td class="gaps">Seller registration wizard (5 steps incl. branch map picker, delivery cities, verification sources) is fully built. Cabinet shell itself renders a placeholder.</td>
+            <td class="gaps">
+              <ul>
+                <li>Branches, Unique Offers, Company Dashboard tabs unbuilt — <span class="slice-name" style="font-size:12px">BranchList.tsx</span> exists only inside the registration wizard, not as a tab</li>
+                <li>Company Profile is gate G2 (open, non-blocking) — ship the vision's placeholder</li>
+                <li>Overview/"Requests" tab waits on <span class="slice-name" style="font-size:12px">chats</span></li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">services</span></td>
+            <td><span class="backend-mod">service</span></td>
+            <td><span class="pill notstarted">Not started</span></td>
+            <td>
+              <div class="bar"><span class="pct">0%</span><div class="bar-track"><div class="bar-fill" style="width:2%;background:var(--bad)"></div></div></div>
+            </td>
+            <td class="gaps"><span class="slice-name" style="font-size:12px">src/services/</span> does not exist.</td>
+            <td class="gaps">
+              <ul>
+                <li>Roadmap #8, last item of the seller path — mirrors <span class="slice-name" style="font-size:12px">catalog</span>, no import wizard by design (D8)</li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Backend modules</h2>
+      <span class="sec-note">Ask_Backend/AI_Knowledge/features/ · maturity as the data authority</span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Frontend consumer</th>
+            <th>Status</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">identity</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">auth, profile</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Full auth surface + legal acceptance reads/session gating shipped 2026-08-03; not yet consumed by <span class="slice-name" style="font-size:12px">auth</span>'s UI.</td>
+          </tr>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">search</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">search</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Deep paging, company facets, map-area, unique-offer sort all shipped and fully consumed. No known gap either side.</td>
+          </tr>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">item</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">catalog</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Purchase destinations + images now consumed via the search payload (Product Card, 2026-08-06). CRUD + image-sync endpoints (seller Products tab, roadmap #7) remain unconsumed.</td>
+          </tr>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">service</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">services</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Same shape as item; no consumer yet.</td>
+          </tr>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">business</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">business-cabinet</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Onboarding fully consumed; branch/profile/dashboard reads unconsumed by the (unbuilt) cabinet tabs.</td>
+          </tr>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">offers</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">business-cabinet</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Unique Offers (drops) API ready; no editor tab built.</td>
+          </tr>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">messaging</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">chats</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Business-wide chat, unread counts ready. No consumer.</td>
+          </tr>
+          <tr>
+            <td><span class="backend-mod" style="color:var(--ink);font-size:13.5px;font-weight:600">legal</span></td>
+            <td><span class="slice-name" style="font-size:12.5px">auth</span></td>
+            <td><span class="pill mature">Mature</span></td>
+            <td class="gaps">Versioned docs, acceptance writes/reads, session gating live. Frontend records acceptance on registration; does not yet read the gate.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>What's actually worth doing next</h2>
+      <span class="sec-note">ranked by what's blocking, not by file count</span>
+    </div>
+    <div class="callouts">
+      <div class="callout" style="--callout-color:var(--warn)">
+        <span class="tag">Live consent gap</span>
+        <p><b>Legal acceptance is written but never read back.</b> The backend shipped <span style="font-family:var(--mono);font-size:12px">pendingLegalDocuments</span> + session gating on 2026-08-03. The frontend still only fires the registration-time write — nobody is blocked from the app if a write silently fails, which is exactly the failure mode the gate exists to close.</p>
+      </div>
+      <div class="callout" style="--callout-color:var(--bad)">
+        <span class="tag">Biggest single gap</span>
+        <p><b>Three of seven slices have zero code.</b> <span style="font-family:var(--mono);font-size:12px">chats</span>, <span style="font-family:var(--mono);font-size:12px">profile</span>, <span style="font-family:var(--mono);font-size:12px">services</span> are placeholder routes only. <span style="font-family:var(--mono);font-size:12px">catalog</span> moved to partial 2026-08-06 — customer half shipped, seller half still zero code. Backend support for all three is already mature — this is pure frontend backlog, not a cross-repo block.</p>
+      </div>
+      <div class="callout" style="--callout-color:var(--good)">
+        <span class="tag">Resolved since last read</span>
+        <p><b>G1 and G3 are fully closed and consumed.</b> Deep paging, company filter, map-area, unique-offer sort, and ordered purchase destinations all shipped backend-side 2026-08-03/04 and are live in <span style="font-family:var(--mono);font-size:12px">search</span> as of 2026-08-05. No outstanding backend ask blocks any customer-path slice today.</p>
+      </div>
+      <div class="callout" style="--callout-color:var(--gate)">
+        <span class="tag">Open, non-blocking</span>
+        <p><b>Gate G2 — Company Profile scope</b> has no backend endpoints and the vision itself says "coming in a future update." Ship the placeholder when the cabinet tab is built; don't invent a screen.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Code-quality audit (separate pass)</h2>
+      <span class="sec-note">ARCHITECTURE_PATTERN_FRONTEND.md + DESIGN_PATTERNS_FRONTEND.md · all findings fixed same day</span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Rule</th>
+            <th>Finding</th>
+            <th>Fix</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="slice-name">P1.1</span></td>
+            <td class="gaps"><span class="slice-name" style="font-size:12px">DeliveryCitiesField.tsx</span> (432 ln) and <span class="slice-name" style="font-size:12px">address-select.tsx</span> (567 ln) exceeded the ~400-line component cap</td>
+            <td class="gaps">Split into render-only components + extracted hooks (<span class="slice-name" style="font-size:12px">useCityComboboxField.ts</span>, <span class="slice-name" style="font-size:12px">useKzAddressCascade.ts</span>)</td>
+            <td><span class="pill done">Fixed</span></td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">P9.2</span></td>
+            <td class="gaps"><span class="slice-name" style="font-size:12px">NavigationMenu.tsx</span> used raw <span class="slice-name" style="font-size:12px">text-[11px]</span>, no matching token</td>
+            <td class="gaps">Changed to <span class="slice-name" style="font-size:12px">text-xs</span> (12px, the nearest real step)</td>
+            <td><span class="pill done">Fixed</span></td>
+          </tr>
+          <tr>
+            <td><span class="slice-name">P1.2</span></td>
+            <td class="gaps"><span class="slice-name" style="font-size:12px">AuthProvider.tsx</span> called <span class="slice-name" style="font-size:12px">api.getSession()</span> directly instead of through a hook</td>
+            <td class="gaps">Extracted <span class="slice-name" style="font-size:12px">useSessionRestore()</span> into <span class="slice-name" style="font-size:12px">auth/hooks.ts</span></td>
+            <td><span class="pill done">Fixed</span></td>
+          </tr>
+          <tr>
+            <td>§5 litmus</td>
+            <td class="gaps"><span class="slice-name" style="font-size:12px">shared/ui/badge.tsx</span> baked in a domain-aware <span class="slice-name" style="font-size:12px">offer</span> variant (Unique-Offer chip)</td>
+            <td class="gaps">Removed from Badge; <span class="slice-name" style="font-size:12px">ResultCard</span> renders it directly off <span class="slice-name" style="font-size:12px">--offer</span> tokens</td>
+            <td><span class="pill done">Fixed</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="order">
+      <div class="order-head">
+        <h3>Next up — build the <code style="font-family:var(--mono)">chats</code> slice</h3>
+        <span>Roadmap Phase 1, item #4</span>
+      </div>
+      <pre>catalog's customer half SHIPPED 2026-08-06 (Product Card modal,
+image gallery, Proceed to Purchase) — src/catalog/ now exists.
+Two things still wait on THIS item before they can close: catalog's
+chat button + zero-destination fallback (locked,
+features/catalog/locks.md), and the cabinet's Overview/"Requests"
+tab (composes from chats alone, roadmap #6).
+
+Build the `chats` slice — src/chats/ does not exist yet. It owns
+the Chats Page + thread view (UF 2.2). Backend module `messaging`
+is mature (business-wide chat, unread counts) and unconsumed — pure
+frontend work, nothing is cross-repo blocked.
+
+Before writing code:
+1. Read AI_Knowledge/ROADMAP.md item #4 and the "DONE" checklist
+   (§ "A slice is DONE when").
+2. Read/write AI_Knowledge/features/chats/{README,contracts,ux-ui-flow,locks}.md
+   against the backend's messaging module contracts — do not guess a DTO.
+3. Read AI_Knowledge/Locks.md — stop and ask before violating any.
+4. Invoke the platform-ui-design skill before building any ui/ component.
+5. Once chats/index.ts exists, catalog's deferred chat button
+   (PurchaseAction.tsx + the zero-destination fallback) becomes
+   buildable — that is catalog's own follow-up, not part of this
+   slice's DONE bar.
+6. Follow the UI work loop: build -> verify visually (playwright,
+   next build && next start) -> self-review vs the skill's
+   Definition of done -> code-rules-checker -> update
+   features/chats/ux-ui-flow.md in the SAME commit.</pre>
+      <div class="checklist">
+        <div class="item"><span class="box"></span><span><b>Read first:</b> ROADMAP.md #4, Locks.md, backend messaging contracts</span></div>
+        <div class="item"><span class="box"></span><span><b>Build:</b> Chats Page + thread view, unread state</span></div>
+        <div class="item"><span class="box"></span><span><b>Follow-up:</b> wire catalog's deferred chat button once chats/index.ts exists</span></div>
+        <div class="item"><span class="box"></span><span><b>Verify:</b> both themes, ru/kk/en, reduced motion, loading/empty/error states</span></div>
+        <div class="item"><span class="box"></span><span><b>Docs:</b> features/chats/ux-ui-flow.md in the same commit as the code</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Sources: Ask_Frontend/AI_Knowledge/{ROADMAP,Locks,features/*}.md · Ask_Backend/AI_Knowledge/{Changelog,features/*}.md ·
+    src/ tree presence checks · git log on both repos (frontend HEAD c24d2db, backend HEAD 526871a).
+    Percentages are directional (doc + code cross-check), not a test-coverage metric.
+  </footer>
+
+</div>
