@@ -210,7 +210,9 @@ export function FilterPanel({
               }}
               className="focus-ring flex min-h-11 items-center gap-2 text-left text-sm text-foreground"
             >
-              <span className="neu-radio-dot" data-on={selected} aria-hidden="true" />
+              <span className="neu-radio-dot" data-on={selected} aria-hidden="true">
+                {selected ? <span className="neu-radio-fill" /> : null}
+              </span>
               {t(`filters.location.${option}`)}
             </button>
           );
