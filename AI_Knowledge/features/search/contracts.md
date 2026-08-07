@@ -104,12 +104,12 @@ assume two sections exist.
 | `brandLogoUrl` | Nullable |
 | `title`, `summary`, `categoryLabel` | |
 | `purchaseDestinations` | `PurchaseDestinationResponse[]` = `{ label, url }`, **ordered** (`@OrderColumn(display_order)` on both `Item` and `Service`), `[]` when the seller published none. **Gate G3's answer, delivered 2026-08-04 (`c56f75c`).** Read by the Product Card's "Proceed to Purchase" (roadmap #3): none → chat draft, one → go, several → chooser modal. A destination belongs to the item/service, never a branch; a verification link is never one (both are backend LOCKS as well as ours) |
-| `images` | `CatalogImageResponse[]` = `{ id, url }` — ordered, **at most three, first is primary**, `[]` when none (`toCard()` defaults to `List.of()`, so never null). Server-generated ASK-managed media; a client never submits an external media URL. **Landed 2026-08-02 (`b02105a`). Modelled, NOT rendered** — see § *Catalog images* |
+| `images` | `CatalogImageResponse[]` = `{ id, url }` — ordered, **at most three, first is primary**, `[]` when none (`toCard()` defaults to `List.of()`, so never null). Server-generated ASK-managed media; a client never submits an external media URL. **Landed 2026-08-02 (`b02105a`). `images[0]` rendered on the result card since 2026-08-04**; the rest of the gallery renders in the Product Card modal (`@/catalog`, roadmap #3) — see § *Catalog images* |
 | `price`, `currency` | `price` nullable — render nothing when absent, never "0" |
 | `businessProfile` | `{ logoUrl, coverUrl, description, number, email, instagramUrl, telegramUrl, websiteUrl }` |
 | `availability` | `UNKNOWN` \| `AVAILABLE` \| `UNAVAILABLE` |
 | `availabilityWarning` | **Server-localized prose**, non-null ONLY when `availability = UNKNOWN`. An honest caveat — availability is never invented (P9.4) |
-| `matchReasons` | `string[]` — **server-localized prose**, "why this matched". Safe to render; this is the intent layer's core signal |
+| `matchReasons` | `string[]` — **server-localized prose**, "why this matched". **Modelled, NOT rendered** (owner reversal 2026-08-06) — see § *Catalog images* below, which now also covers this field |
 | `badges` | `string[]` — **stable UPPER_SNAKE tokens** (`OFFICIAL_CHANNEL`, `COMPLETE_CARD`, `PICKUP`) since 2026-08-04; they were lowercase English prose before. See below |
 | `distanceMeters` | Nullable int. Renders only from this value (slice lock) — never derived from a city name |
 | `branchName`, `branchAddress`, `branchCity` | Branch context |
@@ -162,37 +162,36 @@ raw English inside the offer tint.)*
 nothing yet — the map-area filter that wants them is parked behind G1 — but a field we receive
 is modelled honestly rather than discovered later.
 
-## Catalog images — on the wire 2026-08-02, deliberately NOT rendered
+## Catalog images and match reasons — where this landed, and how it changed twice
 
-Backend `b02105a` added `images` to `SearchCardResponse` and, in the same commit, rewrote its
-own § *Result presentation*. Both are recorded here; **neither is built**, and the reason is
-the product lock, not oversight.
+Backend `b02105a` (2026-08-02) added `images` to `SearchCardResponse` and, in the same commit,
+rewrote its own § *Result presentation* to describe a richer card (image, hover-preview panel,
+mobile detail modal) and to say match reasons are metadata, not displayed. At the time, NEITHER
+side of that matched what this client shipped, and three of the four statements were flagged as
+direct conflicts (AUDIT_2 N11/N12) pending an owner decision. Two owner rulings have landed
+since, on different days, and this section now reflects the CURRENT state rather than that
+original audit snapshot:
 
-**What the backend now describes** (`Ask_Backend/AI_Knowledge/features/search/README.md`):
-each result row carries *"its primary catalog image, a compact business avatar/name"*; on
-desktop *"hover previews the full Item/Service image gallery and details in the right panel"*,
-on mobile *"row tap opens the same details as a modal"*; the business avatar and chat actions
-*"do not open result details"*; and *"match reasons remain response metadata but are not
-displayed."*
-
-**Why none of it ships yet.** `PRODUCT_VISION.md` contains **zero** mentions of an image, a
-photo or a gallery on a result card, and describes no hover-preview panel. Building any of it
-would be inventing UI, which the product lock forbids without exemption (P9.1, D31). Three of
-the four statements also *contradict* what we ship today, so they are not additive:
-
-| Backend says | We ship today | Conflict |
+| Backend describes | What ships today | Status |
 |---|---|---|
-| Primary catalog image on the row | Two-layer card, no image | New UI — needs a vision entry |
-| Desktop hover → gallery in a right panel | Card modal is roadmap #3 (gate G3 parks one button) | A different Product Card interaction model |
-| Match reasons NOT displayed | `matchReasons` rendered as the intent signal | **Direct reversal** — the vision's core "why this matched" affordance |
-| Business avatar/chat do not open details | No click target exists yet | Compatible; constrains #3 |
+| Primary catalog image on the row | `images[0]` renders on `ResultCard`; the rest of the gallery (up to 3) renders in the Product Card modal | **Adopted**, owner append 2026-08-04 (`PRODUCT_VISION.md` UF 2.1) |
+| Desktop hover → gallery in a right panel; mobile row-tap → detail modal | Neither — the Product Card is a modal opened by a click/tap on the card (roadmap #3), not a hover panel | **Not adopted.** A different interaction model than the backend's own reference UI; ours is the one `PRODUCT_VISION.md` and D10/D33 describe |
+| Match reasons NOT displayed | `matchReasons` is modelled, never rendered | **Adopted, as of 2026-08-06** — reverses the OPPOSITE 2026-08-02 ruling recorded below, which had rendered them as the intent-match signal. The client now agrees with the backend's own stance |
+| Business avatar/chat do not open result details | The card itself opens the modal (avatar/chat are not separate triggers) | Compatible |
+
+**History, kept because the reversal is the interesting part (P9.4 — the backend is the
+authority for DATA, the vision for INTENT, and an intent call was made twice).** The 2026-08-02
+owner ruling (`ROADMAP.md` cross-repo table) explicitly OVERRODE the backend's "not displayed"
+stance and kept `matchReasons` rendered as "the intent layer's core affordance." The 2026-08-06
+owner ruling reverses that override outright — match reasons are not shown to the customer.
+`src/search/ui/ResultCard.tsx` no longer renders them (deleted the same day); the field stays
+typed in `model.ts` because it is still on the wire and the backend remains the data authority —
+only the rendering decision changed, twice, in opposite directions. See `PRODUCT_VISION.md`'s
+2026-08-06 correction and `ROADMAP.md`'s cross-repo table for the full paper trail.
 
 The data is modelled (`CatalogImage` in `model.ts`) because it is on the wire and the backend
 is the data authority — a field we receive is modelled honestly rather than discovered later,
-the same call made for `latitude`/`longitude`. **Rendering waits on an owner decision**, because
-the fourth row is a product reversal an agent must not infer from backend prose: the backend is
-the authority for DATA, the vision for INTENT (P9.4/D9). Raised as AUDIT_2 **N11** (the field)
-and **N12** (the presentation contract).
+the same call made for `latitude`/`longitude`.
 
 ## Filter reference data
 | Method | Path | Auth | Used by |

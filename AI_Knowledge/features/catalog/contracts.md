@@ -32,16 +32,25 @@ Sources: `../Ask_Backend` modules `offer/item` (`kz.ask.offer.item.api.*`) and `
 > list — it cannot serve a single-item read, and pointing it at one would fetch a business's
 > whole catalogue to render one card.
 
-**Consequence for slice #3 (decided 2026-07-28):**
+**Consequence for slice #3 (decided 2026-07-28, SHIPPED 2026-08-06):**
 
-- **The Product Card modal SHIPS**, rendered from the `SearchCardResponse` payload the catalog
-  list already holds (`features/search/contracts.md`). That is D10's modal half and the
-  vision's actual requirement (UF 2.1 step 3).
-- **`/app/product/:id` is DEFERRED** until a public item read exists — raised in the ROADMAP
-  cross-repo table. D23 already put every `/app/*` surface behind the auth gate, so the SEO
-  half of D10 was moot regardless; what is genuinely lost is the **direct/shared link**.
+- **The Product Card modal SHIPPED**, rendered from the `SearchCardResponse` payload the catalog
+  list already holds (`features/search/contracts.md`) — **zero new endpoints, zero new requests**.
+  `src/catalog/model.ts`'s `ProductCardData` mirrors the fields of `SearchCardResponse` it
+  renders (own type, not imported — see that file's header for the R5 cycle-avoidance reason).
+  That is D10's modal half and the vision's actual requirement (UF 2.1 step 3).
+- **`/app/product/:id` is PERMANENTLY modal-only (D33, 2026-08-06)** — not merely deferred. Even
+  if a public item read ships later, no full page will be built: D23 already puts every `/app/*`
+  surface behind the auth gate, so the SEO half of D10 was moot regardless, and the vision itself
+  only ever described a modal. The route stays as a permanent informational stub.
 - Fields available to the card are exactly those on `SearchCardResponse` — no more. Do not
-  design a card field the search payload cannot fill (P9.4).
+  design a card field the search payload cannot fill (P9.4). The modal uses all of them except
+  `resultId`'s siblings not needed for display (`latitude`/`longitude`, `resultType`) —
+  see `ProductCardData` for the exact set.
+- **"Proceed to Purchase" reads `purchaseDestinations`** (G3, delivered `c56f75c` 2026-08-04):
+  `resolvePurchaseAction` in `catalog/model.ts` maps `length` (0/1/2+) to omitted/direct-link/
+  chooser-modal. The chat button and the zero-destination chat fallback are deferred to slice #4
+  (`catalog/locks.md`).
 
 ## Seller — Products tab (roadmap #7)
 | Method | Path | Auth | Used by |

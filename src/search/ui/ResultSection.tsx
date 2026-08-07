@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import type { SearchSectionResponse } from "../model";
+import type { SearchCardResponse, SearchSectionResponse } from "../model";
 import { ResultCard } from "./ResultCard";
 
 /**
@@ -13,7 +13,13 @@ import { ResultCard } from "./ResultCard";
  * because presenting a relaxed result without saying what was loosened is a
  * silent lie about the match.
  */
-export function ResultSection({ section }: { section: SearchSectionResponse }) {
+export function ResultSection({
+  section,
+  onSelect,
+}: {
+  section: SearchSectionResponse;
+  onSelect: (card: SearchCardResponse) => void;
+}) {
   const t = useTranslations("search");
 
   return (
@@ -28,7 +34,7 @@ export function ResultSection({ section }: { section: SearchSectionResponse }) {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {section.cards.map((card) => (
-          <ResultCard key={card.resultId} card={card} />
+          <ResultCard key={card.resultId} card={card} onSelect={onSelect} />
         ))}
       </div>
     </section>

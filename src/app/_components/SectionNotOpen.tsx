@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type * as React from "react";
 
 import { EmptyState } from "@/shared/ui/empty-state";
 
@@ -33,15 +34,27 @@ export function SectionNotOpen({
   icon,
   title,
   description,
+  action,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
+  /** Optional escape hatch back to a working surface — e.g. `/app/product/:id`
+   *  (D33: a permanent stub, not a pending one) links back to the catalog
+   *  rather than leaving a dead end. Omitted by the other callers, whose
+   *  destination is genuinely just "not open yet" with nowhere better to send
+   *  the visitor. */
+  action?: React.ReactNode;
 }) {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:py-16">
       <h1 className="sr-only">{title}</h1>
-      <EmptyState icon={icon} title={title} description={description} />
+      <EmptyState
+        icon={icon}
+        title={title}
+        description={description}
+        action={action}
+      />
     </main>
   );
 }

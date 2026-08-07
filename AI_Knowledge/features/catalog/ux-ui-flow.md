@@ -2,36 +2,40 @@
 
 Traces PRODUCT_VISION **UF 2.1** steps 3–4 (customer) and **UF 3.1** item 2 (seller).
 
+**Customer half SHIPPED 2026-08-06** (roadmap #3) — `src/catalog/ui/{ProductCardModal,PurchaseAction}.tsx`.
+The seller flow below (Products tab, import wizard) is NOT built yet (roadmap #7).
+
 ## Screens
 | Screen | Route | Rendering |
 |--------|-------|-----------|
-| Product Card — modal | over /app/catalog | client island |
-| Product Card — full page | /app/product/[id] | server |
+| Product Card — modal (the ONLY presentation, D33) | over /app/catalog | client island |
 | Products tab (seller) | inside /app/business | client |
 | Import wizard (seller) | inside /app/business | client |
 
-## Customer flow (UF 2.1)
-1. A result on the Catalog Page is selected → the **Product Card opens as a modal** with all product information.
-2. The card offers **"Proceed to Purchase"** and a **chat button**. They are different actions —
-   chat is "ask a question", Proceed is "I intend to buy" (G3, resolved 2026-08-02):
-   - **Deeplinks present** → the button opens the seller's public purchase/booking destination.
-   - **More than one** → a **modal to choose where to buy**. Deliberate: a brand selling in
-     several places must not have that collapsed into one channel we picked for them.
+## Customer flow (UF 2.1) — SHIPPED 2026-08-06
+1. A result on the Catalog Page is clicked/tapped (the whole `ResultCard`, `@/search`, is the
+   target — role `button`, keyboard-operable) → the **Product Card opens as a modal**, rendered
+   from the SAME `SearchCardResponse` the Catalog Page already fetched. No new request.
+2. The card shows the up-to-3 image gallery (the row only ever shows `images[0]`), the business's
+   own contact info when published, and full decision content (no line-clamp on `summary`, unlike
+   the row).
+3. **"Proceed to Purchase"** (G3, resolved 2026-08-02, delivered on the wire 2026-08-04):
+   - `purchaseDestinations.length === 1` → the button is a plain external link to that
+     destination.
+   - `purchaseDestinations.length >= 2` → the button opens a **chooser modal** listing each
+     destination by its `label`. Deliberate: a brand selling in several places must not have
+     that collapsed into one channel we picked for them.
+   - `purchaseDestinations.length === 0` → **the button is OMITTED**, not disabled. The vision's
+     "chat with an editable draft" fallback for this case is **deferred to slice #4**
+     (`@/chats` has no `index.ts` yet, R2) — a reachable control that goes nowhere is forbidden
+     (project lock). **No standalone chat button exists in this pass either**, for the same
+     reason — the vision's UF 2.1 step 4 chat button ships when `chats` does.
    - **Deeplinks belong to the ITEM/SERVICE, never to a branch** (owner, 2026-08-02). Several
-     deeplinks = several places to buy the SAME item, not one link per shop. A branch is a
-     physical place; a link on a branch would be a map/location link, which is a different
-     concept and not this button.
-   - **None** → the in-app chat opens with an **editable draft** pre-filled ("Здравствуйте! Хочу
-     приобрести товар «…»…", or the booking wording for a service). **Never auto-sent** — the
-     customer edits and sends it.
+     destinations = several places to buy the SAME item, not one link per shop.
    - **Never** built from `kaspiUrl`/`ozonUrl`/`wildberriesUrl`: those live on
      `BusinessVerification` as proof the business is real, and are not customer deeplinks.
-   - **Blocked on backend** — `deepLink` is a single `String` on `Item`, absent from `Service`,
-     and missing from the search projection, so the card cannot see it yet (ROADMAP cross-repo).
-     Until it lands, the button is **omitted**, not disabled: a reachable control must DO
-     something (project lock).
-3. The chat modal can open straight away from the card — no intermediate page (UF 2.1 step 4).
-4. A direct visit or a search-engine crawl to `/app/product/:id` renders the same card as a full server-rendered page (D10).
+4. There is no full-page presentation (D33, supersedes D10). A direct visit to `/app/product/:id`
+   renders a permanent informational stub instead — see below.
 
 ## Seller flow (UF 3.1 item 2)
 1. **Products** tab: the list of products, with **Add** and **Import**.
@@ -39,28 +43,45 @@ Traces PRODUCT_VISION **UF 2.1** steps 3–4 (customer) and **UF 3.1** item 2 (s
 3. Import: upload .xlsx → map columns → preview (rows flagged valid/warning/invalid) → approve or cancel.
 
 ## States (P8.4/P9.3)
+
+**Product Card modal (shipped):**
+- Loading: N/A — the modal renders from data already in memory (no fetch of its own); the
+  Catalog Page's own loading state covers the only request involved.
+- Empty sub-states, all first-class (no placeholder box/icon): no images → gallery section
+  omitted; no `purchaseDestinations` → the button omitted; no `businessProfile` → the "about"
+  section omitted; null price/branch/distance → that field omitted, same rule `ResultCard` uses.
+- Error: N/A — nothing in the modal fetches independently.
+- Validation: N/A — no form in this pass.
+
+**Seller flow (not built, roadmap #7):**
 - Loading: card skeleton; import preview parsing
 - Empty: seller with no products → an empty state that points at Add and Import, not a blank table
 - Error: import row errors are shown per-row (INVALID/WARNING), never as one opaque failure
 - Price: show the strike-through original only when `effectivePrice` differs from `originalPrice`
 
 ## Cross-slice
-- The chat button embeds `@/chats` (same knowledge, live feature → import via its `index.ts`, D8).
+- **Consumed by `@/search`** — `ResultStream` imports `ProductCardModal` from this slice's
+  `index.ts` and renders it when a card is selected. This is the ONLY cross-slice edge; catalog
+  never imports back from `@/search` (R5 — see `model.ts`'s header).
+- The chat button (UF 2.1 step 4) will embed `@/chats` when that slice ships (#4) — not built yet.
 - The Catalog Page that hosts the modal belongs to `@/search`.
 
-## Route placeholder — until this slice lands (2026-08-02)
+## Route placeholder — PERMANENT (corrected 2026-08-06, D33)
 
-`/app/product/:id` is LIVE and reachable today, so it states plainly that the section is
-not open rather than looking unfinished: the shared `EmptyState` primitive via
-`app/_components/SectionNotOpen.tsx`, with copy in ru/kk/en. It used to render a
-bare `<h1>` plus "Section under construction" inside a neumorphic product, which
-reads as a broken build rather than as a message (AUDIT_2 N4 / AUDIT_1 B1).
+`/app/product/:id` is LIVE and reachable today (a bookmark, a shared link, a typed URL),
+so it states plainly that there is no direct product page, rather than looking
+unfinished: the shared `EmptyState` primitive via `app/_components/SectionNotOpen.tsx`,
+with copy in ru/kk/en, linking back to `/app/catalog`.
 
-This is the second of the three endings the "a reachable control must DO
-something" lock allows — build it, say plainly it is not open, or stop offering
-the control. Not invented UI (P9.1): it is the mandatory empty state P9.3
-requires of a surface that exists with no content.
-
-Its copy differs from the other three ON PURPOSE: this deep link is DEFERRED, not merely late (there is no public item read), so it points at the modal instead of promising the URL. The raw route id is no longer echoed — printing it told the visitor nothing and read as debug output.
+**This is no longer a "not open yet" placeholder — it never opens, by design (D33).**
+Before 2026-08-06 this section framed the gap as deferred pending a public item-read
+endpoint, implying the URL would eventually work. It will not: the Product Card has
+exactly one presentation, the modal, permanently. It still uses the shared `app.notOpen.product.*`
+i18n keys (title/description were reworded the same day to drop the "yet" implication rather
+than forked into a new namespace — P6.2), plus one addition, `app.notOpen.product.backToCatalog`,
+rendered as a real action button (`SectionNotOpen` gained an optional `action` slot for this,
+forwarding to `EmptyState`'s existing one) linking to `/app/catalog` — the other "not open yet"
+stubs have nowhere better to send the visitor, this one does. The raw route id is not echoed —
+printing it told the visitor nothing and read as debug output.
 
 Verified in a browser, light and dark, against a production build.

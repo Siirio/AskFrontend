@@ -380,6 +380,61 @@ const server = createServer(async (req, res) => {
       );
       return;
     }
+    // Exactly ONE purchase destination — the Product Card modal's "Proceed to
+    // Purchase" button (G3, roadmap #3) must be a plain direct link, not a
+    // chooser. The default `card()` carries TWO on purpose (see its own
+    // comment), which is why the "choose" case needs no dedicated scenario —
+    // any query without an override exercises it.
+    if (rawQuery === "roses-purchase-one") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          sectionsResponse(rawQuery, {
+            sections: [
+              {
+                type: "exact",
+                kind: "EXACT",
+                title: "Exact matches",
+                relaxed_constraints: null,
+                reason: null,
+                cards: [
+                  card({
+                    purchase_destinations: [
+                      { label: "Website", url: "https://aigul.example/roses" },
+                    ],
+                  }),
+                ],
+              },
+            ],
+          }),
+        ),
+      );
+      return;
+    }
+    // ZERO purchase destinations — the button must be OMITTED entirely, not
+    // disabled. The zero-destination chat fallback the vision describes
+    // belongs to slice #4 (`@/chats` does not exist yet); until then a
+    // reachable control that goes nowhere is forbidden (project lock).
+    if (rawQuery === "roses-purchase-none") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          sectionsResponse(rawQuery, {
+            sections: [
+              {
+                type: "exact",
+                kind: "EXACT",
+                title: "Exact matches",
+                relaxed_constraints: null,
+                reason: null,
+                cards: [card({ purchase_destinations: [] })],
+              },
+            ],
+          }),
+        ),
+      );
+      return;
+    }
     // No offer at all, and an unmapped token. Nothing may wear the offer tint.
     if (rawQuery === "roses-nooffer") {
       res.writeHead(200, { "Content-Type": "application/json" });

@@ -11,15 +11,19 @@ import { separateBadges, type SearchCardResponse } from "../model";
 
 /**
  * The two-layer result card (platform-ui-design §3): brand layer (name, logo,
- * brand colour, badges) on top, decision layer (price, why it matched,
- * availability, branch/distance, the offer label) below.
+ * brand colour, badges) on top, decision layer (price, availability,
+ * branch/distance, the offer label) below. `card.matchReasons` is modelled but
+ * deliberately NOT rendered anywhere in this component — see the field's own
+ * doc comment in `../model.ts` (owner reversal, 2026-08-06).
  *
- * NON-INTERACTIVE in this slice (confirmed scope): the Product Card modal
- * (D10) belongs to `catalog` (roadmap slice #3, not built yet). No onClick,
- * no href — a reachable control must DO something (project lock), so this
- * card offers no click at all rather than a dead one. When `catalog` ships,
- * this component gains a `select`-style prop threaded from `CatalogPage`; the
- * data here does not change.
+ * **Interactive since slice #3 (D33).** `onSelect` opens the Product Card
+ * modal (`@/catalog`'s `ProductCardModal`), threaded down from `ResultStream`
+ * through `ResultSection`. The whole `Card` is the click/tap target — role
+ * `button` + a keydown handler on the CARD itself rather than wrapping it in
+ * a native `<button>`, so the existing markup (an `Image`, several `<p>`s)
+ * needs no restructuring and there is no nested-interactive-content concern.
+ * Satisfies the ≥44px touch-target rule trivially: the whole card qualifies
+ * (platform-ui-design §7).
  *
  * **Client component since 2026-08-04, and the reason is infinite scroll, not
  * interactivity.** Pages 1..n are fetched in the browser and appended to the
@@ -33,7 +37,13 @@ import { separateBadges, type SearchCardResponse } from "../model";
  * context: `ResultSection` passes it down, and dropping it would ripple through
  * a component the Product Card (#3) is about to modify anyway.
  */
-export function ResultCard({ card }: { card: SearchCardResponse }) {
+export function ResultCard({
+  card,
+  onSelect,
+}: {
+  card: SearchCardResponse;
+  onSelect: (card: SearchCardResponse) => void;
+}) {
   const t = useTranslations("search");
   // `hasActiveOffer` decides the offer tint — never a guess from badge text
   // (TINT IS INFORMATION lock; AUDIT_2 N8).
@@ -46,7 +56,17 @@ export function ResultCard({ card }: { card: SearchCardResponse }) {
   const primaryImage = card.images?.[0] ?? null;
 
   return (
-    <Card className="gap-3 py-4">
+    <Card
+      className="cursor-pointer gap-3 py-4 focus-ring"
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(card)}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onSelect(card);
+      }}
+    >
       <CardContent className="flex flex-col gap-3 px-4">
         {/* The PRIMARY catalog image (PRODUCT_VISION UF 2.1, owner append
             2026-08-04). At most three exist; the rest belong to the Product
@@ -129,19 +149,6 @@ export function ResultCard({ card }: { card: SearchCardResponse }) {
             </p>
           ) : null}
         </div>
-
-        {card.matchReasons.length > 0 ? (
-          <ul className="flex flex-col gap-0.5">
-            {card.matchReasons.map((reason) => (
-              <li
-                key={reason}
-                className="text-xs text-foreground-subtle before:mr-1 before:content-['—']"
-              >
-                {reason}
-              </li>
-            ))}
-          </ul>
-        ) : null}
 
         <div className="flex items-center justify-between gap-2">
           {card.price !== null ? (

@@ -2,6 +2,41 @@
 
 Format: `YYYY-MM-DD | {decision/rationale} | {affected files/features}`
 
+2026-08-06 | **Slice #3 (`catalog` — Product Card modal) SHIPPED, its customer half, plus two owner
+decisions recorded that were relayed verbally and not yet in any doc — one of which reversed
+already-shipped code.** (1) **D33: the Product Card is modal-only, PERMANENTLY** — reverses the
+second half of D10 (a planned `/app/product/:id` full page via Next.js intercepting routes),
+which was never buildable anyway (no public item read; D23 already gates the whole `/app/*` tree
+from crawlers) and which the vision itself never promised. The route stays live as a permanent
+informational stub (`SectionNotOpen`, reworded off the generic "not open yet" framing, plus a new
+`action` slot so it links back to `/app/catalog` instead of dead-ending). (2) **Match reasons are
+NOT rendered, anywhere** — reverses a 2026-08-02 owner ruling that had explicitly overridden the
+backend's own stance ("match reasons... are not displayed") and kept them rendered as the intent
+layer's affordance; that override is itself now reversed, so the client agrees with the backend
+again. This was a LIVE regression fix, not just a doc correction: `search/ui/ResultCard.tsx` was
+rendering `card.matchReasons` on every card; that block is deleted. The field stays modelled in
+`search/model.ts` (still on the wire, backend remains the data authority) but nothing renders it.
+(3) **The Product Card modal itself**: `src/catalog/{index.ts,model.ts,ui/{ProductCardModal,
+PurchaseAction}.tsx}`, opened by making `ResultCard` (`@/search`) a click/keyboard target whose
+`onSelect` threads through `ResultSection` to `ResultStream`, which owns the "which card is open"
+state as local `useState` (no `store.ts` needed) and renders the modal. "Proceed to Purchase"
+(gate G3, closed 2026-08-04) reads `purchaseDestinations`: 1 → direct external link, 2+ → a
+chooser modal, 0 → the control is OMITTED (not disabled) — the vision's zero-destination chat
+fallback and the standalone chat button are both deferred to slice #4, since `@/chats` has no
+`index.ts` yet (R2) and a reachable control that goes nowhere is forbidden (project lock).
+**A real R5 risk was caught before it shipped, not after:** `search` has to import
+`ProductCardModal` from `@/catalog`, so `catalog/model.ts` deliberately DUPLICATES the relevant
+`SearchCardResponse` fields (`ProductCardData`) and the `separateBadges` mapping function instead
+of importing them from `@/search` — doing so would have closed a cycle between the two slices,
+which R5 forbids outright. Verified with `import/no-cycle` clean in the real build, not just
+reasoned about. **`code-rules-checker` found one real issue, fixed same pass:** `ProductCardData`
+carried `resultId`/`resultType`, neither ever read anywhere in the slice — trimmed (P8.1-class
+finding: a speculative full mirror of the DTO rather than the fields actually used). Full
+`npm run build` (lint → boundary fixtures → tokens → tsc → next build → rendering contract) and
+the full Playwright suite (`e2e/catalog.spec.ts`, new; `e2e/search.spec.ts`, regression) both
+green on both `chromium` and `mobile-chromium`, against a real production build after clearing a
+stale dev server that was still holding port 3000 from a prior session | `AI_Knowledge/{ARCHITECTURE_PATTERN_FRONTEND,PRODUCT_VISION,ROADMAP}.md`, `AI_Knowledge/features/{catalog,search}/*.md`, `src/catalog/**`, `src/search/{model,ui/ResultCard,ui/ResultSection,ui/ResultStream}.tsx`, `src/app/app/(main)/product/[id]/page.tsx`, `src/app/_components/SectionNotOpen.tsx`, `src/shared/i18n/messages/{en,ru,kk}.json`, `e2e/{catalog.spec.ts,mock-backend.mjs}`
+
 2026-08-06 | **An architecture/design-pattern audit against `ARCHITECTURE_PATTERN_FRONTEND.md` + `DESIGN_PATTERNS_FRONTEND.md` surfaced three real findings; all three fixed.** (1) **P1.1** — two `ui/` component files exceeded the ~400-line cap with genuinely separable concerns: `DeliveryCitiesField.tsx` (432 lines: input + ARIA combobox keyboard nav + outside-click handling + chip rendering, all in one component) split into a render-only component (240 lines) + `useCityComboboxField.ts` (176 lines, the combobox behaviour); `shared/ui/address-select.tsx` (567 lines: KATO cascade state + async locality-chunk loading/retry + rendering) split into a render-only component (199 lines) + `shared/ui/useKzAddressCascade.ts` (442 lines — a hook file, so P1.1a's line-cap exemption for non-component files applies, same as `business-cabinet/model.ts`/`hooks.ts`). Neither split changes behavior; `address-select.tsx` re-exports `KzPlace`/`formatKzAddress`/`kzPlaceKey` so its existing public import path is unchanged for `business-cabinet/{model,hooks,ui/BranchMapModal}.tsx`. (2) **P9.2** — `NavigationMenu.tsx`'s stacked mobile bottom-nav label used a raw `text-[11px]` with no matching design-system step (nearest token `--text-xs` is 12px); changed to `text-xs`. (3) **P1.2** — `AuthProvider.tsx` called `api.getSession()` directly inside a `useEffect`, rather than through a `hooks.ts`-defined hook; the session-restore fetch and its cross-tab `storage`-event resubscribe are now `useSessionRestore(store)` in `hooks.ts`, and `AuthProvider` only creates the store instance and mounts the context — which also corrects `features/auth/README.md`'s existing claim that "API side effects are orchestrated in hooks.ts" from aspirational to actually true. R1–R6 import boundaries, `export *` usage, module-scope store singletons, GSAP import discipline, the `AuthUser` discriminated union (P4.2), and the `shared/` domain-word litmus test were all checked and found clean — not re-listed here because nothing changed | `src/business-cabinet/ui/{DeliveryCitiesField,useCityComboboxField}.tsx`, `src/shared/ui/{address-select,useKzAddressCascade}.tsx`, `src/app/_components/NavigationMenu.tsx`, `src/auth/{hooks,ui/AuthProvider}.tsx`, `AI_Knowledge/features/auth/README.md`
 
 2026-08-05 | **CodeRabbit's review of the branch-editing/wizard PR surfaced two real defects and one nitpick correctly rejected for missing context.** (1) `DeliveryCitiesField`'s already-picked filter compared city names case-sensitively while `commitValue` only normalizes an exact match on commit — an older lowercase free-text entry could let the canonical-case suggestion for the same city stay offered, risking a near-duplicate pick. Now filtered case-insensitively too. (2) Suggestion buttons were in the Tab sequence despite this being an `aria-activedescendant` combobox, where the input alone should hold real focus; `tabIndex={-1}` fixes it. (3) The nitpick asking to scope `next.config.ts`'s `reactStrictMode: false` to just the map component was NOT applied — that is a re-attempt of the exact patch-the-symptom approach two earlier rounds already tried and found wrong (`BranchMapModal`'s own state logic was already correct); the disable is dev-only with zero production effect, and the review tool has no visibility into that history. `eslint`/`tsc --noEmit`/Prettier clean | `src/business-cabinet/ui/DeliveryCitiesField.tsx`, `AI_Knowledge/features/business-cabinet/ux-ui-flow.md`

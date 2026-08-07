@@ -58,7 +58,8 @@
       },
       "product": {
         "title": "Product cards open from search",
-        "description": "Open a product from the catalog to see its full card. A direct link to a single product is not available yet."
+        "description": "Open a product from the catalog to see its full card. There is no direct link to a single product - product cards only open from search results.",
+        "backToCatalog": "Browse the catalog"
       }
     }
   },
@@ -146,6 +147,15 @@
     "validation": {
       "emptyQueryDescription": "Go back to Home and type what you're looking for.",
       "backToHome": "Back to Home"
+    }
+  },
+  "catalog": {
+    "modal": {
+      "proceedToPurchase": "Proceed to Purchase",
+      "chooserTitle": "Choose where to buy",
+      "chooserDescription": "This business offers more than one place to complete your purchase.",
+      "galleryImage": "Image {number}",
+      "about": "About this business"
     }
   },
   "auth": {

@@ -13,10 +13,12 @@ list, and an empty state that no longer routes to the deleted requests feature.
   vocabulary; the route file parses it and calls `search()` server-side (D7) — sort/filter
   controls are client islands pushing new params via `useUpdateCatalogParams` (hooks.ts), never
   a `store.ts`. Nothing here outlives one render.
-- **Result cards are non-interactive.** The Product Card modal (D10) is `catalog`'s (roadmap
-  slice #3, not built yet) — cards render the full brand+decision layer but have no click
-  target, rather than a click that goes nowhere (project lock). `ResultSection`/`CatalogPage`
-  will gain a `select` prop when that slice lands; this slice's data flow does not change.
+- **Result cards are interactive since 2026-08-06 (D33, roadmap slice #3 shipped).** `ResultCard`
+  is a click/keyboard target (`role="button"`) that calls `onSelect(card)`, threaded down through
+  `ResultSection` from `ResultStream`, which holds the "which card is open" state as local
+  `useState` and renders `ProductCardModal` (`@/catalog`) when one is selected. This slice's own
+  data flow is unchanged — the modal renders from the SAME `SearchCardResponse` this slice
+  already fetched, no new request.
 - **The radius filter is explicit opt-in only** (`useGeolocation`, hooks.ts) — the browser's
   location permission prompt fires only from a click on the "search within 100 km" checkbox,
   never on page load. The 100 km value is fixed (the vision's only named radius, §4), not an
@@ -174,7 +176,10 @@ Price · ~~Companies~~ · Location (**within 100 km** · by city · ~~by map are
 ## Result cards
 Two layers, per the anti-marketplace contract:
 - **Brand layer** — business name, logo, brand colour, badges
-- **Decision layer** — price (when known), match reasons, availability, branch/distance, actions
+- **Decision layer** — price (when known), availability, branch/distance, actions
+
+`matchReasons` is modelled (`search/model.ts`) but **deliberately not rendered anywhere** —
+reversed 2026-08-06 (owner), see `contracts.md` § *Catalog images and match reasons*.
 
 **Badges are metadata, never a score** (project lock). Three known tokens map to i18n keys —
 `official channel`, `complete card`, `pickup` — plus the business's own offer label, which

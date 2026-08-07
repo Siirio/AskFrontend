@@ -132,11 +132,27 @@ The 4 key features of our platform:
 >
 > **What this append does NOT adopt.** The backend's own `features/search/README.md` describes a
 > fuller presentation in the same commit — a desktop hover-preview panel, a mobile detail modal,
-> and *"match reasons … are not displayed."* **Those are not adopted.** Match reasons stay
-> rendered: "why this matched" is the intent layer's core affordance and the thing that separates
-> ASK from a marketplace's ranking. The backend is the authority for DATA and this vision is the
-> authority for INTENT (D9, P9.4) — a README in the other repo is not where a product affordance
-> is removed. The conflict is raised back to the backend as a documentation question.
+> and *"match reasons … are not displayed."* The hover-preview panel and the mobile detail modal
+> are **not adopted** — the Product Card is a modal opened from the card (roadmap #3, D10/D33),
+> not a hover panel or a second hover/tap-triggered surface.
+>
+> **Match reasons — corrected 2026-08-06 (owner directive; supersedes the paragraph below).**
+> This append originally kept match reasons rendered, overriding the backend's "not displayed"
+> stance. **That override is reversed.** Match reasons are NOT rendered to the customer anywhere
+> in the product. `SearchCardResponse.matchReasons` stays modelled in `search/model.ts` (it is
+> still on the wire, and the backend remains the data authority, P9.4) but nothing renders it —
+> `ResultCard` no longer does, and the Product Card modal (roadmap #3) does not either. The client
+> now agrees with the backend's own README rather than overriding it.
+>
+> <details><summary>Original 2026-08-02 text (superseded, kept for the paper trail)</summary>
+>
+> Match reasons stay rendered: "why this matched" is the intent layer's core affordance and the
+> thing that separates ASK from a marketplace's ranking. The backend is the authority for DATA
+> and this vision is the authority for INTENT (D9, P9.4) — a README in the other repo is not
+> where a product affordance is removed. The conflict is raised back to the backend as a
+> documentation question.
+>
+> </details>
 
 #### UF 2.2 — The customer wants to find a chat
 

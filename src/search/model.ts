@@ -162,13 +162,10 @@ export type SearchCardResponse = {
   summary: string | null;
   /** Ordered catalog gallery, first entry primary; `[]` when the seller
    *  uploaded none. Landed on the wire 2026-08-02 (backend `b02105a`).
-   *  **Modelled, deliberately NOT rendered** — PRODUCT_VISION describes no
-   *  image on a result card, and inventing UI is forbidden (P9.1). The backend
-   *  ALSO shipped a result-presentation contract in the same commit (primary
-   *  image on the row, desktop hover-preview panel, mobile modal, match reasons
-   *  no longer displayed) that our `ux-ui-flow.md` does not describe. Both are
-   *  raised for an owner decision, not inferred — see `contracts.md`
-   *  § *Catalog images* and AUDIT_2 N11/N12. */
+   *  **Rendered since 2026-08-04** — `PRODUCT_VISION.md` was appended the same
+   *  day to describe the primary image on a result card (`ResultCard` shows
+   *  `images[0]`; the rest of the gallery belongs to the Product Card modal,
+   *  `@/catalog`, roadmap #3). See `contracts.md` § *Catalog images*. */
   images: CatalogImage[];
   /** Ordered seller-published places to buy — `[]` when the seller listed none.
    *  **This is what gate G3's "Proceed to Purchase" button reads** (backend
@@ -192,7 +189,14 @@ export type SearchCardResponse = {
   availability: Availability;
   /** Server-localized prose, populated ONLY when availability is UNKNOWN. */
   availabilityWarning: string | null;
-  /** Server-localized "why this matched" prose — safe to render as-is. */
+  /** Server-localized "why this matched" prose. **Modelled, deliberately NOT
+   *  rendered** (owner reversal, 2026-08-06) — this reverses the 2026-08-02
+   *  ruling that had explicitly overridden the backend's own stance
+   *  (`search/README.md`: "match reasons remain response metadata and are not
+   *  displayed"); the client now agrees with it. The field stays typed because
+   *  it is still on the wire and the backend is the data authority (P9.4) —
+   *  only the rendering decision changed. See `contracts.md` and
+   *  `PRODUCT_VISION.md`'s 2026-08-06 correction. */
   matchReasons: string[];
   /** Hardcoded-English tokens — map through BADGE_I18N_KEYS, drop unknown.
    *  When `hasActiveOffer` is true the FIRST entry is the offer LABEL, not a
