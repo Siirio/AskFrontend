@@ -605,6 +605,25 @@
   }
   .neu-skin .neu-input:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  /* `type="number"` fields (the Catalog filter's Min/Max price, `search/ui/
+   * FilterPanel.tsx`) otherwise leak the BROWSER's own unstyled spin-button
+   * chrome straight through the carved-in field — a native default rendered
+   * on top of the skin, exactly what D12/P9.2 forbid. Suppressed once here so
+   * every current and future numeric `.neu-input` inherits it; no stepper
+   * control is built to replace it; the plain field is sufficient for free-
+   * form entry and ASK has no quantity/stock concept to justify one (Locks.md
+   * — "never invent stock, delivery, logistics, or availability"). */
+  .neu-skin .neu-input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .neu-skin .neu-input[type="number"]::-webkit-inner-spin-button,
+  .neu-skin .neu-input[type="number"]::-webkit-outer-spin-button {
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   /* ── OTP CELL (neumorui OTPInput) ──────────────────────────────────────
    * One box per digit. Deliberately RAISED at rest, which is the opposite of
    * `.neu-input` and is the reference library's own choice — and it earns the
@@ -877,6 +896,43 @@
   .neu-skin .neu-checkbox-box[data-on="true"] svg {
     animation: neu-check-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+
+  /* The RADIO half of this section's own heading, added 2026-08-06 — until
+   * now every `role="radio"` group in the product (`RoleSelectionModal`,
+   * `OptionGroup`, `RegisterStepScope`, `SearchForm`'s mode toggle) built its
+   * OWN selected-state treatment, while the Catalog filter panel's location
+   * group used a literal native `<input type="radio">` — the browser's own
+   * unstyled circle-and-dot, sitting inside an otherwise fully carved/raised
+   * surface. Same grammar as the checkbox above (carved socket at rest, the
+   * accent fills it when chosen), circular instead of the checkbox's rounded
+   * square — that shape difference is the universal radio/checkbox tell — and
+   * a DOT rather than a checkmark glyph, since a radio marks "the one true
+   * answer among several," not "yes." */
+  .neu-skin .neu-radio-dot {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: var(--surface);
+    box-shadow: var(--neu-inset-sm);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .neu-skin .neu-radio-dot::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background: var(--neu-gradient-primary);
+    transform: scale(0);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .neu-skin .neu-radio-dot[data-on="true"] {
+    box-shadow: var(--neu-inset-sm), 0 0 0 1px color-mix(in oklab, var(--accent) 35%, transparent);
+  }
+  .neu-skin .neu-radio-dot[data-on="true"]::after { transform: scale(1); }
+  .neu-skin .neu-radio-dot:active { transform: scale(0.85); }
 
   .neu-skin .neu-radio-dot {
     display: grid;

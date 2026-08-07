@@ -158,38 +158,63 @@ export function FilterPanel({
         </Field>
       </div>
 
-      {/* A real fieldset/legend, not a styled div: "where" is one question with
-          exclusive answers, and that is exactly what a radio group announces to
-          a screen reader. The semantics and the backend's assert agree. */}
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium text-foreground">
+      {/* A real ARIA radiogroup, not a styled div: "where" is one question with
+          exclusive answers, and that is exactly what this announces to a
+          screen reader. The semantics and the backend's assert agree.
+          Custom `role="radio"` buttons + `.neu-radio-dot`, not a native
+          `<input type="radio">` — every other radio-shaped choice in the
+          product (`RoleSelectionModal`, `OptionGroup`, `RegisterStepScope`,
+          `SearchForm`'s mode toggle) already avoids the browser's own
+          unstyled control for the same reason (design-system/neumorphism.css
+          "RADIO" note, 2026-08-06). Roving tabindex per the WAI radiogroup
+          pattern, same as `OptionGroup`. */}
+      <div role="radiogroup" aria-label={t("filters.location.legend")} className="flex flex-col gap-2">
+        <p aria-hidden="true" className="mb-1 text-sm font-medium text-foreground">
           {t("filters.location.legend")}
-        </legend>
+        </p>
 
-        {LOCATION_MODES.map((option) => (
-          <label
-            key={option}
-            className="flex min-h-11 items-center gap-2 text-sm text-foreground"
-          >
-            <input
-              type="radio"
-              name={modeName}
-              value={option}
-              className="size-4 accent-accent"
-              checked={mode === option}
-              onChange={() => {
-                setMode(option);
-                // Ask for the fix the moment the visitor opts in — never
-                // auto-prompted on load (hooks.ts). Re-requesting an
-                // already-granted fix is a no-op, not a second prompt.
-                if (option === "radius" && geo.status !== "granted") {
+        {LOCATION_MODES.map((option) => {
+          const selected = mode === option;
+          const selectMode = () => {
+            setMode(option);
+            // Ask for the fix the moment the visitor opts in — never
+            // auto-prompted on load (hooks.ts). Re-requesting an
+            // already-granted fix is a no-op, not a second prompt.
+            if (option === "radius" && geo.status !== "granted") {
+              requestLocation();
+            }
+          };
+          return (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
+              data-testid={`${modeName}-${option}`}
+              onClick={selectMode}
+              onKeyDown={(e) => {
+                if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+                e.preventDefault();
+                const delta = e.key === "ArrowDown" ? 1 : -1;
+                const currentIndex = LOCATION_MODES.indexOf(mode);
+                const next =
+                  LOCATION_MODES[
+                    (currentIndex + delta + LOCATION_MODES.length) %
+                      LOCATION_MODES.length
+                  ];
+                setMode(next);
+                if (next === "radius" && geo.status !== "granted") {
                   requestLocation();
                 }
               }}
-            />
-            {t(`filters.location.${option}`)}
-          </label>
-        ))}
+              className="focus-ring flex min-h-11 items-center gap-2 text-left text-sm text-foreground"
+            >
+              <span className="neu-radio-dot" data-on={selected} aria-hidden="true" />
+              {t(`filters.location.${option}`)}
+            </button>
+          );
+        })}
 
         {/* Each mode's own detail sits INSIDE the group, indented under its
             radio, so the relationship is visible rather than implied. */}
@@ -225,7 +250,7 @@ export function FilterPanel({
             </button>
           </div>
         ) : null}
-      </fieldset>
+      </div>
 
       <CompanyFilter
         facets={companyFacets}
