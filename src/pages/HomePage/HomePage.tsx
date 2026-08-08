@@ -68,7 +68,7 @@ export function HomePage() {
               aria-label={t("home.search.ariaLabel")}
             />
             <button type="submit" disabled={!query.trim()}>
-              {t("searchBar.button")}
+              {t("home.cta")}
             </button>
           </div>
         </form>

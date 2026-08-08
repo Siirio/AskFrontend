@@ -95,6 +95,12 @@ export type SearchV2CardDto = {
   branchName?: string | null;
   branchAddress?: string | null;
   branchCity?: string | null;
+  decisionLabel?: string | null;
+  criterionAssessments?: CriterionAssessmentDto[];
+  advantages?: string[];
+  tradeoffs?: string[];
+  unknowns?: string[];
+  comparisonFacts?: CriterionEvidenceDto[];
 };
 
 export type PurchaseDestinationDto = {
@@ -105,6 +111,99 @@ export type PurchaseDestinationDto = {
 export type CatalogImageDto = {
   id: string;
   url: string;
+};
+
+export type DecisionCriterionDto = {
+  key: string;
+  label: string;
+  operator: string;
+  values: string[];
+  unit?: string | null;
+  source?: string;
+};
+
+export type DecisionUseCaseDto = {
+  key: string;
+  label: string;
+  source?: string;
+};
+
+export type DecisionContextDto = {
+  hardConstraints: DecisionCriterionDto[];
+  preferences: DecisionCriterionDto[];
+  useCases: DecisionUseCaseDto[];
+  exclusions: DecisionCriterionDto[];
+  customText?: string;
+};
+
+export type ClarificationFieldDto = {
+  id: string;
+  criterionKey: string;
+  label: string;
+  type: "RANGE" | "SINGLE_SELECT" | "MULTI_SELECT";
+  required: boolean;
+  options: string[];
+  min?: number | null;
+  max?: number | null;
+  unit?: string | null;
+};
+
+export type ClarificationResponseDto = {
+  rawQuery: string;
+  understoodQuery: string;
+  clarificationRequired: boolean;
+  fields: ClarificationFieldDto[];
+  prefilledDecisionContext?: DecisionContextDto | null;
+};
+
+export type CriterionEvidenceDto = {
+  source: string;
+  key: string;
+  value: string;
+};
+
+export type CriterionAssessmentDto = {
+  criterionKey: string;
+  label: string;
+  status: "PASS" | "FAIL" | "PARTIAL" | "UNKNOWN";
+  displayValue?: string | null;
+  consequence?: string | null;
+  evidence: CriterionEvidenceDto[];
+};
+
+export type CompareValueDto = {
+  resultId: string;
+  value: string;
+  status: "BEST" | "PARTIAL" | "UNKNOWN" | "FAIL";
+  highlight?: string | null;
+};
+
+export type CompareRowDto = {
+  key: string;
+  label: string;
+  isDifferent: boolean;
+  values: CompareValueDto[];
+};
+
+export type CompareGroupDto = {
+  key: string;
+  label: string;
+  rows: CompareRowDto[];
+};
+
+export type CompareItemDto = {
+  resultId: string;
+  title: string;
+  image?: string | null;
+  price?: number | null;
+  currency?: string | null;
+  verdict?: string | null;
+};
+
+export type CompareResponseDto = {
+  mode: string;
+  items: CompareItemDto[];
+  groups: CompareGroupDto[];
 };
 
 export type SearchV2SectionDto = {
@@ -139,6 +238,9 @@ export type SearchV2ResponseDto = {
   pageSize: number;
   total: number;
   hasNext: boolean;
+  decisionContext?: DecisionContextDto | null;
+  ambiguity?: string;
+  suggestions?: string[];
 };
 
 export type BrandProfileDto = {

@@ -8,8 +8,11 @@ import type {
   BrandProfileDto,
   ChatConversationDto, ChatConversationListResponse,
   ChatMessageDto, ChatMessageListResponse,
+  ClarificationResponseDto,
+  CompareResponseDto,
   ContactResolveDto,
   CustomerRequestDetailDto, CustomerRequestHistoryDto,
+  DecisionContextDto,
   PurchaseDestinationDto,
   SearchV2ResponseDto,
   StaffDto,
@@ -163,6 +166,7 @@ export function searchAskV2(params: {
   page?: number;
   pageSize?: number;
   explicitFilters?: SearchExplicitFilters;
+  decisionContext?: DecisionContextDto;
 }) {
   return apiRequest<SearchV2ResponseDto>("/api/v1/search", {
     method: "POST",
@@ -173,8 +177,45 @@ export function searchAskV2(params: {
       page: params.page ?? 0,
       pageSize: params.pageSize,
       explicitFilters: params.explicitFilters,
+      decisionContext: params.decisionContext || undefined,
       userLocation: getStoredUserLocation(),
       locale: i18n.language || "ru",
+    },
+  });
+}
+
+export function getSearchClarification(params: {
+  rawQuery: string;
+  mode: "ITEM" | "SERVICE";
+  category?: string;
+  city?: string;
+  language?: string;
+}) {
+  return apiRequest<ClarificationResponseDto>("/api/v1/search/clarification", {
+    method: "POST",
+    body: {
+      rawQuery: params.rawQuery,
+      mode: params.mode,
+      category: params.category || "",
+      city: params.city || "",
+      language: params.language || i18n.language || "ru",
+    },
+  });
+}
+
+export function compareSearchResults(params: {
+  mode: "ITEM" | "SERVICE";
+  resultIds: string[];
+  decisionContext?: DecisionContextDto;
+  locale?: string;
+}) {
+  return apiRequest<CompareResponseDto>("/api/v1/search/compare", {
+    method: "POST",
+    body: {
+      mode: params.mode,
+      resultIds: params.resultIds,
+      decisionContext: params.decisionContext || undefined,
+      locale: params.locale || i18n.language || "ru",
     },
   });
 }
